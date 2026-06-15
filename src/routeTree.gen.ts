@@ -11,21 +11,34 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WagesRouteImport } from './routes/wages'
 import { Route as UsersRouteImport } from './routes/users'
+import { Route as TradeBuilderRouteImport } from './routes/trade-builder'
+import { Route as StatementsRouteImport } from './routes/statements'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as PropertiesRouteImport } from './routes/properties'
+import { Route as PrelimsRouteImport } from './routes/prelims'
+import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as OperativesRouteImport } from './routes/operatives'
+import { Route as LegendCodesRouteImport } from './routes/legend-codes'
 import { Route as KpiRouteImport } from './routes/kpi'
+import { Route as HoldRouteImport } from './routes/hold'
 import { Route as DailyRouteImport } from './routes/daily'
+import { Route as CostBudgetRouteImport } from './routes/cost-budget'
 import { Route as ContractsRouteImport } from './routes/contracts'
+import { Route as ConfirmationRouteImport } from './routes/confirmation'
+import { Route as AllocationRouteImport } from './routes/allocation'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WagesIndexRouteImport } from './routes/wages.index'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
+import { Route as TradeBuilderIndexRouteImport } from './routes/trade-builder.index'
 import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
 import { Route as OperativesIndexRouteImport } from './routes/operatives.index'
 import { Route as WagesIdRouteImport } from './routes/wages.$id'
 import { Route as UsersNewRouteImport } from './routes/users.new'
 import { Route as UsersIdRouteImport } from './routes/users.$id'
+import { Route as TradeBuilderTasksRouteImport } from './routes/trade-builder.tasks'
+import { Route as TradeBuilderGroupsRouteImport } from './routes/trade-builder.groups'
 import { Route as PropertiesIdRouteImport } from './routes/properties.$id'
 import { Route as OperativesNewRouteImport } from './routes/operatives.new'
 import { Route as OperativesIdRouteImport } from './routes/operatives.$id'
@@ -40,9 +53,24 @@ const UsersRoute = UsersRouteImport.update({
   path: '/users',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TradeBuilderRoute = TradeBuilderRouteImport.update({
+  id: '/trade-builder',
+  path: '/trade-builder',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatementsRoute = StatementsRouteImport.update({
+  id: '/statements',
+  path: '/statements',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RatesRoute = RatesRouteImport.update({
@@ -55,9 +83,24 @@ const PropertiesRoute = PropertiesRouteImport.update({
   path: '/properties',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrelimsRoute = PrelimsRouteImport.update({
+  id: '/prelims',
+  path: '/prelims',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PayrollRoute = PayrollRouteImport.update({
+  id: '/payroll',
+  path: '/payroll',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OperativesRoute = OperativesRouteImport.update({
   id: '/operatives',
   path: '/operatives',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegendCodesRoute = LegendCodesRouteImport.update({
+  id: '/legend-codes',
+  path: '/legend-codes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KpiRoute = KpiRouteImport.update({
@@ -65,14 +108,34 @@ const KpiRoute = KpiRouteImport.update({
   path: '/kpi',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HoldRoute = HoldRouteImport.update({
+  id: '/hold',
+  path: '/hold',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DailyRoute = DailyRouteImport.update({
   id: '/daily',
   path: '/daily',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CostBudgetRoute = CostBudgetRouteImport.update({
+  id: '/cost-budget',
+  path: '/cost-budget',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContractsRoute = ContractsRouteImport.update({
   id: '/contracts',
   path: '/contracts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfirmationRoute = ConfirmationRouteImport.update({
+  id: '/confirmation',
+  path: '/confirmation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AllocationRoute = AllocationRouteImport.update({
+  id: '/allocation',
+  path: '/allocation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -89,6 +152,11 @@ const UsersIndexRoute = UsersIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => UsersRoute,
+} as any)
+const TradeBuilderIndexRoute = TradeBuilderIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TradeBuilderRoute,
 } as any)
 const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
   id: '/',
@@ -115,6 +183,16 @@ const UsersIdRoute = UsersIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => UsersRoute,
 } as any)
+const TradeBuilderTasksRoute = TradeBuilderTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => TradeBuilderRoute,
+} as any)
+const TradeBuilderGroupsRoute = TradeBuilderGroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => TradeBuilderRoute,
+} as any)
 const PropertiesIdRoute = PropertiesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -133,64 +211,102 @@ const OperativesIdRoute = OperativesIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/allocation': typeof AllocationRoute
+  '/confirmation': typeof ConfirmationRoute
   '/contracts': typeof ContractsRoute
+  '/cost-budget': typeof CostBudgetRoute
   '/daily': typeof DailyRoute
+  '/hold': typeof HoldRoute
   '/kpi': typeof KpiRoute
+  '/legend-codes': typeof LegendCodesRoute
   '/operatives': typeof OperativesRouteWithChildren
+  '/payroll': typeof PayrollRoute
+  '/prelims': typeof PrelimsRoute
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
+  '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/statements': typeof StatementsRoute
+  '/trade-builder': typeof TradeBuilderRouteWithChildren
   '/users': typeof UsersRouteWithChildren
   '/wages': typeof WagesRouteWithChildren
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/trade-builder/groups': typeof TradeBuilderGroupsRoute
+  '/trade-builder/tasks': typeof TradeBuilderTasksRoute
   '/users/$id': typeof UsersIdRoute
   '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
   '/operatives/': typeof OperativesIndexRoute
   '/properties/': typeof PropertiesIndexRoute
+  '/trade-builder/': typeof TradeBuilderIndexRoute
   '/users/': typeof UsersIndexRoute
   '/wages/': typeof WagesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/allocation': typeof AllocationRoute
+  '/confirmation': typeof ConfirmationRoute
   '/contracts': typeof ContractsRoute
+  '/cost-budget': typeof CostBudgetRoute
   '/daily': typeof DailyRoute
+  '/hold': typeof HoldRoute
   '/kpi': typeof KpiRoute
+  '/legend-codes': typeof LegendCodesRoute
+  '/payroll': typeof PayrollRoute
+  '/prelims': typeof PrelimsRoute
   '/rates': typeof RatesRoute
+  '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/statements': typeof StatementsRoute
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/trade-builder/groups': typeof TradeBuilderGroupsRoute
+  '/trade-builder/tasks': typeof TradeBuilderTasksRoute
   '/users/$id': typeof UsersIdRoute
   '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
   '/operatives': typeof OperativesIndexRoute
   '/properties': typeof PropertiesIndexRoute
+  '/trade-builder': typeof TradeBuilderIndexRoute
   '/users': typeof UsersIndexRoute
   '/wages': typeof WagesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/allocation': typeof AllocationRoute
+  '/confirmation': typeof ConfirmationRoute
   '/contracts': typeof ContractsRoute
+  '/cost-budget': typeof CostBudgetRoute
   '/daily': typeof DailyRoute
+  '/hold': typeof HoldRoute
   '/kpi': typeof KpiRoute
+  '/legend-codes': typeof LegendCodesRoute
   '/operatives': typeof OperativesRouteWithChildren
+  '/payroll': typeof PayrollRoute
+  '/prelims': typeof PrelimsRoute
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
+  '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/statements': typeof StatementsRoute
+  '/trade-builder': typeof TradeBuilderRouteWithChildren
   '/users': typeof UsersRouteWithChildren
   '/wages': typeof WagesRouteWithChildren
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/trade-builder/groups': typeof TradeBuilderGroupsRoute
+  '/trade-builder/tasks': typeof TradeBuilderTasksRoute
   '/users/$id': typeof UsersIdRoute
   '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
   '/operatives/': typeof OperativesIndexRoute
   '/properties/': typeof PropertiesIndexRoute
+  '/trade-builder/': typeof TradeBuilderIndexRoute
   '/users/': typeof UsersIndexRoute
   '/wages/': typeof WagesIndexRoute
 }
@@ -198,76 +314,124 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/allocation'
+    | '/confirmation'
     | '/contracts'
+    | '/cost-budget'
     | '/daily'
+    | '/hold'
     | '/kpi'
+    | '/legend-codes'
     | '/operatives'
+    | '/payroll'
+    | '/prelims'
     | '/properties'
     | '/rates'
+    | '/reports'
     | '/settings'
+    | '/statements'
+    | '/trade-builder'
     | '/users'
     | '/wages'
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/trade-builder/groups'
+    | '/trade-builder/tasks'
     | '/users/$id'
     | '/users/new'
     | '/wages/$id'
     | '/operatives/'
     | '/properties/'
+    | '/trade-builder/'
     | '/users/'
     | '/wages/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/allocation'
+    | '/confirmation'
     | '/contracts'
+    | '/cost-budget'
     | '/daily'
+    | '/hold'
     | '/kpi'
+    | '/legend-codes'
+    | '/payroll'
+    | '/prelims'
     | '/rates'
+    | '/reports'
     | '/settings'
+    | '/statements'
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/trade-builder/groups'
+    | '/trade-builder/tasks'
     | '/users/$id'
     | '/users/new'
     | '/wages/$id'
     | '/operatives'
     | '/properties'
+    | '/trade-builder'
     | '/users'
     | '/wages'
   id:
     | '__root__'
     | '/'
+    | '/allocation'
+    | '/confirmation'
     | '/contracts'
+    | '/cost-budget'
     | '/daily'
+    | '/hold'
     | '/kpi'
+    | '/legend-codes'
     | '/operatives'
+    | '/payroll'
+    | '/prelims'
     | '/properties'
     | '/rates'
+    | '/reports'
     | '/settings'
+    | '/statements'
+    | '/trade-builder'
     | '/users'
     | '/wages'
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/trade-builder/groups'
+    | '/trade-builder/tasks'
     | '/users/$id'
     | '/users/new'
     | '/wages/$id'
     | '/operatives/'
     | '/properties/'
+    | '/trade-builder/'
     | '/users/'
     | '/wages/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AllocationRoute: typeof AllocationRoute
+  ConfirmationRoute: typeof ConfirmationRoute
   ContractsRoute: typeof ContractsRoute
+  CostBudgetRoute: typeof CostBudgetRoute
   DailyRoute: typeof DailyRoute
+  HoldRoute: typeof HoldRoute
   KpiRoute: typeof KpiRoute
+  LegendCodesRoute: typeof LegendCodesRoute
   OperativesRoute: typeof OperativesRouteWithChildren
+  PayrollRoute: typeof PayrollRoute
+  PrelimsRoute: typeof PrelimsRoute
   PropertiesRoute: typeof PropertiesRouteWithChildren
   RatesRoute: typeof RatesRoute
+  ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
+  StatementsRoute: typeof StatementsRoute
+  TradeBuilderRoute: typeof TradeBuilderRouteWithChildren
   UsersRoute: typeof UsersRouteWithChildren
   WagesRoute: typeof WagesRouteWithChildren
 }
@@ -288,11 +452,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/trade-builder': {
+      id: '/trade-builder'
+      path: '/trade-builder'
+      fullPath: '/trade-builder'
+      preLoaderRoute: typeof TradeBuilderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/statements': {
+      id: '/statements'
+      path: '/statements'
+      fullPath: '/statements'
+      preLoaderRoute: typeof StatementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rates': {
@@ -309,11 +494,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PropertiesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/prelims': {
+      id: '/prelims'
+      path: '/prelims'
+      fullPath: '/prelims'
+      preLoaderRoute: typeof PrelimsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payroll': {
+      id: '/payroll'
+      path: '/payroll'
+      fullPath: '/payroll'
+      preLoaderRoute: typeof PayrollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/operatives': {
       id: '/operatives'
       path: '/operatives'
       fullPath: '/operatives'
       preLoaderRoute: typeof OperativesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legend-codes': {
+      id: '/legend-codes'
+      path: '/legend-codes'
+      fullPath: '/legend-codes'
+      preLoaderRoute: typeof LegendCodesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kpi': {
@@ -323,6 +529,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KpiRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hold': {
+      id: '/hold'
+      path: '/hold'
+      fullPath: '/hold'
+      preLoaderRoute: typeof HoldRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/daily': {
       id: '/daily'
       path: '/daily'
@@ -330,11 +543,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DailyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cost-budget': {
+      id: '/cost-budget'
+      path: '/cost-budget'
+      fullPath: '/cost-budget'
+      preLoaderRoute: typeof CostBudgetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contracts': {
       id: '/contracts'
       path: '/contracts'
       fullPath: '/contracts'
       preLoaderRoute: typeof ContractsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/confirmation': {
+      id: '/confirmation'
+      path: '/confirmation'
+      fullPath: '/confirmation'
+      preLoaderRoute: typeof ConfirmationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/allocation': {
+      id: '/allocation'
+      path: '/allocation'
+      fullPath: '/allocation'
+      preLoaderRoute: typeof AllocationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -357,6 +591,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/users/'
       preLoaderRoute: typeof UsersIndexRouteImport
       parentRoute: typeof UsersRoute
+    }
+    '/trade-builder/': {
+      id: '/trade-builder/'
+      path: '/'
+      fullPath: '/trade-builder/'
+      preLoaderRoute: typeof TradeBuilderIndexRouteImport
+      parentRoute: typeof TradeBuilderRoute
     }
     '/properties/': {
       id: '/properties/'
@@ -392,6 +633,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/users/$id'
       preLoaderRoute: typeof UsersIdRouteImport
       parentRoute: typeof UsersRoute
+    }
+    '/trade-builder/tasks': {
+      id: '/trade-builder/tasks'
+      path: '/tasks'
+      fullPath: '/trade-builder/tasks'
+      preLoaderRoute: typeof TradeBuilderTasksRouteImport
+      parentRoute: typeof TradeBuilderRoute
+    }
+    '/trade-builder/groups': {
+      id: '/trade-builder/groups'
+      path: '/groups'
+      fullPath: '/trade-builder/groups'
+      preLoaderRoute: typeof TradeBuilderGroupsRouteImport
+      parentRoute: typeof TradeBuilderRoute
     }
     '/properties/$id': {
       id: '/properties/$id'
@@ -447,6 +702,22 @@ const PropertiesRouteWithChildren = PropertiesRoute._addFileChildren(
   PropertiesRouteChildren,
 )
 
+interface TradeBuilderRouteChildren {
+  TradeBuilderGroupsRoute: typeof TradeBuilderGroupsRoute
+  TradeBuilderTasksRoute: typeof TradeBuilderTasksRoute
+  TradeBuilderIndexRoute: typeof TradeBuilderIndexRoute
+}
+
+const TradeBuilderRouteChildren: TradeBuilderRouteChildren = {
+  TradeBuilderGroupsRoute: TradeBuilderGroupsRoute,
+  TradeBuilderTasksRoute: TradeBuilderTasksRoute,
+  TradeBuilderIndexRoute: TradeBuilderIndexRoute,
+}
+
+const TradeBuilderRouteWithChildren = TradeBuilderRoute._addFileChildren(
+  TradeBuilderRouteChildren,
+)
+
 interface UsersRouteChildren {
   UsersIdRoute: typeof UsersIdRoute
   UsersNewRoute: typeof UsersNewRoute
@@ -475,13 +746,23 @@ const WagesRouteWithChildren = WagesRoute._addFileChildren(WagesRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AllocationRoute: AllocationRoute,
+  ConfirmationRoute: ConfirmationRoute,
   ContractsRoute: ContractsRoute,
+  CostBudgetRoute: CostBudgetRoute,
   DailyRoute: DailyRoute,
+  HoldRoute: HoldRoute,
   KpiRoute: KpiRoute,
+  LegendCodesRoute: LegendCodesRoute,
   OperativesRoute: OperativesRouteWithChildren,
+  PayrollRoute: PayrollRoute,
+  PrelimsRoute: PrelimsRoute,
   PropertiesRoute: PropertiesRouteWithChildren,
   RatesRoute: RatesRoute,
+  ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
+  StatementsRoute: StatementsRoute,
+  TradeBuilderRoute: TradeBuilderRouteWithChildren,
   UsersRoute: UsersRouteWithChildren,
   WagesRoute: WagesRouteWithChildren,
 }
