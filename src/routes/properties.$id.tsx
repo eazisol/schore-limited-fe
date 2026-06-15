@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { getProperty, allocations, getOperative, fmtGBP, holdReasons } from "@/lib/data";
 import { ArrowLeft, MapPin, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/properties/$id")({
   loader: ({ params }) => {
