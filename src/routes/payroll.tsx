@@ -76,7 +76,7 @@ function Payroll() {
                   <td className="px-3 py-3 text-right text-muted-foreground">{w.cisRate}%</td>
                   <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtGBP(w.cisTax)}</td>
                   <td className="px-3 py-3 text-right font-mono tabular-nums font-medium">{fmtGBP(w.net)}</td>
-                  <td className="px-5 py-3 text-right"><Link to="/wages/$id" params={{id:w.id}} className="text-xs text-info hover:underline">View sheet</Link></td>
+                  <td className="px-5 py-3 text-right"><Link to="/wages/$id" params={{id:w.id}} search={{ from: "payroll" }} className="text-xs text-info hover:underline">View sheet</Link></td>
                 </tr>
               );
             })}

@@ -1,18 +1,24 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useState } from "react";
 import { PageHeader } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { getProperty, allocations, getOperative, fmtGBP, holdReasons } from "@/lib/data";
-import { ArrowLeft, MapPin, AlertCircle } from "lucide-react";
+import { propertiesStore, useProperty } from "@/lib/properties-store";
+import { Modal, Field, inputCls } from "@/components/Modal";
+import { ArrowLeft, MapPin, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+
+const TYPES = ["KBWC", "Bathroom", "Kitchen", "Wet Room"] as const;
+const STATUSES = ["In Progress", "Handed Over", "On Hold", "Snag"] as const;
 
 export const Route = createFileRoute("/properties/$id")({
   loader: ({ params }) => {
-    const p = getProperty(params.id);
+    const p = getProperty(params.id) ?? propertiesStore.get().find(x => x.id === params.id);
     if (!p) throw notFound();
-    return { p };
+    return { id: params.id };
   },
-  head: ({ loaderData }) => ({ meta: [{ title: `${loaderData?.p.ref ?? "Property"} — Schore` }] }),
+  head: ({ loaderData }) => ({ meta: [{ title: `Property ${loaderData?.id ?? ""} — Schore` }] }),
   notFoundComponent: () => (
     <div className="card-elevated p-12 text-center">
       <h2 className="font-display font-semibold">Property not found</h2>
@@ -23,12 +29,48 @@ export const Route = createFileRoute("/properties/$id")({
 });
 
 function PropertyDetail() {
-  const { p } = Route.useLoaderData();
+  const { id } = Route.useLoaderData();
+  const p = useProperty(id);
+  const [editOpen, setEditOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const [form, setForm] = useState(() => ({
+    ref: p?.ref ?? "", address: p?.address ?? "", postcode: p?.postcode ?? "",
+    contract: p?.contract ?? "MS", type: p?.type ?? TYPES[0], status: p?.status ?? STATUSES[0],
+    startDate: p?.startDate ?? "", budget: p?.budget ?? 0, siteManager: p?.siteManager ?? "",
+    accessNotes: p?.accessNotes ?? "",
+  }));
+
+  if (!p) return null;
   const allocs = allocations.filter(a => a.propertyId === p.id);
   const pct = Math.round(p.spent / p.budget * 100);
   const remaining = p.budget - p.spent;
   const kpiDays = p.daysOnSite - p.heldDays;
   const kpiTarget = p.type === "KBWC" ? 15 : p.type === "Kitchen" ? 11 : 9;
+
+  const openEdit = () => {
+    setErr("");
+    setForm({
+      ref: p.ref, address: p.address, postcode: p.postcode, contract: p.contract,
+      type: p.type, status: p.status, startDate: p.startDate, budget: p.budget,
+      siteManager: p.siteManager, accessNotes: p.accessNotes ?? "",
+    });
+    setEditOpen(true);
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.ref.trim() || !form.address.trim() || !form.postcode.trim()) { setErr("Reference, address and postcode are required."); return; }
+    if (form.budget <= 0) { setErr("Budget must be greater than zero."); return; }
+    setSaving(true);
+    await new Promise(r => setTimeout(r, 500));
+    propertiesStore.update(p.id, form);
+    setSaving(false);
+    setEditOpen(false);
+    toast.success("Property updated", { description: `${form.ref} saved.` });
+  };
+
+
 
   return (
     <div className="space-y-6">
@@ -42,8 +84,8 @@ function PropertyDetail() {
         actions={
           <>
             <StatusBadge status={p.status} />
-            <Button variant="outline" size="sm" onClick={() => toast("Edit property", { description: `${p.ref} · opens the property editor.` })}>Edit property</Button>
-            <Button size="sm" onClick={() => toast.success(`${p.ref} handed over`, { description: "Property marked complete and KPI clock stopped." })}>Hand over</Button>
+            <Button variant="outline" size="sm" onClick={openEdit}>Edit property</Button>
+            <Button size="sm" onClick={() => { propertiesStore.update(p.id, { status: "Handed Over" }); toast.success(`${p.ref} handed over`, { description: "Property marked complete and KPI clock stopped." }); }}>Hand over</Button>
           </>
         }
       />
@@ -136,6 +178,54 @@ function PropertyDetail() {
           )}
         </div>
       </div>
+
+      <Modal open={editOpen} onClose={()=>setEditOpen(false)} title={`Edit property — ${p.ref}`} size="lg">
+        <form onSubmit={submit} className="space-y-4">
+          {err && <div className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2">{err}</div>}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Reference" required>
+              <input required value={form.ref} onChange={e=>setForm(f=>({...f, ref:e.target.value}))} className={inputCls} />
+            </Field>
+            <Field label="Postcode" required>
+              <input required value={form.postcode} onChange={e=>setForm(f=>({...f, postcode:e.target.value.toUpperCase()}))} className={inputCls} />
+            </Field>
+            <Field label="Address" required>
+              <input required value={form.address} onChange={e=>setForm(f=>({...f, address:e.target.value}))} className={inputCls} />
+            </Field>
+            <Field label="Contract" required>
+              <select value={form.contract} onChange={e=>setForm(f=>({...f, contract:e.target.value as "MS" | "John"}))} className={inputCls}>
+                <option value="MS">MS</option><option value="John">John</option>
+              </select>
+            </Field>
+            <Field label="Type" required>
+              <select value={form.type} onChange={e=>setForm(f=>({...f, type:e.target.value as (typeof TYPES)[number]}))} className={inputCls}>
+                {TYPES.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </Field>
+            <Field label="Status" required>
+              <select value={form.status} onChange={e=>setForm(f=>({...f, status:e.target.value as (typeof STATUSES)[number]}))} className={inputCls}>
+                {STATUSES.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </Field>
+            <Field label="Start date" required>
+              <input required type="date" value={form.startDate} onChange={e=>setForm(f=>({...f, startDate:e.target.value}))} className={inputCls} />
+            </Field>
+            <Field label="Budget (£)" required>
+              <input required type="number" min={0} step="100" value={form.budget} onChange={e=>setForm(f=>({...f, budget:Number(e.target.value)}))} className={inputCls} />
+            </Field>
+            <Field label="Site Manager" required>
+              <input required value={form.siteManager} onChange={e=>setForm(f=>({...f, siteManager:e.target.value}))} className={inputCls} />
+            </Field>
+            <Field label="Access notes (optional)">
+              <input value={form.accessNotes} onChange={e=>setForm(f=>({...f, accessNotes:e.target.value}))} className={inputCls} />
+            </Field>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={()=>setEditOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={saving}>{saving ? <><Loader2 className="h-4 w-4 animate-spin" />Saving…</> : "Save changes"}</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
