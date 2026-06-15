@@ -131,7 +131,7 @@ function PropertyDetail() {
               <h3 className="font-display font-semibold mb-2">Hold reason</h3>
               <p className="text-sm">{holdReasons[1]}</p>
               <p className="text-xs text-muted-foreground mt-2">Day not counted toward KPI · timestamped for delay claim</p>
-              <Button variant="outline" size="sm" className="mt-4">Lift hold</Button>
+              <Button variant="outline" size="sm" className="mt-4" onClick={() => toast.success(`Hold lifted on ${p.ref}`, { description: "KPI clock resumed." })}>Lift hold</Button>
             </div>
           )}
         </div>
