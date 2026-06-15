@@ -42,8 +42,8 @@ function PropertyDetail() {
         actions={
           <>
             <StatusBadge status={p.status} />
-            <Button variant="outline" size="sm">Edit property</Button>
-            <Button size="sm">Hand over</Button>
+            <Button variant="outline" size="sm" onClick={() => toast("Edit property", { description: `${p.ref} · opens the property editor.` })}>Edit property</Button>
+            <Button size="sm" onClick={() => toast.success(`${p.ref} handed over`, { description: "Property marked complete and KPI clock stopped." })}>Hand over</Button>
           </>
         }
       />
