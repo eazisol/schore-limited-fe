@@ -71,7 +71,7 @@ function Rates() {
                         <td className="px-3 py-3"><span className={`text-[11px] font-medium px-2 py-0.5 rounded ${r.payType === "Price" ? "bg-info/10 text-info" : "bg-accent/15 text-accent-foreground"}`}>{r.payType}</span></td>
                         <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtGBP(r.rate)}{r.unit && <span className="text-xs text-muted-foreground ml-1">{r.unit}</span>}</td>
                         <td className="px-5 py-3 text-right">
-                          <button className="text-muted-foreground hover:text-foreground"><Edit className="h-4 w-4" /></button>
+                          <button type="button" aria-label={`Edit ${r.task}`} onClick={() => toast(`Edit ${r.code}`, { description: r.task })} className="text-muted-foreground hover:text-foreground"><Edit className="h-4 w-4" /></button>
                         </td>
                       </tr>
                     ))}
