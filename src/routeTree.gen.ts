@@ -20,6 +20,7 @@ import { Route as DailyRouteImport } from './routes/daily'
 import { Route as ContractsRouteImport } from './routes/contracts'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WagesIndexRouteImport } from './routes/wages.index'
+import { Route as UsersIndexRouteImport } from './routes/users.index'
 import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
 import { Route as OperativesIndexRouteImport } from './routes/operatives.index'
 import { Route as WagesIdRouteImport } from './routes/wages.$id'
@@ -82,6 +83,11 @@ const WagesIndexRoute = WagesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => WagesRoute,
 } as any)
+const UsersIndexRoute = UsersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => UsersRoute,
+} as any)
 const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -122,7 +128,7 @@ export interface FileRoutesByFullPath {
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
   '/settings': typeof SettingsRoute
-  '/users': typeof UsersRoute
+  '/users': typeof UsersRouteWithChildren
   '/wages': typeof WagesRouteWithChildren
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/wages/$id': typeof WagesIdRoute
   '/operatives/': typeof OperativesIndexRoute
   '/properties/': typeof PropertiesIndexRoute
+  '/users/': typeof UsersIndexRoute
   '/wages/': typeof WagesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -139,13 +146,13 @@ export interface FileRoutesByTo {
   '/kpi': typeof KpiRoute
   '/rates': typeof RatesRoute
   '/settings': typeof SettingsRoute
-  '/users': typeof UsersRoute
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
   '/wages/$id': typeof WagesIdRoute
   '/operatives': typeof OperativesIndexRoute
   '/properties': typeof PropertiesIndexRoute
+  '/users': typeof UsersIndexRoute
   '/wages': typeof WagesIndexRoute
 }
 export interface FileRoutesById {
@@ -158,7 +165,7 @@ export interface FileRoutesById {
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
   '/settings': typeof SettingsRoute
-  '/users': typeof UsersRoute
+  '/users': typeof UsersRouteWithChildren
   '/wages': typeof WagesRouteWithChildren
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
@@ -166,6 +173,7 @@ export interface FileRoutesById {
   '/wages/$id': typeof WagesIdRoute
   '/operatives/': typeof OperativesIndexRoute
   '/properties/': typeof PropertiesIndexRoute
+  '/users/': typeof UsersIndexRoute
   '/wages/': typeof WagesIndexRoute
 }
 export interface FileRouteTypes {
@@ -187,6 +195,7 @@ export interface FileRouteTypes {
     | '/wages/$id'
     | '/operatives/'
     | '/properties/'
+    | '/users/'
     | '/wages/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -196,13 +205,13 @@ export interface FileRouteTypes {
     | '/kpi'
     | '/rates'
     | '/settings'
-    | '/users'
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
     | '/wages/$id'
     | '/operatives'
     | '/properties'
+    | '/users'
     | '/wages'
   id:
     | '__root__'
@@ -222,6 +231,7 @@ export interface FileRouteTypes {
     | '/wages/$id'
     | '/operatives/'
     | '/properties/'
+    | '/users/'
     | '/wages/'
   fileRoutesById: FileRoutesById
 }
@@ -234,7 +244,7 @@ export interface RootRouteChildren {
   PropertiesRoute: typeof PropertiesRouteWithChildren
   RatesRoute: typeof RatesRoute
   SettingsRoute: typeof SettingsRoute
-  UsersRoute: typeof UsersRoute
+  UsersRoute: typeof UsersRouteWithChildren
   WagesRoute: typeof WagesRouteWithChildren
 }
 
@@ -317,6 +327,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WagesIndexRouteImport
       parentRoute: typeof WagesRoute
     }
+    '/users/': {
+      id: '/users/'
+      path: '/'
+      fullPath: '/users/'
+      preLoaderRoute: typeof UsersIndexRouteImport
+      parentRoute: typeof UsersRoute
+    }
     '/properties/': {
       id: '/properties/'
       path: '/'
@@ -392,6 +409,16 @@ const PropertiesRouteWithChildren = PropertiesRoute._addFileChildren(
   PropertiesRouteChildren,
 )
 
+interface UsersRouteChildren {
+  UsersIndexRoute: typeof UsersIndexRoute
+}
+
+const UsersRouteChildren: UsersRouteChildren = {
+  UsersIndexRoute: UsersIndexRoute,
+}
+
+const UsersRouteWithChildren = UsersRoute._addFileChildren(UsersRouteChildren)
+
 interface WagesRouteChildren {
   WagesIdRoute: typeof WagesIdRoute
   WagesIndexRoute: typeof WagesIndexRoute
@@ -413,7 +440,7 @@ const rootRouteChildren: RootRouteChildren = {
   PropertiesRoute: PropertiesRouteWithChildren,
   RatesRoute: RatesRoute,
   SettingsRoute: SettingsRoute,
-  UsersRoute: UsersRoute,
+  UsersRoute: UsersRouteWithChildren,
   WagesRoute: WagesRouteWithChildren,
 }
 export const routeTree = rootRouteImport
