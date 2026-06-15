@@ -9,11 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PropertiesRouteImport } from './routes/properties'
 import { Route as OperativesRouteImport } from './routes/operatives'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OperativesIndexRouteImport } from './routes/operatives.index'
 import { Route as OperativesNewRouteImport } from './routes/operatives.new'
+import { Route as OperativesIdRouteImport } from './routes/operatives.$id'
 
+const PropertiesRoute = PropertiesRouteImport.update({
+  id: '/properties',
+  path: '/properties',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OperativesRoute = OperativesRouteImport.update({
   id: '/operatives',
   path: '/operatives',
@@ -34,15 +41,24 @@ const OperativesNewRoute = OperativesNewRouteImport.update({
   path: '/new',
   getParentRoute: () => OperativesRoute,
 } as any)
+const OperativesIdRoute = OperativesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => OperativesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/operatives': typeof OperativesRouteWithChildren
+  '/properties': typeof PropertiesRoute
+  '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/operatives/': typeof OperativesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/properties': typeof PropertiesRoute
+  '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/operatives': typeof OperativesIndexRoute
 }
@@ -50,24 +66,52 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/operatives': typeof OperativesRouteWithChildren
+  '/properties': typeof PropertiesRoute
+  '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/operatives/': typeof OperativesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/operatives' | '/operatives/new' | '/operatives/'
+  fullPaths:
+    | '/'
+    | '/operatives'
+    | '/properties'
+    | '/operatives/$id'
+    | '/operatives/new'
+    | '/operatives/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/operatives/new' | '/operatives'
-  id: '__root__' | '/' | '/operatives' | '/operatives/new' | '/operatives/'
+  to:
+    | '/'
+    | '/properties'
+    | '/operatives/$id'
+    | '/operatives/new'
+    | '/operatives'
+  id:
+    | '__root__'
+    | '/'
+    | '/operatives'
+    | '/properties'
+    | '/operatives/$id'
+    | '/operatives/new'
+    | '/operatives/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   OperativesRoute: typeof OperativesRouteWithChildren
+  PropertiesRoute: typeof PropertiesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/properties': {
+      id: '/properties'
+      path: '/properties'
+      fullPath: '/properties'
+      preLoaderRoute: typeof PropertiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/operatives': {
       id: '/operatives'
       path: '/operatives'
@@ -96,15 +140,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperativesNewRouteImport
       parentRoute: typeof OperativesRoute
     }
+    '/operatives/$id': {
+      id: '/operatives/$id'
+      path: '/$id'
+      fullPath: '/operatives/$id'
+      preLoaderRoute: typeof OperativesIdRouteImport
+      parentRoute: typeof OperativesRoute
+    }
   }
 }
 
 interface OperativesRouteChildren {
+  OperativesIdRoute: typeof OperativesIdRoute
   OperativesNewRoute: typeof OperativesNewRoute
   OperativesIndexRoute: typeof OperativesIndexRoute
 }
 
 const OperativesRouteChildren: OperativesRouteChildren = {
+  OperativesIdRoute: OperativesIdRoute,
   OperativesNewRoute: OperativesNewRoute,
   OperativesIndexRoute: OperativesIndexRoute,
 }
@@ -116,6 +169,7 @@ const OperativesRouteWithChildren = OperativesRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   OperativesRoute: OperativesRouteWithChildren,
+  PropertiesRoute: PropertiesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
