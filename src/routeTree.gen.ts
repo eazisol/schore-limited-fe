@@ -9,38 +9,280 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WagesRouteImport } from './routes/wages'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as RatesRouteImport } from './routes/rates'
+import { Route as PropertiesRouteImport } from './routes/properties'
+import { Route as OperativesRouteImport } from './routes/operatives'
+import { Route as KpiRouteImport } from './routes/kpi'
+import { Route as DailyRouteImport } from './routes/daily'
+import { Route as ContractsRouteImport } from './routes/contracts'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WagesIndexRouteImport } from './routes/wages.index'
+import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
+import { Route as OperativesIndexRouteImport } from './routes/operatives.index'
+import { Route as WagesIdRouteImport } from './routes/wages.$id'
+import { Route as PropertiesIdRouteImport } from './routes/properties.$id'
+import { Route as OperativesNewRouteImport } from './routes/operatives.new'
+import { Route as OperativesIdRouteImport } from './routes/operatives.$id'
 
+const WagesRoute = WagesRouteImport.update({
+  id: '/wages',
+  path: '/wages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RatesRoute = RatesRouteImport.update({
+  id: '/rates',
+  path: '/rates',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PropertiesRoute = PropertiesRouteImport.update({
+  id: '/properties',
+  path: '/properties',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OperativesRoute = OperativesRouteImport.update({
+  id: '/operatives',
+  path: '/operatives',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KpiRoute = KpiRouteImport.update({
+  id: '/kpi',
+  path: '/kpi',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DailyRoute = DailyRouteImport.update({
+  id: '/daily',
+  path: '/daily',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContractsRoute = ContractsRouteImport.update({
+  id: '/contracts',
+  path: '/contracts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WagesIndexRoute = WagesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => WagesRoute,
+} as any)
+const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PropertiesRoute,
+} as any)
+const OperativesIndexRoute = OperativesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OperativesRoute,
+} as any)
+const WagesIdRoute = WagesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => WagesRoute,
+} as any)
+const PropertiesIdRoute = PropertiesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PropertiesRoute,
+} as any)
+const OperativesNewRoute = OperativesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => OperativesRoute,
+} as any)
+const OperativesIdRoute = OperativesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => OperativesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/contracts': typeof ContractsRoute
+  '/daily': typeof DailyRoute
+  '/kpi': typeof KpiRoute
+  '/operatives': typeof OperativesRouteWithChildren
+  '/properties': typeof PropertiesRouteWithChildren
+  '/rates': typeof RatesRoute
+  '/settings': typeof SettingsRoute
+  '/wages': typeof WagesRouteWithChildren
+  '/operatives/$id': typeof OperativesIdRoute
+  '/operatives/new': typeof OperativesNewRoute
+  '/properties/$id': typeof PropertiesIdRoute
+  '/wages/$id': typeof WagesIdRoute
+  '/operatives/': typeof OperativesIndexRoute
+  '/properties/': typeof PropertiesIndexRoute
+  '/wages/': typeof WagesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/contracts': typeof ContractsRoute
+  '/daily': typeof DailyRoute
+  '/kpi': typeof KpiRoute
+  '/rates': typeof RatesRoute
+  '/settings': typeof SettingsRoute
+  '/operatives/$id': typeof OperativesIdRoute
+  '/operatives/new': typeof OperativesNewRoute
+  '/properties/$id': typeof PropertiesIdRoute
+  '/wages/$id': typeof WagesIdRoute
+  '/operatives': typeof OperativesIndexRoute
+  '/properties': typeof PropertiesIndexRoute
+  '/wages': typeof WagesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/contracts': typeof ContractsRoute
+  '/daily': typeof DailyRoute
+  '/kpi': typeof KpiRoute
+  '/operatives': typeof OperativesRouteWithChildren
+  '/properties': typeof PropertiesRouteWithChildren
+  '/rates': typeof RatesRoute
+  '/settings': typeof SettingsRoute
+  '/wages': typeof WagesRouteWithChildren
+  '/operatives/$id': typeof OperativesIdRoute
+  '/operatives/new': typeof OperativesNewRoute
+  '/properties/$id': typeof PropertiesIdRoute
+  '/wages/$id': typeof WagesIdRoute
+  '/operatives/': typeof OperativesIndexRoute
+  '/properties/': typeof PropertiesIndexRoute
+  '/wages/': typeof WagesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/contracts'
+    | '/daily'
+    | '/kpi'
+    | '/operatives'
+    | '/properties'
+    | '/rates'
+    | '/settings'
+    | '/wages'
+    | '/operatives/$id'
+    | '/operatives/new'
+    | '/properties/$id'
+    | '/wages/$id'
+    | '/operatives/'
+    | '/properties/'
+    | '/wages/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/contracts'
+    | '/daily'
+    | '/kpi'
+    | '/rates'
+    | '/settings'
+    | '/operatives/$id'
+    | '/operatives/new'
+    | '/properties/$id'
+    | '/wages/$id'
+    | '/operatives'
+    | '/properties'
+    | '/wages'
+  id:
+    | '__root__'
+    | '/'
+    | '/contracts'
+    | '/daily'
+    | '/kpi'
+    | '/operatives'
+    | '/properties'
+    | '/rates'
+    | '/settings'
+    | '/wages'
+    | '/operatives/$id'
+    | '/operatives/new'
+    | '/properties/$id'
+    | '/wages/$id'
+    | '/operatives/'
+    | '/properties/'
+    | '/wages/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ContractsRoute: typeof ContractsRoute
+  DailyRoute: typeof DailyRoute
+  KpiRoute: typeof KpiRoute
+  OperativesRoute: typeof OperativesRouteWithChildren
+  PropertiesRoute: typeof PropertiesRouteWithChildren
+  RatesRoute: typeof RatesRoute
+  SettingsRoute: typeof SettingsRoute
+  WagesRoute: typeof WagesRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/wages': {
+      id: '/wages'
+      path: '/wages'
+      fullPath: '/wages'
+      preLoaderRoute: typeof WagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rates': {
+      id: '/rates'
+      path: '/rates'
+      fullPath: '/rates'
+      preLoaderRoute: typeof RatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/properties': {
+      id: '/properties'
+      path: '/properties'
+      fullPath: '/properties'
+      preLoaderRoute: typeof PropertiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operatives': {
+      id: '/operatives'
+      path: '/operatives'
+      fullPath: '/operatives'
+      preLoaderRoute: typeof OperativesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kpi': {
+      id: '/kpi'
+      path: '/kpi'
+      fullPath: '/kpi'
+      preLoaderRoute: typeof KpiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/daily': {
+      id: '/daily'
+      path: '/daily'
+      fullPath: '/daily'
+      preLoaderRoute: typeof DailyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contracts': {
+      id: '/contracts'
+      path: '/contracts'
+      fullPath: '/contracts'
+      preLoaderRoute: typeof ContractsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +290,111 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/wages/': {
+      id: '/wages/'
+      path: '/'
+      fullPath: '/wages/'
+      preLoaderRoute: typeof WagesIndexRouteImport
+      parentRoute: typeof WagesRoute
+    }
+    '/properties/': {
+      id: '/properties/'
+      path: '/'
+      fullPath: '/properties/'
+      preLoaderRoute: typeof PropertiesIndexRouteImport
+      parentRoute: typeof PropertiesRoute
+    }
+    '/operatives/': {
+      id: '/operatives/'
+      path: '/'
+      fullPath: '/operatives/'
+      preLoaderRoute: typeof OperativesIndexRouteImport
+      parentRoute: typeof OperativesRoute
+    }
+    '/wages/$id': {
+      id: '/wages/$id'
+      path: '/$id'
+      fullPath: '/wages/$id'
+      preLoaderRoute: typeof WagesIdRouteImport
+      parentRoute: typeof WagesRoute
+    }
+    '/properties/$id': {
+      id: '/properties/$id'
+      path: '/$id'
+      fullPath: '/properties/$id'
+      preLoaderRoute: typeof PropertiesIdRouteImport
+      parentRoute: typeof PropertiesRoute
+    }
+    '/operatives/new': {
+      id: '/operatives/new'
+      path: '/new'
+      fullPath: '/operatives/new'
+      preLoaderRoute: typeof OperativesNewRouteImport
+      parentRoute: typeof OperativesRoute
+    }
+    '/operatives/$id': {
+      id: '/operatives/$id'
+      path: '/$id'
+      fullPath: '/operatives/$id'
+      preLoaderRoute: typeof OperativesIdRouteImport
+      parentRoute: typeof OperativesRoute
+    }
   }
 }
 
+interface OperativesRouteChildren {
+  OperativesIdRoute: typeof OperativesIdRoute
+  OperativesNewRoute: typeof OperativesNewRoute
+  OperativesIndexRoute: typeof OperativesIndexRoute
+}
+
+const OperativesRouteChildren: OperativesRouteChildren = {
+  OperativesIdRoute: OperativesIdRoute,
+  OperativesNewRoute: OperativesNewRoute,
+  OperativesIndexRoute: OperativesIndexRoute,
+}
+
+const OperativesRouteWithChildren = OperativesRoute._addFileChildren(
+  OperativesRouteChildren,
+)
+
+interface PropertiesRouteChildren {
+  PropertiesIdRoute: typeof PropertiesIdRoute
+  PropertiesIndexRoute: typeof PropertiesIndexRoute
+}
+
+const PropertiesRouteChildren: PropertiesRouteChildren = {
+  PropertiesIdRoute: PropertiesIdRoute,
+  PropertiesIndexRoute: PropertiesIndexRoute,
+}
+
+const PropertiesRouteWithChildren = PropertiesRoute._addFileChildren(
+  PropertiesRouteChildren,
+)
+
+interface WagesRouteChildren {
+  WagesIdRoute: typeof WagesIdRoute
+  WagesIndexRoute: typeof WagesIndexRoute
+}
+
+const WagesRouteChildren: WagesRouteChildren = {
+  WagesIdRoute: WagesIdRoute,
+  WagesIndexRoute: WagesIndexRoute,
+}
+
+const WagesRouteWithChildren = WagesRoute._addFileChildren(WagesRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ContractsRoute: ContractsRoute,
+  DailyRoute: DailyRoute,
+  KpiRoute: KpiRoute,
+  OperativesRoute: OperativesRouteWithChildren,
+  PropertiesRoute: PropertiesRouteWithChildren,
+  RatesRoute: RatesRoute,
+  SettingsRoute: SettingsRoute,
+  WagesRoute: WagesRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
