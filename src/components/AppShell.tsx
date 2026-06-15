@@ -23,6 +23,8 @@ const nav = [
 
 export function AppShell() {
   const pathname = useRouterState({ select: s => s.location.pathname });
+  const session = useSession();
+  const visibleNav = nav.filter(n => n.to !== "/users" || session.role === "Admin");
 
   const crumbs = pathname.split("/").filter(Boolean);
 
