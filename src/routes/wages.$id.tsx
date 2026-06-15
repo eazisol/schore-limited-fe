@@ -90,7 +90,7 @@ function WageSheetView() {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {w.lines.map((l, i) => (
+            {w.lines.map((l: { property: string; date: string; task: string; amount: number }, i: number) => (
               <tr key={i}>
                 <td className="px-3 py-2.5">{l.property}</td>
                 <td className="px-3 py-2.5 font-mono text-xs">{l.date}</td>
