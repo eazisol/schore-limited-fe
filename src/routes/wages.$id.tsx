@@ -40,11 +40,11 @@ function WageSheetView() {
         actions={
           <>
             <StatusBadge status={w.status} />
-            <Button variant="outline" size="sm"><Download className="h-4 w-4" />Download PDF</Button>
+            <Button variant="outline" size="sm" onClick={() => toast.success("Generating PDF", { description: `${w.invoiceNo}.pdf will download shortly.` })}><Download className="h-4 w-4" />Download PDF</Button>
             {w.status === "Draft" && <Button size="sm" onClick={() => toast.success("Submitted for approval")}>Submit</Button>}
             {w.status === "Pending" && (
               <>
-                <Button variant="outline" size="sm" className="text-destructive border-destructive/30"><X className="h-4 w-4" />Reject</Button>
+                <Button variant="outline" size="sm" className="text-destructive border-destructive/30" onClick={() => toast(`${w.invoiceNo} returned to draft`, { description: "Operative notified." })}><X className="h-4 w-4" />Reject</Button>
                 <Button size="sm" onClick={() => toast.success("Wage sheet approved")}><Check className="h-4 w-4" />Approve</Button>
               </>
             )}
