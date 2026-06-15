@@ -81,14 +81,14 @@ function NewOperative() {
         <Section title="Contact" hint="Optional. Used for sending wage statements on command.">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Phone"><input value={form.phone} onChange={e=>setForm({...form, phone: e.target.value})} placeholder="07700 900000" className="input" /></Field>
-            <Field label="Email"><input type="email" value={form.email} onChange={e=>setForm({...form, email: e.target.value})} placeholder="name@email.com" className="input" /></Field>
+            <Field label="Email" error={errors.email}><input type="email" value={form.email} onChange={e=>setForm({...form, email: e.target.value})} placeholder="name@email.com" className="input" /></Field>
           </div>
           <Field label="Emergency contact"><input value={form.emergency} onChange={e=>setForm({...form, emergency: e.target.value})} placeholder="Name + phone" className="input" /></Field>
         </Section>
 
         <div className="flex items-center justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={()=>navigate({ to: "/operatives" })}>Cancel</Button>
-          <Button type="submit">Save operative</Button>
+          <Button type="button" variant="outline" onClick={()=>navigate({ to: "/operatives" })} disabled={submitting}>Cancel</Button>
+          <Button type="submit" disabled={submitting}>{submitting ? <><Loader2 className="h-4 w-4 animate-spin" />Saving…</> : "Save operative"}</Button>
         </div>
       </form>
 
