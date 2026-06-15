@@ -25,6 +25,7 @@ import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
 import { Route as OperativesIndexRouteImport } from './routes/operatives.index'
 import { Route as WagesIdRouteImport } from './routes/wages.$id'
 import { Route as UsersNewRouteImport } from './routes/users.new'
+import { Route as UsersIdRouteImport } from './routes/users.$id'
 import { Route as PropertiesIdRouteImport } from './routes/properties.$id'
 import { Route as OperativesNewRouteImport } from './routes/operatives.new'
 import { Route as OperativesIdRouteImport } from './routes/operatives.$id'
@@ -109,6 +110,11 @@ const UsersNewRoute = UsersNewRouteImport.update({
   path: '/new',
   getParentRoute: () => UsersRoute,
 } as any)
+const UsersIdRoute = UsersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => UsersRoute,
+} as any)
 const PropertiesIdRoute = PropertiesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/users/$id': typeof UsersIdRoute
   '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
   '/operatives/': typeof OperativesIndexRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/users/$id': typeof UsersIdRoute
   '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
   '/operatives': typeof OperativesIndexRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/users/$id': typeof UsersIdRoute
   '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
   '/operatives/': typeof OperativesIndexRoute
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/users/$id'
     | '/users/new'
     | '/wages/$id'
     | '/operatives/'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/users/$id'
     | '/users/new'
     | '/wages/$id'
     | '/operatives'
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/users/$id'
     | '/users/new'
     | '/wages/$id'
     | '/operatives/'
@@ -374,6 +386,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsersNewRouteImport
       parentRoute: typeof UsersRoute
     }
+    '/users/$id': {
+      id: '/users/$id'
+      path: '/$id'
+      fullPath: '/users/$id'
+      preLoaderRoute: typeof UsersIdRouteImport
+      parentRoute: typeof UsersRoute
+    }
     '/properties/$id': {
       id: '/properties/$id'
       path: '/$id'
@@ -429,11 +448,13 @@ const PropertiesRouteWithChildren = PropertiesRoute._addFileChildren(
 )
 
 interface UsersRouteChildren {
+  UsersIdRoute: typeof UsersIdRoute
   UsersNewRoute: typeof UsersNewRoute
   UsersIndexRoute: typeof UsersIndexRoute
 }
 
 const UsersRouteChildren: UsersRouteChildren = {
+  UsersIdRoute: UsersIdRoute,
   UsersNewRoute: UsersNewRoute,
   UsersIndexRoute: UsersIndexRoute,
 }
