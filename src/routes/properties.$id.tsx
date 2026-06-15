@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { getProperty, allocations, getOperative, fmtGBP, holdReasons } from "@/lib/data";
 import { ArrowLeft, MapPin, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/properties/$id")({
   loader: ({ params }) => {
@@ -41,8 +42,8 @@ function PropertyDetail() {
         actions={
           <>
             <StatusBadge status={p.status} />
-            <Button variant="outline" size="sm">Edit property</Button>
-            <Button size="sm">Hand over</Button>
+            <Button variant="outline" size="sm" onClick={() => toast("Edit property", { description: `${p.ref} · opens the property editor.` })}>Edit property</Button>
+            <Button size="sm" onClick={() => toast.success(`${p.ref} handed over`, { description: "Property marked complete and KPI clock stopped." })}>Hand over</Button>
           </>
         }
       />
@@ -130,7 +131,7 @@ function PropertyDetail() {
               <h3 className="font-display font-semibold mb-2">Hold reason</h3>
               <p className="text-sm">{holdReasons[1]}</p>
               <p className="text-xs text-muted-foreground mt-2">Day not counted toward KPI · timestamped for delay claim</p>
-              <Button variant="outline" size="sm" className="mt-4">Lift hold</Button>
+              <Button variant="outline" size="sm" className="mt-4" onClick={() => toast.success(`Hold lifted on ${p.ref}`, { description: "KPI clock resumed." })}>Lift hold</Button>
             </div>
           )}
         </div>

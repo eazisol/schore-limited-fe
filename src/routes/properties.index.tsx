@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { properties, fmtGBP } from "@/lib/data";
 import { Plus, Search } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/properties/")({
   head: () => ({ meta: [{ title: "Properties — Schore" }] }),
@@ -28,7 +29,7 @@ function PropertiesList() {
       <PageHeader
         title="Properties"
         subtitle={`${rows.length} properties · KPI clock pauses on held days`}
-        actions={<Button size="sm"><Plus className="h-4 w-4" />Add property</Button>}
+        actions={<Button size="sm" onClick={() => toast("Add property", { description: "The new-property workflow opens here. Connect to your contracts to enable." })}><Plus className="h-4 w-4" />Add property</Button>}
       />
 
       <div className="card-elevated">

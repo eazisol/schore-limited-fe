@@ -2,8 +2,9 @@ import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { type ReactNode } from "react";
 import {
   LayoutDashboard, Users, Building2, CalendarDays, Receipt,
-  Tags, Briefcase, Activity, Settings, Search, Bell, HardHat, ChevronRight,
+  Tags, Briefcase, Activity, Settings, Search, Bell, HardHat, ChevronRight, ShieldCheck,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -15,6 +16,7 @@ const nav = [
   { to: "/rates", label: "Rate Catalogue", icon: Tags },
   { to: "/contracts", label: "Contracts & Budgets", icon: Briefcase },
   { to: "/kpi", label: "KPI & Hold Board", icon: Activity },
+  { to: "/users", label: "User Management", icon: ShieldCheck },
 ];
 
 export function AppShell() {
@@ -90,7 +92,12 @@ export function AppShell() {
               />
               <kbd className="text-[10px] text-muted-foreground border rounded px-1.5 py-0.5">⌘K</kbd>
             </div>
-            <button className="relative h-9 w-9 grid place-items-center rounded-md border border-input bg-card hover:bg-accent/10">
+            <button
+              type="button"
+              onClick={() => toast("No new notifications", { description: "You're all caught up." })}
+              className="relative h-9 w-9 grid place-items-center rounded-md border border-input bg-card hover:bg-accent/10"
+              aria-label="Notifications"
+            >
               <Bell className="h-4 w-4" />
               <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-accent" />
             </button>

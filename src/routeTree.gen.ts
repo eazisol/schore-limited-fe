@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WagesRouteImport } from './routes/wages'
+import { Route as UsersRouteImport } from './routes/users'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as PropertiesRouteImport } from './routes/properties'
@@ -19,9 +20,12 @@ import { Route as DailyRouteImport } from './routes/daily'
 import { Route as ContractsRouteImport } from './routes/contracts'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WagesIndexRouteImport } from './routes/wages.index'
+import { Route as UsersIndexRouteImport } from './routes/users.index'
 import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
 import { Route as OperativesIndexRouteImport } from './routes/operatives.index'
 import { Route as WagesIdRouteImport } from './routes/wages.$id'
+import { Route as UsersNewRouteImport } from './routes/users.new'
+import { Route as UsersIdRouteImport } from './routes/users.$id'
 import { Route as PropertiesIdRouteImport } from './routes/properties.$id'
 import { Route as OperativesNewRouteImport } from './routes/operatives.new'
 import { Route as OperativesIdRouteImport } from './routes/operatives.$id'
@@ -29,6 +33,11 @@ import { Route as OperativesIdRouteImport } from './routes/operatives.$id'
 const WagesRoute = WagesRouteImport.update({
   id: '/wages',
   path: '/wages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UsersRoute = UsersRouteImport.update({
+  id: '/users',
+  path: '/users',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -76,6 +85,11 @@ const WagesIndexRoute = WagesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => WagesRoute,
 } as any)
+const UsersIndexRoute = UsersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => UsersRoute,
+} as any)
 const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -90,6 +104,16 @@ const WagesIdRoute = WagesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => WagesRoute,
+} as any)
+const UsersNewRoute = UsersNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => UsersRoute,
+} as any)
+const UsersIdRoute = UsersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => UsersRoute,
 } as any)
 const PropertiesIdRoute = PropertiesIdRouteImport.update({
   id: '/$id',
@@ -116,13 +140,17 @@ export interface FileRoutesByFullPath {
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
   '/settings': typeof SettingsRoute
+  '/users': typeof UsersRouteWithChildren
   '/wages': typeof WagesRouteWithChildren
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/users/$id': typeof UsersIdRoute
+  '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
   '/operatives/': typeof OperativesIndexRoute
   '/properties/': typeof PropertiesIndexRoute
+  '/users/': typeof UsersIndexRoute
   '/wages/': typeof WagesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -135,9 +163,12 @@ export interface FileRoutesByTo {
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/users/$id': typeof UsersIdRoute
+  '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
   '/operatives': typeof OperativesIndexRoute
   '/properties': typeof PropertiesIndexRoute
+  '/users': typeof UsersIndexRoute
   '/wages': typeof WagesIndexRoute
 }
 export interface FileRoutesById {
@@ -150,13 +181,17 @@ export interface FileRoutesById {
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
   '/settings': typeof SettingsRoute
+  '/users': typeof UsersRouteWithChildren
   '/wages': typeof WagesRouteWithChildren
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/users/$id': typeof UsersIdRoute
+  '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
   '/operatives/': typeof OperativesIndexRoute
   '/properties/': typeof PropertiesIndexRoute
+  '/users/': typeof UsersIndexRoute
   '/wages/': typeof WagesIndexRoute
 }
 export interface FileRouteTypes {
@@ -170,13 +205,17 @@ export interface FileRouteTypes {
     | '/properties'
     | '/rates'
     | '/settings'
+    | '/users'
     | '/wages'
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/users/$id'
+    | '/users/new'
     | '/wages/$id'
     | '/operatives/'
     | '/properties/'
+    | '/users/'
     | '/wages/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -189,9 +228,12 @@ export interface FileRouteTypes {
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/users/$id'
+    | '/users/new'
     | '/wages/$id'
     | '/operatives'
     | '/properties'
+    | '/users'
     | '/wages'
   id:
     | '__root__'
@@ -203,13 +245,17 @@ export interface FileRouteTypes {
     | '/properties'
     | '/rates'
     | '/settings'
+    | '/users'
     | '/wages'
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/users/$id'
+    | '/users/new'
     | '/wages/$id'
     | '/operatives/'
     | '/properties/'
+    | '/users/'
     | '/wages/'
   fileRoutesById: FileRoutesById
 }
@@ -222,6 +268,7 @@ export interface RootRouteChildren {
   PropertiesRoute: typeof PropertiesRouteWithChildren
   RatesRoute: typeof RatesRoute
   SettingsRoute: typeof SettingsRoute
+  UsersRoute: typeof UsersRouteWithChildren
   WagesRoute: typeof WagesRouteWithChildren
 }
 
@@ -232,6 +279,13 @@ declare module '@tanstack/react-router' {
       path: '/wages'
       fullPath: '/wages'
       preLoaderRoute: typeof WagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof UsersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -297,6 +351,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WagesIndexRouteImport
       parentRoute: typeof WagesRoute
     }
+    '/users/': {
+      id: '/users/'
+      path: '/'
+      fullPath: '/users/'
+      preLoaderRoute: typeof UsersIndexRouteImport
+      parentRoute: typeof UsersRoute
+    }
     '/properties/': {
       id: '/properties/'
       path: '/'
@@ -317,6 +378,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/wages/$id'
       preLoaderRoute: typeof WagesIdRouteImport
       parentRoute: typeof WagesRoute
+    }
+    '/users/new': {
+      id: '/users/new'
+      path: '/new'
+      fullPath: '/users/new'
+      preLoaderRoute: typeof UsersNewRouteImport
+      parentRoute: typeof UsersRoute
+    }
+    '/users/$id': {
+      id: '/users/$id'
+      path: '/$id'
+      fullPath: '/users/$id'
+      preLoaderRoute: typeof UsersIdRouteImport
+      parentRoute: typeof UsersRoute
     }
     '/properties/$id': {
       id: '/properties/$id'
@@ -372,6 +447,20 @@ const PropertiesRouteWithChildren = PropertiesRoute._addFileChildren(
   PropertiesRouteChildren,
 )
 
+interface UsersRouteChildren {
+  UsersIdRoute: typeof UsersIdRoute
+  UsersNewRoute: typeof UsersNewRoute
+  UsersIndexRoute: typeof UsersIndexRoute
+}
+
+const UsersRouteChildren: UsersRouteChildren = {
+  UsersIdRoute: UsersIdRoute,
+  UsersNewRoute: UsersNewRoute,
+  UsersIndexRoute: UsersIndexRoute,
+}
+
+const UsersRouteWithChildren = UsersRoute._addFileChildren(UsersRouteChildren)
+
 interface WagesRouteChildren {
   WagesIdRoute: typeof WagesIdRoute
   WagesIndexRoute: typeof WagesIndexRoute
@@ -393,6 +482,7 @@ const rootRouteChildren: RootRouteChildren = {
   PropertiesRoute: PropertiesRouteWithChildren,
   RatesRoute: RatesRoute,
   SettingsRoute: SettingsRoute,
+  UsersRoute: UsersRouteWithChildren,
   WagesRoute: WagesRouteWithChildren,
 }
 export const routeTree = rootRouteImport

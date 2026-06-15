@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { rates, fmtGBP } from "@/lib/data";
 import { Plus, Edit, Search } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/rates")({
   head: () => ({ meta: [{ title: "Rate Catalogue — Schore" }] }),
@@ -33,7 +34,7 @@ function Rates() {
       <PageHeader
         title="Rate Catalogue"
         subtitle="CEO / CM / PM can edit · SM can view but not edit"
-        actions={<Button size="sm"><Plus className="h-4 w-4" />New rate</Button>}
+        actions={<Button size="sm" onClick={() => toast("New rate", { description: "Opens the rate builder. Available to CEO, CM and PM." })}><Plus className="h-4 w-4" />New rate</Button>}
       />
 
       <div className="card-elevated mb-6">
@@ -56,7 +57,7 @@ function Rates() {
                 <h2 className="font-display font-semibold">{tradeName}</h2>
                 <p className="text-xs text-muted-foreground">{Object.values(gs).flat().length} tasks across {Object.keys(gs).length} groups</p>
               </div>
-              <Button variant="outline" size="sm"><Plus className="h-4 w-4" />Add task</Button>
+              <Button variant="outline" size="sm" onClick={() => toast(`Add task to ${tradeName}`, { description: "Opens the task builder for this trade." })}><Plus className="h-4 w-4" />Add task</Button>
             </div>
             {Object.entries(gs).map(([groupName, items]) => (
               <div key={groupName} className="border-b last:border-0">
@@ -70,7 +71,7 @@ function Rates() {
                         <td className="px-3 py-3"><span className={`text-[11px] font-medium px-2 py-0.5 rounded ${r.payType === "Price" ? "bg-info/10 text-info" : "bg-accent/15 text-accent-foreground"}`}>{r.payType}</span></td>
                         <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtGBP(r.rate)}{r.unit && <span className="text-xs text-muted-foreground ml-1">{r.unit}</span>}</td>
                         <td className="px-5 py-3 text-right">
-                          <button className="text-muted-foreground hover:text-foreground"><Edit className="h-4 w-4" /></button>
+                          <button type="button" aria-label={`Edit ${r.task}`} onClick={() => toast(`Edit ${r.code}`, { description: r.task })} className="text-muted-foreground hover:text-foreground"><Edit className="h-4 w-4" /></button>
                         </td>
                       </tr>
                     ))}

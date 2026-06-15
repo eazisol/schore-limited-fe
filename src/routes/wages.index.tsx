@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { wageSheets, getOperative, fmtGBP } from "@/lib/data";
 import { Download, Send } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/wages/")({
   head: () => ({ meta: [{ title: "Wage Sheets — Schore" }] }),
@@ -31,9 +32,9 @@ function WagesList() {
         subtitle="Week ending Friday 23/01/2026 · One sheet per operative, per contract"
         actions={
           <>
-            <Button variant="outline" size="sm"><Download className="h-4 w-4" />Export all (MS)</Button>
-            <Button variant="outline" size="sm"><Download className="h-4 w-4" />Export all (John)</Button>
-            <Button size="sm"><Send className="h-4 w-4" />Send approved</Button>
+            <Button variant="outline" size="sm" onClick={() => toast.success("Exporting MS wage sheets", { description: "CSV will download shortly." })}><Download className="h-4 w-4" />Export all (MS)</Button>
+            <Button variant="outline" size="sm" onClick={() => toast.success("Exporting John wage sheets", { description: "CSV will download shortly." })}><Download className="h-4 w-4" />Export all (John)</Button>
+            <Button size="sm" onClick={() => { const n = rows.filter(r => r.status === "Approved").length; if (n === 0) { toast.error("No approved sheets to send"); } else { toast.success(`Sent ${n} approved sheets`, { description: "Statements emailed to operatives." }); } }}><Send className="h-4 w-4" />Send approved</Button>
           </>
         }
       />
