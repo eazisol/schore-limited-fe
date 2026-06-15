@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WagesRouteImport } from './routes/wages'
+import { Route as UsersRouteImport } from './routes/users'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as PropertiesRouteImport } from './routes/properties'
@@ -29,6 +30,11 @@ import { Route as OperativesIdRouteImport } from './routes/operatives.$id'
 const WagesRoute = WagesRouteImport.update({
   id: '/wages',
   path: '/wages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UsersRoute = UsersRouteImport.update({
+  id: '/users',
+  path: '/users',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
   '/settings': typeof SettingsRoute
+  '/users': typeof UsersRoute
   '/wages': typeof WagesRouteWithChildren
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/kpi': typeof KpiRoute
   '/rates': typeof RatesRoute
   '/settings': typeof SettingsRoute
+  '/users': typeof UsersRoute
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
   '/settings': typeof SettingsRoute
+  '/users': typeof UsersRoute
   '/wages': typeof WagesRouteWithChildren
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/properties'
     | '/rates'
     | '/settings'
+    | '/users'
     | '/wages'
     | '/operatives/$id'
     | '/operatives/new'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/kpi'
     | '/rates'
     | '/settings'
+    | '/users'
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/properties'
     | '/rates'
     | '/settings'
+    | '/users'
     | '/wages'
     | '/operatives/$id'
     | '/operatives/new'
@@ -222,6 +234,7 @@ export interface RootRouteChildren {
   PropertiesRoute: typeof PropertiesRouteWithChildren
   RatesRoute: typeof RatesRoute
   SettingsRoute: typeof SettingsRoute
+  UsersRoute: typeof UsersRoute
   WagesRoute: typeof WagesRouteWithChildren
 }
 
@@ -232,6 +245,13 @@ declare module '@tanstack/react-router' {
       path: '/wages'
       fullPath: '/wages'
       preLoaderRoute: typeof WagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof UsersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -393,6 +413,7 @@ const rootRouteChildren: RootRouteChildren = {
   PropertiesRoute: PropertiesRouteWithChildren,
   RatesRoute: RatesRoute,
   SettingsRoute: SettingsRoute,
+  UsersRoute: UsersRoute,
   WagesRoute: WagesRouteWithChildren,
 }
 export const routeTree = rootRouteImport
