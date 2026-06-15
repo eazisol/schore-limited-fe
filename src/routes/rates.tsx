@@ -57,7 +57,7 @@ function Rates() {
                 <h2 className="font-display font-semibold">{tradeName}</h2>
                 <p className="text-xs text-muted-foreground">{Object.values(gs).flat().length} tasks across {Object.keys(gs).length} groups</p>
               </div>
-              <Button variant="outline" size="sm"><Plus className="h-4 w-4" />Add task</Button>
+              <Button variant="outline" size="sm" onClick={() => toast(`Add task to ${tradeName}`, { description: "Opens the task builder for this trade." })}><Plus className="h-4 w-4" />Add task</Button>
             </div>
             {Object.entries(gs).map(([groupName, items]) => (
               <div key={groupName} className="border-b last:border-0">
