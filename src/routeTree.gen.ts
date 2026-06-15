@@ -9,38 +9,72 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as OperativesRouteImport } from './routes/operatives'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as OperativesIndexRouteImport } from './routes/operatives.index'
+import { Route as OperativesNewRouteImport } from './routes/operatives.new'
 
+const OperativesRoute = OperativesRouteImport.update({
+  id: '/operatives',
+  path: '/operatives',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OperativesIndexRoute = OperativesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OperativesRoute,
+} as any)
+const OperativesNewRoute = OperativesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => OperativesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/operatives': typeof OperativesRouteWithChildren
+  '/operatives/new': typeof OperativesNewRoute
+  '/operatives/': typeof OperativesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/operatives/new': typeof OperativesNewRoute
+  '/operatives': typeof OperativesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/operatives': typeof OperativesRouteWithChildren
+  '/operatives/new': typeof OperativesNewRoute
+  '/operatives/': typeof OperativesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/operatives' | '/operatives/new' | '/operatives/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/operatives/new' | '/operatives'
+  id: '__root__' | '/' | '/operatives' | '/operatives/new' | '/operatives/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  OperativesRoute: typeof OperativesRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/operatives': {
+      id: '/operatives'
+      path: '/operatives'
+      fullPath: '/operatives'
+      preLoaderRoute: typeof OperativesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +82,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/operatives/': {
+      id: '/operatives/'
+      path: '/'
+      fullPath: '/operatives/'
+      preLoaderRoute: typeof OperativesIndexRouteImport
+      parentRoute: typeof OperativesRoute
+    }
+    '/operatives/new': {
+      id: '/operatives/new'
+      path: '/new'
+      fullPath: '/operatives/new'
+      preLoaderRoute: typeof OperativesNewRouteImport
+      parentRoute: typeof OperativesRoute
+    }
   }
 }
 
+interface OperativesRouteChildren {
+  OperativesNewRoute: typeof OperativesNewRoute
+  OperativesIndexRoute: typeof OperativesIndexRoute
+}
+
+const OperativesRouteChildren: OperativesRouteChildren = {
+  OperativesNewRoute: OperativesNewRoute,
+  OperativesIndexRoute: OperativesIndexRoute,
+}
+
+const OperativesRouteWithChildren = OperativesRoute._addFileChildren(
+  OperativesRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  OperativesRoute: OperativesRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
