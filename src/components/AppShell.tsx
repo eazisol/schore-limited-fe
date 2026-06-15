@@ -2,8 +2,9 @@ import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { type ReactNode } from "react";
 import {
   LayoutDashboard, Users, Building2, CalendarDays, Receipt,
-  Tags, Briefcase, Activity, Settings, Search, Bell, HardHat, ChevronRight,
+  Tags, Briefcase, Activity, Settings, Search, Bell, HardHat, ChevronRight, ShieldCheck,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -15,6 +16,7 @@ const nav = [
   { to: "/rates", label: "Rate Catalogue", icon: Tags },
   { to: "/contracts", label: "Contracts & Budgets", icon: Briefcase },
   { to: "/kpi", label: "KPI & Hold Board", icon: Activity },
+  { to: "/users", label: "User Management", icon: ShieldCheck },
 ];
 
 export function AppShell() {
