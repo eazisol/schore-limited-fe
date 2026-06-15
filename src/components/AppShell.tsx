@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { sessionStore, useSession } from "@/lib/session-store";
+import { ROLES, ROLE_BADGE, type UserRole } from "@/lib/users-store";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
