@@ -69,7 +69,7 @@ function Daily() {
               <input type="checkbox" checked={showHO} onChange={e=>setShowHO(e.target.checked)} className="rounded" />
               Show handed-over
             </label>
-            <Button size="sm" variant="outline"><Plus className="h-4 w-4" />Allocate</Button>
+            <Button size="sm" variant="outline" onClick={() => toast("New allocation", { description: "Pick an operative, property and task to allocate." })}><Plus className="h-4 w-4" />Allocate</Button>
           </div>
         </div>
 
