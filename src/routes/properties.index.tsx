@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { properties, fmtGBP } from "@/lib/data";
 import { Plus, Search } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/properties/")({
   head: () => ({ meta: [{ title: "Properties — Schore" }] }),
