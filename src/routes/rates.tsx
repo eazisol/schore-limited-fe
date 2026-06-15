@@ -34,7 +34,7 @@ function Rates() {
       <PageHeader
         title="Rate Catalogue"
         subtitle="CEO / CM / PM can edit · SM can view but not edit"
-        actions={<Button size="sm"><Plus className="h-4 w-4" />New rate</Button>}
+        actions={<Button size="sm" onClick={() => toast("New rate", { description: "Opens the rate builder. Available to CEO, CM and PM." })}><Plus className="h-4 w-4" />New rate</Button>}
       />
 
       <div className="card-elevated mb-6">
