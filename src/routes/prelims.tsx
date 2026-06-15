@@ -6,6 +6,7 @@ import { Plus, Edit, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { operatives, fmtGBP } from "@/lib/data";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Modal, Field, inputCls } from "@/components/Modal";
 
 export const Route = createFileRoute("/prelims")({
   head: () => ({ meta: [{ title: "Prelims — Schore" }] }),
@@ -15,72 +16,52 @@ export const Route = createFileRoute("/prelims")({
 interface Prelim { id: string; operativeId: string; role: string; dailyRate: number; contract: "MS" | "John"; status: "Active" | "Inactive" }
 
 const seed: Prelim[] = [
-  { id: "pr-1", operativeId: "op-007", role: "Storeman",       dailyRate: 180, contract: "MS",   status: "Active" },
-  { id: "pr-2", operativeId: "op-008", role: "Driver",         dailyRate: 200, contract: "MS",   status: "Active" },
-  { id: "pr-3", operativeId: "op-002", role: "Site Manager",   dailyRate: 280, contract: "MS",   status: "Active" },
-  { id: "pr-4", operativeId: "op-001", role: "Project Manager",dailyRate: 320, contract: "MS",   status: "Active" },
-  { id: "pr-5", operativeId: "op-004", role: "Site Manager",   dailyRate: 280, contract: "John", status: "Active" },
+  { id: "pr-1", operativeId: "op-007", role: "Storeman",        dailyRate: 180, contract: "MS",   status: "Active" },
+  { id: "pr-2", operativeId: "op-008", role: "Driver",          dailyRate: 200, contract: "MS",   status: "Active" },
+  { id: "pr-3", operativeId: "op-002", role: "Site Manager",    dailyRate: 280, contract: "MS",   status: "Active" },
+  { id: "pr-4", operativeId: "op-001", role: "Project Manager", dailyRate: 320, contract: "MS",   status: "Active" },
+  { id: "pr-5", operativeId: "op-004", role: "Site Manager",    dailyRate: 280, contract: "John", status: "Active" },
 ];
 
 const ROLES = ["Storeman", "Driver", "Site Manager", "Project Manager"];
+const blank: Prelim = { id: "", operativeId: operatives[0].id, role: ROLES[0], dailyRate: 200, contract: "MS", status: "Active" };
 
 function Prelims() {
   const [rows, setRows] = useState(seed);
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ operativeId: operatives[0].id, role: ROLES[0], dailyRate: 200, contract: "MS" as "MS" | "John" });
+  const [editing, setEditing] = useState<Prelim | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState<Prelim>(blank);
   const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  const openNew = () => { setErr(""); setEditing(null); setCreating(true); setForm(blank); };
+  const openEdit = (p: Prelim) => { setErr(""); setEditing(p); setCreating(false); setForm(p); };
+  const close = () => { setEditing(null); setCreating(false); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.operativeId || !form.role) { setErr("Operative and role are required."); return; }
+    if (form.dailyRate <= 0) { setErr("Daily rate must be greater than zero."); return; }
     setSaving(true);
     await new Promise(r => setTimeout(r, 500));
-    setRows(r => [{ id: crypto.randomUUID(), ...form, status: "Active" }, ...r]);
+    setRows(curr => editing
+      ? curr.map(r => r.id === editing.id ? { ...form, id: editing.id } : r)
+      : [{ ...form, id: crypto.randomUUID() }, ...curr]
+    );
     setSaving(false);
-    setOpen(false);
-    toast.success("Prelim added", { description: `${form.role} on ${form.contract} contract.` });
+    toast.success(editing ? "Prelim updated" : "Prelim added", { description: `${form.role} on ${form.contract} contract.` });
+    close();
   };
+
+  const modalOpen = creating || editing !== null;
 
   return (
     <div>
       <PageHeader
         title="Prelims Management"
         subtitle="Storeman, Driver, SM and PM — costed as a separate line per contract."
-        actions={<Button size="sm" onClick={()=>setOpen(o=>!o)}><Plus className="h-4 w-4" />Add prelim</Button>}
+        actions={<Button size="sm" onClick={openNew}><Plus className="h-4 w-4" />Add prelim</Button>}
       />
-
-      {open && (
-        <form onSubmit={submit} className="card-elevated p-6 mb-6 space-y-4">
-          <h2 className="font-semibold">Add prelim assignment</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Operative <span className="text-destructive">*</span></span>
-              <select required value={form.operativeId} onChange={e=>setForm(f=>({...f, operativeId:e.target.value}))} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-                {operatives.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Role <span className="text-destructive">*</span></span>
-              <select required value={form.role} onChange={e=>setForm(f=>({...f, role:e.target.value}))} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-                {ROLES.map(r => <option key={r}>{r}</option>)}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Contract <span className="text-destructive">*</span></span>
-              <select required value={form.contract} onChange={e=>setForm(f=>({...f, contract:e.target.value as any}))} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-                <option value="MS">MS</option><option value="John">John</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Daily rate (£) <span className="text-destructive">*</span></span>
-              <input required type="number" value={form.dailyRate} onChange={e=>setForm(f=>({...f, dailyRate:Number(e.target.value)}))} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm" />
-            </label>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={()=>setOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? <><Loader2 className="h-4 w-4 animate-spin" />Saving…</> : "Add prelim"}</Button>
-          </div>
-        </form>
-      )}
 
       <div className="card-elevated overflow-hidden">
         <table className="w-full text-sm">
@@ -97,13 +78,48 @@ function Prelims() {
                   <td className="px-3 py-3 text-muted-foreground">{r.contract}</td>
                   <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtGBP(r.dailyRate)}</td>
                   <td className="px-3 py-3"><StatusBadge status={r.status} /></td>
-                  <td className="px-5 py-3 text-right"><button onClick={()=>toast(`Edit prelim`, { description: `${o?.name} — ${r.role}` })} className="text-muted-foreground hover:text-foreground"><Edit className="h-4 w-4" /></button></td>
+                  <td className="px-5 py-3 text-right"><button aria-label={`Edit prelim ${o?.name}`} onClick={()=>openEdit(r)} className="text-muted-foreground hover:text-foreground"><Edit className="h-4 w-4" /></button></td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+
+      <Modal open={modalOpen} onClose={close} title={editing ? "Edit prelim" : "Add prelim assignment"} size="lg">
+        <form onSubmit={submit} className="space-y-4">
+          {err && <div className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2">{err}</div>}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Operative" required>
+              <select required value={form.operativeId} onChange={e=>setForm(f=>({...f, operativeId:e.target.value}))} className={inputCls}>
+                {operatives.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Role" required>
+              <select required value={form.role} onChange={e=>setForm(f=>({...f, role:e.target.value}))} className={inputCls}>
+                {ROLES.map(r => <option key={r}>{r}</option>)}
+              </select>
+            </Field>
+            <Field label="Contract" required>
+              <select required value={form.contract} onChange={e=>setForm(f=>({...f, contract:e.target.value as "MS" | "John"}))} className={inputCls}>
+                <option value="MS">MS</option><option value="John">John</option>
+              </select>
+            </Field>
+            <Field label="Daily rate (£)" required>
+              <input required type="number" min={0} step="0.01" value={form.dailyRate} onChange={e=>setForm(f=>({...f, dailyRate:Number(e.target.value)}))} className={inputCls} />
+            </Field>
+            <Field label="Status" required>
+              <select value={form.status} onChange={e=>setForm(f=>({...f, status:e.target.value as Prelim["status"]}))} className={inputCls}>
+                <option>Active</option><option>Inactive</option>
+              </select>
+            </Field>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={close}>Cancel</Button>
+            <Button type="submit" disabled={saving}>{saving ? <><Loader2 className="h-4 w-4 animate-spin" />Saving…</> : (editing ? "Save changes" : "Add prelim")}</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

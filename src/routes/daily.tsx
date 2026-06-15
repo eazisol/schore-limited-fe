@@ -3,8 +3,9 @@ import { useState } from "react";
 import { PageHeader } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { properties, operatives, allocations, getOperative, getProperty, fmtGBP } from "@/lib/data";
-import { Lock, CheckCircle2, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Modal, Field, inputCls } from "@/components/Modal";
+import { properties, operatives, allocations, getOperative, getProperty, fmtGBP, rates } from "@/lib/data";
+import { Lock, CheckCircle2, ChevronLeft, ChevronRight, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/daily")({
@@ -16,6 +17,20 @@ function Daily() {
   const [date, setDate] = useState("2026-01-23");
   const [showHO, setShowHO] = useState(false);
   const [confirmRoll, setConfirmRoll] = useState(false);
+  const [allocOpen, setAllocOpen] = useState(false);
+  const [allocSaving, setAllocSaving] = useState(false);
+  const [allocForm, setAllocForm] = useState({ operativeId: operatives[0].id, propertyId: properties[0].id, code: rates[0]?.code ?? "", qty: 1, notes: "" });
+
+  const submitAlloc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAllocSaving(true);
+    await new Promise(r => setTimeout(r, 600));
+    setAllocSaving(false);
+    setAllocOpen(false);
+    const op = getOperative(allocForm.operativeId);
+    const pr = getProperty(allocForm.propertyId);
+    toast.success("Allocation created", { description: `${op?.name} → ${pr?.ref} · ${allocForm.code} × ${allocForm.qty}` });
+  };
 
   const visible = properties.filter(p => showHO || p.status !== "Handed Over");
   const todayAllocs = allocations.filter(a => a.date === date);
@@ -69,7 +84,7 @@ function Daily() {
               <input type="checkbox" checked={showHO} onChange={e=>setShowHO(e.target.checked)} className="rounded" />
               Show handed-over
             </label>
-            <Button size="sm" variant="outline" onClick={() => toast("New allocation", { description: "Pick an operative, property and task to allocate." })}><Plus className="h-4 w-4" />Allocate</Button>
+            <Button size="sm" variant="outline" onClick={() => setAllocOpen(true)}><Plus className="h-4 w-4" />Allocate</Button>
           </div>
         </div>
 
@@ -148,6 +163,38 @@ function Daily() {
           </div>
         </div>
       )}
+
+      <Modal open={allocOpen} onClose={()=>setAllocOpen(false)} title="New allocation" subtitle="Assign an operative to a property for this day.">
+        <form onSubmit={submitAlloc} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Operative" required>
+              <select required value={allocForm.operativeId} onChange={e=>setAllocForm(f=>({...f, operativeId:e.target.value}))} className={inputCls}>
+                {operatives.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Property" required>
+              <select required value={allocForm.propertyId} onChange={e=>setAllocForm(f=>({...f, propertyId:e.target.value}))} className={inputCls}>
+                {properties.map(p => <option key={p.id} value={p.id}>{p.ref} · {p.postcode}</option>)}
+              </select>
+            </Field>
+            <Field label="Task code" required>
+              <select required value={allocForm.code} onChange={e=>setAllocForm(f=>({...f, code:e.target.value}))} className={inputCls}>
+                {rates.map(r => <option key={r.id} value={r.code}>{r.code} — {r.task}</option>)}
+              </select>
+            </Field>
+            <Field label="Quantity" required>
+              <input required type="number" min={0.5} step={0.5} value={allocForm.qty} onChange={e=>setAllocForm(f=>({...f, qty:Number(e.target.value)}))} className={inputCls} />
+            </Field>
+          </div>
+          <Field label="Notes (optional)">
+            <textarea value={allocForm.notes} onChange={e=>setAllocForm(f=>({...f, notes:e.target.value}))} className={`${inputCls} h-20 py-2`} placeholder="Access, materials, hand-over notes…" />
+          </Field>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={()=>setAllocOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={allocSaving}>{allocSaving ? <><Loader2 className="h-4 w-4 animate-spin" />Allocating…</> : "Allocate"}</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

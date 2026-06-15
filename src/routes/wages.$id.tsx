@@ -8,6 +8,7 @@ import { ArrowLeft, Send, Download, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/wages/$id")({
+  validateSearch: (s: Record<string, unknown>) => ({ from: s.from === "payroll" ? "payroll" : undefined }) as { from?: "payroll" },
   loader: ({ params }) => {
     const w = getWageSheet(params.id);
     if (!w) throw notFound();
@@ -25,14 +26,22 @@ export const Route = createFileRoute("/wages/$id")({
 
 function WageSheetView() {
   const { w } = Route.useLoaderData();
+  const { from } = Route.useSearch();
   const op = getOperative(w.operativeId)!;
   const [confirmSend, setConfirmSend] = useState(false);
+  const fromPayroll = from === "payroll";
 
   return (
     <div className="space-y-6">
-      <Link to="/wages" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3 w-3" /> All wage sheets
-      </Link>
+      {fromPayroll ? (
+        <Link to="/payroll" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-3 w-3" /> Payroll Engine
+        </Link>
+      ) : (
+        <Link to="/wages" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-3 w-3" /> All wage sheets
+        </Link>
+      )}
 
       <PageHeader
         title={`Wage Sheet · ${w.invoiceNo}`}
