@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/operatives/new")({
@@ -13,17 +14,29 @@ function NewOperative() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: "", trade: "Carpenter", cis: "20%", dailyRate: 240, phone: "", utr: "", email: "", emergency: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     const errs: Record<string,string> = {};
     if (!form.name.trim()) errs.name = "Name is required";
+    else if (form.name.trim().length < 2) errs.name = "Name must be at least 2 characters";
     if (form.cis !== "0%" && !form.utr.trim()) errs.utr = "UTR required for 20%/30% CIS";
-    if (form.dailyRate <= 0) errs.dailyRate = "Must be greater than 0";
+    else if (form.utr.trim() && !/^\d{10}$/.test(form.utr.trim())) errs.utr = "UTR must be 10 digits";
+    if (!Number.isFinite(form.dailyRate) || form.dailyRate <= 0) errs.dailyRate = "Must be greater than 0";
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.email = "Enter a valid email address";
     setErrors(errs);
-    if (Object.keys(errs).length) return;
-    toast.success(`${form.name} added to workforce`, { description: `${form.trade} · ${form.cis} CIS · £${form.dailyRate}/day` });
-    navigate({ to: "/operatives" });
+    if (Object.keys(errs).length) { toast.error("Please fix the errors below"); return; }
+    setSubmitting(true);
+    try {
+      await new Promise(r => setTimeout(r, 500));
+      toast.success(`${form.name} added to workforce`, { description: `${form.trade} · ${form.cis} CIS · £${form.dailyRate}/day` });
+      navigate({ to: "/operatives" });
+    } catch {
+      toast.error("Could not save operative");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
