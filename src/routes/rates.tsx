@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { rates, fmtGBP } from "@/lib/data";
 import { Plus, Edit, Search } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/rates")({
   head: () => ({ meta: [{ title: "Rate Catalogue — Schore" }] }),
