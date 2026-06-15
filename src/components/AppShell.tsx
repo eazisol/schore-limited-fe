@@ -3,29 +3,73 @@ import { type ReactNode } from "react";
 import {
   LayoutDashboard, Users, Building2, CalendarDays, Receipt,
   Tags, Briefcase, Activity, Settings, Search, Bell, HardHat, ChevronRight, ShieldCheck,
+  Hammer, Layers, ClipboardCheck, OctagonPause, Banknote, FileCheck2, PoundSterling,
+  UserCog, FileBarChart2, BookMarked, ListChecks,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { sessionStore, useSession } from "@/lib/session-store";
 import { ROLES, ROLE_BADGE, type UserRole } from "@/lib/users-store";
 
-const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/daily", label: "Daily Programme", icon: CalendarDays },
-  { to: "/properties", label: "Properties", icon: Building2 },
-  { to: "/operatives", label: "Operatives", icon: Users },
-  { to: "/wages", label: "Wage Sheets", icon: Receipt },
-  { to: "/rates", label: "Rate Catalogue", icon: Tags },
-  { to: "/contracts", label: "Contracts & Budgets", icon: Briefcase },
-  { to: "/kpi", label: "KPI & Hold Board", icon: Activity },
-  { to: "/users", label: "User Management", icon: ShieldCheck },
+type NavItem = { to: string; label: string; icon: any; exact?: boolean; adminOnly?: boolean };
+type NavSection = { label: string; items: NavItem[] };
+
+const sections: NavSection[] = [
+  {
+    label: "Overview",
+    items: [
+      { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { to: "/daily", label: "Daily Programme", icon: CalendarDays },
+      { to: "/allocation", label: "Daily Allocation", icon: ListChecks },
+      { to: "/confirmation", label: "Work Confirmation", icon: ClipboardCheck },
+      { to: "/hold", label: "Hold Management", icon: OctagonPause },
+      { to: "/kpi", label: "KPI Board", icon: Activity },
+    ],
+  },
+  {
+    label: "Workforce",
+    items: [
+      { to: "/operatives", label: "Operatives", icon: Users },
+      { to: "/trade-builder", label: "Trade Builder", icon: Hammer },
+      { to: "/prelims", label: "Prelims", icon: UserCog },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { to: "/payroll", label: "Payroll Engine", icon: Banknote },
+      { to: "/wages", label: "Wage Sheets", icon: Receipt },
+      { to: "/statements", label: "Statement Approval", icon: FileCheck2 },
+      { to: "/cost-budget", label: "Cost & Budget", icon: PoundSterling },
+      { to: "/rates", label: "Rate Catalogue", icon: Tags },
+      { to: "/legend-codes", label: "Legend Codes", icon: BookMarked },
+    ],
+  },
+  {
+    label: "Records",
+    items: [
+      { to: "/properties", label: "Properties", icon: Building2 },
+      { to: "/contracts", label: "Contracts", icon: Briefcase },
+      { to: "/reports", label: "Reports & Exports", icon: FileBarChart2 },
+    ],
+  },
+  {
+    label: "Admin",
+    items: [
+      { to: "/users", label: "User Management", icon: ShieldCheck, adminOnly: true },
+      { to: "/settings", label: "Settings", icon: Settings },
+    ],
+  },
 ];
 
 export function AppShell() {
   const pathname = useRouterState({ select: s => s.location.pathname });
   const session = useSession();
-  const visibleNav = nav.filter(n => n.to !== "/users" || session.role === "Admin");
-
   const crumbs = pathname.split("/").filter(Boolean);
 
   return (
@@ -41,31 +85,39 @@ export function AppShell() {
             <div className="text-[11px] text-sidebar-foreground/60 tracking-wide">Workforce & Payroll</div>
           </div>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {visibleNav.map(({ to, label, icon: Icon, exact }) => {
-            const active = exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
+        <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+          {sections.map(section => {
+            const items = section.items.filter(i => !i.adminOnly || session.role === "Admin");
+            if (items.length === 0) return null;
             return (
-              <Link
-                key={to}
-                to={to}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                  active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="truncate">{label}</span>
-              </Link>
+              <div key={section.label}>
+                <div className="px-3 mb-1 text-[10px] uppercase tracking-wider font-semibold text-sidebar-foreground/40">{section.label}</div>
+                <div className="space-y-0.5">
+                  {items.map(({ to, label, icon: Icon, exact }) => {
+                    const active = exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
+                    return (
+                      <Link
+                        key={to}
+                        to={to}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-1.5 rounded-md text-sm transition-colors",
+                          active
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                            : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                        )}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </nav>
         <div className="border-t border-sidebar-border p-3">
-          <Link to="/settings" className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground/75 hover:bg-sidebar-accent/60">
-            <Settings className="h-4 w-4" /> Settings
-          </Link>
-          <div className="mt-2 px-3 py-2">
+          <div className="px-3 py-2">
             <div className="flex items-center gap-3">
               <div className="grid h-8 w-8 place-items-center rounded-full bg-accent/90 text-accent-foreground text-xs font-semibold">{session.initials}</div>
               <div className="min-w-0 leading-tight flex-1">
