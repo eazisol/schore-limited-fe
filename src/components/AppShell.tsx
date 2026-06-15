@@ -42,7 +42,7 @@ export function AppShell() {
           </div>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {nav.map(({ to, label, icon: Icon, exact }) => {
+          {visibleNav.map(({ to, label, icon: Icon, exact }) => {
             const active = exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
             return (
               <Link
