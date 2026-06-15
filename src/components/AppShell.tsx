@@ -65,12 +65,32 @@ export function AppShell() {
           <Link to="/settings" className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground/75 hover:bg-sidebar-accent/60">
             <Settings className="h-4 w-4" /> Settings
           </Link>
-          <div className="mt-2 flex items-center gap-3 px-3 py-2">
-            <div className="grid h-8 w-8 place-items-center rounded-full bg-accent/90 text-accent-foreground text-xs font-semibold">CC</div>
-            <div className="min-w-0 leading-tight">
-              <div className="text-sm font-medium truncate">Claudiu Ceausu</div>
-              <div className="text-[11px] text-sidebar-foreground/60">Site Manager</div>
+          <div className="mt-2 px-3 py-2">
+            <div className="flex items-center gap-3">
+              <div className="grid h-8 w-8 place-items-center rounded-full bg-accent/90 text-accent-foreground text-xs font-semibold">{session.initials}</div>
+              <div className="min-w-0 leading-tight flex-1">
+                <div className="text-sm font-medium truncate">{session.name}</div>
+                <div className="text-[11px] text-sidebar-foreground/60 truncate">{session.jobTitle}</div>
+              </div>
+              <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full border", ROLE_BADGE[session.role])}>
+                {session.role}
+              </span>
             </div>
+            <label className="mt-3 block">
+              <span className="text-[10px] uppercase tracking-wide text-sidebar-foreground/50">Switch role (demo)</span>
+              <select
+                value={session.role}
+                onChange={e => {
+                  const r = e.target.value as UserRole;
+                  sessionStore.setRole(r);
+                  toast.success(`Signed in as ${r}`);
+                }}
+                className="mt-1 w-full h-8 rounded-md border border-sidebar-border bg-sidebar text-sidebar-foreground text-xs px-2"
+                aria-label="Switch role"
+              >
+                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </label>
           </div>
         </div>
       </aside>
