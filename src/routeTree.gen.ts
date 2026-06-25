@@ -13,6 +13,7 @@ import { Route as WagesRouteImport } from './routes/wages'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as TradeBuilderRouteImport } from './routes/trade-builder'
 import { Route as StatementsRouteImport } from './routes/statements'
+import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RatesRouteImport } from './routes/rates'
@@ -61,6 +62,11 @@ const TradeBuilderRoute = TradeBuilderRouteImport.update({
 const StatementsRoute = StatementsRouteImport.update({
   id: '/statements',
   path: '/statements',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SigninRoute = SigninRouteImport.update({
+  id: '/signin',
+  path: '/signin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -226,6 +232,7 @@ export interface FileRoutesByFullPath {
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
   '/trade-builder': typeof TradeBuilderRouteWithChildren
   '/users': typeof UsersRouteWithChildren
@@ -259,6 +266,7 @@ export interface FileRoutesByTo {
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
@@ -292,6 +300,7 @@ export interface FileRoutesById {
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
   '/trade-builder': typeof TradeBuilderRouteWithChildren
   '/users': typeof UsersRouteWithChildren
@@ -329,6 +338,7 @@ export interface FileRouteTypes {
     | '/rates'
     | '/reports'
     | '/settings'
+    | '/signin'
     | '/statements'
     | '/trade-builder'
     | '/users'
@@ -362,6 +372,7 @@ export interface FileRouteTypes {
     | '/rates'
     | '/reports'
     | '/settings'
+    | '/signin'
     | '/statements'
     | '/operatives/$id'
     | '/operatives/new'
@@ -394,6 +405,7 @@ export interface FileRouteTypes {
     | '/rates'
     | '/reports'
     | '/settings'
+    | '/signin'
     | '/statements'
     | '/trade-builder'
     | '/users'
@@ -430,6 +442,7 @@ export interface RootRouteChildren {
   RatesRoute: typeof RatesRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
+  SigninRoute: typeof SigninRoute
   StatementsRoute: typeof StatementsRoute
   TradeBuilderRoute: typeof TradeBuilderRouteWithChildren
   UsersRoute: typeof UsersRouteWithChildren
@@ -464,6 +477,13 @@ declare module '@tanstack/react-router' {
       path: '/statements'
       fullPath: '/statements'
       preLoaderRoute: typeof StatementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signin': {
+      id: '/signin'
+      path: '/signin'
+      fullPath: '/signin'
+      preLoaderRoute: typeof SigninRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -761,6 +781,7 @@ const rootRouteChildren: RootRouteChildren = {
   RatesRoute: RatesRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
+  SigninRoute: SigninRoute,
   StatementsRoute: StatementsRoute,
   TradeBuilderRoute: TradeBuilderRouteWithChildren,
   UsersRoute: UsersRouteWithChildren,
@@ -769,13 +790,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
