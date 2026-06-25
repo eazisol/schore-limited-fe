@@ -143,6 +143,12 @@ export function AppShell() {
                 {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </label>
+            <Link
+              to="/signin"
+              className="mt-3 flex items-center justify-center h-8 rounded-md border border-sidebar-border text-xs text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            >
+              Sign out
+            </Link>
           </div>
         </div>
       </aside>

@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outlet, Link, createRootRouteWithContext, useRouter, HeadContent, Scripts,
+  Outlet, Link, createRootRouteWithContext, useRouter, useRouterState, HeadContent, Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
@@ -72,9 +72,11 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: s => s.location.pathname });
+  const isAuthRoute = pathname === "/signin";
   return (
     <QueryClientProvider client={queryClient}>
-      <AppShell />
+      {isAuthRoute ? <Outlet /> : <AppShell />}
       <Toaster position="top-right" />
     </QueryClientProvider>
   );
