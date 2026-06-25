@@ -85,7 +85,7 @@ export function AppShell() {
             <div className="text-[11px] text-sidebar-foreground/60 tracking-wide">Workforce & Payroll</div>
           </div>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+        <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto scrollbar-sidebar">
           {sections.map(section => {
             const items = section.items.filter(i => !i.adminOnly || session.role === "Admin");
             if (items.length === 0) return null;
