@@ -101,6 +101,63 @@
   box-shadow: 0 1px 2px oklch(0.18 0.02 255 / 0.04);
 }
 
+@utility scrollbar-sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.45 0.03 255 / 0.5) transparent;
+}
+.scrollbar-sidebar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-sidebar::-webkit-scrollbar-thumb {
+  background-color: oklch(0.45 0.03 255 / 0.45);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 150ms ease;
+}
+.scrollbar-sidebar::-webkit-scrollbar-thumb:hover {
+  background-color: oklch(0.6 0.04 255 / 0.7);
+}
+.scrollbar-sidebar::-webkit-scrollbar-thumb:active {
+  background-color: var(--color-accent);
+}
+.scrollbar-sidebar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+@utility scrollbar-elegant {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.7 0.01 255 / 0.5) transparent;
+}
+.scrollbar-elegant::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scrollbar-elegant::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-elegant::-webkit-scrollbar-thumb {
+  background-color: oklch(0.75 0.01 255 / 0.55);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 150ms ease;
+}
+.scrollbar-elegant::-webkit-scrollbar-thumb:hover {
+  background-color: oklch(0.6 0.02 255 / 0.75);
+}
+.scrollbar-elegant::-webkit-scrollbar-thumb:active {
+  background-color: var(--color-accent);
+}
+.scrollbar-elegant::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+
 @layer components {
   .input {
     height: 2.5rem;
