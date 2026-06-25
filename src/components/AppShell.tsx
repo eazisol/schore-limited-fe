@@ -73,10 +73,10 @@ export function AppShell() {
   const crumbs = pathname.split("/").filter(Boolean);
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
+    <div className="flex h-screen w-full bg-background overflow-hidden">
       {/* Sidebar */}
-      <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
-        <div className="flex items-center gap-2.5 px-5 h-16 border-b border-sidebar-border">
+      <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border h-screen sticky top-0">
+        <div className="flex items-center gap-2.5 px-5 h-16 border-b border-sidebar-border shrink-0">
           <div className="grid h-9 w-9 place-items-center rounded-md bg-accent text-accent-foreground">
             <HardHat className="h-5 w-5" />
           </div>
