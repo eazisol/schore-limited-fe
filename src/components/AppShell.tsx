@@ -155,8 +155,9 @@ export function AppShell() {
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-20 h-16 bg-background/80 backdrop-blur border-b border-border flex items-center gap-4 px-4 lg:px-8">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+        <header className="shrink-0 h-16 bg-background/80 backdrop-blur border-b border-border flex items-center gap-4 px-4 lg:px-8">
+
           <div className="flex items-center text-xs text-muted-foreground gap-1.5 min-w-0">
             <Link to="/" className="hover:text-foreground">Home</Link>
             {crumbs.map((c, i) => (
