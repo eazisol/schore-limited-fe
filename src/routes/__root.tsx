@@ -72,9 +72,11 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: s => s.location.pathname });
+  const isAuthRoute = pathname === "/signin";
   return (
     <QueryClientProvider client={queryClient}>
-      <AppShell />
+      {isAuthRoute ? <Outlet /> : <AppShell />}
       <Toaster position="top-right" />
     </QueryClientProvider>
   );
