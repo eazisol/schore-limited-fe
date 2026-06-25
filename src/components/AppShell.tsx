@@ -116,7 +116,8 @@ export function AppShell() {
             );
           })}
         </nav>
-        <div className="border-t border-sidebar-border p-3">
+        <div className="border-t border-sidebar-border p-3 shrink-0">
+
           <div className="px-3 py-2">
             <div className="flex items-center gap-3">
               <div className="grid h-8 w-8 place-items-center rounded-full bg-accent/90 text-accent-foreground text-xs font-semibold">{session.initials}</div>
