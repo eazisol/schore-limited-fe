@@ -17,6 +17,7 @@ export const Route = createFileRoute("/rates")({
 const PAY_TYPES: RateLine["payType"][] = ["Price", "Day"];
 
 function Rates() {
+  const canEdit = useCan("rates.edit");
   const [rows, setRows] = useState<RateLine[]>(seed);
   const [q, setQ] = useState("");
   const [trade, setTrade] = useState("All");
@@ -25,6 +26,7 @@ function Rates() {
   const [form, setForm] = useState<RateLine>({ id: "", trade: "", group: "", code: "", task: "", payType: "Price", rate: 0, unit: "" });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
+
 
   const trades = ["All", ...Array.from(new Set(rows.map(r => r.trade)))];
 
