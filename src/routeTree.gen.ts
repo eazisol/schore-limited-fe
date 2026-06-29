@@ -24,6 +24,7 @@ import { Route as OperativesRouteImport } from './routes/operatives'
 import { Route as LegendCodesRouteImport } from './routes/legend-codes'
 import { Route as KpiRouteImport } from './routes/kpi'
 import { Route as HoldRouteImport } from './routes/hold'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DailyRouteImport } from './routes/daily'
 import { Route as CostBudgetRouteImport } from './routes/cost-budget'
 import { Route as ContractsRouteImport } from './routes/contracts'
@@ -117,6 +118,11 @@ const KpiRoute = KpiRouteImport.update({
 const HoldRoute = HoldRouteImport.update({
   id: '/hold',
   path: '/hold',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DailyRoute = DailyRouteImport.update({
@@ -222,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/contracts': typeof ContractsRoute
   '/cost-budget': typeof CostBudgetRoute
   '/daily': typeof DailyRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/hold': typeof HoldRoute
   '/kpi': typeof KpiRoute
   '/legend-codes': typeof LegendCodesRoute
@@ -258,6 +265,7 @@ export interface FileRoutesByTo {
   '/contracts': typeof ContractsRoute
   '/cost-budget': typeof CostBudgetRoute
   '/daily': typeof DailyRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/hold': typeof HoldRoute
   '/kpi': typeof KpiRoute
   '/legend-codes': typeof LegendCodesRoute
@@ -290,6 +298,7 @@ export interface FileRoutesById {
   '/contracts': typeof ContractsRoute
   '/cost-budget': typeof CostBudgetRoute
   '/daily': typeof DailyRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/hold': typeof HoldRoute
   '/kpi': typeof KpiRoute
   '/legend-codes': typeof LegendCodesRoute
@@ -328,6 +337,7 @@ export interface FileRouteTypes {
     | '/contracts'
     | '/cost-budget'
     | '/daily'
+    | '/forgot-password'
     | '/hold'
     | '/kpi'
     | '/legend-codes'
@@ -364,6 +374,7 @@ export interface FileRouteTypes {
     | '/contracts'
     | '/cost-budget'
     | '/daily'
+    | '/forgot-password'
     | '/hold'
     | '/kpi'
     | '/legend-codes'
@@ -395,6 +406,7 @@ export interface FileRouteTypes {
     | '/contracts'
     | '/cost-budget'
     | '/daily'
+    | '/forgot-password'
     | '/hold'
     | '/kpi'
     | '/legend-codes'
@@ -432,6 +444,7 @@ export interface RootRouteChildren {
   ContractsRoute: typeof ContractsRoute
   CostBudgetRoute: typeof CostBudgetRoute
   DailyRoute: typeof DailyRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   HoldRoute: typeof HoldRoute
   KpiRoute: typeof KpiRoute
   LegendCodesRoute: typeof LegendCodesRoute
@@ -554,6 +567,13 @@ declare module '@tanstack/react-router' {
       path: '/hold'
       fullPath: '/hold'
       preLoaderRoute: typeof HoldRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/daily': {
@@ -771,6 +791,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContractsRoute: ContractsRoute,
   CostBudgetRoute: CostBudgetRoute,
   DailyRoute: DailyRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   HoldRoute: HoldRoute,
   KpiRoute: KpiRoute,
   LegendCodesRoute: LegendCodesRoute,
