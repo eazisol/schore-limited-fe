@@ -15,6 +15,7 @@ import { Route as TradeBuilderRouteImport } from './routes/trade-builder'
 import { Route as StatementsRouteImport } from './routes/statements'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as PropertiesRouteImport } from './routes/properties'
@@ -73,6 +74,11 @@ const SigninRoute = SigninRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -238,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
@@ -273,6 +280,7 @@ export interface FileRoutesByTo {
   '/prelims': typeof PrelimsRoute
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
@@ -308,6 +316,7 @@ export interface FileRoutesById {
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
@@ -347,6 +356,7 @@ export interface FileRouteTypes {
     | '/properties'
     | '/rates'
     | '/reports'
+    | '/reset-password'
     | '/settings'
     | '/signin'
     | '/statements'
@@ -382,6 +392,7 @@ export interface FileRouteTypes {
     | '/prelims'
     | '/rates'
     | '/reports'
+    | '/reset-password'
     | '/settings'
     | '/signin'
     | '/statements'
@@ -416,6 +427,7 @@ export interface FileRouteTypes {
     | '/properties'
     | '/rates'
     | '/reports'
+    | '/reset-password'
     | '/settings'
     | '/signin'
     | '/statements'
@@ -454,6 +466,7 @@ export interface RootRouteChildren {
   PropertiesRoute: typeof PropertiesRouteWithChildren
   RatesRoute: typeof RatesRoute
   ReportsRoute: typeof ReportsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
   SigninRoute: typeof SigninRoute
   StatementsRoute: typeof StatementsRoute
@@ -504,6 +517,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -801,6 +821,7 @@ const rootRouteChildren: RootRouteChildren = {
   PropertiesRoute: PropertiesRouteWithChildren,
   RatesRoute: RatesRoute,
   ReportsRoute: ReportsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
   SigninRoute: SigninRoute,
   StatementsRoute: StatementsRoute,
