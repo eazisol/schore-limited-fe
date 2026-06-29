@@ -9,6 +9,8 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { authStore, useAuthSession } from "@/lib/auth-store";
+import { usersStore } from "@/lib/users-store";
+
 import { ROLE_BADGE, ROLES, type UserRole } from "@/lib/users-store";
 import { permissionsForRole } from "@/lib/roles-store";
 import type { PermissionKey } from "@/lib/permissions";
