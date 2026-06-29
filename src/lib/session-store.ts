@@ -43,15 +43,10 @@ export const sessionStore = {
   setRole: (role: UserRole) => {
     const user = usersStore.getAll().find(u => u.role === role && u.status === "Active");
     if (!user) return;
-    // Re-create a session pointing at that user, keeping current remember setting.
     const existing = authStore.get();
-    const remember = existing?.remember ?? false;
-    const ttl = remember ? 30 * 24 * 3600 * 1000 : 12 * 3600 * 1000;
-    // Direct internal mutation via a synthetic sign-in: bypass password (demo switch only).
-    // We achieve this by writing into the auth store via signIn helper — but to avoid duplicating
-    // logic and to allow demo switching, we use a dedicated path:
-    (authStore as unknown as { _demoSetUser?: (id: string, remember: boolean, ttl: number) => void })._demoSetUser?.(user.id, remember, ttl);
+    authStore.demoSetUser(user.id, existing?.remember ?? false);
   },
+
   subscribe: (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; },
 };
 
