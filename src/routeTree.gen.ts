@@ -19,6 +19,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as PropertiesRouteImport } from './routes/properties'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrelimsRouteImport } from './routes/prelims'
 import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as OperativesRouteImport } from './routes/operatives'
@@ -95,6 +96,11 @@ const RatesRoute = RatesRouteImport.update({
 const PropertiesRoute = PropertiesRouteImport.update({
   id: '/properties',
   path: '/properties',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrelimsRoute = PrelimsRouteImport.update({
@@ -248,6 +254,7 @@ export interface FileRoutesByFullPath {
   '/operatives': typeof OperativesRouteWithChildren
   '/payroll': typeof PayrollRoute
   '/prelims': typeof PrelimsRoute
+  '/profile': typeof ProfileRoute
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
@@ -286,6 +293,7 @@ export interface FileRoutesByTo {
   '/legend-codes': typeof LegendCodesRoute
   '/payroll': typeof PayrollRoute
   '/prelims': typeof PrelimsRoute
+  '/profile': typeof ProfileRoute
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -322,6 +330,7 @@ export interface FileRoutesById {
   '/operatives': typeof OperativesRouteWithChildren
   '/payroll': typeof PayrollRoute
   '/prelims': typeof PrelimsRoute
+  '/profile': typeof ProfileRoute
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
@@ -363,6 +372,7 @@ export interface FileRouteTypes {
     | '/operatives'
     | '/payroll'
     | '/prelims'
+    | '/profile'
     | '/properties'
     | '/rates'
     | '/reports'
@@ -401,6 +411,7 @@ export interface FileRouteTypes {
     | '/legend-codes'
     | '/payroll'
     | '/prelims'
+    | '/profile'
     | '/rates'
     | '/reports'
     | '/reset-password'
@@ -436,6 +447,7 @@ export interface FileRouteTypes {
     | '/operatives'
     | '/payroll'
     | '/prelims'
+    | '/profile'
     | '/properties'
     | '/rates'
     | '/reports'
@@ -476,6 +488,7 @@ export interface RootRouteChildren {
   OperativesRoute: typeof OperativesRouteWithChildren
   PayrollRoute: typeof PayrollRoute
   PrelimsRoute: typeof PrelimsRoute
+  ProfileRoute: typeof ProfileRoute
   PropertiesRoute: typeof PropertiesRouteWithChildren
   RatesRoute: typeof RatesRoute
   ReportsRoute: typeof ReportsRoute
@@ -558,6 +571,13 @@ declare module '@tanstack/react-router' {
       path: '/properties'
       fullPath: '/properties'
       preLoaderRoute: typeof PropertiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/prelims': {
@@ -839,6 +859,7 @@ const rootRouteChildren: RootRouteChildren = {
   OperativesRoute: OperativesRouteWithChildren,
   PayrollRoute: PayrollRoute,
   PrelimsRoute: PrelimsRoute,
+  ProfileRoute: ProfileRoute,
   PropertiesRoute: PropertiesRouteWithChildren,
   RatesRoute: RatesRoute,
   ReportsRoute: ReportsRoute,
