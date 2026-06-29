@@ -160,13 +160,14 @@ function SignIn() {
                 <Label htmlFor="password">
                   Password <span className="text-destructive">*</span>
                 </Label>
-                <button
-                  type="button"
-                  onClick={() => toast("Password reset", { description: `If an account exists for ${email || "that email"}, a reset link will be sent.` })}
+                <Link
+                  to="/forgot-password"
+                  search={{ email } as any}
                   className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
                 >
                   Forgot password?
-                </button>
+                </Link>
+
               </div>
               <div className="relative">
                 <Lock className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
