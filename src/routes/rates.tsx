@@ -103,8 +103,11 @@ function Rates() {
                 <h2 className="font-display font-semibold">{tradeName}</h2>
                 <p className="text-xs text-muted-foreground">{Object.values(gs).flat().length} tasks across {Object.keys(gs).length} groups</p>
               </div>
-              <Button variant="outline" size="sm" onClick={() => openNew(tradeName)}><Plus className="h-4 w-4" />Add task</Button>
+              <Can permission="rates.edit">
+                <Button variant="outline" size="sm" onClick={() => openNew(tradeName)}><Plus className="h-4 w-4" />Add task</Button>
+              </Can>
             </div>
+
             {Object.entries(gs).map(([groupName, items]) => (
               <div key={groupName} className="border-b last:border-0">
                 <div className="px-5 py-2 bg-muted/30 text-xs font-medium text-muted-foreground uppercase tracking-wide">{groupName}</div>
