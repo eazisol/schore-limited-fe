@@ -11,10 +11,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { authStore } from "@/lib/auth-store";
 
 
+const signinSearchSchema = z.object({ redirect: z.string().optional() });
+
 export const Route = createFileRoute("/signin")({
   head: () => ({ meta: [{ title: "Sign in — Schore Limited" }] }),
+  validateSearch: signinSearchSchema,
   component: SignIn,
 });
+
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
