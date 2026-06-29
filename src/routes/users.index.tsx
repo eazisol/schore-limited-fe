@@ -1,9 +1,10 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { ROLES, ROLE_BADGE, useUsers, usersStore, type UserRole } from "@/lib/users-store";
+import { Can, useCan } from "@/components/Can";
 import { Plus, Search, MoreHorizontal, UserCheck, UserX, Trash2, Mail } from "lucide-react";
 import { toast } from "sonner";
 
@@ -13,6 +14,10 @@ export const Route = createFileRoute("/users/")({
 });
 
 function UsersList() {
+  const canView = useCan("users.view");
+  const canManage = useCan("users.manage");
+  if (!canView) return <Navigate to="/forbidden" />;
+
   const users = useUsers();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
@@ -30,10 +35,11 @@ function UsersList() {
 
   const counts = useMemo(() => ({
     total: users.length,
-    admins: users.filter(u => u.role === "Admin").length,
-    managers: users.filter(u => u.role === "Manager").length,
+    ceos: users.filter(u => u.role === "CEO").length,
+    managers: users.filter(u => u.role === "CM" || u.role === "PM").length,
     inactive: users.filter(u => u.status === "Inactive").length,
   }), [users]);
+
 
   const target = confirmDel ? users.find(u => u.id === confirmDel) : null;
 
@@ -43,17 +49,21 @@ function UsersList() {
         title="User Management"
         subtitle="Platform users · roles, access and account status"
         actions={
-          <Button size="sm" asChild>
-            <Link to="/users/new"><Plus className="h-4 w-4" />Add user</Link>
-          </Button>
+          <Can permission="users.manage">
+            <Button size="sm" asChild>
+              <Link to="/users/new"><Plus className="h-4 w-4" />Add user</Link>
+            </Button>
+          </Can>
         }
+
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Stat label="Total users" value={counts.total} />
-        <Stat label="Admins" value={counts.admins} />
+        <Stat label="CEOs" value={counts.ceos} />
         <Stat label="Managers" value={counts.managers} />
         <Stat label="Inactive" value={counts.inactive} tone={counts.inactive > 0 ? "warn" : undefined} />
+
       </div>
 
       <div className="card-elevated">
@@ -116,37 +126,44 @@ function UsersList() {
                     <td className="px-3 py-3 text-xs text-muted-foreground tabular-nums">{u.lastLogin || "—"}</td>
                     <td className="px-3 py-3"><StatusBadge status={u.status} /></td>
                     <td className="px-5 py-3 text-right relative">
-                      <button
-                        type="button"
-                        onClick={e => { e.stopPropagation(); setMenuFor(menuFor === u.id ? null : u.id); }}
-                        className="h-8 w-8 inline-grid place-items-center rounded-md hover:bg-accent/40"
-                        aria-label={`Actions for ${u.name}`}
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
-                      {menuFor === u.id && (
-                        <div
-                          onClick={e => e.stopPropagation()}
-                          className="absolute right-5 top-10 z-10 w-52 rounded-md border bg-popover shadow-lg py-1 text-left"
-                        >
-                          <MenuItem onClick={() => { setMenuFor(null); navigate({ to: "/users/$id", params: { id: u.id } }); }}>
-                            Edit user
-                          </MenuItem>
-                          {u.status === "Active" ? (
-                            <MenuItem onClick={() => { usersStore.setStatus(u.id, "Inactive"); toast.success(`${u.name} deactivated`); setMenuFor(null); }}>
-                              <UserX className="h-4 w-4" /> Deactivate
-                            </MenuItem>
-                          ) : (
-                            <MenuItem onClick={() => { usersStore.setStatus(u.id, "Active"); toast.success(`${u.name} reactivated`); setMenuFor(null); }}>
-                              <UserCheck className="h-4 w-4" /> Reactivate
-                            </MenuItem>
+                      {canManage ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={e => { e.stopPropagation(); setMenuFor(menuFor === u.id ? null : u.id); }}
+                            className="h-8 w-8 inline-grid place-items-center rounded-md hover:bg-accent/40"
+                            aria-label={`Actions for ${u.name}`}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                          {menuFor === u.id && (
+                            <div
+                              onClick={e => e.stopPropagation()}
+                              className="absolute right-5 top-10 z-10 w-52 rounded-md border bg-popover shadow-lg py-1 text-left"
+                            >
+                              <MenuItem onClick={() => { setMenuFor(null); navigate({ to: "/users/$id", params: { id: u.id } }); }}>
+                                Edit user
+                              </MenuItem>
+                              {u.status === "Active" ? (
+                                <MenuItem onClick={() => { usersStore.setStatus(u.id, "Inactive"); toast.success(`${u.name} deactivated`); setMenuFor(null); }}>
+                                  <UserX className="h-4 w-4" /> Deactivate
+                                </MenuItem>
+                              ) : (
+                                <MenuItem onClick={() => { usersStore.setStatus(u.id, "Active"); toast.success(`${u.name} reactivated`); setMenuFor(null); }}>
+                                  <UserCheck className="h-4 w-4" /> Reactivate
+                                </MenuItem>
+                              )}
+                              <MenuItem danger onClick={() => { setMenuFor(null); setConfirmDel(u.id); }}>
+                                <Trash2 className="h-4 w-4" /> Delete user
+                              </MenuItem>
+                            </div>
                           )}
-                          <MenuItem danger onClick={() => { setMenuFor(null); setConfirmDel(u.id); }}>
-                            <Trash2 className="h-4 w-4" /> Delete user
-                          </MenuItem>
-                        </div>
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">View-only</span>
                       )}
                     </td>
+
                   </tr>
                 ))}
               </tbody>

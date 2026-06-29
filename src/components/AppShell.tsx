@@ -1,80 +1,86 @@
-import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect, type ReactNode } from "react";
 import {
   LayoutDashboard, Users, Building2, CalendarDays, Receipt,
   Tags, Briefcase, Activity, Settings, Search, Bell, HardHat, ChevronRight, ShieldCheck,
-  Hammer, Layers, ClipboardCheck, OctagonPause, Banknote, FileCheck2, PoundSterling,
-  UserCog, FileBarChart2, BookMarked, ListChecks,
+  Hammer, ClipboardCheck, OctagonPause, Banknote, FileCheck2, PoundSterling,
+  UserCog, FileBarChart2, BookMarked, ListChecks, LogOut, UserCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { sessionStore, useSession } from "@/lib/session-store";
-import { ROLES, ROLE_BADGE, type UserRole } from "@/lib/users-store";
+import { authStore, useAuthSession } from "@/lib/auth-store";
+import { usersStore } from "@/lib/users-store";
 
-type NavItem = { to: string; label: string; icon: any; exact?: boolean; adminOnly?: boolean };
+import { ROLE_BADGE, ROLES, type UserRole } from "@/lib/users-store";
+import { permissionsForRole } from "@/lib/roles-store";
+import type { PermissionKey } from "@/lib/permissions";
+
+type NavItem = { to: string; label: string; icon: any; exact?: boolean; permission?: PermissionKey; anyOf?: PermissionKey[] };
 type NavSection = { label: string; items: NavItem[] };
 
 const sections: NavSection[] = [
-  {
-    label: "Overview",
-    items: [
-      { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
-    ],
-  },
-  {
-    label: "Operations",
-    items: [
-      { to: "/daily", label: "Daily Programme", icon: CalendarDays },
-      { to: "/allocation", label: "Daily Allocation", icon: ListChecks },
-      { to: "/confirmation", label: "Work Confirmation", icon: ClipboardCheck },
-      { to: "/hold", label: "Hold Management", icon: OctagonPause },
-      { to: "/kpi", label: "KPI Board", icon: Activity },
-    ],
-  },
-  {
-    label: "Workforce",
-    items: [
-      { to: "/operatives", label: "Operatives", icon: Users },
-      { to: "/trade-builder", label: "Trade Builder", icon: Hammer },
-      { to: "/prelims", label: "Prelims", icon: UserCog },
-    ],
-  },
-  {
-    label: "Finance",
-    items: [
-      { to: "/payroll", label: "Payroll Engine", icon: Banknote },
-      { to: "/wages", label: "Wage Sheets", icon: Receipt },
-      { to: "/statements", label: "Statement Approval", icon: FileCheck2 },
-      { to: "/cost-budget", label: "Cost & Budget", icon: PoundSterling },
-      { to: "/rates", label: "Rate Catalogue", icon: Tags },
-      { to: "/legend-codes", label: "Legend Codes", icon: BookMarked },
-    ],
-  },
-  {
-    label: "Records",
-    items: [
-      { to: "/properties", label: "Properties", icon: Building2 },
-      { to: "/contracts", label: "Contracts", icon: Briefcase },
-      { to: "/reports", label: "Reports & Exports", icon: FileBarChart2 },
-    ],
-  },
-  {
-    label: "Admin",
-    items: [
-      { to: "/users", label: "User Management", icon: ShieldCheck, adminOnly: true },
-      { to: "/settings", label: "Settings", icon: Settings },
-    ],
-  },
+  { label: "Overview", items: [
+    { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  ]},
+  { label: "Operations", items: [
+    { to: "/daily",         label: "Daily Programme",   icon: CalendarDays,    permission: "daily.view" },
+    { to: "/allocation",    label: "Daily Allocation",  icon: ListChecks,      permission: "daily.allocate" },
+    { to: "/confirmation",  label: "Work Confirmation", icon: ClipboardCheck,  permission: "daily.confirm" },
+    { to: "/hold",          label: "Hold Management",   icon: OctagonPause,    permission: "hold.view" },
+    { to: "/kpi",           label: "KPI Board",         icon: Activity,        permission: "kpi.view" },
+  ]},
+  { label: "Workforce", items: [
+    { to: "/operatives",    label: "Operatives",        icon: Users,           permission: "operatives.view" },
+    { to: "/trade-builder", label: "Trade Builder",     icon: Hammer,          permission: "trades.view" },
+    { to: "/prelims",       label: "Prelims",           icon: UserCog,         permission: "prelims.view" },
+  ]},
+  { label: "Finance", items: [
+    { to: "/payroll",       label: "Payroll Engine",    icon: Banknote,        permission: "payroll.view" },
+    { to: "/wages",         label: "Wage Sheets",       icon: Receipt,         permission: "wages.view" },
+    { to: "/statements",    label: "Statement Approval",icon: FileCheck2,      permission: "statements.view" },
+    { to: "/cost-budget",   label: "Cost & Budget",     icon: PoundSterling,   permission: "costs.view" },
+    { to: "/rates",         label: "Rate Catalogue",    icon: Tags,            permission: "rates.view" },
+    { to: "/legend-codes",  label: "Legend Codes",      icon: BookMarked,      permission: "legend.view" },
+  ]},
+  { label: "Records", items: [
+    { to: "/properties",    label: "Properties",        icon: Building2,       permission: "properties.view" },
+    { to: "/contracts",     label: "Contracts",         icon: Briefcase,       permission: "contracts.view" },
+    { to: "/reports",       label: "Reports & Exports", icon: FileBarChart2,   permission: "reports.view" },
+  ]},
+  { label: "Admin", items: [
+    { to: "/users",         label: "User Management",   icon: ShieldCheck,     permission: "users.view" },
+    { to: "/settings",      label: "Settings",          icon: Settings,        permission: "settings.view" },
+  ]},
 ];
 
+const PUBLIC_PATHS = ["/signin", "/forgot-password", "/reset-password"];
+
 export function AppShell() {
+  useAuthSession();
   const pathname = useRouterState({ select: s => s.location.pathname });
-  const session = useSession();
+  const navigate = useNavigate();
+  const user = authStore.getUser();
+
+  // Auth gate: redirect to /signin if not signed in (preserve redirect target).
+  useEffect(() => {
+    if (!user && !PUBLIC_PATHS.includes(pathname)) {
+      navigate({ to: "/signin", search: { redirect: pathname } as any });
+    }
+  }, [user, pathname, navigate]);
+
+  if (!user) {
+    return <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">Redirecting…</div>;
+  }
+
+  const perms = permissionsForRole(user.role);
+  const can = (p?: PermissionKey, anyOf?: PermissionKey[]) =>
+    p ? perms.has(p) : anyOf ? anyOf.some(x => perms.has(x)) : true;
+
   const crumbs = pathname.split("/").filter(Boolean);
+  const initials = user.name.split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden">
-      {/* Sidebar */}
       <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border h-screen sticky top-0">
         <div className="flex items-center gap-2.5 px-5 h-16 border-b border-sidebar-border shrink-0">
           <div className="grid h-9 w-9 place-items-center rounded-md bg-accent text-accent-foreground">
@@ -87,7 +93,7 @@ export function AppShell() {
         </div>
         <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto scrollbar-sidebar">
           {sections.map(section => {
-            const items = section.items.filter(i => !i.adminOnly || session.role === "Admin");
+            const items = section.items.filter(i => can(i.permission, i.anyOf));
             if (items.length === 0) return null;
             return (
               <div key={section.label}>
@@ -117,26 +123,33 @@ export function AppShell() {
           })}
         </nav>
         <div className="border-t border-sidebar-border p-3 shrink-0">
-
           <div className="px-3 py-2">
             <div className="flex items-center gap-3">
-              <div className="grid h-8 w-8 place-items-center rounded-full bg-accent/90 text-accent-foreground text-xs font-semibold">{session.initials}</div>
+              {user.avatar ? (
+                <img src={user.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
+              ) : (
+                <div className="grid h-8 w-8 place-items-center rounded-full bg-accent/90 text-accent-foreground text-xs font-semibold">{initials}</div>
+              )}
               <div className="min-w-0 leading-tight flex-1">
-                <div className="text-sm font-medium truncate">{session.name}</div>
-                <div className="text-[11px] text-sidebar-foreground/60 truncate">{session.jobTitle}</div>
+                <div className="text-sm font-medium truncate">{user.name}</div>
+                <div className="text-[11px] text-sidebar-foreground/60 truncate">{user.jobTitle ?? ""}</div>
               </div>
-              <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full border", ROLE_BADGE[session.role])}>
-                {session.role}
+              <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full border", ROLE_BADGE[user.role])}>
+                {user.role}
               </span>
             </div>
             <label className="mt-3 block">
               <span className="text-[10px] uppercase tracking-wide text-sidebar-foreground/50">Switch role (demo)</span>
               <select
-                value={session.role}
+                value={user.role}
                 onChange={e => {
                   const r = e.target.value as UserRole;
-                  sessionStore.setRole(r);
-                  toast.success(`Signed in as ${r}`);
+                  const target = usersStore.getAll().find(u => u.role === r && u.status === "Active");
+                  if (target) {
+                    authStore.demoSetUser(target.id, authStore.get()?.remember ?? false);
+                    toast.success(`Switched to ${target.name}`, { description: `Signed in as ${r}` });
+                  }
+
                 }}
                 className="mt-1 w-full h-8 rounded-md border border-sidebar-border bg-sidebar text-sidebar-foreground text-xs px-2"
                 aria-label="Switch role"
@@ -144,20 +157,27 @@ export function AppShell() {
                 {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </label>
-            <Link
-              to="/signin"
-              className="mt-3 flex items-center justify-center h-8 rounded-md border border-sidebar-border text-xs text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-            >
-              Sign out
-            </Link>
+            <div className="mt-3 grid grid-cols-2 gap-1.5">
+              <Link
+                to="/profile"
+                className="flex items-center justify-center gap-1.5 h-8 rounded-md border border-sidebar-border text-xs text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              >
+                <UserCircle className="h-3.5 w-3.5" /> Profile
+              </Link>
+              <button
+                type="button"
+                onClick={() => { authStore.signOut(); toast.success("Signed out"); navigate({ to: "/signin" }); }}
+                className="flex items-center justify-center gap-1.5 h-8 rounded-md border border-sidebar-border text-xs text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              >
+                <LogOut className="h-3.5 w-3.5" /> Sign out
+              </button>
+            </div>
           </div>
         </div>
       </aside>
 
-      {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <header className="shrink-0 h-16 bg-background/80 backdrop-blur border-b border-border flex items-center gap-4 px-4 lg:px-8">
-
           <div className="flex items-center text-xs text-muted-foreground gap-1.5 min-w-0">
             <Link to="/" className="hover:text-foreground">Home</Link>
             {crumbs.map((c, i) => (
@@ -190,7 +210,6 @@ export function AppShell() {
         <main className="flex-1 overflow-y-auto scrollbar-elegant p-4 lg:p-8 min-w-0">
           <Outlet />
         </main>
-
       </div>
     </div>
   );

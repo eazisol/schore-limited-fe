@@ -15,15 +15,19 @@ import { Route as TradeBuilderRouteImport } from './routes/trade-builder'
 import { Route as StatementsRouteImport } from './routes/statements'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as PropertiesRouteImport } from './routes/properties'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrelimsRouteImport } from './routes/prelims'
 import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as OperativesRouteImport } from './routes/operatives'
 import { Route as LegendCodesRouteImport } from './routes/legend-codes'
 import { Route as KpiRouteImport } from './routes/kpi'
 import { Route as HoldRouteImport } from './routes/hold'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as ForbiddenRouteImport } from './routes/forbidden'
 import { Route as DailyRouteImport } from './routes/daily'
 import { Route as CostBudgetRouteImport } from './routes/cost-budget'
 import { Route as ContractsRouteImport } from './routes/contracts'
@@ -74,6 +78,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
@@ -87,6 +96,11 @@ const RatesRoute = RatesRouteImport.update({
 const PropertiesRoute = PropertiesRouteImport.update({
   id: '/properties',
   path: '/properties',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrelimsRoute = PrelimsRouteImport.update({
@@ -117,6 +131,16 @@ const KpiRoute = KpiRouteImport.update({
 const HoldRoute = HoldRouteImport.update({
   id: '/hold',
   path: '/hold',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForbiddenRoute = ForbiddenRouteImport.update({
+  id: '/forbidden',
+  path: '/forbidden',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DailyRoute = DailyRouteImport.update({
@@ -222,15 +246,19 @@ export interface FileRoutesByFullPath {
   '/contracts': typeof ContractsRoute
   '/cost-budget': typeof CostBudgetRoute
   '/daily': typeof DailyRoute
+  '/forbidden': typeof ForbiddenRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/hold': typeof HoldRoute
   '/kpi': typeof KpiRoute
   '/legend-codes': typeof LegendCodesRoute
   '/operatives': typeof OperativesRouteWithChildren
   '/payroll': typeof PayrollRoute
   '/prelims': typeof PrelimsRoute
+  '/profile': typeof ProfileRoute
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
@@ -258,13 +286,17 @@ export interface FileRoutesByTo {
   '/contracts': typeof ContractsRoute
   '/cost-budget': typeof CostBudgetRoute
   '/daily': typeof DailyRoute
+  '/forbidden': typeof ForbiddenRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/hold': typeof HoldRoute
   '/kpi': typeof KpiRoute
   '/legend-codes': typeof LegendCodesRoute
   '/payroll': typeof PayrollRoute
   '/prelims': typeof PrelimsRoute
+  '/profile': typeof ProfileRoute
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
@@ -290,15 +322,19 @@ export interface FileRoutesById {
   '/contracts': typeof ContractsRoute
   '/cost-budget': typeof CostBudgetRoute
   '/daily': typeof DailyRoute
+  '/forbidden': typeof ForbiddenRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/hold': typeof HoldRoute
   '/kpi': typeof KpiRoute
   '/legend-codes': typeof LegendCodesRoute
   '/operatives': typeof OperativesRouteWithChildren
   '/payroll': typeof PayrollRoute
   '/prelims': typeof PrelimsRoute
+  '/profile': typeof ProfileRoute
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
@@ -328,15 +364,19 @@ export interface FileRouteTypes {
     | '/contracts'
     | '/cost-budget'
     | '/daily'
+    | '/forbidden'
+    | '/forgot-password'
     | '/hold'
     | '/kpi'
     | '/legend-codes'
     | '/operatives'
     | '/payroll'
     | '/prelims'
+    | '/profile'
     | '/properties'
     | '/rates'
     | '/reports'
+    | '/reset-password'
     | '/settings'
     | '/signin'
     | '/statements'
@@ -364,13 +404,17 @@ export interface FileRouteTypes {
     | '/contracts'
     | '/cost-budget'
     | '/daily'
+    | '/forbidden'
+    | '/forgot-password'
     | '/hold'
     | '/kpi'
     | '/legend-codes'
     | '/payroll'
     | '/prelims'
+    | '/profile'
     | '/rates'
     | '/reports'
+    | '/reset-password'
     | '/settings'
     | '/signin'
     | '/statements'
@@ -395,15 +439,19 @@ export interface FileRouteTypes {
     | '/contracts'
     | '/cost-budget'
     | '/daily'
+    | '/forbidden'
+    | '/forgot-password'
     | '/hold'
     | '/kpi'
     | '/legend-codes'
     | '/operatives'
     | '/payroll'
     | '/prelims'
+    | '/profile'
     | '/properties'
     | '/rates'
     | '/reports'
+    | '/reset-password'
     | '/settings'
     | '/signin'
     | '/statements'
@@ -432,15 +480,19 @@ export interface RootRouteChildren {
   ContractsRoute: typeof ContractsRoute
   CostBudgetRoute: typeof CostBudgetRoute
   DailyRoute: typeof DailyRoute
+  ForbiddenRoute: typeof ForbiddenRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   HoldRoute: typeof HoldRoute
   KpiRoute: typeof KpiRoute
   LegendCodesRoute: typeof LegendCodesRoute
   OperativesRoute: typeof OperativesRouteWithChildren
   PayrollRoute: typeof PayrollRoute
   PrelimsRoute: typeof PrelimsRoute
+  ProfileRoute: typeof ProfileRoute
   PropertiesRoute: typeof PropertiesRouteWithChildren
   RatesRoute: typeof RatesRoute
   ReportsRoute: typeof ReportsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
   SigninRoute: typeof SigninRoute
   StatementsRoute: typeof StatementsRoute
@@ -493,6 +545,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reports': {
       id: '/reports'
       path: '/reports'
@@ -512,6 +571,13 @@ declare module '@tanstack/react-router' {
       path: '/properties'
       fullPath: '/properties'
       preLoaderRoute: typeof PropertiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/prelims': {
@@ -554,6 +620,20 @@ declare module '@tanstack/react-router' {
       path: '/hold'
       fullPath: '/hold'
       preLoaderRoute: typeof HoldRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forbidden': {
+      id: '/forbidden'
+      path: '/forbidden'
+      fullPath: '/forbidden'
+      preLoaderRoute: typeof ForbiddenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/daily': {
@@ -771,15 +851,19 @@ const rootRouteChildren: RootRouteChildren = {
   ContractsRoute: ContractsRoute,
   CostBudgetRoute: CostBudgetRoute,
   DailyRoute: DailyRoute,
+  ForbiddenRoute: ForbiddenRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   HoldRoute: HoldRoute,
   KpiRoute: KpiRoute,
   LegendCodesRoute: LegendCodesRoute,
   OperativesRoute: OperativesRouteWithChildren,
   PayrollRoute: PayrollRoute,
   PrelimsRoute: PrelimsRoute,
+  ProfileRoute: ProfileRoute,
   PropertiesRoute: PropertiesRouteWithChildren,
   RatesRoute: RatesRoute,
   ReportsRoute: ReportsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
   SigninRoute: SigninRoute,
   StatementsRoute: StatementsRoute,
@@ -790,13 +874,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

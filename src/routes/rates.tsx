@@ -3,9 +3,11 @@ import { useState } from "react";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { rates as seed, fmtGBP, type RateLine } from "@/lib/data";
-import { Plus, Edit, Search, Loader2 } from "lucide-react";
+import { Plus, Edit, Search, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Modal, Field, inputCls } from "@/components/Modal";
+import { Can, useCan } from "@/components/Can";
+
 
 export const Route = createFileRoute("/rates")({
   head: () => ({ meta: [{ title: "Rate Catalogue — Schore" }] }),
@@ -15,6 +17,7 @@ export const Route = createFileRoute("/rates")({
 const PAY_TYPES: RateLine["payType"][] = ["Price", "Day"];
 
 function Rates() {
+  const canEdit = useCan("rates.edit");
   const [rows, setRows] = useState<RateLine[]>(seed);
   const [q, setQ] = useState("");
   const [trade, setTrade] = useState("All");
@@ -23,6 +26,7 @@ function Rates() {
   const [form, setForm] = useState<RateLine>({ id: "", trade: "", group: "", code: "", task: "", payType: "Price", rate: 0, unit: "" });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
+
 
   const trades = ["All", ...Array.from(new Set(rows.map(r => r.trade)))];
 
@@ -70,9 +74,14 @@ function Rates() {
     <div>
       <PageHeader
         title="Rate Catalogue"
-        subtitle="CEO / CM / PM can edit · SM can view but not edit"
-        actions={<Button size="sm" onClick={() => openNew()}><Plus className="h-4 w-4" />New rate</Button>}
+        subtitle={canEdit ? "CEO / CM / PM can edit · SM can view but not edit" : "View-only — your role cannot modify rates"}
+        actions={
+          <Can permission="rates.edit" fallback={<span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" /> View-only</span>}>
+            <Button size="sm" onClick={() => openNew()}><Plus className="h-4 w-4" />New rate</Button>
+          </Can>
+        }
       />
+
 
       <div className="card-elevated mb-6">
         <div className="p-4 flex flex-wrap gap-3 border-b">
@@ -94,8 +103,11 @@ function Rates() {
                 <h2 className="font-display font-semibold">{tradeName}</h2>
                 <p className="text-xs text-muted-foreground">{Object.values(gs).flat().length} tasks across {Object.keys(gs).length} groups</p>
               </div>
-              <Button variant="outline" size="sm" onClick={() => openNew(tradeName)}><Plus className="h-4 w-4" />Add task</Button>
+              <Can permission="rates.edit">
+                <Button variant="outline" size="sm" onClick={() => openNew(tradeName)}><Plus className="h-4 w-4" />Add task</Button>
+              </Can>
             </div>
+
             {Object.entries(gs).map(([groupName, items]) => (
               <div key={groupName} className="border-b last:border-0">
                 <div className="px-5 py-2 bg-muted/30 text-xs font-medium text-muted-foreground uppercase tracking-wide">{groupName}</div>
@@ -108,7 +120,10 @@ function Rates() {
                         <td className="px-3 py-3"><span className={`text-[11px] font-medium px-2 py-0.5 rounded ${r.payType === "Price" ? "bg-info/10 text-info" : "bg-accent/15 text-accent-foreground"}`}>{r.payType}</span></td>
                         <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtGBP(r.rate)}{r.unit && <span className="text-xs text-muted-foreground ml-1">{r.unit}</span>}</td>
                         <td className="px-5 py-3 text-right">
-                          <button type="button" aria-label={`Edit ${r.task}`} onClick={() => openEdit(r)} className="text-muted-foreground hover:text-foreground"><Edit className="h-4 w-4" /></button>
+                          <Can permission="rates.edit" fallback={<span className="text-xs text-muted-foreground">—</span>}>
+                            <button type="button" aria-label={`Edit ${r.task}`} onClick={() => openEdit(r)} className="text-muted-foreground hover:text-foreground"><Edit className="h-4 w-4" /></button>
+                          </Can>
+
                         </td>
                       </tr>
                     ))}

@@ -1,24 +1,30 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { Eye, EyeOff, HardHat, Loader2, Mail, Lock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { sessionStore } from "@/lib/session-store";
-import { usersStore, type UserRole } from "@/lib/users-store";
+import { authStore } from "@/lib/auth-store";
+
+
+const signinSearchSchema = z.object({ redirect: z.string().optional() });
 
 export const Route = createFileRoute("/signin")({
   head: () => ({ meta: [{ title: "Sign in — Schore Limited" }] }),
+  validateSearch: signinSearchSchema,
   component: SignIn,
 });
+
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function SignIn() {
   const navigate = useNavigate();
+  const search = useSearch({ from: "/signin" });
   const [email, setEmail] = useState("daniel@schore.co.uk");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -42,25 +48,26 @@ function SignIn() {
     if (Object.keys(e).length) return;
 
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 700));
-
-    const user = usersStore.getAll().find(u => u.email.toLowerCase() === email.trim().toLowerCase());
-    if (!user) {
-      setSubmitting(false);
-      setErrors({ form: "No account found with that email. Please contact your administrator." });
-      return;
-    }
-    if (user.status === "Inactive") {
-      setSubmitting(false);
-      setErrors({ form: "This account has been deactivated. Please contact your administrator." });
-      return;
-    }
-
-    sessionStore.setRole(user.role as UserRole);
-    toast.success(`Welcome back, ${user.name.split(" ")[0]}`, { description: `Signed in as ${user.role}` });
+    await new Promise(r => setTimeout(r, 400));
+    const result = await authStore.signIn(email, password, remember);
     setSubmitting(false);
-    navigate({ to: "/" });
+
+    if (!result.ok) {
+      const messages = {
+        not_found: "No account found with that email. Please contact your administrator.",
+        inactive: "This account has been deactivated. Please contact your administrator.",
+        wrong_password: "Incorrect password. Try again or use 'Forgot password?'.",
+      };
+      setErrors({ form: messages[result.reason] });
+      return;
+    }
+
+    toast.success(`Welcome back, ${result.user.name.split(" ")[0]}`, { description: `Signed in as ${result.user.role}` });
+    const target = search.redirect && search.redirect.startsWith("/") ? search.redirect : "/";
+    navigate({ to: target });
   }
+
+
 
   return (
     <div className="min-h-screen w-full grid lg:grid-cols-2 bg-background">
@@ -153,13 +160,14 @@ function SignIn() {
                 <Label htmlFor="password">
                   Password <span className="text-destructive">*</span>
                 </Label>
-                <button
-                  type="button"
-                  onClick={() => toast("Password reset", { description: `If an account exists for ${email || "that email"}, a reset link will be sent.` })}
+                <Link
+                  to="/forgot-password"
+                  search={{ email } as any}
                   className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
                 >
                   Forgot password?
-                </button>
+                </Link>
+
               </div>
               <div className="relative">
                 <Lock className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -204,9 +212,11 @@ function SignIn() {
           <div className="mt-6 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
             <div className="font-medium text-foreground mb-1">Demo accounts</div>
             <ul className="space-y-0.5">
-              <li><span className="font-mono">daniel@schore.co.uk</span> — Admin</li>
-              <li><span className="font-mono">marcus@schore.co.uk</span> — Manager</li>
-              <li><span className="font-mono">claudiu@schore.co.uk</span> — User</li>
+              <li><span className="font-mono">daniel@schore.co.uk</span> — CEO</li>
+              <li><span className="font-mono">marcus@schore.co.uk</span> — Contracts Manager</li>
+              <li><span className="font-mono">florin@schore.co.uk</span> — Project Manager</li>
+              <li><span className="font-mono">claudiu@schore.co.uk</span> — Site Manager</li>
+
             </ul>
             <p className="mt-2">Use any password (min. 6 characters).</p>
           </div>
