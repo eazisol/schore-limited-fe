@@ -144,11 +144,12 @@ export function AppShell() {
                 value={user.role}
                 onChange={e => {
                   const r = e.target.value as UserRole;
-                  const target = require("@/lib/users-store").usersStore.getAll().find((u: any) => u.role === r && u.status === "Active");
+                  const target = usersStore.getAll().find(u => u.role === r && u.status === "Active");
                   if (target) {
                     authStore.demoSetUser(target.id, authStore.get()?.remember ?? false);
                     toast.success(`Switched to ${target.name}`, { description: `Signed in as ${r}` });
                   }
+
                 }}
                 className="mt-1 w-full h-8 rounded-md border border-sidebar-border bg-sidebar text-sidebar-foreground text-xs px-2"
                 aria-label="Switch role"
