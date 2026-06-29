@@ -74,9 +74,14 @@ function Rates() {
     <div>
       <PageHeader
         title="Rate Catalogue"
-        subtitle="CEO / CM / PM can edit · SM can view but not edit"
-        actions={<Button size="sm" onClick={() => openNew()}><Plus className="h-4 w-4" />New rate</Button>}
+        subtitle={canEdit ? "CEO / CM / PM can edit · SM can view but not edit" : "View-only — your role cannot modify rates"}
+        actions={
+          <Can permission="rates.edit" fallback={<span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" /> View-only</span>}>
+            <Button size="sm" onClick={() => openNew()}><Plus className="h-4 w-4" />New rate</Button>
+          </Can>
+        }
       />
+
 
       <div className="card-elevated mb-6">
         <div className="p-4 flex flex-wrap gap-3 border-b">
