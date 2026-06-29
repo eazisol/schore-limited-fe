@@ -212,9 +212,11 @@ function SignIn() {
           <div className="mt-6 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
             <div className="font-medium text-foreground mb-1">Demo accounts</div>
             <ul className="space-y-0.5">
-              <li><span className="font-mono">daniel@schore.co.uk</span> — Admin</li>
-              <li><span className="font-mono">marcus@schore.co.uk</span> — Manager</li>
-              <li><span className="font-mono">claudiu@schore.co.uk</span> — User</li>
+              <li><span className="font-mono">daniel@schore.co.uk</span> — CEO</li>
+              <li><span className="font-mono">marcus@schore.co.uk</span> — Contracts Manager</li>
+              <li><span className="font-mono">florin@schore.co.uk</span> — Project Manager</li>
+              <li><span className="font-mono">claudiu@schore.co.uk</span> — Site Manager</li>
+
             </ul>
             <p className="mt-2">Use any password (min. 6 characters).</p>
           </div>
