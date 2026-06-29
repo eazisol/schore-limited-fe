@@ -24,6 +24,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function SignIn() {
   const navigate = useNavigate();
+  const search = useSearch({ from: "/signin" });
   const [email, setEmail] = useState("daniel@schore.co.uk");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -47,25 +48,26 @@ function SignIn() {
     if (Object.keys(e).length) return;
 
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 700));
-
-    const user = usersStore.getAll().find(u => u.email.toLowerCase() === email.trim().toLowerCase());
-    if (!user) {
-      setSubmitting(false);
-      setErrors({ form: "No account found with that email. Please contact your administrator." });
-      return;
-    }
-    if (user.status === "Inactive") {
-      setSubmitting(false);
-      setErrors({ form: "This account has been deactivated. Please contact your administrator." });
-      return;
-    }
-
-    sessionStore.setRole(user.role as UserRole);
-    toast.success(`Welcome back, ${user.name.split(" ")[0]}`, { description: `Signed in as ${user.role}` });
+    await new Promise(r => setTimeout(r, 400));
+    const result = await authStore.signIn(email, password, remember);
     setSubmitting(false);
-    navigate({ to: "/" });
+
+    if (!result.ok) {
+      const messages = {
+        not_found: "No account found with that email. Please contact your administrator.",
+        inactive: "This account has been deactivated. Please contact your administrator.",
+        wrong_password: "Incorrect password. Try again or use 'Forgot password?'.",
+      };
+      setErrors({ form: messages[result.reason] });
+      return;
+    }
+
+    toast.success(`Welcome back, ${result.user.name.split(" ")[0]}`, { description: `Signed in as ${result.user.role}` });
+    const target = search.redirect && search.redirect.startsWith("/") ? search.redirect : "/";
+    navigate({ to: target });
   }
+
+
 
   return (
     <div className="min-h-screen w-full grid lg:grid-cols-2 bg-background">
