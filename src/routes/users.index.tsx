@@ -1,9 +1,10 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { ROLES, ROLE_BADGE, useUsers, usersStore, type UserRole } from "@/lib/users-store";
+import { Can, useCan } from "@/components/Can";
 import { Plus, Search, MoreHorizontal, UserCheck, UserX, Trash2, Mail } from "lucide-react";
 import { toast } from "sonner";
 
@@ -13,6 +14,10 @@ export const Route = createFileRoute("/users/")({
 });
 
 function UsersList() {
+  const canView = useCan("users.view");
+  const canManage = useCan("users.manage");
+  if (!canView) return <Navigate to="/forbidden" />;
+
   const users = useUsers();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
