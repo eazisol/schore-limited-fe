@@ -49,10 +49,13 @@ function UsersList() {
         title="User Management"
         subtitle="Platform users · roles, access and account status"
         actions={
-          <Button size="sm" asChild>
-            <Link to="/users/new"><Plus className="h-4 w-4" />Add user</Link>
-          </Button>
+          <Can permission="users.manage">
+            <Button size="sm" asChild>
+              <Link to="/users/new"><Plus className="h-4 w-4" />Add user</Link>
+            </Button>
+          </Can>
         }
+
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
