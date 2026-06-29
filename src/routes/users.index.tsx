@@ -52,9 +52,10 @@ function UsersList() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Stat label="Total users" value={counts.total} />
-        <Stat label="Admins" value={counts.admins} />
+        <Stat label="CEOs" value={counts.ceos} />
         <Stat label="Managers" value={counts.managers} />
         <Stat label="Inactive" value={counts.inactive} tone={counts.inactive > 0 ? "warn" : undefined} />
+
       </div>
 
       <div className="card-elevated">
