@@ -126,37 +126,44 @@ function UsersList() {
                     <td className="px-3 py-3 text-xs text-muted-foreground tabular-nums">{u.lastLogin || "—"}</td>
                     <td className="px-3 py-3"><StatusBadge status={u.status} /></td>
                     <td className="px-5 py-3 text-right relative">
-                      <button
-                        type="button"
-                        onClick={e => { e.stopPropagation(); setMenuFor(menuFor === u.id ? null : u.id); }}
-                        className="h-8 w-8 inline-grid place-items-center rounded-md hover:bg-accent/40"
-                        aria-label={`Actions for ${u.name}`}
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
-                      {menuFor === u.id && (
-                        <div
-                          onClick={e => e.stopPropagation()}
-                          className="absolute right-5 top-10 z-10 w-52 rounded-md border bg-popover shadow-lg py-1 text-left"
-                        >
-                          <MenuItem onClick={() => { setMenuFor(null); navigate({ to: "/users/$id", params: { id: u.id } }); }}>
-                            Edit user
-                          </MenuItem>
-                          {u.status === "Active" ? (
-                            <MenuItem onClick={() => { usersStore.setStatus(u.id, "Inactive"); toast.success(`${u.name} deactivated`); setMenuFor(null); }}>
-                              <UserX className="h-4 w-4" /> Deactivate
-                            </MenuItem>
-                          ) : (
-                            <MenuItem onClick={() => { usersStore.setStatus(u.id, "Active"); toast.success(`${u.name} reactivated`); setMenuFor(null); }}>
-                              <UserCheck className="h-4 w-4" /> Reactivate
-                            </MenuItem>
+                      {canManage ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={e => { e.stopPropagation(); setMenuFor(menuFor === u.id ? null : u.id); }}
+                            className="h-8 w-8 inline-grid place-items-center rounded-md hover:bg-accent/40"
+                            aria-label={`Actions for ${u.name}`}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                          {menuFor === u.id && (
+                            <div
+                              onClick={e => e.stopPropagation()}
+                              className="absolute right-5 top-10 z-10 w-52 rounded-md border bg-popover shadow-lg py-1 text-left"
+                            >
+                              <MenuItem onClick={() => { setMenuFor(null); navigate({ to: "/users/$id", params: { id: u.id } }); }}>
+                                Edit user
+                              </MenuItem>
+                              {u.status === "Active" ? (
+                                <MenuItem onClick={() => { usersStore.setStatus(u.id, "Inactive"); toast.success(`${u.name} deactivated`); setMenuFor(null); }}>
+                                  <UserX className="h-4 w-4" /> Deactivate
+                                </MenuItem>
+                              ) : (
+                                <MenuItem onClick={() => { usersStore.setStatus(u.id, "Active"); toast.success(`${u.name} reactivated`); setMenuFor(null); }}>
+                                  <UserCheck className="h-4 w-4" /> Reactivate
+                                </MenuItem>
+                              )}
+                              <MenuItem danger onClick={() => { setMenuFor(null); setConfirmDel(u.id); }}>
+                                <Trash2 className="h-4 w-4" /> Delete user
+                              </MenuItem>
+                            </div>
                           )}
-                          <MenuItem danger onClick={() => { setMenuFor(null); setConfirmDel(u.id); }}>
-                            <Trash2 className="h-4 w-4" /> Delete user
-                          </MenuItem>
-                        </div>
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">View-only</span>
                       )}
                     </td>
+
                   </tr>
                 ))}
               </tbody>
