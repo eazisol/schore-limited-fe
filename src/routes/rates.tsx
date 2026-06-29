@@ -3,9 +3,11 @@ import { useState } from "react";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { rates as seed, fmtGBP, type RateLine } from "@/lib/data";
-import { Plus, Edit, Search, Loader2 } from "lucide-react";
+import { Plus, Edit, Search, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Modal, Field, inputCls } from "@/components/Modal";
+import { Can, useCan } from "@/components/Can";
+
 
 export const Route = createFileRoute("/rates")({
   head: () => ({ meta: [{ title: "Rate Catalogue — Schore" }] }),
