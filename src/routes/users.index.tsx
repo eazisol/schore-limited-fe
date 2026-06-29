@@ -30,10 +30,11 @@ function UsersList() {
 
   const counts = useMemo(() => ({
     total: users.length,
-    admins: users.filter(u => u.role === "Admin").length,
-    managers: users.filter(u => u.role === "Manager").length,
+    ceos: users.filter(u => u.role === "CEO").length,
+    managers: users.filter(u => u.role === "CM" || u.role === "PM").length,
     inactive: users.filter(u => u.status === "Inactive").length,
   }), [users]);
+
 
   const target = confirmDel ? users.find(u => u.id === confirmDel) : null;
 
