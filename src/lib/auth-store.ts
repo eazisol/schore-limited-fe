@@ -73,8 +73,16 @@ export const authStore = {
     const hash = await hashPassword(newPassword);
     usersStore.update(userId, { passwordHash: hash });
   },
+  /** Demo helper: switch to a specific user without password (used by sidebar role switcher). */
+  demoSetUser: (userId: string, remember = false) => {
+    const ttl = remember ? 30 * 24 * 3600 * 1000 : 12 * 3600 * 1000;
+    session = { userId, expiresAt: Date.now() + ttl, remember };
+    writeStorage(session);
+    emit();
+  },
   subscribe: (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; },
 };
+
 
 export function useAuthSession() {
   return useSyncExternalStore(authStore.subscribe, authStore.get, authStore.get);
