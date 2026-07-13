@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   LayoutDashboard, Users, Building2, CalendarDays, Receipt,
   Tags, Briefcase, Activity, Settings, Search, Bell, HardHat, ChevronRight, ShieldCheck,
@@ -62,16 +62,18 @@ export function AppShell() {
   useAuthSession();
   const pathname = useRouterState({ select: s => s.location.pathname });
   const navigate = useNavigate();
-  const user = authStore.getUser();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const user = mounted ? authStore.getUser() : null;
 
   // Auth gate: redirect to /signin if not signed in (preserve redirect target).
   useEffect(() => {
-    if (!user && !PUBLIC_PATHS.includes(pathname)) {
+    if (mounted && !user && !PUBLIC_PATHS.includes(pathname)) {
       navigate({ to: "/signin", search: { redirect: pathname } as any });
     }
-  }, [user, pathname, navigate]);
+  }, [mounted, user, pathname, navigate]);
 
-  if (!user) {
+  if (!mounted || !user) {
     return <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">Redirecting…</div>;
   }
 

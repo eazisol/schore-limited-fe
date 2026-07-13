@@ -80,8 +80,12 @@ function RootComponent() {
   const isAuthRoute = fullScreen.includes(pathname);
   return (
     <QueryClientProvider client={queryClient}>
-      {isAuthRoute ? <Outlet /> : <AppShell />}
-      <Toaster position="top-right" />
+      <ApiProvider>
+        <AuthProvider>
+          {isAuthRoute ? <Outlet /> : <AppShell />}
+          <Toaster position="top-right" />
+        </AuthProvider>
+      </ApiProvider>
     </QueryClientProvider>
   );
 }
