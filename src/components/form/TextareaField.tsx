@@ -1,6 +1,6 @@
 import type { ReactNode, TextareaHTMLAttributes } from "react";
 import { useFormContext, type FieldValues, type Path } from "react-hook-form";
-import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +46,6 @@ export function TextareaField<T extends FieldValues>({
             />
           </FormControl>
           {description && <FormDescription>{description}</FormDescription>}
-          <FormMessage />
         </FormItem>
       )}
     />

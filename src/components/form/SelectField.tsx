@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useFormContext, type FieldValues, type Path } from "react-hook-form";
-import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
@@ -70,7 +70,6 @@ export function SelectField<T extends FieldValues>({
             </SelectContent>
           </Select>
           {description && <FormDescription>{description}</FormDescription>}
-          <FormMessage />
         </FormItem>
       )}
     />

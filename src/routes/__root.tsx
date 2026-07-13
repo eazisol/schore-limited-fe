@@ -7,6 +7,9 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "@/components/AppShell";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ApiProvider } from "@/contexts/ApiContext";
+
 
 function NotFoundComponent() {
   return (
@@ -77,8 +80,12 @@ function RootComponent() {
   const isAuthRoute = fullScreen.includes(pathname);
   return (
     <QueryClientProvider client={queryClient}>
-      {isAuthRoute ? <Outlet /> : <AppShell />}
-      <Toaster position="top-right" />
+      <ApiProvider>
+        <AuthProvider>
+          {isAuthRoute ? <Outlet /> : <AppShell />}
+          <Toaster position="top-right" />
+        </AuthProvider>
+      </ApiProvider>
     </QueryClientProvider>
   );
 }

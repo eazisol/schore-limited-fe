@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useFormContext, type FieldValues, type Path } from "react-hook-form";
-import { FormField, FormItem, FormControl, FormLabel, FormDescription, FormMessage } from "@/components/ui/form";
+import { FormField, FormItem, FormControl, FormLabel, FormDescription } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
 
 export interface SwitchFieldProps<T extends FieldValues> {
@@ -25,7 +25,6 @@ export function SwitchField<T extends FieldValues>({
           <div className="space-y-0.5 min-w-0">
             <FormLabel className="cursor-pointer font-medium">{label}</FormLabel>
             {description && <FormDescription>{description}</FormDescription>}
-            <FormMessage />
           </div>
           <FormControl>
             <Switch
