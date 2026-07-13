@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import {
   LayoutDashboard, Users, Building2, CalendarDays, Receipt,
   Tags, Briefcase, Activity, Settings, Search, Bell, HardHat, ChevronRight, ShieldCheck,
@@ -8,10 +8,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { authStore, useAuthSession } from "@/lib/auth-store";
-import { usersStore } from "@/lib/users-store";
+import { useAuth } from "@/contexts/AuthContext";
 
-import { ROLE_BADGE, ROLES, type UserRole } from "@/lib/users-store";
+import { ROLE_BADGE, type UserRole } from "@/lib/users-store";
 import { permissionsForRole } from "@/lib/roles-store";
 import type { PermissionKey } from "@/lib/permissions";
 
