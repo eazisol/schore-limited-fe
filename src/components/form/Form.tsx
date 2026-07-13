@@ -3,13 +3,13 @@ import type { FormHTMLAttributes, ReactNode } from "react";
 import { toast } from "sonner";
 
 export interface FormProps<T extends FieldValues>
-  extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
+  extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit" | "onInvalid"> {
   form: UseFormReturn<T>;
   onSubmit: (values: T) => void | Promise<void>;
   /** Toast message shown when submit is attempted with invalid required fields. */
   invalidToastMessage?: string;
   /** Called with the RHF error map when validation fails. Optional. */
-  onInvalid?: (errors: FieldErrors<T>) => void;
+  onInvalidSubmit?: (errors: FieldErrors<T>) => void;
   children: ReactNode;
 }
 
@@ -28,14 +28,14 @@ export function Form<T extends FieldValues>({
   form,
   onSubmit,
   invalidToastMessage = "Please fill all required fields.",
-  onInvalid,
+  onInvalidSubmit,
   children,
   ...rest
 }: FormProps<T>) {
   const handleInvalid = (errors: FieldErrors<T>) => {
     toast.error(invalidToastMessage);
     focusFirstInvalid(errors, form);
-    onInvalid?.(errors);
+    onInvalidSubmit?.(errors);
   };
 
   return (
