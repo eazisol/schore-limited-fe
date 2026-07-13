@@ -18,35 +18,38 @@ import type { PermissionKey } from "@/lib/permissions";
 type NavItem = { to: string; label: string; icon: any; exact?: boolean; permission?: PermissionKey; anyOf?: PermissionKey[] };
 type NavSection = { label: string; items: NavItem[] };
 
+// NOTE (Phase 1): Only Authentication, User Management and Settings are active.
+// Other modules are hidden from the sidebar for now; their routes and code are
+// preserved and will be re-enabled section by section in later phases.
 const sections: NavSection[] = [
   { label: "Overview", items: [
     { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
   ]},
-  { label: "Operations", items: [
-    { to: "/daily",         label: "Daily Programme",   icon: CalendarDays,    permission: "daily.view" },
-    { to: "/allocation",    label: "Daily Allocation",  icon: ListChecks,      permission: "daily.allocate" },
-    { to: "/confirmation",  label: "Work Confirmation", icon: ClipboardCheck,  permission: "daily.confirm" },
-    { to: "/hold",          label: "Hold Management",   icon: OctagonPause,    permission: "hold.view" },
-    { to: "/kpi",           label: "KPI Board",         icon: Activity,        permission: "kpi.view" },
-  ]},
-  { label: "Workforce", items: [
-    { to: "/operatives",    label: "Operatives",        icon: Users,           permission: "operatives.view" },
-    { to: "/trade-builder", label: "Trade Builder",     icon: Hammer,          permission: "trades.view" },
-    { to: "/prelims",       label: "Prelims",           icon: UserCog,         permission: "prelims.view" },
-  ]},
-  { label: "Finance", items: [
-    { to: "/payroll",       label: "Payroll Engine",    icon: Banknote,        permission: "payroll.view" },
-    { to: "/wages",         label: "Wage Sheets",       icon: Receipt,         permission: "wages.view" },
-    { to: "/statements",    label: "Statement Approval",icon: FileCheck2,      permission: "statements.view" },
-    { to: "/cost-budget",   label: "Cost & Budget",     icon: PoundSterling,   permission: "costs.view" },
-    { to: "/rates",         label: "Rate Catalogue",    icon: Tags,            permission: "rates.view" },
-    { to: "/legend-codes",  label: "Legend Codes",      icon: BookMarked,      permission: "legend.view" },
-  ]},
-  { label: "Records", items: [
-    { to: "/properties",    label: "Properties",        icon: Building2,       permission: "properties.view" },
-    { to: "/contracts",     label: "Contracts",         icon: Briefcase,       permission: "contracts.view" },
-    { to: "/reports",       label: "Reports & Exports", icon: FileBarChart2,   permission: "reports.view" },
-  ]},
+  // { label: "Operations", items: [
+  //   { to: "/daily",         label: "Daily Programme",   icon: CalendarDays,    permission: "daily.view" },
+  //   { to: "/allocation",    label: "Daily Allocation",  icon: ListChecks,      permission: "daily.allocate" },
+  //   { to: "/confirmation",  label: "Work Confirmation", icon: ClipboardCheck,  permission: "daily.confirm" },
+  //   { to: "/hold",          label: "Hold Management",   icon: OctagonPause,    permission: "hold.view" },
+  //   { to: "/kpi",           label: "KPI Board",         icon: Activity,        permission: "kpi.view" },
+  // ]},
+  // { label: "Workforce", items: [
+  //   { to: "/operatives",    label: "Operatives",        icon: Users,           permission: "operatives.view" },
+  //   { to: "/trade-builder", label: "Trade Builder",     icon: Hammer,          permission: "trades.view" },
+  //   { to: "/prelims",       label: "Prelims",           icon: UserCog,         permission: "prelims.view" },
+  // ]},
+  // { label: "Finance", items: [
+  //   { to: "/payroll",       label: "Payroll Engine",    icon: Banknote,        permission: "payroll.view" },
+  //   { to: "/wages",         label: "Wage Sheets",       icon: Receipt,         permission: "wages.view" },
+  //   { to: "/statements",    label: "Statement Approval",icon: FileCheck2,      permission: "statements.view" },
+  //   { to: "/cost-budget",   label: "Cost & Budget",     icon: PoundSterling,   permission: "costs.view" },
+  //   { to: "/rates",         label: "Rate Catalogue",    icon: Tags,            permission: "rates.view" },
+  //   { to: "/legend-codes",  label: "Legend Codes",      icon: BookMarked,      permission: "legend.view" },
+  // ]},
+  // { label: "Records", items: [
+  //   { to: "/properties",    label: "Properties",        icon: Building2,       permission: "properties.view" },
+  //   { to: "/contracts",     label: "Contracts",         icon: Briefcase,       permission: "contracts.view" },
+  //   { to: "/reports",       label: "Reports & Exports", icon: FileBarChart2,   permission: "reports.view" },
+  // ]},
   { label: "Admin", items: [
     { to: "/users",         label: "User Management",   icon: ShieldCheck,     permission: "users.view" },
     { to: "/settings",      label: "Settings",          icon: Settings,        permission: "settings.view" },

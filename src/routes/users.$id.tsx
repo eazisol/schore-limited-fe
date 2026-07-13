@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -7,14 +7,17 @@ import {
   ROLES,
   ROLE_DESCRIPTION,
   usersStore,
-  validateUser,
   type AppUser,
   type UserRole,
   type UserStatus,
 } from "@/lib/users-store";
 import { RoleBadge } from "./users.index";
-import { ArrowLeft, Trash2, UserCheck, UserX, Mail, Loader2, KeyRound } from "lucide-react";
+import { ArrowLeft, Trash2, UserCheck, UserX, Mail, KeyRound } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, TextField, RadioGroupField, SelectField, SubmitButton } from "@/components/form";
 
 export const Route = createFileRoute("/users/$id")({
   loader: ({ params }) => {
@@ -33,69 +36,62 @@ export const Route = createFileRoute("/users/$id")({
   component: UserDetail,
 });
 
+const schema = z.object({
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(80),
+  email: z.string().trim().min(1, "Email is required").email("Enter a valid email address"),
+  phone: z.string().trim().regex(/^[\d +()-]{7,20}$/, "Enter a valid phone number").or(z.literal("")),
+  jobTitle: z.string().trim().max(60).or(z.literal("")),
+  role: z.enum(["CEO", "CM", "PM", "SM"]),
+  status: z.enum(["Active", "Inactive"]),
+});
+type Values = z.infer<typeof schema>;
+
 function UserDetail() {
   const { id } = Route.useLoaderData();
-  // re-read live so updates re-render
   const user = usersStore.get(id) as AppUser;
   const navigate = useNavigate();
-  const [form, setForm] = useState({
+  const [confirmDel, setConfirmDel] = useState(false);
+
+  const defaults = useMemo<Values>(() => ({
     name: user.name,
     email: user.email,
     phone: user.phone ?? "",
     jobTitle: user.jobTitle ?? "",
-    role: user.role as UserRole,
-    status: user.status as UserStatus,
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const [confirmDel, setConfirmDel] = useState(false);
+    role: user.role,
+    status: user.status,
+  }), [user]);
 
-  const dirty = useMemo(() => (
-    form.name !== user.name ||
-    form.email !== user.email ||
-    (form.phone || "") !== (user.phone || "") ||
-    (form.jobTitle || "") !== (user.jobTitle || "") ||
-    form.role !== user.role ||
-    form.status !== user.status
-  ), [form, user]);
+  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: defaults });
+  useEffect(() => { form.reset(defaults); }, [defaults, form]);
 
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
-    const existingEmails = usersStore.getAll().map(u => u.email);
-    const errs = validateUser(
-      { name: form.name, email: form.email, role: form.role, phone: form.phone },
-      { existingEmails, excludeEmail: user.email },
-    );
-    setErrors(errs);
-    if (Object.keys(errs).length) {
-      toast.error("Please fix the errors below");
+  async function save(values: Values) {
+    const existingEmails = usersStore.getAll()
+      .filter(u => u.id !== user.id)
+      .map(u => u.email.toLowerCase());
+    if (existingEmails.includes(values.email.toLowerCase())) {
+      form.setError("email", { message: "A user with this email already exists" });
       return;
     }
-    setSaving(true);
-    try {
-      await new Promise(r => setTimeout(r, 450));
-      usersStore.update(user.id, {
-        name: form.name.trim(),
-        email: form.email.trim().toLowerCase(),
-        phone: form.phone.trim() || undefined,
-        jobTitle: form.jobTitle.trim() || undefined,
-        role: form.role,
-        status: form.status,
-      });
-      toast.success("User updated");
-    } catch {
-      toast.error("Could not save changes");
-    } finally {
-      setSaving(false);
-    }
+    await new Promise(r => setTimeout(r, 350));
+    usersStore.update(user.id, {
+      name: values.name.trim(),
+      email: values.email.trim().toLowerCase(),
+      phone: values.phone.trim() || undefined,
+      jobTitle: values.jobTitle.trim() || undefined,
+      role: values.role as UserRole,
+      status: values.status as UserStatus,
+    });
+    toast.success("User updated");
   }
 
   function toggleStatus() {
     const next: UserStatus = user.status === "Active" ? "Inactive" : "Active";
     usersStore.setStatus(user.id, next);
-    setForm(f => ({ ...f, status: next }));
+    form.setValue("status", next);
     toast.success(next === "Inactive" ? `${user.name} deactivated` : `${user.name} reactivated`);
   }
+
+  const dirty = form.formState.isDirty;
 
   return (
     <div className="space-y-6">
@@ -113,11 +109,9 @@ function UserDetail() {
             <Button variant="outline" size="sm" onClick={toggleStatus}>
               {user.status === "Active" ? <><UserX className="h-4 w-4" />Deactivate</> : <><UserCheck className="h-4 w-4" />Reactivate</>}
             </Button>
-            <Button
-              variant="outline" size="sm"
+            <Button variant="outline" size="sm"
               className="text-destructive border-destructive/30 hover:bg-destructive/5"
-              onClick={() => setConfirmDel(true)}
-            >
+              onClick={() => setConfirmDel(true)}>
               <Trash2 className="h-4 w-4" />Delete
             </Button>
           </>
@@ -125,62 +119,42 @@ function UserDetail() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <form onSubmit={save} className="lg:col-span-2 card-elevated p-6 space-y-4" noValidate>
+        <Form form={form} onSubmit={save} className="lg:col-span-2 card-elevated p-6 space-y-4">
           <h3 className="font-display font-semibold">Edit details</h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Full name" required error={errors.name}>
-              <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="input" maxLength={80} disabled={saving} />
-            </Field>
-            <Field label="Email" required error={errors.email}>
-              <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="input" disabled={saving} />
-            </Field>
-            <Field label="Phone" error={errors.phone}>
-              <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="input" placeholder="07700 900000" disabled={saving} />
-            </Field>
-            <Field label="Job title">
-              <input value={form.jobTitle} onChange={e => setForm({ ...form, jobTitle: e.target.value })} className="input" maxLength={60} disabled={saving} />
-            </Field>
+            <TextField<Values> name="name" label="Full name" required maxLength={80} />
+            <TextField<Values> name="email" label="Email" required type="email" />
+            <TextField<Values> name="phone" label="Phone" placeholder="07700 900000" />
+            <TextField<Values> name="jobTitle" label="Job title" maxLength={60} />
           </div>
 
-          <Field label="Role" required error={errors.role}>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {ROLES.map(r => {
-                const active = form.role === r;
-                return (
-                  <button
-                    type="button" key={r} onClick={() => setForm({ ...form, role: r })} disabled={saving}
-                    className={`text-left p-3 rounded-md border transition-colors ${active ? "border-accent bg-accent/5" : "border-input hover:bg-accent/5"}`}
-                    aria-pressed={active}
-                  >
-                    <div className="font-medium text-sm flex items-center gap-2">
-                      <span className={`h-3 w-3 rounded-full border-2 ${active ? "border-accent bg-accent" : "border-input"}`} />
-                      {r}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground mt-1.5 leading-snug">{ROLE_DESCRIPTION[r]}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </Field>
+          <RadioGroupField<Values>
+            name="role"
+            label="Role"
+            required
+            layout="grid"
+            options={ROLES.map(r => ({ value: r, label: r, description: ROLE_DESCRIPTION[r] }))}
+          />
 
-          <Field label="Status" required>
-            <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as UserStatus })} className="input" disabled={saving}>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-          </Field>
+          <SelectField<Values>
+            name="status"
+            label="Status"
+            required
+            options={[
+              { value: "Active", label: "Active" },
+              { value: "Inactive", label: "Inactive" },
+            ]}
+          />
 
           <div className="flex items-center justify-end gap-2 pt-2 border-t">
             <span className="text-xs text-muted-foreground mr-auto">{dirty ? "Unsaved changes" : "All changes saved"}</span>
-            <Button type="button" variant="outline" disabled={!dirty || saving} onClick={() => { setForm({ name: user.name, email: user.email, phone: user.phone ?? "", jobTitle: user.jobTitle ?? "", role: user.role, status: user.status }); setErrors({}); }}>
+            <Button type="button" variant="outline" disabled={!dirty} onClick={() => form.reset(defaults)}>
               Reset
             </Button>
-            <Button type="submit" disabled={!dirty || saving}>
-              {saving ? <><Loader2 className="h-4 w-4 animate-spin" />Saving…</> : "Save changes"}
-            </Button>
+            <SubmitButton disabled={!dirty} loadingText="Saving…">Save changes</SubmitButton>
           </div>
-        </form>
+        </Form>
 
         <div className="space-y-6">
           <div className="card-elevated p-6">
@@ -223,18 +197,6 @@ function UserDetail() {
         </div>
       )}
     </div>
-  );
-}
-
-function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
-  return (
-    <label className="block space-y-1.5">
-      <span className="text-sm font-medium">
-        {label} {required && <span className="text-destructive">*</span>}
-      </span>
-      {children}
-      {error && <div className="text-xs text-destructive" role="alert">{error}</div>}
-    </label>
   );
 }
 
