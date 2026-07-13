@@ -107,7 +107,7 @@ function UserDetail() {
         <AlertCircle className="h-5 w-5 mx-auto text-destructive mb-2" />
         <h2 className="font-display font-semibold text-lg">Unable to load user</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          {(userQuery.error as ApiError)?.message || "This account may have been deleted."}
+          {(userQuery.error as unknown as ApiError)?.message || "This account may have been deleted."}
         </p>
         <Button className="mt-4" asChild><Link to="/users">Back to users</Link></Button>
       </div>

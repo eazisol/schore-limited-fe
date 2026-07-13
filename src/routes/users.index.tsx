@@ -119,7 +119,7 @@ function UsersList() {
           <div className="p-12 text-center">
             <AlertCircle className="h-5 w-5 mx-auto text-destructive mb-2" />
             <div className="text-sm font-medium">Unable to load users</div>
-            <p className="text-xs text-muted-foreground mt-1">{(error as ApiError)?.message || "Please try again."}</p>
+            <p className="text-xs text-muted-foreground mt-1">{(error as unknown as ApiError)?.message || "Please try again."}</p>
             <Button variant="outline" size="sm" className="mt-4" onClick={() => refetch()}>Retry</Button>
           </div>
         ) : rows.length === 0 ? (
