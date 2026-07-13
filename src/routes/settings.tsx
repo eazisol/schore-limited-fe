@@ -12,7 +12,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PERMISSIONS, groupPermissions, type PermissionKey } from "@/lib/permissions";
 import { rolesStore, useRoles, type RoleKey } from "@/lib/roles-store";
-import { smtpStore, useSmtp } from "@/lib/smtp-store";
+
 import { brandingStore, useBranding } from "@/lib/branding-store";
 import { ROLE_LABEL, ROLE_BADGE, ROLES } from "@/lib/users-store";
 import { settingsService, EMAIL_SETTING_KEY, type EmailSettingValue } from "@/lib/api/services/settings";
