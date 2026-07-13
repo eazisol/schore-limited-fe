@@ -7,25 +7,78 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { authStore, useAuthSession } from "@/lib/auth-store";
-import { usersStore, type AppUser } from "@/lib/users-store";
-import { permissionsForRole } from "@/lib/roles-store";
-import type { PermissionKey } from "@/lib/permissions";
-import { tokenStore, onUnauthorized } from "@/lib/api/axios";
+import { authService, type ApiLoginData } from "@/lib/api/services/auth";
+import { tokenStore, onUnauthorized, type ApiError } from "@/lib/api/axios";
+
+/**
+ * API-backed authentication session.
+ * Persisted in localStorage under `SESSION_KEY` (see below); token is
+ * mirrored into the axios `tokenStore` so all requests carry
+ * `Authorization: Bearer <token>` automatically.
+ */
+export interface AuthUser {
+  id: number;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  roles: string[];
+  role: string; // primary role code (first element)
+}
+
+interface SessionShape {
+  token: string;
+  expiresAt: string;
+  user: AuthUser;
+}
+
+const SESSION_KEY = "schore.api.session.v1";
+
+function loadSession(): SessionShape | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw) as SessionShape;
+    if (s.expiresAt && new Date(s.expiresAt).getTime() < Date.now()) {
+      window.localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    return s;
+  } catch {
+    return null;
+  }
+}
+
+function saveSession(s: SessionShape | null) {
+  if (typeof window === "undefined") return;
+  if (!s) window.localStorage.removeItem(SESSION_KEY);
+  else window.localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+}
+
+function toAuthUser(d: ApiLoginData): AuthUser {
+  const fullName = [d.firstName, d.lastName].filter(Boolean).join(" ").trim() || d.username;
+  return {
+    id: d.userId,
+    username: d.username,
+    email: d.email,
+    firstName: d.firstName ?? "",
+    lastName: d.lastName ?? "",
+    fullName,
+    roles: d.roles ?? [],
+    role: d.roles?.[0] ?? "",
+  };
+}
 
 interface AuthContextValue {
-  user: AppUser | null;
+  user: AuthUser | null;
+  token: string | null;
   isAuthenticated: boolean;
   isHydrated: boolean;
-  permissions: Set<PermissionKey>;
-  can: (permission?: PermissionKey, anyOf?: PermissionKey[]) => boolean;
-  signIn: (
-    email: string,
-    password: string,
-    remember: boolean,
-  ) => Promise<
-    | { ok: true; user: AppUser }
-    | { ok: false; reason: "not_found" | "inactive" | "wrong_password" }
+  isSigningIn: boolean;
+  signIn: (emailOrUsername: string, password: string) => Promise<
+    { ok: true; user: AuthUser } | { ok: false; message: string }
   >;
   signOut: () => void;
 }
@@ -33,63 +86,77 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  useAuthSession(); // re-render on session change
+  const [session, setSession] = useState<SessionShape | null>(null);
   const [isHydrated, setHydrated] = useState(false);
-  useEffect(() => setHydrated(true), []);
+  const [isSigningIn, setSigningIn] = useState(false);
 
-  const user = authStore.getUser();
-
-  // Sync axios token store with the current session (demo: uses userId as token).
+  // Hydrate from storage on mount (SSR-safe).
   useEffect(() => {
-    if (user) tokenStore.set(user.id, authStore.get()?.remember ?? false);
-    else tokenStore.clear();
-  }, [user?.id]);
+    const s = loadSession();
+    if (s) tokenStore.set(s.token, true);
+    setSession(s);
+    setHydrated(true);
+  }, []);
 
   // Global 401 → sign out.
-  useEffect(() => onUnauthorized(() => authStore.signOut()), []);
-
-  const permissions = useMemo(
-    () => (user ? permissionsForRole(user.role) : new Set<PermissionKey>()),
-    [user?.role],
-  );
-
-  const can = useCallback(
-    (permission?: PermissionKey, anyOf?: PermissionKey[]) => {
-      if (permission) return permissions.has(permission);
-      if (anyOf) return anyOf.some(p => permissions.has(p));
-      return true;
-    },
-    [permissions],
+  useEffect(
+    () =>
+      onUnauthorized(() => {
+        saveSession(null);
+        tokenStore.clear();
+        setSession(null);
+      }),
+    [],
   );
 
   const signIn: AuthContextValue["signIn"] = useCallback(
-    async (email, password, remember) => {
-      const result = await authStore.signIn(email, password, remember);
-      if (result.ok) {
-        tokenStore.set(result.user.id, remember);
-        usersStore.markLogin(result.user.id);
+    async (emailOrUsername, password) => {
+      setSigningIn(true);
+      try {
+        const res = await authService.login({ emailOrUsername, password });
+        if (!res?.success || !res.data?.token) {
+          return { ok: false, message: res?.message ?? "Login failed" };
+        }
+        const user = toAuthUser(res.data);
+        const next: SessionShape = {
+          token: res.data.token,
+          expiresAt: res.data.expiresAt,
+          user,
+        };
+        saveSession(next);
+        tokenStore.set(next.token, true);
+        setSession(next);
+        return { ok: true, user };
+      } catch (err) {
+        const e = err as ApiError;
+        return {
+          ok: false,
+          message: e?.message || "Unable to sign in. Please try again.",
+        };
+      } finally {
+        setSigningIn(false);
       }
-      return result;
     },
     [],
   );
 
   const signOut = useCallback(() => {
-    authStore.signOut();
+    saveSession(null);
     tokenStore.clear();
+    setSession(null);
   }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      user,
-      isAuthenticated: !!user,
+      user: session?.user ?? null,
+      token: session?.token ?? null,
+      isAuthenticated: !!session,
       isHydrated,
-      permissions,
-      can,
+      isSigningIn,
       signIn,
       signOut,
     }),
-    [user, isHydrated, permissions, can, signIn, signOut],
+    [session, isHydrated, isSigningIn, signIn, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

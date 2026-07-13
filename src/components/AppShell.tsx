@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import {
   LayoutDashboard, Users, Building2, CalendarDays, Receipt,
   Tags, Briefcase, Activity, Settings, Search, Bell, HardHat, ChevronRight, ShieldCheck,
@@ -8,10 +8,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { authStore, useAuthSession } from "@/lib/auth-store";
-import { usersStore } from "@/lib/users-store";
+import { useAuth } from "@/contexts/AuthContext";
 
-import { ROLE_BADGE, ROLES, type UserRole } from "@/lib/users-store";
+import { ROLE_BADGE, type UserRole } from "@/lib/users-store";
 import { permissionsForRole } from "@/lib/roles-store";
 import type { PermissionKey } from "@/lib/permissions";
 
@@ -59,23 +58,26 @@ const sections: NavSection[] = [
 const PUBLIC_PATHS = ["/signin", "/forgot-password", "/reset-password"];
 
 export function AppShell() {
-  useAuthSession();
+  const { user: authUser, isHydrated, isAuthenticated, signOut } = useAuth();
   const pathname = useRouterState({ select: s => s.location.pathname });
   const navigate = useNavigate();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const user = mounted ? authStore.getUser() : null;
 
   // Auth gate: redirect to /signin if not signed in (preserve redirect target).
-  useEffect(() => {
-    if (mounted && !user && !PUBLIC_PATHS.includes(pathname)) {
-      navigate({ to: "/signin", search: { redirect: pathname } as any });
-    }
-  }, [mounted, user, pathname, navigate]);
-
-  if (!mounted || !user) {
-    return <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">Redirecting…</div>;
+  if (isHydrated && !isAuthenticated && !PUBLIC_PATHS.includes(pathname)) {
+    navigate({ to: "/signin", search: { redirect: pathname } as any });
   }
+
+  if (!isHydrated || !authUser) {
+    return <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">Loading…</div>;
+  }
+
+  // Derived display shape (adapts API user to the existing sidebar chrome).
+  const user = {
+    name: authUser.fullName,
+    role: authUser.role as UserRole,
+    jobTitle: authUser.roles.join(", "),
+    avatar: undefined as string | undefined,
+  };
 
   const perms = permissionsForRole(user.role);
   const can = (p?: PermissionKey, anyOf?: PermissionKey[]) =>
@@ -83,6 +85,7 @@ export function AppShell() {
 
   const crumbs = pathname.split("/").filter(Boolean);
   const initials = user.name.split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+  const roleBadgeClass = ROLE_BADGE[user.role] ?? "bg-muted text-foreground/70 border-border";
 
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden">
@@ -137,31 +140,12 @@ export function AppShell() {
               )}
               <div className="min-w-0 leading-tight flex-1">
                 <div className="text-sm font-medium truncate">{user.name}</div>
-                <div className="text-[11px] text-sidebar-foreground/60 truncate">{user.jobTitle ?? ""}</div>
+                <div className="text-[11px] text-sidebar-foreground/60 truncate">{authUser.email}</div>
               </div>
-              <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full border", ROLE_BADGE[user.role])}>
+              <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full border", roleBadgeClass)}>
                 {user.role}
               </span>
             </div>
-            <label className="mt-3 block">
-              <span className="text-[10px] uppercase tracking-wide text-sidebar-foreground/50">Switch role (demo)</span>
-              <select
-                value={user.role}
-                onChange={e => {
-                  const r = e.target.value as UserRole;
-                  const target = usersStore.getAll().find(u => u.role === r && u.status === "Active");
-                  if (target) {
-                    authStore.demoSetUser(target.id, authStore.get()?.remember ?? false);
-                    toast.success(`Switched to ${target.name}`, { description: `Signed in as ${r}` });
-                  }
-
-                }}
-                className="mt-1 w-full h-8 rounded-md border border-sidebar-border bg-sidebar text-sidebar-foreground text-xs px-2"
-                aria-label="Switch role"
-              >
-                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </label>
             <div className="mt-3 grid grid-cols-2 gap-1.5">
               <Link
                 to="/profile"
@@ -171,7 +155,7 @@ export function AppShell() {
               </Link>
               <button
                 type="button"
-                onClick={() => { authStore.signOut(); toast.success("Signed out"); navigate({ to: "/signin" }); }}
+                onClick={() => { signOut(); toast.success("Signed out"); navigate({ to: "/signin" }); }}
                 className="flex items-center justify-center gap-1.5 h-8 rounded-md border border-sidebar-border text-xs text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
               >
                 <LogOut className="h-3.5 w-3.5" /> Sign out
@@ -180,6 +164,7 @@ export function AppShell() {
           </div>
         </div>
       </aside>
+
 
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <header className="shrink-0 h-16 bg-background/80 backdrop-blur border-b border-border flex items-center gap-4 px-4 lg:px-8">
