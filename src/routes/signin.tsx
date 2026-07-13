@@ -5,14 +5,14 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { authStore } from "@/lib/auth-store";
+import { useAuth } from "@/contexts/AuthContext";
 import { Form, TextField, PasswordField, CheckboxField, SubmitButton } from "@/components/form";
 
 const signinSearchSchema = z.object({ redirect: z.string().optional() });
 
 const signinSchema = z.object({
-  email: z.string().trim().min(1, "Email is required").email("Enter a valid email address"),
-  password: z.string().min(1, "Password is required").min(6, "Password must be at least 6 characters"),
+  emailOrUsername: z.string().trim().min(1, "Email or username is required"),
+  password: z.string().min(1, "Password is required"),
   remember: z.boolean(),
 });
 type SignInValues = z.infer<typeof signinSchema>;
@@ -26,28 +26,25 @@ export const Route = createFileRoute("/signin")({
 function SignIn() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/signin" });
+  const { signIn } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm<SignInValues>({
     resolver: zodResolver(signinSchema),
-    defaultValues: { email: "daniel@schore.co.uk", password: "", remember: true },
-    mode: "onBlur",
+    defaultValues: { emailOrUsername: "admin@gmail.com", password: "", remember: true },
   });
 
   async function onSubmit(values: SignInValues) {
     setFormError(null);
-    await new Promise(r => setTimeout(r, 300));
-    const result = await authStore.signIn(values.email, values.password, values.remember);
+    const result = await signIn(values.emailOrUsername.trim(), values.password);
     if (!result.ok) {
-      const messages = {
-        not_found: "No account found with that email. Please contact your administrator.",
-        inactive: "This account has been deactivated. Please contact your administrator.",
-        wrong_password: "Incorrect password. Try again or use 'Forgot password?'.",
-      };
-      setFormError(messages[result.reason]);
+      setFormError(result.message);
+      toast.error(result.message);
       return;
     }
-    toast.success(`Welcome back, ${result.user.name.split(" ")[0]}`, { description: `Signed in as ${result.user.role}` });
+    toast.success(`Welcome back, ${result.user.firstName || result.user.username}`, {
+      description: result.user.role ? `Signed in as ${result.user.role}` : undefined,
+    });
     const target = search.redirect && search.redirect.startsWith("/") ? search.redirect : "/";
     navigate({ to: target });
   }
@@ -72,18 +69,6 @@ function SignIn() {
           <p className="mt-4 text-sm text-sidebar-foreground/70">
             Replace your spreadsheets with a real-time view of every operative, property and payment.
           </p>
-          <ul className="mt-8 space-y-3 text-sm">
-            {[
-              "Daily programme & work confirmation",
-              "Automated price-work payroll with CIS",
-              "KPI clock, hold management & cost vs budget",
-            ].map(t => (
-              <li key={t} className="flex items-center gap-2.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                <span className="text-sidebar-foreground/85">{t}</span>
-              </li>
-            ))}
-          </ul>
         </div>
 
         <div className="text-[11px] text-sidebar-foreground/50">
@@ -117,11 +102,10 @@ function SignIn() {
 
           <Form form={form} onSubmit={onSubmit} className="mt-6 space-y-4">
             <TextField<SignInValues>
-              name="email"
-              label="Email"
+              name="emailOrUsername"
+              label="Email or username"
               required
-              type="email"
-              autoComplete="email"
+              autoComplete="username"
               placeholder="you@schore.co.uk"
               leftIcon={Mail}
             />
@@ -130,7 +114,7 @@ function SignIn() {
               <div className="flex items-center justify-end -mb-1">
                 <Link
                   to="/forgot-password"
-                  search={{ email: form.getValues("email") } as any}
+                  search={{ email: form.getValues("emailOrUsername") } as any}
                   className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
                 >
                   Forgot password?
@@ -153,17 +137,6 @@ function SignIn() {
 
             <SubmitButton className="w-full h-10" loadingText="Signing in…">Sign in</SubmitButton>
           </Form>
-
-          <div className="mt-6 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-            <div className="font-medium text-foreground mb-1">Demo accounts</div>
-            <ul className="space-y-0.5">
-              <li><span className="font-mono">daniel@schore.co.uk</span> — CEO</li>
-              <li><span className="font-mono">marcus@schore.co.uk</span> — Contracts Manager</li>
-              <li><span className="font-mono">florin@schore.co.uk</span> — Project Manager</li>
-              <li><span className="font-mono">claudiu@schore.co.uk</span> — Site Manager</li>
-            </ul>
-            <p className="mt-2">Use any password (min. 6 characters).</p>
-          </div>
 
           <p className="mt-6 text-xs text-muted-foreground text-center">
             Need access? <Link to="/" className="text-foreground hover:underline">Contact your administrator</Link>.
