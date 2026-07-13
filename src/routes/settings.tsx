@@ -255,10 +255,11 @@ type SmtpValues = z.infer<typeof smtpSchema>;
 function SmtpTab() {
   const cfg = useSmtp();
   const canEdit = useCan("smtp.manage");
+  const canView = useCan("settings.view");
   const form = useForm<SmtpValues>({ resolver: zodResolver(smtpSchema), defaultValues: cfg });
   useEffect(() => { form.reset(cfg); }, [cfg, form]);
 
-  if (!canEdit && !useCan("settings.view")) {
+  if (!canEdit && !canView) {
     return <Navigate to="/forbidden" />;
   }
 
