@@ -1,16 +1,24 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
-import { HardHat, Lock, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { HardHat, Lock, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { usersStore } from "@/lib/users-store";
 import { authStore } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
+import { Form, PasswordField, SubmitButton } from "@/components/form";
 
 const search = z.object({ email: z.string().optional() });
+
+const schema = z.object({
+  password: z.string()
+    .min(8, "Must be at least 8 characters")
+    .regex(/[A-Z]/, "Include at least one uppercase letter")
+    .regex(/[0-9]/, "Include at least one number"),
+  confirm: z.string().min(1, "Please confirm your password"),
+}).refine(v => v.password === v.confirm, { path: ["confirm"], message: "Passwords do not match" });
+type Values = z.infer<typeof schema>;
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({ meta: [{ title: "Reset password — Schore" }] }),
@@ -24,26 +32,19 @@ function ResetPassword() {
   const email = s.email ?? "";
   const user = email ? usersStore.byEmail(email) : null;
 
-  const [pw, setPw] = useState("");
-  const [pw2, setPw2] = useState("");
-  const [show, setShow] = useState(false);
-  const [err, setErr] = useState<{ pw?: string; pw2?: string; form?: string }>({});
-  const [submitting, setSubmitting] = useState(false);
+  const form = useForm<Values>({
+    resolver: zodResolver(schema),
+    defaultValues: { password: "", confirm: "" },
+    mode: "onBlur",
+  });
+  const pw = form.watch("password");
 
-  async function onSubmit(ev: FormEvent) {
-    ev.preventDefault();
-    const e: typeof err = {};
-    if (!pw) e.pw = "Password is required";
-    else if (pw.length < 8) e.pw = "Must be at least 8 characters";
-    else if (!/[A-Z]/.test(pw) || !/[0-9]/.test(pw)) e.pw = "Include at least one uppercase letter and one number";
-    if (pw !== pw2) e.pw2 = "Passwords do not match";
-    if (!user) e.form = "We couldn't find that account. Request a new reset link.";
-    setErr(e);
-    if (Object.keys(e).length) return;
-
-    setSubmitting(true);
-    await authStore.setPassword(user!.id, pw);
-    setSubmitting(false);
+  async function onSubmit(values: Values) {
+    if (!user) {
+      form.setError("password", { message: "We couldn't find that account. Request a new reset link." });
+      return;
+    }
+    await authStore.setPassword(user.id, values.password);
     toast.success("Password updated", { description: "You can now sign in with your new password." });
     navigate({ to: "/signin" });
   }
@@ -63,38 +64,22 @@ function ResetPassword() {
           {email ? <>For <span className="font-medium text-foreground">{email}</span></> : "Enter and confirm your new password."}
         </p>
 
-        {err.form && (
-          <div className="mt-5 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-            {err.form}
-          </div>
-        )}
-
-        <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
-          {(["pw", "pw2"] as const).map(field => (
-            <div className="space-y-1.5" key={field}>
-              <Label htmlFor={field}>{field === "pw" ? "New password" : "Confirm password"}</Label>
-              <div className="relative">
-                <Lock className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id={field} type={show ? "text" : "password"} autoComplete="new-password"
-                  value={field === "pw" ? pw : pw2}
-                  onChange={e => {
-                    if (field === "pw") { setPw(e.target.value); setErr({ ...err, pw: undefined }); }
-                    else { setPw2(e.target.value); setErr({ ...err, pw2: undefined }); }
-                  }}
-                  className={cn("pl-9 pr-10", err[field] && "border-destructive focus-visible:ring-destructive")}
-                />
-                {field === "pw" && (
-                  <button type="button" onClick={() => setShow(v => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/10"
-                    aria-label={show ? "Hide passwords" : "Show passwords"}>
-                    {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                )}
-              </div>
-              {err[field] && <p className="text-xs text-destructive">{err[field]}</p>}
-            </div>
-          ))}
+        <Form form={form} onSubmit={onSubmit} className="mt-6 space-y-4">
+          <PasswordField<Values>
+            name="password"
+            label="New password"
+            required
+            autoComplete="new-password"
+            leftIcon={Lock}
+          />
+          <PasswordField<Values>
+            name="confirm"
+            label="Confirm password"
+            required
+            autoComplete="new-password"
+            leftIcon={Lock}
+            showToggle={false}
+          />
 
           <ul className="text-xs text-muted-foreground space-y-1">
             <li className={cn("flex items-center gap-1.5", pw.length >= 8 && "text-info")}>
@@ -108,10 +93,8 @@ function ResetPassword() {
             </li>
           </ul>
 
-          <Button type="submit" disabled={submitting} className="w-full h-10">
-            {submitting ? "Updating…" : "Update password"}
-          </Button>
-        </form>
+          <SubmitButton className="w-full h-10" loadingText="Updating…">Update password</SubmitButton>
+        </Form>
 
         <p className="mt-6 text-xs text-muted-foreground text-center">
           <Link to="/signin" className="text-foreground hover:underline">Back to sign in</Link>

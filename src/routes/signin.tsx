@@ -1,17 +1,21 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
-import { Eye, EyeOff, HardHat, Loader2, Mail, Lock, AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { HardHat, Mail, Lock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { authStore } from "@/lib/auth-store";
-
+import { Form, TextField, PasswordField, CheckboxField, SubmitButton } from "@/components/form";
 
 const signinSearchSchema = z.object({ redirect: z.string().optional() });
+
+const signinSchema = z.object({
+  email: z.string().trim().min(1, "Email is required").email("Enter a valid email address"),
+  password: z.string().min(1, "Password is required").min(6, "Password must be at least 6 characters"),
+  remember: z.boolean(),
+});
+type SignInValues = z.infer<typeof signinSchema>;
 
 export const Route = createFileRoute("/signin")({
   head: () => ({ meta: [{ title: "Sign in — Schore Limited" }] }),
@@ -19,59 +23,37 @@ export const Route = createFileRoute("/signin")({
   component: SignIn,
 });
 
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 function SignIn() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/signin" });
-  const [email, setEmail] = useState("daniel@schore.co.uk");
-  const [password, setPassword] = useState("");
-  const [showPw, setShowPw] = useState(false);
-  const [remember, setRemember] = useState(true);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
-  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  function validate() {
-    const e: typeof errors = {};
-    if (!email.trim()) e.email = "Email is required";
-    else if (!EMAIL_RE.test(email.trim())) e.email = "Enter a valid email address";
-    if (!password) e.password = "Password is required";
-    else if (password.length < 6) e.password = "Password must be at least 6 characters";
-    return e;
-  }
+  const form = useForm<SignInValues>({
+    resolver: zodResolver(signinSchema),
+    defaultValues: { email: "daniel@schore.co.uk", password: "", remember: true },
+    mode: "onBlur",
+  });
 
-  async function onSubmit(ev: FormEvent) {
-    ev.preventDefault();
-    const e = validate();
-    setErrors(e);
-    if (Object.keys(e).length) return;
-
-    setSubmitting(true);
-    await new Promise(r => setTimeout(r, 400));
-    const result = await authStore.signIn(email, password, remember);
-    setSubmitting(false);
-
+  async function onSubmit(values: SignInValues) {
+    setFormError(null);
+    await new Promise(r => setTimeout(r, 300));
+    const result = await authStore.signIn(values.email, values.password, values.remember);
     if (!result.ok) {
       const messages = {
         not_found: "No account found with that email. Please contact your administrator.",
         inactive: "This account has been deactivated. Please contact your administrator.",
         wrong_password: "Incorrect password. Try again or use 'Forgot password?'.",
       };
-      setErrors({ form: messages[result.reason] });
+      setFormError(messages[result.reason]);
       return;
     }
-
     toast.success(`Welcome back, ${result.user.name.split(" ")[0]}`, { description: `Signed in as ${result.user.role}` });
     const target = search.redirect && search.redirect.startsWith("/") ? search.redirect : "/";
     navigate({ to: target });
   }
 
-
-
   return (
     <div className="min-h-screen w-full grid lg:grid-cols-2 bg-background">
-      {/* Left – brand panel */}
       <div className="hidden lg:flex relative bg-sidebar text-sidebar-foreground flex-col justify-between p-10 overflow-hidden">
         <div className="flex items-center gap-2.5">
           <div className="grid h-10 w-10 place-items-center rounded-md bg-accent text-accent-foreground">
@@ -112,7 +94,6 @@ function SignIn() {
         <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-24 h-96 w-96 rounded-full bg-info/15 blur-3xl" />
       </div>
 
-      {/* Right – form */}
       <div className="flex items-center justify-center p-6 sm:p-10">
         <div className="w-full max-w-sm">
           <div className="lg:hidden mb-8 flex items-center gap-2.5">
@@ -127,87 +108,51 @@ function SignIn() {
             Enter your credentials to access the dashboard.
           </p>
 
-          {errors.form && (
+          {formError && (
             <div role="alert" className="mt-5 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-              <span>{errors.form}</span>
+              <span>{formError}</span>
             </div>
           )}
 
-          <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email">
-                Email <span className="text-destructive">*</span>
-              </Label>
-              <div className="relative">
-                <Mail className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@schore.co.uk"
-                  value={email}
-                  onChange={e => { setEmail(e.target.value); if (errors.email) setErrors({ ...errors, email: undefined }); }}
-                  aria-invalid={!!errors.email}
-                  className={cn("pl-9", errors.email && "border-destructive focus-visible:ring-destructive")}
-                />
-              </div>
-              {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
-            </div>
+          <Form form={form} onSubmit={onSubmit} className="mt-6 space-y-4">
+            <TextField<SignInValues>
+              name="email"
+              label="Email"
+              required
+              type="email"
+              autoComplete="email"
+              placeholder="you@schore.co.uk"
+              leftIcon={Mail}
+            />
 
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">
-                  Password <span className="text-destructive">*</span>
-                </Label>
+              <div className="flex items-center justify-end -mb-1">
                 <Link
                   to="/forgot-password"
-                  search={{ email } as any}
+                  search={{ email: form.getValues("email") } as any}
                   className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
                 >
                   Forgot password?
                 </Link>
-
               </div>
-              <div className="relative">
-                <Lock className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type={showPw ? "text" : "password"}
-                  autoComplete="current-password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={e => { setPassword(e.target.value); if (errors.password) setErrors({ ...errors, password: undefined }); }}
-                  aria-invalid={!!errors.password}
-                  className={cn("pl-9 pr-10", errors.password && "border-destructive focus-visible:ring-destructive")}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPw(s => !s)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/10"
-                  aria-label={showPw ? "Hide password" : "Show password"}
-                  aria-pressed={showPw}
-                  tabIndex={-1}
-                >
-                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
+              <PasswordField<SignInValues>
+                name="password"
+                label="Password"
+                required
+                autoComplete="current-password"
+                placeholder="Enter your password"
+                leftIcon={Lock}
+              />
             </div>
 
-            <label className="flex items-center gap-2 select-none cursor-pointer">
-              <Checkbox
-                checked={remember}
-                onCheckedChange={v => setRemember(v === true)}
-                id="remember"
-              />
-              <span className="text-sm text-foreground/80">Remember me for 30 days</span>
-            </label>
+            <CheckboxField<SignInValues>
+              name="remember"
+              label="Remember me for 30 days"
+            />
 
-            <Button type="submit" disabled={submitting} className="w-full h-10">
-              {submitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Signing in…</>) : "Sign in"}
-            </Button>
-          </form>
+            <SubmitButton className="w-full h-10" loadingText="Signing in…">Sign in</SubmitButton>
+          </Form>
 
           <div className="mt-6 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
             <div className="font-medium text-foreground mb-1">Demo accounts</div>
@@ -216,7 +161,6 @@ function SignIn() {
               <li><span className="font-mono">marcus@schore.co.uk</span> — Contracts Manager</li>
               <li><span className="font-mono">florin@schore.co.uk</span> — Project Manager</li>
               <li><span className="font-mono">claudiu@schore.co.uk</span> — Site Manager</li>
-
             </ul>
             <p className="mt-2">Use any password (min. 6 characters).</p>
           </div>
