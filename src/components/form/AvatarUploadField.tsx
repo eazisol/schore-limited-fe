@@ -2,7 +2,7 @@ import { useRef, type ReactNode } from "react";
 import { useFormContext, type FieldValues, type Path } from "react-hook-form";
 import { Camera, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel, FormDescription } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 
 export interface AvatarUploadFieldProps<T extends FieldValues> {
@@ -87,7 +87,6 @@ export function AvatarUploadField<T extends FieldValues>({
               />
             </div>
             {description && <FormDescription>{description}</FormDescription>}
-            <FormMessage />
           </FormItem>
         );
       }}

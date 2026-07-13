@@ -1,6 +1,6 @@
 import { useFormContext, type FieldValues, type Path } from "react-hook-form";
 import type { ComponentType, InputHTMLAttributes, ReactNode } from "react";
-import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -61,7 +61,6 @@ export function TextField<T extends FieldValues>({
             )}
           </div>
           {description && <FormDescription>{description}</FormDescription>}
-          <FormMessage />
         </FormItem>
       )}
     />

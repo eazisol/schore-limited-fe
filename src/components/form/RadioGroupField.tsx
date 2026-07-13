@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useFormContext, type FieldValues, type Path } from "react-hook-form";
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 
@@ -71,7 +71,6 @@ export function RadioGroupField<T extends FieldValues>({
               })}
             </RadioGroup>
           </FormControl>
-          <FormMessage />
         </FormItem>
       )}
     />
