@@ -12,9 +12,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PERMISSIONS, groupPermissions, type PermissionKey } from "@/lib/permissions";
 import { rolesStore, useRoles, type RoleKey } from "@/lib/roles-store";
-import { smtpStore, useSmtp } from "@/lib/smtp-store";
+
 import { brandingStore, useBranding } from "@/lib/branding-store";
 import { ROLE_LABEL, ROLE_BADGE, ROLES } from "@/lib/users-store";
+import { settingsService, EMAIL_SETTING_KEY, type EmailSettingValue } from "@/lib/api/services/settings";
 import {
   Form, TextField, SelectField, SwitchField, PasswordField, AvatarUploadField, SubmitButton,
 } from "@/components/form";
@@ -40,7 +41,7 @@ function SettingsPage() {
     <div>
       <PageHeader title="Settings" subtitle="Manage branding, roles, permissions and platform configuration." />
 
-      <div className="border-b border-border mb-6 flex gap-1 overflow-x-auto">
+      <div className="border-b border-border mb-6 flex gap-1 overflow-x-auto overflow-y-hidden">
         {TABS.map(t => (
           <button
             key={t.key}
@@ -247,17 +248,55 @@ const smtpSchema = z.object({
   password: z.string().or(z.literal("")),
   fromName: z.string().trim().min(1, "From name is required"),
   fromEmail: z.string().trim().email("Enter a valid email address"),
-  encryption: z.enum(["none", "ssl", "tls"]),
+  enableSsl: z.boolean(),
   enabled: z.boolean(),
 });
 type SmtpValues = z.infer<typeof smtpSchema>;
 
+const SMTP_DEFAULTS: SmtpValues = {
+  host: "", port: 587, username: "", password: "",
+  fromName: "", fromEmail: "", enableSsl: true, enabled: true,
+};
+
 function SmtpTab() {
-  const cfg = useSmtp();
   const canEdit = useCan("smtp.manage");
   const canView = useCan("settings.view");
-  const form = useForm<SmtpValues>({ resolver: zodResolver(smtpSchema), defaultValues: cfg });
-  useEffect(() => { form.reset(cfg); }, [cfg, form]);
+  const [settingId, setSettingId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const form = useForm<SmtpValues>({ resolver: zodResolver(smtpSchema), defaultValues: SMTP_DEFAULTS });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await settingsService.list();
+        if (cancelled) return;
+        const list = Array.isArray(res?.data) ? res.data : [];
+        const email = list.find(s => s.settingKey === EMAIL_SETTING_KEY);
+        if (email) {
+          setSettingId(email.id);
+          let parsed: Partial<EmailSettingValue> = {};
+          try { parsed = JSON.parse(email.settingValue || "{}"); } catch { parsed = {}; }
+          form.reset({
+            host: parsed.Host ?? "",
+            port: Number(parsed.Port ?? 587),
+            username: parsed.Username ?? "",
+            password: parsed.Password ?? "",
+            fromName: parsed.FromName ?? "",
+            fromEmail: parsed.FromEmail ?? "",
+            enableSsl: Boolean(parsed.EnableSsl ?? true),
+            enabled: Boolean(email.isActive),
+          });
+        }
+      } catch {
+        /* interceptor toasts */
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!canEdit && !canView) {
     return <Navigate to="/forbidden" />;
@@ -265,8 +304,45 @@ function SmtpTab() {
 
   async function save(values: SmtpValues) {
     if (!canEdit) return;
-    smtpStore.update(values);
-    toast.success("SMTP configuration saved");
+    const settingValue = JSON.stringify({
+      Host: values.host,
+      Port: Number(values.port),
+      Username: values.username,
+      Password: values.password,
+      FromEmail: values.fromEmail,
+      FromName: values.fromName,
+      EnableSsl: values.enableSsl,
+    });
+    try {
+      if (settingId != null) {
+        await settingsService.update(settingId, { settingValue, isActive: values.enabled });
+        toast.success("SMTP configuration updated");
+      } else {
+        const res = await settingsService.create({
+          settingKey: EMAIL_SETTING_KEY,
+          settingValue,
+          isActive: values.enabled,
+        });
+        if (res?.data?.id) setSettingId(res.data.id);
+        toast.success("SMTP configuration saved");
+      }
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message || "Failed to save SMTP configuration";
+      toast.error(msg);
+    }
+  }
+
+  async function handleDelete() {
+    if (!canEdit || settingId == null) return;
+    try {
+      await settingsService.remove(settingId);
+      setSettingId(null);
+      form.reset(SMTP_DEFAULTS);
+      toast.success("SMTP configuration deleted");
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message || "Failed to delete SMTP configuration";
+      toast.error(msg);
+    }
   }
 
   function testConnection() {
@@ -292,38 +368,37 @@ function SmtpTab() {
         name="enabled"
         label="SMTP enabled"
         description="Turn on to route outgoing emails through this server."
-        disabled={!canEdit}
+        disabled={!canEdit || loading}
       />
 
       <div className="grid sm:grid-cols-2 gap-4">
-        <TextField<SmtpValues> name="host" label="Host" required placeholder="smtp.office365.com" disabled={!canEdit} />
-        <TextField<SmtpValues> name="port" label="Port" required type="number" disabled={!canEdit} />
-        <TextField<SmtpValues> name="username" label="Username" placeholder="apikey or user@domain" autoComplete="off" disabled={!canEdit} />
-        <PasswordField<SmtpValues> name="password" label="Password" autoComplete="new-password" disabled={!canEdit} />
-        <TextField<SmtpValues> name="fromName" label="From name" required disabled={!canEdit} />
-        <TextField<SmtpValues> name="fromEmail" label="From email" required type="email" disabled={!canEdit} />
-        <SelectField<SmtpValues>
-          name="encryption"
-          label="Encryption"
-          required
-          options={[
-            { value: "none", label: "None" },
-            { value: "ssl",  label: "SSL" },
-            { value: "tls",  label: "TLS / STARTTLS" },
-          ]}
-          disabled={!canEdit}
+        <TextField<SmtpValues> name="host" label="Host" required placeholder="smtp.office365.com" disabled={!canEdit || loading} />
+        <TextField<SmtpValues> name="port" label="Port" required type="number" disabled={!canEdit || loading} />
+        <TextField<SmtpValues> name="username" label="Username" placeholder="apikey or user@domain" autoComplete="off" disabled={!canEdit || loading} />
+        <PasswordField<SmtpValues> name="password" label="Password" autoComplete="new-password" disabled={!canEdit || loading} />
+        <TextField<SmtpValues> name="fromName" label="From name" required disabled={!canEdit || loading} />
+        <TextField<SmtpValues> name="fromEmail" label="From email" required type="email" disabled={!canEdit || loading} />
+        <SwitchField<SmtpValues>
+          name="enableSsl"
+          label="Enable SSL"
+          description="Use SSL/TLS when connecting to the SMTP server."
+          disabled={!canEdit || loading}
         />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t">
-        <p className="text-[11px] text-muted-foreground">
-          Credentials are stored locally in this browser only.
-        </p>
         <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={testConnection} disabled={!canEdit}>
+          {settingId != null && (
+            <Button type="button" variant="outline" onClick={handleDelete} disabled={!canEdit || loading}>
+              <RotateCcw className="h-4 w-4" /> Delete
+            </Button>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" onClick={testConnection} disabled={!canEdit || loading}>
             <Send className="h-4 w-4" /> Send test email
           </Button>
-          <SubmitButton disabled={!canEdit} loadingText="Saving…">
+          <SubmitButton disabled={!canEdit || loading} loadingText="Saving…">
             <Save className="h-4 w-4" /> Save configuration
           </SubmitButton>
         </div>
@@ -337,3 +412,4 @@ function SmtpTab() {
     </Form>
   );
 }
+
