@@ -83,7 +83,7 @@ function RootComponent() {
       <ApiProvider>
         <AuthProvider>
           {isAuthRoute ? <Outlet /> : <AppShell />}
-          <Toaster position="top-right" />
+          <Toaster position="bottom-right" />
         </AuthProvider>
       </ApiProvider>
     </QueryClientProvider>
