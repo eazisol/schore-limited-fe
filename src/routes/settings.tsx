@@ -40,7 +40,7 @@ function SettingsPage() {
     <div>
       <PageHeader title="Settings" subtitle="Manage branding, roles, permissions and platform configuration." />
 
-      <div className="border-b border-border mb-6 flex gap-1 overflow-x-auto">
+      <div className="border-b border-border mb-6 flex gap-1 overflow-x-auto overflow-y-hidden">
         {TABS.map(t => (
           <button
             key={t.key}
