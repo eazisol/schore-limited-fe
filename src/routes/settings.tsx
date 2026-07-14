@@ -1,12 +1,11 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/AppShell";
-import { Can, useCan } from "@/components/Can";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { ShieldCheck, Mail, RotateCcw, Save, Send, Lock, Palette } from "lucide-react";
+import { ShieldCheck, Mail, RotateCcw, Save, Send, Palette } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,7 +17,7 @@ import { ROLE_LABEL, ROLE_BADGE, ROLES } from "@/lib/users-store";
 import { settingsService } from "@/lib/api/services/settings";
 import type { ApiError } from "@/lib/api/axios";
 import {
-  Form, TextField, SelectField, SwitchField, PasswordField, AvatarUploadField, SubmitButton,
+  Form, TextField, SwitchField, PasswordField, AvatarUploadField, SubmitButton,
 } from "@/components/form";
 
 export const Route = createFileRoute("/settings")({
@@ -33,10 +32,7 @@ const TABS = [
 ] as const;
 
 function SettingsPage() {
-  const canView = useCan("settings.view");
   const [tab, setTab] = useState<typeof TABS[number]["key"]>("general");
-
-  if (!canView) return <Navigate to="/forbidden" />;
 
   return (
     <div>
@@ -77,7 +73,7 @@ type BrandingValues = z.infer<typeof brandingSchema>;
 
 function GeneralTab() {
   const cfg = useBranding();
-  const canEdit = useCan("settings.view");
+  const canEdit = true;
   const form = useForm<BrandingValues>({ resolver: zodResolver(brandingSchema), defaultValues: cfg });
   useEffect(() => { form.reset(cfg); }, [cfg, form]);
 
@@ -125,11 +121,10 @@ function GeneralTab() {
 
 function RolesTab() {
   const roles = useRoles();
-  const canEdit = useCan("permissions.manage");
+  const canEdit = true;
   const groups = groupPermissions();
 
   function toggle(roleKey: RoleKey, perm: PermissionKey) {
-    if (!canEdit) return;
     rolesStore.togglePermission(roleKey, perm);
   }
 
@@ -143,14 +138,12 @@ function RolesTab() {
               Permissions drive menus, pages and actions across the platform. Changes apply immediately.
             </p>
           </div>
-          <Can permission="permissions.manage">
-            <Button variant="outline" size="sm" onClick={() => {
-              rolesStore.resetToDefaults();
-              toast.success("Permissions reset to defaults");
-            }}>
-              <RotateCcw className="h-4 w-4" /> Reset to defaults
-            </Button>
-          </Can>
+          <Button variant="outline" size="sm" onClick={() => {
+            rolesStore.resetToDefaults();
+            toast.success("Permissions reset to defaults");
+          }}>
+            <RotateCcw className="h-4 w-4" /> Reset to defaults
+          </Button>
         </div>
       </div>
 
@@ -190,11 +183,6 @@ function RolesTab() {
         </table>
       </div>
 
-      {!canEdit && (
-        <div className="rounded-md border border-border bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground flex items-center gap-2">
-          <Lock className="h-3.5 w-3.5" /> You can view this matrix but not edit it. Required permission: <code className="font-mono">permissions.manage</code>.
-        </div>
-      )}
     </div>
   );
 }
@@ -260,8 +248,7 @@ const SMTP_DEFAULTS: SmtpValues = {
 };
 
 function SmtpTab() {
-  const canEdit = useCan("smtp.manage");
-  const canView = useCan("settings.view");
+  const canEdit = true;
   const [loading, setLoading] = useState(true);
   const [hasExisting, setHasExisting] = useState(false);
   const form = useForm<SmtpValues>({ resolver: zodResolver(smtpSchema), defaultValues: SMTP_DEFAULTS });
@@ -296,9 +283,6 @@ function SmtpTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!canEdit && !canView) {
-    return <Navigate to="/forbidden" />;
-  }
 
   async function save(values: SmtpValues) {
     if (!canEdit) return;
@@ -378,11 +362,6 @@ function SmtpTab() {
         </div>
       </div>
 
-      {!canEdit && (
-        <div className="rounded-md border border-border bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground flex items-center gap-2">
-          <Lock className="h-3.5 w-3.5" /> View-only. Required permission: <code className="font-mono">smtp.manage</code>.
-        </div>
-      )}
     </Form>
   );
 }
