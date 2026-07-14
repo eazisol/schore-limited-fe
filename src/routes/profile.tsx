@@ -68,9 +68,18 @@ function ProfilePage() {
   }
 
   async function onChangePassword(values: PasswordValues) {
-    await authStore.setPassword(user!.id, values.password);
-    pwForm.reset({ password: "", confirm: "" });
-    toast.success("Password changed");
+    try {
+      const res = await authService.changePassword({
+        currentPassword: values.currentPassword,
+        newPassword: values.password,
+        confirmPassword: values.confirm,
+      });
+      pwForm.reset({ currentPassword: "", password: "", confirm: "" });
+      toast.success(res.message || "Password changed");
+    } catch (err) {
+      const e = err as ApiError;
+      toast.error(e?.message || "Failed to change password");
+    }
   }
 
   return (
