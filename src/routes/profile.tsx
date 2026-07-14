@@ -122,6 +122,8 @@ function ProfilePage() {
           <h2 className="font-display font-semibold">Change password</h2>
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
+          <PasswordField<PasswordValues> name="currentPassword" label="Current password" required autoComplete="current-password" />
+          <div className="hidden sm:block" />
           <PasswordField<PasswordValues> name="password" label="New password" required autoComplete="new-password" />
           <PasswordField<PasswordValues> name="confirm" label="Confirm" required autoComplete="new-password" showToggle={false} />
         </div>
