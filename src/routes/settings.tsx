@@ -262,31 +262,28 @@ const SMTP_DEFAULTS: SmtpValues = {
 function SmtpTab() {
   const canEdit = useCan("smtp.manage");
   const canView = useCan("settings.view");
-  const [settingId, setSettingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasExisting, setHasExisting] = useState(false);
   const form = useForm<SmtpValues>({ resolver: zodResolver(smtpSchema), defaultValues: SMTP_DEFAULTS });
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await settingsService.list();
+        const res = await settingsService.getEmail();
         if (cancelled) return;
-        const list = Array.isArray(res?.data) ? res.data : [];
-        const email = list.find(s => s.settingKey === EMAIL_SETTING_KEY);
-        if (email) {
-          setSettingId(email.id);
-          let parsed: Partial<EmailSettingValue> = {};
-          try { parsed = JSON.parse(email.settingValue || "{}"); } catch { parsed = {}; }
+        const d = res?.data;
+        if (d) {
+          setHasExisting(true);
           form.reset({
-            host: parsed.Host ?? "",
-            port: Number(parsed.Port ?? 587),
-            username: parsed.Username ?? "",
-            password: parsed.Password ?? "",
-            fromName: parsed.FromName ?? "",
-            fromEmail: parsed.FromEmail ?? "",
-            enableSsl: Boolean(parsed.EnableSsl ?? true),
-            enabled: Boolean(email.isActive),
+            host: d.host ?? "",
+            port: Number(d.port ?? 587),
+            username: d.username ?? "",
+            password: d.password ?? "",
+            fromName: d.fromName ?? "",
+            fromEmail: d.fromEmail ?? "",
+            enableSsl: Boolean(d.enableSsl ?? true),
+            enabled: Boolean(d.isActive ?? true),
           });
         }
       } catch {
@@ -305,44 +302,22 @@ function SmtpTab() {
 
   async function save(values: SmtpValues) {
     if (!canEdit) return;
-    const settingValue = JSON.stringify({
-      Host: values.host,
-      Port: Number(values.port),
-      Username: values.username,
-      Password: values.password,
-      FromEmail: values.fromEmail,
-      FromName: values.fromName,
-      EnableSsl: values.enableSsl,
-    });
     try {
-      if (settingId != null) {
-        await settingsService.update(settingId, { settingValue, isActive: values.enabled });
-        toast.success("SMTP configuration updated");
-      } else {
-        const res = await settingsService.create({
-          settingKey: EMAIL_SETTING_KEY,
-          settingValue,
-          isActive: values.enabled,
-        });
-        if (res?.data?.id) setSettingId(res.data.id);
-        toast.success("SMTP configuration saved");
-      }
-    } catch (err: unknown) {
-      const msg = (err as { message?: string })?.message || "Failed to save SMTP configuration";
-      toast.error(msg);
-    }
-  }
-
-  async function handleDelete() {
-    if (!canEdit || settingId == null) return;
-    try {
-      await settingsService.remove(settingId);
-      setSettingId(null);
-      form.reset(SMTP_DEFAULTS);
-      toast.success("SMTP configuration deleted");
-    } catch (err: unknown) {
-      const msg = (err as { message?: string })?.message || "Failed to delete SMTP configuration";
-      toast.error(msg);
+      await settingsService.updateEmail({
+        host: values.host,
+        port: Number(values.port),
+        username: values.username,
+        password: values.password,
+        fromEmail: values.fromEmail,
+        fromName: values.fromName,
+        enableSsl: values.enableSsl,
+        isActive: values.enabled,
+      });
+      setHasExisting(true);
+      toast.success("SMTP configuration saved");
+    } catch (err) {
+      const e = err as ApiError;
+      toast.error(e?.message || "Failed to save SMTP configuration");
     }
   }
 
@@ -353,6 +328,7 @@ function SmtpTab() {
       description: `(Demo) Would attempt connection to ${v.host}:${v.port} as ${v.username || v.fromEmail}`,
     });
   }
+
 
   return (
     <Form form={form} onSubmit={save} className="card-elevated p-6 max-w-3xl space-y-6">
