@@ -36,8 +36,18 @@ function NewUser() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const rolesQuery = useQuery({ queryKey: ["roles"], queryFn: async () => (await lookupsService.roles()).data });
-  const typesQuery = useQuery({ queryKey: ["userTypes"], queryFn: async () => (await lookupsService.userTypes()).data });
+  const rolesQuery = useQuery({
+    queryKey: ["roles"],
+    queryFn: async () => (await lookupsService.roles()).data,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+  const typesQuery = useQuery({
+    queryKey: ["userTypes"],
+    queryFn: async () => (await lookupsService.userTypes()).data,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
