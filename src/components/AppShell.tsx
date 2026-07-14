@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Building2, CalendarDays, Receipt,
   Tags, Briefcase, Activity, Settings, Search, Bell, HardHat, ChevronRight, ShieldCheck,
   Hammer, ClipboardCheck, OctagonPause, Banknote, FileCheck2, PoundSterling,
-  UserCog, FileBarChart2, BookMarked, ListChecks, LogOut, UserCircle,
+  UserCog, FileBarChart2, BookMarked, ListChecks, LogOut, UserCircle, SlidersHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
