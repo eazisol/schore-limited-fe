@@ -46,6 +46,7 @@ import { Route as UsersNewRouteImport } from './routes/users.new'
 import { Route as UsersIdRouteImport } from './routes/users.$id'
 import { Route as TradeBuilderTasksRouteImport } from './routes/trade-builder.tasks'
 import { Route as TradeBuilderGroupsRouteImport } from './routes/trade-builder.groups'
+import { Route as SystemConfigRolesRouteImport } from './routes/system-config.roles'
 import { Route as PropertiesIdRouteImport } from './routes/properties.$id'
 import { Route as OperativesNewRouteImport } from './routes/operatives.new'
 import { Route as OperativesIdRouteImport } from './routes/operatives.$id'
@@ -235,6 +236,11 @@ const TradeBuilderGroupsRoute = TradeBuilderGroupsRouteImport.update({
   path: '/groups',
   getParentRoute: () => TradeBuilderRoute,
 } as any)
+const SystemConfigRolesRoute = SystemConfigRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => SystemConfigRoute,
+} as any)
 const PropertiesIdRoute = PropertiesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -281,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/system-config/roles': typeof SystemConfigRolesRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
   '/trade-builder/tasks': typeof TradeBuilderTasksRoute
   '/users/$id': typeof UsersIdRoute
@@ -317,6 +324,7 @@ export interface FileRoutesByTo {
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/system-config/roles': typeof SystemConfigRolesRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
   '/trade-builder/tasks': typeof TradeBuilderTasksRoute
   '/users/$id': typeof UsersIdRoute
@@ -360,6 +368,7 @@ export interface FileRoutesById {
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/system-config/roles': typeof SystemConfigRolesRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
   '/trade-builder/tasks': typeof TradeBuilderTasksRoute
   '/users/$id': typeof UsersIdRoute
@@ -404,6 +413,7 @@ export interface FileRouteTypes {
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/system-config/roles'
     | '/trade-builder/groups'
     | '/trade-builder/tasks'
     | '/users/$id'
@@ -440,6 +450,7 @@ export interface FileRouteTypes {
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/system-config/roles'
     | '/trade-builder/groups'
     | '/trade-builder/tasks'
     | '/users/$id'
@@ -482,6 +493,7 @@ export interface FileRouteTypes {
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/system-config/roles'
     | '/trade-builder/groups'
     | '/trade-builder/tasks'
     | '/users/$id'
@@ -785,6 +797,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TradeBuilderGroupsRouteImport
       parentRoute: typeof TradeBuilderRoute
     }
+    '/system-config/roles': {
+      id: '/system-config/roles'
+      path: '/roles'
+      fullPath: '/system-config/roles'
+      preLoaderRoute: typeof SystemConfigRolesRouteImport
+      parentRoute: typeof SystemConfigRoute
+    }
     '/properties/$id': {
       id: '/properties/$id'
       path: '/$id'
@@ -840,10 +859,12 @@ const PropertiesRouteWithChildren = PropertiesRoute._addFileChildren(
 )
 
 interface SystemConfigRouteChildren {
+  SystemConfigRolesRoute: typeof SystemConfigRolesRoute
   SystemConfigIndexRoute: typeof SystemConfigIndexRoute
 }
 
 const SystemConfigRouteChildren: SystemConfigRouteChildren = {
+  SystemConfigRolesRoute: SystemConfigRolesRoute,
   SystemConfigIndexRoute: SystemConfigIndexRoute,
 }
 
