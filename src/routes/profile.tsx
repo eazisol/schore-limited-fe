@@ -93,6 +93,8 @@ function ProfilePage() {
   if (!authUser) return null;
 
   const jobTitle = apiUser?.userTypeName ?? "";
+  const roleLabel = (apiUser?.roleNames ?? []).filter(Boolean).join(", ");
+
   
 
   async function onSaveProfile(values: ProfileValues) {
