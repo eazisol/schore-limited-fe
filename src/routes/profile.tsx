@@ -9,6 +9,8 @@ import { authStore, useAuthSession } from "@/lib/auth-store";
 import { usersStore, ROLE_LABEL, ROLE_BADGE } from "@/lib/users-store";
 import { cn } from "@/lib/utils";
 import { Form, TextField, PasswordField, AvatarUploadField, SubmitButton } from "@/components/form";
+import { authService } from "@/lib/api/services/auth";
+import type { ApiError } from "@/lib/api/axios";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "My profile — Schore" }] }),
