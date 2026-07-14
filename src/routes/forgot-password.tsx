@@ -63,9 +63,6 @@ function ForgotPassword() {
               If an account exists for <span className="font-medium text-foreground">{sentEmail}</span>,
               we've sent a link to reset your password.
             </p>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Demo: redirecting you to the reset screen…
-            </p>
             <Link to="/signin" className="mt-6 inline-flex items-center gap-1.5 text-sm text-foreground hover:underline">
               <ArrowLeft className="h-3.5 w-3.5" /> Back to sign in
             </Link>
