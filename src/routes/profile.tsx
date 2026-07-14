@@ -24,6 +24,7 @@ const profileSchema = z.object({
 type ProfileValues = z.infer<typeof profileSchema>;
 
 const passwordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
   password: z.string()
     .min(8, "Must be at least 8 characters")
     .regex(/[A-Z]/, "Include one uppercase letter")
