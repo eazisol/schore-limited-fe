@@ -15,7 +15,8 @@ import { rolesStore, useRoles, type RoleKey } from "@/lib/roles-store";
 
 import { brandingStore, useBranding } from "@/lib/branding-store";
 import { ROLE_LABEL, ROLE_BADGE, ROLES } from "@/lib/users-store";
-import { settingsService, EMAIL_SETTING_KEY, type EmailSettingValue } from "@/lib/api/services/settings";
+import { settingsService } from "@/lib/api/services/settings";
+import type { ApiError } from "@/lib/api/axios";
 import {
   Form, TextField, SelectField, SwitchField, PasswordField, AvatarUploadField, SubmitButton,
 } from "@/components/form";
