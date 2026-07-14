@@ -95,7 +95,10 @@ function NewUser() {
             <TextField<Values> name="username" label="Username" required autoComplete="username" />
             <TextField<Values> name="email" label="Email" required type="email" placeholder="name@schore.co.uk" />
           </div>
-          <PasswordField<Values> name="password" label="Password" required autoComplete="new-password" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <PasswordField<Values> name="password" label="Password" required autoComplete="new-password" />
+            <div className="hidden md:block" />
+          </div>
         </Section>
 
         <Section title="Access" hint="Roles control what this user can see and edit.">
