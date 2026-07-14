@@ -249,8 +249,7 @@ const SMTP_DEFAULTS: SmtpValues = {
 };
 
 function SmtpTab() {
-  const canEdit = useCan("smtp.manage");
-  const canView = useCan("settings.view");
+  const canEdit = true;
   const [loading, setLoading] = useState(true);
   const [hasExisting, setHasExisting] = useState(false);
   const form = useForm<SmtpValues>({ resolver: zodResolver(smtpSchema), defaultValues: SMTP_DEFAULTS });
@@ -285,9 +284,6 @@ function SmtpTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!canEdit && !canView) {
-    return <Navigate to="/forbidden" />;
-  }
 
   async function save(values: SmtpValues) {
     if (!canEdit) return;
