@@ -202,28 +202,45 @@ function UsersList() {
         )}
 
         {rows.length > 0 && (
-          <div className="p-4 flex items-center justify-between border-t text-xs text-muted-foreground">
-            <div>Page {page} of {Math.max(totalPages, 1)}</div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1 || isFetching}
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-              >
-                <ChevronLeft className="h-4 w-4" /> Prev
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages || isFetching}
-                onClick={() => setPage(p => p + 1)}
-              >
-                Next <ChevronRight className="h-4 w-4" />
-              </Button>
+          <div className="p-4 border-t flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-muted-foreground">
+              <span>Showing <span className="font-medium text-foreground">{rangeLabel}</span></span>
+              <span>Page <span className="font-medium text-foreground">{page}</span> of <span className="font-medium text-foreground">{Math.max(totalPages, 1)}</span></span>
+              <span>Page size <span className="font-medium text-foreground">{pageSize}</span></span>
+              <span>Total <span className="font-medium text-foreground">{totalCount}</span></span>
+            </div>
+            <div className="flex items-center gap-1">
+              <PageBtn aria-label="First page" disabled={page <= 1 || isFetching} onClick={() => setPage(1)}>
+                <ChevronsLeft className="h-4 w-4" />
+              </PageBtn>
+              <PageBtn aria-label="Previous page" disabled={page <= 1 || isFetching} onClick={() => setPage(p => Math.max(1, p - 1))}>
+                <ChevronLeft className="h-4 w-4" />
+              </PageBtn>
+              {pageNumbers.map((n, i) =>
+                n === "…" ? (
+                  <span key={`gap-${i}`} className="px-2 text-xs text-muted-foreground">…</span>
+                ) : (
+                  <PageBtn
+                    key={n}
+                    active={n === page}
+                    disabled={isFetching}
+                    onClick={() => setPage(n)}
+                    aria-current={n === page ? "page" : undefined}
+                  >
+                    {n}
+                  </PageBtn>
+                ),
+              )}
+              <PageBtn aria-label="Next page" disabled={page >= totalPages || isFetching} onClick={() => setPage(p => p + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </PageBtn>
+              <PageBtn aria-label="Last page" disabled={page >= totalPages || isFetching} onClick={() => setPage(Math.max(totalPages, 1))}>
+                <ChevronsRight className="h-4 w-4" />
+              </PageBtn>
             </div>
           </div>
         )}
+
       </div>
 
       {confirmDel && (
