@@ -31,7 +31,9 @@ const passwordSchema = z.object({
   password: z.string()
     .min(8, "Must be at least 8 characters")
     .regex(/[A-Z]/, "Include one uppercase letter")
-    .regex(/[0-9]/, "Include one number"),
+    .regex(/[a-z]/, "Include one lowercase letter")
+    .regex(/[0-9]/, "Include one number")
+    .regex(/[^A-Za-z0-9]/, "Include one special character"),
   confirm: z.string(),
 }).refine(v => v.password === v.confirm, { path: ["confirm"], message: "Passwords do not match" });
 type PasswordValues = z.infer<typeof passwordSchema>;
