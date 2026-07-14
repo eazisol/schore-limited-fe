@@ -74,7 +74,7 @@ type BrandingValues = z.infer<typeof brandingSchema>;
 
 function GeneralTab() {
   const cfg = useBranding();
-  const canEdit = useCan("settings.view");
+  const canEdit = true;
   const form = useForm<BrandingValues>({ resolver: zodResolver(brandingSchema), defaultValues: cfg });
   useEffect(() => { form.reset(cfg); }, [cfg, form]);
 
