@@ -37,7 +37,29 @@ export interface LoginPayload {
   password: string;
 }
 
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  token: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 export const authService = {
   login: (payload: LoginPayload) =>
     http.post<ApiEnvelope<ApiLoginData>>("Auth/login", payload),
+  forgotPassword: (payload: ForgotPasswordPayload) =>
+    http.post<ApiEnvelope<null>>("Auth/forgot-password", payload),
+  resetPassword: (payload: ResetPasswordPayload) =>
+    http.post<ApiEnvelope<null>>("Auth/reset-password", payload),
+  changePassword: (payload: ChangePasswordPayload) =>
+    http.post<ApiEnvelope<null>>("Auth/change-password", payload),
 };
