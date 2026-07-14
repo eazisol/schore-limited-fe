@@ -363,11 +363,6 @@ function SmtpTab() {
         </div>
       </div>
 
-      {!canEdit && (
-        <div className="rounded-md border border-border bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground flex items-center gap-2">
-          <Lock className="h-3.5 w-3.5" /> View-only. Required permission: <code className="font-mono">smtp.manage</code>.
-        </div>
-      )}
     </Form>
   );
 }
