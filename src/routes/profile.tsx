@@ -51,7 +51,7 @@ function ProfilePage() {
 
   const pwForm = useForm<PasswordValues>({
     resolver: zodResolver(passwordSchema),
-    defaultValues: { password: "", confirm: "" },
+    defaultValues: { currentPassword: "", password: "", confirm: "" },
   });
 
   if (!user) return null;
