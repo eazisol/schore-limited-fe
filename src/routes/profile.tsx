@@ -166,6 +166,11 @@ function ProfilePage() {
             <p className="text-xs text-muted-foreground">Job title is managed by an administrator.</p>
           </div>
           <TextField<ProfileValues> name="phone" label="Phone" placeholder="07700 900000" />
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Role</label>
+            <input value={roleLabel} disabled className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">Assigned by an administrator.</p>
+          </div>
         </div>
 
         <div className="flex justify-end">
