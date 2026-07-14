@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, MoreHorizontal, Trash2, Mail, Loader2, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Trash2, Mail, Loader2, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { toast } from "sonner";
 import { usersService, type ApiUser } from "@/lib/api/services/users";
 import type { ApiError } from "@/lib/api/axios";
@@ -68,6 +68,8 @@ function UsersList() {
     const end = Math.min(page * pageSize, totalCount);
     return `${start}–${end} of ${totalCount}`;
   }, [page, pageSize, totalCount]);
+
+  const pageNumbers = useMemo(() => buildPageList(page, Math.max(totalPages, 1)), [page, totalPages]);
 
   return (
     <div onClick={() => setMenuFor(null)}>
