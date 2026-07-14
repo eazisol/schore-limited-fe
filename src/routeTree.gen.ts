@@ -46,6 +46,7 @@ import { Route as UsersNewRouteImport } from './routes/users.new'
 import { Route as UsersIdRouteImport } from './routes/users.$id'
 import { Route as TradeBuilderTasksRouteImport } from './routes/trade-builder.tasks'
 import { Route as TradeBuilderGroupsRouteImport } from './routes/trade-builder.groups'
+import { Route as SystemConfigUserTypesRouteImport } from './routes/system-config.user-types'
 import { Route as SystemConfigRolesRouteImport } from './routes/system-config.roles'
 import { Route as PropertiesIdRouteImport } from './routes/properties.$id'
 import { Route as OperativesNewRouteImport } from './routes/operatives.new'
@@ -236,6 +237,11 @@ const TradeBuilderGroupsRoute = TradeBuilderGroupsRouteImport.update({
   path: '/groups',
   getParentRoute: () => TradeBuilderRoute,
 } as any)
+const SystemConfigUserTypesRoute = SystemConfigUserTypesRouteImport.update({
+  id: '/user-types',
+  path: '/user-types',
+  getParentRoute: () => SystemConfigRoute,
+} as any)
 const SystemConfigRolesRoute = SystemConfigRolesRouteImport.update({
   id: '/roles',
   path: '/roles',
@@ -288,6 +294,7 @@ export interface FileRoutesByFullPath {
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
   '/system-config/roles': typeof SystemConfigRolesRoute
+  '/system-config/user-types': typeof SystemConfigUserTypesRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
   '/trade-builder/tasks': typeof TradeBuilderTasksRoute
   '/users/$id': typeof UsersIdRoute
@@ -325,6 +332,7 @@ export interface FileRoutesByTo {
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
   '/system-config/roles': typeof SystemConfigRolesRoute
+  '/system-config/user-types': typeof SystemConfigUserTypesRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
   '/trade-builder/tasks': typeof TradeBuilderTasksRoute
   '/users/$id': typeof UsersIdRoute
@@ -369,6 +377,7 @@ export interface FileRoutesById {
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
   '/system-config/roles': typeof SystemConfigRolesRoute
+  '/system-config/user-types': typeof SystemConfigUserTypesRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
   '/trade-builder/tasks': typeof TradeBuilderTasksRoute
   '/users/$id': typeof UsersIdRoute
@@ -414,6 +423,7 @@ export interface FileRouteTypes {
     | '/operatives/new'
     | '/properties/$id'
     | '/system-config/roles'
+    | '/system-config/user-types'
     | '/trade-builder/groups'
     | '/trade-builder/tasks'
     | '/users/$id'
@@ -451,6 +461,7 @@ export interface FileRouteTypes {
     | '/operatives/new'
     | '/properties/$id'
     | '/system-config/roles'
+    | '/system-config/user-types'
     | '/trade-builder/groups'
     | '/trade-builder/tasks'
     | '/users/$id'
@@ -494,6 +505,7 @@ export interface FileRouteTypes {
     | '/operatives/new'
     | '/properties/$id'
     | '/system-config/roles'
+    | '/system-config/user-types'
     | '/trade-builder/groups'
     | '/trade-builder/tasks'
     | '/users/$id'
@@ -797,6 +809,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TradeBuilderGroupsRouteImport
       parentRoute: typeof TradeBuilderRoute
     }
+    '/system-config/user-types': {
+      id: '/system-config/user-types'
+      path: '/user-types'
+      fullPath: '/system-config/user-types'
+      preLoaderRoute: typeof SystemConfigUserTypesRouteImport
+      parentRoute: typeof SystemConfigRoute
+    }
     '/system-config/roles': {
       id: '/system-config/roles'
       path: '/roles'
@@ -860,11 +879,13 @@ const PropertiesRouteWithChildren = PropertiesRoute._addFileChildren(
 
 interface SystemConfigRouteChildren {
   SystemConfigRolesRoute: typeof SystemConfigRolesRoute
+  SystemConfigUserTypesRoute: typeof SystemConfigUserTypesRoute
   SystemConfigIndexRoute: typeof SystemConfigIndexRoute
 }
 
 const SystemConfigRouteChildren: SystemConfigRouteChildren = {
   SystemConfigRolesRoute: SystemConfigRolesRoute,
+  SystemConfigUserTypesRoute: SystemConfigUserTypesRoute,
   SystemConfigIndexRoute: SystemConfigIndexRoute,
 }
 
