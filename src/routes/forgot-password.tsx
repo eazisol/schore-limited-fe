@@ -1,10 +1,12 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { HardHat, Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { usersStore } from "@/lib/users-store";
+import { authService } from "@/lib/api/services/auth";
+import type { ApiError } from "@/lib/api/axios";
 import { Form, TextField, SubmitButton } from "@/components/form";
 
 const search = z.object({ email: z.string().optional() });
@@ -21,7 +23,6 @@ export const Route = createFileRoute("/forgot-password")({
 });
 
 function ForgotPassword() {
-  const navigate = useNavigate();
   const s = Route.useSearch();
   const [sent, setSent] = useState(false);
   const [sentEmail, setSentEmail] = useState("");
@@ -33,12 +34,14 @@ function ForgotPassword() {
   });
 
   async function onSubmit(values: Values) {
-    await new Promise(r => setTimeout(r, 400));
-    const exists = !!usersStore.byEmail(values.email);
-    setSentEmail(values.email);
-    setSent(true);
-    if (exists) {
-      setTimeout(() => navigate({ to: "/reset-password", search: { email: values.email } as any }), 1200);
+    try {
+      const res = await authService.forgotPassword({ email: values.email.trim() });
+      setSentEmail(values.email.trim());
+      setSent(true);
+      toast.success(res.message || "Reset link sent");
+    } catch (err) {
+      const e = err as ApiError;
+      toast.error(e?.message || "Failed to send reset link");
     }
   }
 
@@ -59,9 +62,6 @@ function ForgotPassword() {
             <p className="mt-2 text-sm text-muted-foreground">
               If an account exists for <span className="font-medium text-foreground">{sentEmail}</span>,
               we've sent a link to reset your password.
-            </p>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Demo: redirecting you to the reset screen…
             </p>
             <Link to="/signin" className="mt-6 inline-flex items-center gap-1.5 text-sm text-foreground hover:underline">
               <ArrowLeft className="h-3.5 w-3.5" /> Back to sign in

@@ -9,6 +9,8 @@ import { authStore, useAuthSession } from "@/lib/auth-store";
 import { usersStore, ROLE_LABEL, ROLE_BADGE } from "@/lib/users-store";
 import { cn } from "@/lib/utils";
 import { Form, TextField, PasswordField, AvatarUploadField, SubmitButton } from "@/components/form";
+import { authService } from "@/lib/api/services/auth";
+import type { ApiError } from "@/lib/api/axios";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "My profile — Schore" }] }),
@@ -24,6 +26,7 @@ const profileSchema = z.object({
 type ProfileValues = z.infer<typeof profileSchema>;
 
 const passwordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
   password: z.string()
     .min(8, "Must be at least 8 characters")
     .regex(/[A-Z]/, "Include one uppercase letter")
@@ -48,7 +51,7 @@ function ProfilePage() {
 
   const pwForm = useForm<PasswordValues>({
     resolver: zodResolver(passwordSchema),
-    defaultValues: { password: "", confirm: "" },
+    defaultValues: { currentPassword: "", password: "", confirm: "" },
   });
 
   if (!user) return null;
@@ -65,9 +68,18 @@ function ProfilePage() {
   }
 
   async function onChangePassword(values: PasswordValues) {
-    await authStore.setPassword(user!.id, values.password);
-    pwForm.reset({ password: "", confirm: "" });
-    toast.success("Password changed");
+    try {
+      const res = await authService.changePassword({
+        currentPassword: values.currentPassword,
+        newPassword: values.password,
+        confirmPassword: values.confirm,
+      });
+      pwForm.reset({ currentPassword: "", password: "", confirm: "" });
+      toast.success(res.message || "Password changed");
+    } catch (err) {
+      const e = err as ApiError;
+      toast.error(e?.message || "Failed to change password");
+    }
   }
 
   return (
@@ -110,6 +122,8 @@ function ProfilePage() {
           <h2 className="font-display font-semibold">Change password</h2>
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
+          <PasswordField<PasswordValues> name="currentPassword" label="Current password" required autoComplete="current-password" />
+          <div className="hidden sm:block" />
           <PasswordField<PasswordValues> name="password" label="New password" required autoComplete="new-password" />
           <PasswordField<PasswordValues> name="confirm" label="Confirm" required autoComplete="new-password" showToggle={false} />
         </div>
