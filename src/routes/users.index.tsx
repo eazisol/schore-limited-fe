@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, MoreHorizontal, Trash2, Mail, Loader2, AlertCircle } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Trash2, Mail, Loader2, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { usersService, type ApiUser } from "@/lib/api/services/users";
 import type { ApiError } from "@/lib/api/axios";
@@ -15,28 +15,42 @@ export const Route = createFileRoute("/users/")({
 
 export const usersQueryKey = ["users"] as const;
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+
 function UsersList() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [q, setQ] = useState("");
-  const [status, setStatus] = useState<"All" | "Active" | "Inactive">("All");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [menuFor, setMenuFor] = useState<number | null>(null);
   const [confirmDel, setConfirmDel] = useState<ApiUser | null>(null);
 
+  // Debounce search input; reset to page 1 whenever search changes.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(prev => {
+        if (prev === searchInput.trim()) return prev;
+        setPage(1);
+        return searchInput.trim();
+      });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: usersQueryKey,
-    queryFn: async () => (await usersService.list()).data,
+    queryKey: [...usersQueryKey, { page, pageSize, search }],
+    queryFn: async () => (await usersService.list({ page, pageSize, search })).data,
+    placeholderData: keepPreviousData,
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => usersService.remove(id),
-    onSuccess: (_res, id) => {
+    onSuccess: () => {
       const name = confirmDel?.firstName || confirmDel?.username || "User";
       toast.success(`${name} deleted`);
       setConfirmDel(null);
-      queryClient.setQueryData<ApiUser[] | undefined>(usersQueryKey, prev =>
-        prev ? prev.filter(u => u.id !== id) : prev,
-      );
       queryClient.invalidateQueries({ queryKey: usersQueryKey });
     },
     onError: (err: ApiError) => {
@@ -44,27 +58,16 @@ function UsersList() {
     },
   });
 
-  const users = data ?? [];
-  const rows = useMemo(
-    () =>
-      users.filter(u => {
-        const hay = `${u.firstName} ${u.lastName} ${u.username} ${u.email}`.toLowerCase();
-        if (q && !hay.includes(q.toLowerCase())) return false;
-        if (status === "Active" && !u.isActive) return false;
-        if (status === "Inactive" && u.isActive) return false;
-        return true;
-      }),
-    [users, q, status],
-  );
+  const rows = data?.items ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const totalPages = data?.totalPages ?? 1;
 
-  const counts = useMemo(
-    () => ({
-      total: users.length,
-      active: users.filter(u => u.isActive).length,
-      inactive: users.filter(u => !u.isActive).length,
-    }),
-    [users],
-  );
+  const rangeLabel = useMemo(() => {
+    if (totalCount === 0) return "0 of 0";
+    const start = (page - 1) * pageSize + 1;
+    const end = Math.min(page * pageSize, totalCount);
+    return `${start}–${end} of ${totalCount}`;
+  }, [page, pageSize, totalCount]);
 
   return (
     <div onClick={() => setMenuFor(null)}>
@@ -78,35 +81,29 @@ function UsersList() {
         }
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-        <Stat label="Total users" value={counts.total} />
-        <Stat label="Active" value={counts.active} />
-        <Stat label="Inactive" value={counts.inactive} tone={counts.inactive > 0 ? "warn" : undefined} />
-      </div>
-
       <div className="card-elevated">
         <div className="p-4 flex flex-wrap items-center gap-3 border-b">
           <div className="flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-background w-full sm:w-80">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input
-              value={q}
-              onChange={e => setQ(e.target.value)}
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
               placeholder="Search by name, username or email…"
               className="bg-transparent text-sm outline-none w-full"
               aria-label="Search users"
             />
           </div>
           <select
-            value={status}
-            onChange={e => setStatus(e.target.value as "All" | "Active" | "Inactive")}
+            value={pageSize}
+            onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
             className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-            aria-label="Filter by status"
+            aria-label="Rows per page"
           >
-            {["All", "Active", "Inactive"].map(s => <option key={s}>{s}</option>)}
+            {PAGE_SIZE_OPTIONS.map(n => <option key={n} value={n}>{n} / page</option>)}
           </select>
           <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
             {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            <span>{rows.length} of {users.length}</span>
+            <span>{rangeLabel}</span>
           </div>
         </div>
 
@@ -125,9 +122,9 @@ function UsersList() {
         ) : rows.length === 0 ? (
           <div className="p-12 text-center">
             <div className="text-sm font-medium">No users match your filters</div>
-            <p className="text-xs text-muted-foreground mt-1">Try clearing the search or status filter.</p>
-            <Button variant="outline" size="sm" className="mt-4" onClick={() => { setQ(""); setStatus("All"); }}>
-              Clear filters
+            <p className="text-xs text-muted-foreground mt-1">Try clearing the search.</p>
+            <Button variant="outline" size="sm" className="mt-4" onClick={() => { setSearchInput(""); }}>
+              Clear search
             </Button>
           </div>
         ) : (
@@ -144,7 +141,7 @@ function UsersList() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {rows.map(u => {
+                {rows.map((u: ApiUser) => {
                   const displayName = `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.username;
                   return (
                     <tr key={u.id} className="hover:bg-muted/30">
@@ -159,7 +156,7 @@ function UsersList() {
                       <td className="px-3 py-3 text-muted-foreground">{u.username}</td>
                       <td className="px-3 py-3">
                         <div className="flex flex-wrap gap-1">
-                          {(u.roleNames ?? []).map(r => (
+                          {(u.roleNames ?? []).map((r: string) => (
                             <span key={r} className="text-[11px] px-2 py-0.5 rounded-full border bg-muted">{r}</span>
                           ))}
                           {(!u.roleNames || u.roleNames.length === 0) && <span className="text-xs text-muted-foreground">—</span>}
@@ -199,6 +196,30 @@ function UsersList() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {rows.length > 0 && (
+          <div className="p-4 flex items-center justify-between border-t text-xs text-muted-foreground">
+            <div>Page {page} of {Math.max(totalPages, 1)}</div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1 || isFetching}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+              >
+                <ChevronLeft className="h-4 w-4" /> Prev
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages || isFetching}
+                onClick={() => setPage(p => p + 1)}
+              >
+                Next <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -241,14 +262,5 @@ function MenuItem({ children, onClick, danger }: { children: React.ReactNode; on
     >
       {children}
     </button>
-  );
-}
-
-function Stat({ label, value, tone }: { label: string; value: number; tone?: "warn" }) {
-  return (
-    <div className="card-elevated p-4">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`text-2xl font-display font-semibold mt-1 tabular-nums ${tone === "warn" ? "text-warning-foreground" : ""}`}>{value}</div>
-    </div>
   );
 }
