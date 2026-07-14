@@ -93,7 +93,7 @@ function ProfilePage() {
   if (!authUser) return null;
 
   const jobTitle = apiUser?.userTypeName ?? "";
-  const roleName = apiUser?.roleNames?.[0] ?? authUser.role ?? "—";
+  
 
   async function onSaveProfile(values: ProfileValues) {
     if (!apiUser) return;
