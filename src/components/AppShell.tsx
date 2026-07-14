@@ -80,9 +80,10 @@ export function AppShell() {
     avatar: undefined as string | undefined,
   };
 
-  const perms = permissionsForRole(user.role);
-  const can = (p?: PermissionKey, anyOf?: PermissionKey[]) =>
-    p ? perms.has(p) : anyOf ? anyOf.some(x => perms.has(x)) : true;
+  // Role & permission gating is intentionally disabled for now.
+  // Every authenticated user sees every menu until the permissions API lands.
+  void permissionsForRole;
+  const can = (_p?: PermissionKey, _anyOf?: PermissionKey[]) => true;
 
   const crumbs = pathname.split("/").filter(Boolean);
   const initials = user.name.split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
