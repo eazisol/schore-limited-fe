@@ -15,7 +15,8 @@ import { rolesStore, useRoles, type RoleKey } from "@/lib/roles-store";
 
 import { brandingStore, useBranding } from "@/lib/branding-store";
 import { ROLE_LABEL, ROLE_BADGE, ROLES } from "@/lib/users-store";
-import { settingsService, EMAIL_SETTING_KEY, type EmailSettingValue } from "@/lib/api/services/settings";
+import { settingsService } from "@/lib/api/services/settings";
+import type { ApiError } from "@/lib/api/axios";
 import {
   Form, TextField, SelectField, SwitchField, PasswordField, AvatarUploadField, SubmitButton,
 } from "@/components/form";
@@ -261,31 +262,28 @@ const SMTP_DEFAULTS: SmtpValues = {
 function SmtpTab() {
   const canEdit = useCan("smtp.manage");
   const canView = useCan("settings.view");
-  const [settingId, setSettingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasExisting, setHasExisting] = useState(false);
   const form = useForm<SmtpValues>({ resolver: zodResolver(smtpSchema), defaultValues: SMTP_DEFAULTS });
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await settingsService.list();
+        const res = await settingsService.getEmail();
         if (cancelled) return;
-        const list = Array.isArray(res?.data) ? res.data : [];
-        const email = list.find(s => s.settingKey === EMAIL_SETTING_KEY);
-        if (email) {
-          setSettingId(email.id);
-          let parsed: Partial<EmailSettingValue> = {};
-          try { parsed = JSON.parse(email.settingValue || "{}"); } catch { parsed = {}; }
+        const d = res?.data;
+        if (d) {
+          setHasExisting(true);
           form.reset({
-            host: parsed.Host ?? "",
-            port: Number(parsed.Port ?? 587),
-            username: parsed.Username ?? "",
-            password: parsed.Password ?? "",
-            fromName: parsed.FromName ?? "",
-            fromEmail: parsed.FromEmail ?? "",
-            enableSsl: Boolean(parsed.EnableSsl ?? true),
-            enabled: Boolean(email.isActive),
+            host: d.host ?? "",
+            port: Number(d.port ?? 587),
+            username: d.username ?? "",
+            password: d.password ?? "",
+            fromName: d.fromName ?? "",
+            fromEmail: d.fromEmail ?? "",
+            enableSsl: Boolean(d.enableSsl ?? true),
+            enabled: Boolean(d.isActive ?? true),
           });
         }
       } catch {
@@ -304,44 +302,22 @@ function SmtpTab() {
 
   async function save(values: SmtpValues) {
     if (!canEdit) return;
-    const settingValue = JSON.stringify({
-      Host: values.host,
-      Port: Number(values.port),
-      Username: values.username,
-      Password: values.password,
-      FromEmail: values.fromEmail,
-      FromName: values.fromName,
-      EnableSsl: values.enableSsl,
-    });
     try {
-      if (settingId != null) {
-        await settingsService.update(settingId, { settingValue, isActive: values.enabled });
-        toast.success("SMTP configuration updated");
-      } else {
-        const res = await settingsService.create({
-          settingKey: EMAIL_SETTING_KEY,
-          settingValue,
-          isActive: values.enabled,
-        });
-        if (res?.data?.id) setSettingId(res.data.id);
-        toast.success("SMTP configuration saved");
-      }
-    } catch (err: unknown) {
-      const msg = (err as { message?: string })?.message || "Failed to save SMTP configuration";
-      toast.error(msg);
-    }
-  }
-
-  async function handleDelete() {
-    if (!canEdit || settingId == null) return;
-    try {
-      await settingsService.remove(settingId);
-      setSettingId(null);
-      form.reset(SMTP_DEFAULTS);
-      toast.success("SMTP configuration deleted");
-    } catch (err: unknown) {
-      const msg = (err as { message?: string })?.message || "Failed to delete SMTP configuration";
-      toast.error(msg);
+      await settingsService.updateEmail({
+        host: values.host,
+        port: Number(values.port),
+        username: values.username,
+        password: values.password,
+        fromEmail: values.fromEmail,
+        fromName: values.fromName,
+        enableSsl: values.enableSsl,
+        isActive: values.enabled,
+      });
+      setHasExisting(true);
+      toast.success("SMTP configuration saved");
+    } catch (err) {
+      const e = err as ApiError;
+      toast.error(e?.message || "Failed to save SMTP configuration");
     }
   }
 
@@ -352,6 +328,7 @@ function SmtpTab() {
       description: `(Demo) Would attempt connection to ${v.host}:${v.port} as ${v.username || v.fromEmail}`,
     });
   }
+
 
   return (
     <Form form={form} onSubmit={save} className="card-elevated p-6 max-w-3xl space-y-6">
@@ -387,13 +364,10 @@ function SmtpTab() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t">
-        <div className="flex gap-2">
-          {settingId != null && (
-            <Button type="button" variant="outline" onClick={handleDelete} disabled={!canEdit || loading}>
-              <RotateCcw className="h-4 w-4" /> Delete
-            </Button>
-          )}
+        <div className="text-xs text-muted-foreground">
+          {hasExisting ? "Existing configuration loaded." : "No configuration yet."}
         </div>
+
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={testConnection} disabled={!canEdit || loading}>
             <Send className="h-4 w-4" /> Send test email

@@ -130,10 +130,14 @@ function SignIn() {
               />
             </div>
 
-            <CheckboxField<SignInValues>
-              name="remember"
-              label="Remember me for 30 days"
-            />
+            {/* Hidden per request — retained for future re-enable */}
+            <div className="hidden">
+              <CheckboxField<SignInValues>
+                name="remember"
+                label="Remember me for 30 days"
+              />
+            </div>
+
 
             <SubmitButton className="w-full h-10" loadingText="Signing in…">Sign in</SubmitButton>
           </Form>

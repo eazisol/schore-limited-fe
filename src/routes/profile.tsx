@@ -1,15 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { KeyRound, Save } from "lucide-react";
+import { KeyRound, Save, ShieldCheck, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/AppShell";
-import { authStore, useAuthSession } from "@/lib/auth-store";
-import { usersStore, ROLE_LABEL, ROLE_BADGE } from "@/lib/users-store";
-import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { usersStore } from "@/lib/users-store";
 import { Form, TextField, PasswordField, AvatarUploadField, SubmitButton } from "@/components/form";
 import { authService } from "@/lib/api/services/auth";
+import { usersService, type ApiUser } from "@/lib/api/services/users";
 import type { ApiError } from "@/lib/api/axios";
 
 export const Route = createFileRoute("/profile")({
@@ -18,9 +19,9 @@ export const Route = createFileRoute("/profile")({
 });
 
 const profileSchema = z.object({
-  name: z.string().trim().min(2, "Name must be at least 2 characters").max(80, "Name must be under 80 characters"),
+  firstName: z.string().trim().min(1, "First name is required").max(80, "Must be under 80 characters"),
+  lastName: z.string().trim().min(1, "Last name is required").max(80, "Must be under 80 characters"),
   phone: z.string().trim().max(20).regex(/^[\d +()-]{7,20}$/, "Enter a valid phone number").or(z.literal("")),
-  jobTitle: z.string().trim().max(60).or(z.literal("")),
   avatar: z.string().or(z.literal("")),
 });
 type ProfileValues = z.infer<typeof profileSchema>;
@@ -36,16 +37,19 @@ const passwordSchema = z.object({
 type PasswordValues = z.infer<typeof passwordSchema>;
 
 function ProfilePage() {
-  useAuthSession();
-  const user = authStore.getUser();
+  const { user: authUser } = useAuth();
+  const [apiUser, setApiUser] = useState<ApiUser | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  const localExtras = authUser ? usersStore.get(String(authUser.id)) : null;
 
   const profileForm = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      name: user?.name ?? "",
-      phone: user?.phone ?? "",
-      jobTitle: user?.jobTitle ?? "",
-      avatar: user?.avatar ?? "",
+      firstName: authUser?.firstName ?? "",
+      lastName: authUser?.lastName ?? "",
+      phone: localExtras?.phone ?? "",
+      avatar: localExtras?.avatar ?? "",
     },
   });
 
@@ -54,17 +58,62 @@ function ProfilePage() {
     defaultValues: { currentPassword: "", password: "", confirm: "" },
   });
 
-  if (!user) return null;
-  const initials = user.name.split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+  // Load full API user (for userTypeId + roleIds required by PUT payload).
+  useEffect(() => {
+    if (!authUser) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await usersService.get(authUser.id);
+        if (cancelled) return;
+        setApiUser(res.data);
+        profileForm.reset({
+          firstName: res.data.firstName ?? "",
+          lastName: res.data.lastName ?? "",
+          phone: localExtras?.phone ?? "",
+          avatar: localExtras?.avatar ?? "",
+        });
+      } catch {
+        /* interceptor toasts */
+      } finally {
+        if (!cancelled) setLoadingUser(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUser?.id]);
+
+  const initials = useMemo(() => {
+    const name = `${authUser?.firstName ?? ""} ${authUser?.lastName ?? ""}`.trim() || authUser?.username || "";
+    return name.split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+  }, [authUser]);
+
+  if (!authUser) return null;
+
+  const jobTitle = apiUser?.userTypeName ?? "";
+  const roleName = apiUser?.roleNames?.[0] ?? authUser.role ?? "—";
 
   async function onSaveProfile(values: ProfileValues) {
-    usersStore.update(user!.id, {
-      name: values.name.trim(),
-      phone: values.phone.trim() || undefined,
-      jobTitle: values.jobTitle.trim() || undefined,
-      avatar: values.avatar || undefined,
-    });
-    toast.success("Profile updated");
+    if (!apiUser) return;
+    try {
+      await usersService.update(apiUser.id, {
+        email: apiUser.email,
+        firstName: values.firstName.trim(),
+        lastName: values.lastName.trim(),
+        isActive: apiUser.isActive,
+        userTypeId: apiUser.userTypeId,
+        roleIds: apiUser.roleIds ?? [],
+      });
+      // Persist local-only extras (phone/avatar) so they survive reloads.
+      usersStore.update(String(apiUser.id), {
+        phone: values.phone.trim() || undefined,
+        avatar: values.avatar || undefined,
+      });
+      toast.success("Profile updated");
+    } catch (err) {
+      const e = err as ApiError;
+      toast.error(e?.message || "Failed to update profile");
+    }
   }
 
   async function onChangePassword(values: PasswordValues) {
@@ -91,32 +140,39 @@ function ProfilePage() {
           <div className="flex items-center gap-4">
             <AvatarUploadField<ProfileValues> name="avatar" initials={initials} />
             <div className="min-w-0">
-              <div className="font-display font-semibold text-lg truncate">{user.name}</div>
-              <div className="text-xs text-muted-foreground">{user.email}</div>
-              <span className={cn("mt-1.5 inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full border", ROLE_BADGE[user.role])}>
-                {ROLE_LABEL[user.role]}
-              </span>
+              <div className="font-display font-semibold text-lg truncate">
+                {`${authUser.firstName} ${authUser.lastName}`.trim() || authUser.username}
+              </div>
+              <div className="text-xs text-muted-foreground">{authUser.email}</div>
             </div>
           </div>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4">
-          <TextField<ProfileValues> name="name" label="Full name" required maxLength={80} />
+          <TextField<ProfileValues> name="firstName" label="First name" required maxLength={80} />
+          <TextField<ProfileValues> name="lastName" label="Last name" required maxLength={80} />
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Email</label>
-            <input value={user.email} disabled className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground" />
+            <input value={authUser.email} disabled className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground" />
             <p className="text-xs text-muted-foreground">Email cannot be changed here.</p>
           </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Job title</label>
+            <input value={jobTitle} disabled className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">Job title is managed by an administrator.</p>
+          </div>
           <TextField<ProfileValues> name="phone" label="Phone" placeholder="07700 900000" />
-          <TextField<ProfileValues> name="jobTitle" label="Job title" maxLength={60} />
         </div>
 
         <div className="flex justify-end">
-          <SubmitButton loadingText="Saving…"><Save className="h-4 w-4" /> Save changes</SubmitButton>
+          <SubmitButton loadingText="Saving…" disabled={loadingUser || !apiUser}>
+            {loadingUser ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Save changes
+          </SubmitButton>
         </div>
       </Form>
 
-      <Form form={pwForm} onSubmit={onChangePassword} className="card-elevated p-6 mt-6 space-y-4">
+      <Form form={pwForm} onSubmit={onChangePassword} className="card-elevated p-6 mt-6 space-y-5">
         <div className="flex items-center gap-2">
           <KeyRound className="h-4 w-4 text-muted-foreground" />
           <h2 className="font-display font-semibold">Change password</h2>
@@ -125,12 +181,31 @@ function ProfilePage() {
           <PasswordField<PasswordValues> name="currentPassword" label="Current password" required autoComplete="current-password" />
           <div className="hidden sm:block" />
           <PasswordField<PasswordValues> name="password" label="New password" required autoComplete="new-password" />
-          <PasswordField<PasswordValues> name="confirm" label="Confirm" required autoComplete="new-password" showToggle={false} />
+          <PasswordField<PasswordValues> name="confirm" label="Confirm new password" required autoComplete="new-password" showToggle={false} />
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-2 border-t">
           <SubmitButton variant="outline" loadingText="Updating…">Update password</SubmitButton>
         </div>
       </Form>
+
+      <div className="card-elevated p-6 mt-6">
+        <div className="flex items-center gap-2 mb-4">
+          <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+          <h2 className="font-display font-semibold">Your role</h2>
+        </div>
+        <div className="flex items-center justify-between gap-4 rounded-md border bg-muted/30 px-4 py-3">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">Assigned role</div>
+            <div className="mt-0.5 font-medium truncate">{roleName}</div>
+          </div>
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-accent/15 text-accent-foreground border border-accent/30">
+            <ShieldCheck className="h-3 w-3" /> {roleName}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground mt-3">
+          Contact an administrator to request a change to your role or permissions.
+        </p>
+      </div>
     </div>
   );
 }

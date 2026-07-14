@@ -1,6 +1,8 @@
 import { http } from "@/lib/api/axios";
 import type { ApiEnvelope } from "./auth";
 
+/* ─── Generic settings (kept for backwards compatibility) ─── */
+
 export interface ApiSetting {
   id: number;
   settingKey: string;
@@ -35,6 +37,35 @@ export interface EmailSettingValue {
   EnableSsl: boolean;
 }
 
+/* ─── Dedicated Email settings API ─── */
+
+export interface EmailSettings {
+  id?: number;
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  fromEmail: string;
+  fromName: string;
+  enableSsl: boolean;
+  isActive: boolean;
+  createdBy?: number | null;
+  createdDate?: string;
+  editBy?: number | null;
+  editDate?: string | null;
+}
+
+export interface UpdateEmailSettingsPayload {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  fromEmail: string;
+  fromName: string;
+  enableSsl: boolean;
+  isActive: boolean;
+}
+
 export const settingsService = {
   list: () => http.get<ApiEnvelope<ApiSetting[]>>("Settings"),
   get: (id: number | string) =>
@@ -45,4 +76,9 @@ export const settingsService = {
     http.put<ApiEnvelope<ApiSetting>>(`Settings/${id}`, payload),
   remove: (id: number | string) =>
     http.delete<ApiEnvelope<null>>(`Settings/${id}`),
+
+  /** Dedicated email settings endpoints. */
+  getEmail: () => http.get<ApiEnvelope<EmailSettings>>("Settings/email"),
+  updateEmail: (payload: UpdateEmailSettingsPayload) =>
+    http.put<ApiEnvelope<EmailSettings>>("Settings/email", payload),
 };
