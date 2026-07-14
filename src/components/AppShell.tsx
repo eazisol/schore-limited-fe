@@ -50,8 +50,9 @@ const sections: NavSection[] = [
   //   { to: "/reports",       label: "Reports & Exports", icon: FileBarChart2,   permission: "reports.view" },
   // ]},
   { label: "Admin", items: [
-    { to: "/users",         label: "User Management",   icon: ShieldCheck,     permission: "users.view" },
-    { to: "/settings",      label: "Settings",          icon: Settings,        permission: "settings.view" },
+    { to: "/users",           label: "User Management",       icon: ShieldCheck,     permission: "users.view" },
+    { to: "/system-config",   label: "System Configuration",  icon: SlidersHorizontal },
+    { to: "/settings",        label: "Settings",              icon: Settings,        permission: "settings.view" },
   ]},
 ];
 
