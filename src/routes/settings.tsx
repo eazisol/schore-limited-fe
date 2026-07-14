@@ -364,13 +364,10 @@ function SmtpTab() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t">
-        <div className="flex gap-2">
-          {settingId != null && (
-            <Button type="button" variant="outline" onClick={handleDelete} disabled={!canEdit || loading}>
-              <RotateCcw className="h-4 w-4" /> Delete
-            </Button>
-          )}
+        <div className="text-xs text-muted-foreground">
+          {hasExisting ? "Existing configuration loaded." : "No configuration yet."}
         </div>
+
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={testConnection} disabled={!canEdit || loading}>
             <Send className="h-4 w-4" /> Send test email
