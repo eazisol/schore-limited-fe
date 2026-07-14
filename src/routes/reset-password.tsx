@@ -1,15 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { HardHat, Lock, CheckCircle2 } from "lucide-react";
+import { HardHat, Lock, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { usersStore } from "@/lib/users-store";
-import { authStore } from "@/lib/auth-store";
+import { authService } from "@/lib/api/services/auth";
+import type { ApiError } from "@/lib/api/axios";
 import { cn } from "@/lib/utils";
 import { Form, PasswordField, SubmitButton } from "@/components/form";
 
-const search = z.object({ email: z.string().optional() });
+const search = z.object({
+  token: z.string().optional(),
+  email: z.string().optional(),
+});
 
 const schema = z.object({
   password: z.string()
@@ -29,8 +32,8 @@ export const Route = createFileRoute("/reset-password")({
 function ResetPassword() {
   const navigate = useNavigate();
   const s = Route.useSearch();
+  const token = s.token ?? "";
   const email = s.email ?? "";
-  const user = email ? usersStore.byEmail(email) : null;
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -40,13 +43,22 @@ function ResetPassword() {
   const pw = form.watch("password");
 
   async function onSubmit(values: Values) {
-    if (!user) {
-      form.setError("password", { message: "We couldn't find that account. Request a new reset link." });
+    if (!token) {
+      toast.error("Missing or invalid reset token. Request a new reset link.");
       return;
     }
-    await authStore.setPassword(user.id, values.password);
-    toast.success("Password updated", { description: "You can now sign in with your new password." });
-    navigate({ to: "/signin" });
+    try {
+      const res = await authService.resetPassword({
+        token,
+        newPassword: values.password,
+        confirmPassword: values.confirm,
+      });
+      toast.success(res.message || "Password updated");
+      navigate({ to: "/signin" });
+    } catch (err) {
+      const e = err as ApiError;
+      toast.error(e?.message || "Failed to reset password");
+    }
   }
 
   return (
@@ -63,6 +75,13 @@ function ResetPassword() {
         <p className="mt-1.5 text-sm text-muted-foreground">
           {email ? <>For <span className="font-medium text-foreground">{email}</span></> : "Enter and confirm your new password."}
         </p>
+
+        {!token && (
+          <div role="alert" className="mt-5 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>Missing reset token. Please use the link from your reset email or request a new one.</span>
+          </div>
+        )}
 
         <Form form={form} onSubmit={onSubmit} className="mt-6 space-y-4">
           <PasswordField<Values>
@@ -93,7 +112,7 @@ function ResetPassword() {
             </li>
           </ul>
 
-          <SubmitButton className="w-full h-10" loadingText="Updating…">Update password</SubmitButton>
+          <SubmitButton className="w-full h-10" loadingText="Updating…" disabled={!token}>Update password</SubmitButton>
         </Form>
 
         <p className="mt-6 text-xs text-muted-foreground text-center">
