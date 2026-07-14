@@ -38,8 +38,29 @@ export interface UpdateUserPayload {
   roleIds: number[];
 }
 
+export interface UsersListParams {
+  page: number;
+  pageSize: number;
+  search?: string;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export const usersService = {
-  list: () => http.get<ApiEnvelope<ApiUser[]>>("Users"),
+  list: (params: UsersListParams) =>
+    http.get<ApiEnvelope<PagedResult<ApiUser>>>("Users", {
+      params: {
+        Page: params.page,
+        PageSize: params.pageSize,
+        Search: params.search ?? "",
+      },
+    }),
   get: (id: number | string) => http.get<ApiEnvelope<ApiUser>>(`Users/${id}`),
   create: (payload: CreateUserPayload) =>
     http.post<ApiEnvelope<ApiUser>>("Users", payload),
