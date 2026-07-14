@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WagesRouteImport } from './routes/wages'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as TradeBuilderRouteImport } from './routes/trade-builder'
+import { Route as SystemConfigRouteImport } from './routes/system-config'
 import { Route as StatementsRouteImport } from './routes/statements'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -37,6 +38,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as WagesIndexRouteImport } from './routes/wages.index'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
 import { Route as TradeBuilderIndexRouteImport } from './routes/trade-builder.index'
+import { Route as SystemConfigIndexRouteImport } from './routes/system-config.index'
 import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
 import { Route as OperativesIndexRouteImport } from './routes/operatives.index'
 import { Route as WagesIdRouteImport } from './routes/wages.$id'
@@ -44,6 +46,8 @@ import { Route as UsersNewRouteImport } from './routes/users.new'
 import { Route as UsersIdRouteImport } from './routes/users.$id'
 import { Route as TradeBuilderTasksRouteImport } from './routes/trade-builder.tasks'
 import { Route as TradeBuilderGroupsRouteImport } from './routes/trade-builder.groups'
+import { Route as SystemConfigUserTypesRouteImport } from './routes/system-config.user-types'
+import { Route as SystemConfigRolesRouteImport } from './routes/system-config.roles'
 import { Route as PropertiesIdRouteImport } from './routes/properties.$id'
 import { Route as OperativesNewRouteImport } from './routes/operatives.new'
 import { Route as OperativesIdRouteImport } from './routes/operatives.$id'
@@ -61,6 +65,11 @@ const UsersRoute = UsersRouteImport.update({
 const TradeBuilderRoute = TradeBuilderRouteImport.update({
   id: '/trade-builder',
   path: '/trade-builder',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SystemConfigRoute = SystemConfigRouteImport.update({
+  id: '/system-config',
+  path: '/system-config',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StatementsRoute = StatementsRouteImport.update({
@@ -188,6 +197,11 @@ const TradeBuilderIndexRoute = TradeBuilderIndexRouteImport.update({
   path: '/',
   getParentRoute: () => TradeBuilderRoute,
 } as any)
+const SystemConfigIndexRoute = SystemConfigIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SystemConfigRoute,
+} as any)
 const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -222,6 +236,16 @@ const TradeBuilderGroupsRoute = TradeBuilderGroupsRouteImport.update({
   id: '/groups',
   path: '/groups',
   getParentRoute: () => TradeBuilderRoute,
+} as any)
+const SystemConfigUserTypesRoute = SystemConfigUserTypesRouteImport.update({
+  id: '/user-types',
+  path: '/user-types',
+  getParentRoute: () => SystemConfigRoute,
+} as any)
+const SystemConfigRolesRoute = SystemConfigRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => SystemConfigRoute,
 } as any)
 const PropertiesIdRoute = PropertiesIdRouteImport.update({
   id: '/$id',
@@ -262,12 +286,15 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
+  '/system-config': typeof SystemConfigRouteWithChildren
   '/trade-builder': typeof TradeBuilderRouteWithChildren
   '/users': typeof UsersRouteWithChildren
   '/wages': typeof WagesRouteWithChildren
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/system-config/roles': typeof SystemConfigRolesRoute
+  '/system-config/user-types': typeof SystemConfigUserTypesRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
   '/trade-builder/tasks': typeof TradeBuilderTasksRoute
   '/users/$id': typeof UsersIdRoute
@@ -275,6 +302,7 @@ export interface FileRoutesByFullPath {
   '/wages/$id': typeof WagesIdRoute
   '/operatives/': typeof OperativesIndexRoute
   '/properties/': typeof PropertiesIndexRoute
+  '/system-config/': typeof SystemConfigIndexRoute
   '/trade-builder/': typeof TradeBuilderIndexRoute
   '/users/': typeof UsersIndexRoute
   '/wages/': typeof WagesIndexRoute
@@ -303,6 +331,8 @@ export interface FileRoutesByTo {
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/system-config/roles': typeof SystemConfigRolesRoute
+  '/system-config/user-types': typeof SystemConfigUserTypesRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
   '/trade-builder/tasks': typeof TradeBuilderTasksRoute
   '/users/$id': typeof UsersIdRoute
@@ -310,6 +340,7 @@ export interface FileRoutesByTo {
   '/wages/$id': typeof WagesIdRoute
   '/operatives': typeof OperativesIndexRoute
   '/properties': typeof PropertiesIndexRoute
+  '/system-config': typeof SystemConfigIndexRoute
   '/trade-builder': typeof TradeBuilderIndexRoute
   '/users': typeof UsersIndexRoute
   '/wages': typeof WagesIndexRoute
@@ -338,12 +369,15 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
+  '/system-config': typeof SystemConfigRouteWithChildren
   '/trade-builder': typeof TradeBuilderRouteWithChildren
   '/users': typeof UsersRouteWithChildren
   '/wages': typeof WagesRouteWithChildren
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/system-config/roles': typeof SystemConfigRolesRoute
+  '/system-config/user-types': typeof SystemConfigUserTypesRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
   '/trade-builder/tasks': typeof TradeBuilderTasksRoute
   '/users/$id': typeof UsersIdRoute
@@ -351,6 +385,7 @@ export interface FileRoutesById {
   '/wages/$id': typeof WagesIdRoute
   '/operatives/': typeof OperativesIndexRoute
   '/properties/': typeof PropertiesIndexRoute
+  '/system-config/': typeof SystemConfigIndexRoute
   '/trade-builder/': typeof TradeBuilderIndexRoute
   '/users/': typeof UsersIndexRoute
   '/wages/': typeof WagesIndexRoute
@@ -380,12 +415,15 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signin'
     | '/statements'
+    | '/system-config'
     | '/trade-builder'
     | '/users'
     | '/wages'
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/system-config/roles'
+    | '/system-config/user-types'
     | '/trade-builder/groups'
     | '/trade-builder/tasks'
     | '/users/$id'
@@ -393,6 +431,7 @@ export interface FileRouteTypes {
     | '/wages/$id'
     | '/operatives/'
     | '/properties/'
+    | '/system-config/'
     | '/trade-builder/'
     | '/users/'
     | '/wages/'
@@ -421,6 +460,8 @@ export interface FileRouteTypes {
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/system-config/roles'
+    | '/system-config/user-types'
     | '/trade-builder/groups'
     | '/trade-builder/tasks'
     | '/users/$id'
@@ -428,6 +469,7 @@ export interface FileRouteTypes {
     | '/wages/$id'
     | '/operatives'
     | '/properties'
+    | '/system-config'
     | '/trade-builder'
     | '/users'
     | '/wages'
@@ -455,12 +497,15 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signin'
     | '/statements'
+    | '/system-config'
     | '/trade-builder'
     | '/users'
     | '/wages'
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/system-config/roles'
+    | '/system-config/user-types'
     | '/trade-builder/groups'
     | '/trade-builder/tasks'
     | '/users/$id'
@@ -468,6 +513,7 @@ export interface FileRouteTypes {
     | '/wages/$id'
     | '/operatives/'
     | '/properties/'
+    | '/system-config/'
     | '/trade-builder/'
     | '/users/'
     | '/wages/'
@@ -496,6 +542,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SigninRoute: typeof SigninRoute
   StatementsRoute: typeof StatementsRoute
+  SystemConfigRoute: typeof SystemConfigRouteWithChildren
   TradeBuilderRoute: typeof TradeBuilderRouteWithChildren
   UsersRoute: typeof UsersRouteWithChildren
   WagesRoute: typeof WagesRouteWithChildren
@@ -522,6 +569,13 @@ declare module '@tanstack/react-router' {
       path: '/trade-builder'
       fullPath: '/trade-builder'
       preLoaderRoute: typeof TradeBuilderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/system-config': {
+      id: '/system-config'
+      path: '/system-config'
+      fullPath: '/system-config'
+      preLoaderRoute: typeof SystemConfigRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/statements': {
@@ -699,6 +753,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TradeBuilderIndexRouteImport
       parentRoute: typeof TradeBuilderRoute
     }
+    '/system-config/': {
+      id: '/system-config/'
+      path: '/'
+      fullPath: '/system-config/'
+      preLoaderRoute: typeof SystemConfigIndexRouteImport
+      parentRoute: typeof SystemConfigRoute
+    }
     '/properties/': {
       id: '/properties/'
       path: '/'
@@ -747,6 +808,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/trade-builder/groups'
       preLoaderRoute: typeof TradeBuilderGroupsRouteImport
       parentRoute: typeof TradeBuilderRoute
+    }
+    '/system-config/user-types': {
+      id: '/system-config/user-types'
+      path: '/user-types'
+      fullPath: '/system-config/user-types'
+      preLoaderRoute: typeof SystemConfigUserTypesRouteImport
+      parentRoute: typeof SystemConfigRoute
+    }
+    '/system-config/roles': {
+      id: '/system-config/roles'
+      path: '/roles'
+      fullPath: '/system-config/roles'
+      preLoaderRoute: typeof SystemConfigRolesRouteImport
+      parentRoute: typeof SystemConfigRoute
     }
     '/properties/$id': {
       id: '/properties/$id'
@@ -800,6 +875,22 @@ const PropertiesRouteChildren: PropertiesRouteChildren = {
 
 const PropertiesRouteWithChildren = PropertiesRoute._addFileChildren(
   PropertiesRouteChildren,
+)
+
+interface SystemConfigRouteChildren {
+  SystemConfigRolesRoute: typeof SystemConfigRolesRoute
+  SystemConfigUserTypesRoute: typeof SystemConfigUserTypesRoute
+  SystemConfigIndexRoute: typeof SystemConfigIndexRoute
+}
+
+const SystemConfigRouteChildren: SystemConfigRouteChildren = {
+  SystemConfigRolesRoute: SystemConfigRolesRoute,
+  SystemConfigUserTypesRoute: SystemConfigUserTypesRoute,
+  SystemConfigIndexRoute: SystemConfigIndexRoute,
+}
+
+const SystemConfigRouteWithChildren = SystemConfigRoute._addFileChildren(
+  SystemConfigRouteChildren,
 )
 
 interface TradeBuilderRouteChildren {
@@ -867,6 +958,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SigninRoute: SigninRoute,
   StatementsRoute: StatementsRoute,
+  SystemConfigRoute: SystemConfigRouteWithChildren,
   TradeBuilderRoute: TradeBuilderRouteWithChildren,
   UsersRoute: UsersRouteWithChildren,
   WagesRoute: WagesRouteWithChildren,

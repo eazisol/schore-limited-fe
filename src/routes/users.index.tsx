@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, MoreHorizontal, Trash2, Mail, Loader2, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Pagination } from "@/components/Pagination";
+import { Plus, Search, Eye, Pencil, Trash2, Mail, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { usersService, type ApiUser } from "@/lib/api/services/users";
 import type { ApiError } from "@/lib/api/axios";
@@ -15,8 +16,6 @@ export const Route = createFileRoute("/users/")({
 
 export const usersQueryKey = ["users"] as const;
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
-
 function UsersList() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -24,10 +23,8 @@ function UsersList() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(10);
-  const [menuFor, setMenuFor] = useState<number | null>(null);
   const [confirmDel, setConfirmDel] = useState<ApiUser | null>(null);
 
-  // Debounce search input; reset to page 1 whenever search changes.
   useEffect(() => {
     const t = setTimeout(() => {
       setSearch(prev => {
@@ -62,17 +59,15 @@ function UsersList() {
   const totalCount = data?.totalCount ?? 0;
   const totalPages = data?.totalPages ?? 1;
 
-  const rangeLabel = useMemo(() => {
+  const headerRange = useMemo(() => {
     if (totalCount === 0) return "0 of 0";
     const start = (page - 1) * pageSize + 1;
     const end = Math.min(page * pageSize, totalCount);
     return `${start}–${end} of ${totalCount}`;
   }, [page, pageSize, totalCount]);
 
-  const pageNumbers = useMemo(() => buildPageList(page, Math.max(totalPages, 1)), [page, totalPages]);
-
   return (
-    <div onClick={() => setMenuFor(null)}>
+    <div>
       <PageHeader
         title="User Management"
         subtitle="Platform users · roles, access and account status"
@@ -95,17 +90,9 @@ function UsersList() {
               aria-label="Search users"
             />
           </div>
-          <select
-            value={pageSize}
-            onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-            aria-label="Rows per page"
-          >
-            {PAGE_SIZE_OPTIONS.map(n => <option key={n} value={n}>{n} / page</option>)}
-          </select>
           <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
             {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            <span>{rangeLabel}</span>
+            <span>{headerRange}</span>
           </div>
         </div>
 
@@ -139,7 +126,7 @@ function UsersList() {
                   <th className="text-left font-medium px-3 py-2.5">Roles</th>
                   <th className="text-left font-medium px-3 py-2.5">User type</th>
                   <th className="text-left font-medium px-3 py-2.5">Status</th>
-                  <th className="text-right font-medium px-5 py-2.5 w-12">Actions</th>
+                  <th className="text-right font-medium px-5 py-2.5 w-32">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -170,28 +157,18 @@ function UsersList() {
                           {u.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-right relative">
-                        <button
-                          type="button"
-                          onClick={e => { e.stopPropagation(); setMenuFor(menuFor === u.id ? null : u.id); }}
-                          className="h-8 w-8 inline-grid place-items-center rounded-md hover:bg-accent/40"
-                          aria-label={`Actions for ${displayName}`}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </button>
-                        {menuFor === u.id && (
-                          <div
-                            onClick={e => e.stopPropagation()}
-                            className="absolute right-5 top-10 z-10 w-52 rounded-md border bg-popover shadow-lg py-1 text-left"
-                          >
-                            <MenuItem onClick={() => { setMenuFor(null); navigate({ to: "/users/$id", params: { id: String(u.id) } }); }}>
-                              Edit user
-                            </MenuItem>
-                            <MenuItem danger onClick={() => { setMenuFor(null); setConfirmDel(u); }}>
-                              <Trash2 className="h-4 w-4" /> Delete user
-                            </MenuItem>
-                          </div>
-                        )}
+                      <td className="px-5 py-3">
+                        <div className="flex justify-end gap-1">
+                          <IconBtn label="View" onClick={() => navigate({ to: "/users/$id", params: { id: String(u.id) } })}>
+                            <Eye className="h-4 w-4" />
+                          </IconBtn>
+                          <IconBtn label="Edit" onClick={() => navigate({ to: "/users/$id", params: { id: String(u.id) } })}>
+                            <Pencil className="h-4 w-4" />
+                          </IconBtn>
+                          <IconBtn label="Delete" danger onClick={() => setConfirmDel(u)}>
+                            <Trash2 className="h-4 w-4" />
+                          </IconBtn>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -202,45 +179,17 @@ function UsersList() {
         )}
 
         {rows.length > 0 && (
-          <div className="p-4 border-t flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-muted-foreground">
-              <span>Showing <span className="font-medium text-foreground">{rangeLabel}</span></span>
-              <span>Page <span className="font-medium text-foreground">{page}</span> of <span className="font-medium text-foreground">{Math.max(totalPages, 1)}</span></span>
-              <span>Page size <span className="font-medium text-foreground">{pageSize}</span></span>
-              <span>Total <span className="font-medium text-foreground">{totalCount}</span></span>
-            </div>
-            <div className="flex items-center gap-1">
-              <PageBtn aria-label="First page" disabled={page <= 1 || isFetching} onClick={() => setPage(1)}>
-                <ChevronsLeft className="h-4 w-4" />
-              </PageBtn>
-              <PageBtn aria-label="Previous page" disabled={page <= 1 || isFetching} onClick={() => setPage(p => Math.max(1, p - 1))}>
-                <ChevronLeft className="h-4 w-4" />
-              </PageBtn>
-              {pageNumbers.map((n, i) =>
-                n === "…" ? (
-                  <span key={`gap-${i}`} className="px-2 text-xs text-muted-foreground">…</span>
-                ) : (
-                  <PageBtn
-                    key={n}
-                    active={n === page}
-                    disabled={isFetching}
-                    onClick={() => setPage(n)}
-                    aria-current={n === page ? "page" : undefined}
-                  >
-                    {n}
-                  </PageBtn>
-                ),
-              )}
-              <PageBtn aria-label="Next page" disabled={page >= totalPages || isFetching} onClick={() => setPage(p => p + 1)}>
-                <ChevronRight className="h-4 w-4" />
-              </PageBtn>
-              <PageBtn aria-label="Last page" disabled={page >= totalPages || isFetching} onClick={() => setPage(Math.max(totalPages, 1))}>
-                <ChevronsRight className="h-4 w-4" />
-              </PageBtn>
-            </div>
-          </div>
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            totalCount={totalCount}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            onPageSizeChange={s => { setPageSize(s); setPage(1); }}
+            itemLabel="users"
+            disabled={isFetching}
+          />
         )}
-
       </div>
 
       {confirmDel && (
@@ -272,49 +221,16 @@ function UsersList() {
   );
 }
 
-function MenuItem({ children, onClick, danger }: { children: React.ReactNode; onClick: () => void; danger?: boolean }) {
+function IconBtn({ children, onClick, label, danger }: { children: React.ReactNode; onClick: () => void; label: string; danger?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent/40 ${danger ? "text-destructive" : ""}`}
+      aria-label={label}
+      title={label}
+      className={`h-8 w-8 inline-grid place-items-center rounded-md hover:bg-accent/40 ${danger ? "text-destructive hover:bg-destructive/10" : ""}`}
     >
       {children}
     </button>
   );
 }
-
-function PageBtn({
-  children, onClick, disabled, active, ...rest
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { active?: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      {...rest}
-      className={
-        "min-w-8 h-8 px-2 inline-flex items-center justify-center rounded-md border text-xs font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none " +
-        (active
-          ? "border-accent bg-accent text-accent-foreground"
-          : "border-input bg-background hover:bg-accent/10")
-      }
-    >
-      {children}
-    </button>
-  );
-}
-
-/** Build a compact page list: 1 … (p-1) p (p+1) … total */
-function buildPageList(current: number, total: number): Array<number | "…"> {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const out: Array<number | "…"> = [1];
-  const start = Math.max(2, current - 1);
-  const end = Math.min(total - 1, current + 1);
-  if (start > 2) out.push("…");
-  for (let i = start; i <= end; i++) out.push(i);
-  if (end < total - 1) out.push("…");
-  out.push(total);
-  return out;
-}
-

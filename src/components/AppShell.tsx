@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Building2, CalendarDays, Receipt,
   Tags, Briefcase, Activity, Settings, Search, Bell, HardHat, ChevronRight, ShieldCheck,
   Hammer, ClipboardCheck, OctagonPause, Banknote, FileCheck2, PoundSterling,
-  UserCog, FileBarChart2, BookMarked, ListChecks, LogOut, UserCircle,
+  UserCog, FileBarChart2, BookMarked, ListChecks, LogOut, UserCircle, SlidersHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -50,8 +50,9 @@ const sections: NavSection[] = [
   //   { to: "/reports",       label: "Reports & Exports", icon: FileBarChart2,   permission: "reports.view" },
   // ]},
   { label: "Admin", items: [
-    { to: "/users",         label: "User Management",   icon: ShieldCheck,     permission: "users.view" },
-    { to: "/settings",      label: "Settings",          icon: Settings,        permission: "settings.view" },
+    { to: "/users",           label: "User Management",       icon: ShieldCheck,     permission: "users.view" },
+    { to: "/system-config",   label: "System Configuration",  icon: SlidersHorizontal },
+    { to: "/settings",        label: "Settings",              icon: Settings,        permission: "settings.view" },
   ]},
 ];
 
