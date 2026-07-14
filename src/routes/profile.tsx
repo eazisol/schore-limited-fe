@@ -177,35 +177,25 @@ function ProfilePage() {
           <KeyRound className="h-4 w-4 text-muted-foreground" />
           <h2 className="font-display font-semibold">Change password</h2>
         </div>
+        <PasswordField<PasswordValues> name="currentPassword" label="Current password" required autoComplete="current-password" />
         <div className="grid sm:grid-cols-2 gap-4">
-          <PasswordField<PasswordValues> name="currentPassword" label="Current password" required autoComplete="current-password" />
-          <div className="hidden sm:block" />
           <PasswordField<PasswordValues> name="password" label="New password" required autoComplete="new-password" />
           <PasswordField<PasswordValues> name="confirm" label="Confirm new password" required autoComplete="new-password" showToggle={false} />
+        </div>
+        <div className="rounded-md border bg-muted/30 px-4 py-3">
+          <div className="text-xs font-medium text-foreground mb-1.5">Password must include:</div>
+          <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-0.5">
+            <li>At least one uppercase letter</li>
+            <li>At least one lowercase letter</li>
+            <li>At least one number</li>
+            <li>At least one special character</li>
+            <li>Minimum 8 characters</li>
+          </ul>
         </div>
         <div className="flex justify-end pt-2 border-t">
           <SubmitButton variant="outline" loadingText="Updating…">Update password</SubmitButton>
         </div>
       </Form>
-
-      <div className="card-elevated p-6 mt-6">
-        <div className="flex items-center gap-2 mb-4">
-          <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-display font-semibold">Your role</h2>
-        </div>
-        <div className="flex items-center justify-between gap-4 rounded-md border bg-muted/30 px-4 py-3">
-          <div className="min-w-0">
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">Assigned role</div>
-            <div className="mt-0.5 font-medium truncate">{roleName}</div>
-          </div>
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-accent/15 text-accent-foreground border border-accent/30">
-            <ShieldCheck className="h-3 w-3" /> {roleName}
-          </span>
-        </div>
-        <p className="text-xs text-muted-foreground mt-3">
-          Contact an administrator to request a change to your role or permissions.
-        </p>
-      </div>
     </div>
   );
 }
