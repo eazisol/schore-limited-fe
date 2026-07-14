@@ -33,10 +33,7 @@ const TABS = [
 ] as const;
 
 function SettingsPage() {
-  const canView = useCan("settings.view");
   const [tab, setTab] = useState<typeof TABS[number]["key"]>("general");
-
-  if (!canView) return <Navigate to="/forbidden" />;
 
   return (
     <div>
