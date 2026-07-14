@@ -1,12 +1,11 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/AppShell";
-import { Can, useCan } from "@/components/Can";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { ShieldCheck, Mail, RotateCcw, Save, Send, Lock, Palette } from "lucide-react";
+import { ShieldCheck, Mail, RotateCcw, Save, Send, Palette } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,7 +17,7 @@ import { ROLE_LABEL, ROLE_BADGE, ROLES } from "@/lib/users-store";
 import { settingsService } from "@/lib/api/services/settings";
 import type { ApiError } from "@/lib/api/axios";
 import {
-  Form, TextField, SelectField, SwitchField, PasswordField, AvatarUploadField, SubmitButton,
+  Form, TextField, SwitchField, PasswordField, AvatarUploadField, SubmitButton,
 } from "@/components/form";
 
 export const Route = createFileRoute("/settings")({
