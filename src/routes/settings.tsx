@@ -122,11 +122,10 @@ function GeneralTab() {
 
 function RolesTab() {
   const roles = useRoles();
-  const canEdit = useCan("permissions.manage");
+  const canEdit = true;
   const groups = groupPermissions();
 
   function toggle(roleKey: RoleKey, perm: PermissionKey) {
-    if (!canEdit) return;
     rolesStore.togglePermission(roleKey, perm);
   }
 
@@ -140,14 +139,12 @@ function RolesTab() {
               Permissions drive menus, pages and actions across the platform. Changes apply immediately.
             </p>
           </div>
-          <Can permission="permissions.manage">
-            <Button variant="outline" size="sm" onClick={() => {
-              rolesStore.resetToDefaults();
-              toast.success("Permissions reset to defaults");
-            }}>
-              <RotateCcw className="h-4 w-4" /> Reset to defaults
-            </Button>
-          </Can>
+          <Button variant="outline" size="sm" onClick={() => {
+            rolesStore.resetToDefaults();
+            toast.success("Permissions reset to defaults");
+          }}>
+            <RotateCcw className="h-4 w-4" /> Reset to defaults
+          </Button>
         </div>
       </div>
 
