@@ -283,3 +283,38 @@ function MenuItem({ children, onClick, danger }: { children: React.ReactNode; on
     </button>
   );
 }
+
+function PageBtn({
+  children, onClick, disabled, active, ...rest
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { active?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      {...rest}
+      className={
+        "min-w-8 h-8 px-2 inline-flex items-center justify-center rounded-md border text-xs font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none " +
+        (active
+          ? "border-accent bg-accent text-accent-foreground"
+          : "border-input bg-background hover:bg-accent/10")
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Build a compact page list: 1 … (p-1) p (p+1) … total */
+function buildPageList(current: number, total: number): Array<number | "…"> {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const out: Array<number | "…"> = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) out.push("…");
+  for (let i = start; i <= end; i++) out.push(i);
+  if (end < total - 1) out.push("…");
+  out.push(total);
+  return out;
+}
+
