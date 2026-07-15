@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Building2, CalendarDays, Receipt,
   Tags, Briefcase, Activity, Settings, Search, Bell, HardHat, ChevronRight, ShieldCheck,
   Hammer, ClipboardCheck, OctagonPause, Banknote, FileCheck2, PoundSterling,
-  UserCog, FileBarChart2, BookMarked, ListChecks, LogOut, UserCircle, SlidersHorizontal,
+  UserCog, FileBarChart2, BookMarked, ListChecks, LogOut, UserCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -50,9 +50,8 @@ const sections: NavSection[] = [
   //   { to: "/reports",       label: "Reports & Exports", icon: FileBarChart2,   permission: "reports.view" },
   // ]},
   { label: "Admin", items: [
-    { to: "/users",           label: "User Management",       icon: ShieldCheck,     permission: "users.view" },
-    { to: "/system-config",   label: "System Configuration",  icon: SlidersHorizontal },
-    { to: "/settings",        label: "Settings",              icon: Settings,        permission: "settings.view" },
+    { to: "/users",    label: "User Management", icon: ShieldCheck, permission: "users.view" },
+    { to: "/settings", label: "Settings",        icon: Settings,    permission: "settings.view" },
   ]},
 ];
 
@@ -180,14 +179,14 @@ export function AppShell() {
             ))}
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <div className="hidden md:flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-card w-72">
+            {/* <div className="hidden md:flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-card w-72">
               <Search className="h-4 w-4 text-muted-foreground" />
               <input
                 placeholder="Search properties, operatives…"
                 className="bg-transparent text-sm outline-none w-full placeholder:text-muted-foreground"
               />
               <kbd className="text-[10px] text-muted-foreground border rounded px-1.5 py-0.5">⌘K</kbd>
-            </div>
+            </div> */}
             <button
               type="button"
               onClick={() => toast("No new notifications", { description: "You're all caught up." })}

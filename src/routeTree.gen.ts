@@ -39,6 +39,7 @@ import { Route as WagesIndexRouteImport } from './routes/wages.index'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
 import { Route as TradeBuilderIndexRouteImport } from './routes/trade-builder.index'
 import { Route as SystemConfigIndexRouteImport } from './routes/system-config.index'
+import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
 import { Route as OperativesIndexRouteImport } from './routes/operatives.index'
 import { Route as WagesIdRouteImport } from './routes/wages.$id'
@@ -48,6 +49,10 @@ import { Route as TradeBuilderTasksRouteImport } from './routes/trade-builder.ta
 import { Route as TradeBuilderGroupsRouteImport } from './routes/trade-builder.groups'
 import { Route as SystemConfigUserTypesRouteImport } from './routes/system-config.user-types'
 import { Route as SystemConfigRolesRouteImport } from './routes/system-config.roles'
+import { Route as SettingsUserTypesRouteImport } from './routes/settings.user-types'
+import { Route as SettingsRolesRouteImport } from './routes/settings.roles'
+import { Route as SettingsRolePermissionsRouteImport } from './routes/settings.role-permissions'
+import { Route as SettingsEmailSmtpRouteImport } from './routes/settings.email-smtp'
 import { Route as PropertiesIdRouteImport } from './routes/properties.$id'
 import { Route as OperativesNewRouteImport } from './routes/operatives.new'
 import { Route as OperativesIdRouteImport } from './routes/operatives.$id'
@@ -202,6 +207,11 @@ const SystemConfigIndexRoute = SystemConfigIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SystemConfigRoute,
 } as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -247,6 +257,26 @@ const SystemConfigRolesRoute = SystemConfigRolesRouteImport.update({
   path: '/roles',
   getParentRoute: () => SystemConfigRoute,
 } as any)
+const SettingsUserTypesRoute = SettingsUserTypesRouteImport.update({
+  id: '/user-types',
+  path: '/user-types',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsRolesRoute = SettingsRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsRolePermissionsRoute = SettingsRolePermissionsRouteImport.update({
+  id: '/role-permissions',
+  path: '/role-permissions',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsEmailSmtpRoute = SettingsEmailSmtpRouteImport.update({
+  id: '/email-smtp',
+  path: '/email-smtp',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const PropertiesIdRoute = PropertiesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -283,7 +313,7 @@ export interface FileRoutesByFullPath {
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
   '/system-config': typeof SystemConfigRouteWithChildren
@@ -293,6 +323,10 @@ export interface FileRoutesByFullPath {
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/settings/email-smtp': typeof SettingsEmailSmtpRoute
+  '/settings/role-permissions': typeof SettingsRolePermissionsRoute
+  '/settings/roles': typeof SettingsRolesRoute
+  '/settings/user-types': typeof SettingsUserTypesRoute
   '/system-config/roles': typeof SystemConfigRolesRoute
   '/system-config/user-types': typeof SystemConfigUserTypesRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
@@ -302,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/wages/$id': typeof WagesIdRoute
   '/operatives/': typeof OperativesIndexRoute
   '/properties/': typeof PropertiesIndexRoute
+  '/settings/': typeof SettingsIndexRoute
   '/system-config/': typeof SystemConfigIndexRoute
   '/trade-builder/': typeof TradeBuilderIndexRoute
   '/users/': typeof UsersIndexRoute
@@ -325,12 +360,15 @@ export interface FileRoutesByTo {
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/settings/email-smtp': typeof SettingsEmailSmtpRoute
+  '/settings/role-permissions': typeof SettingsRolePermissionsRoute
+  '/settings/roles': typeof SettingsRolesRoute
+  '/settings/user-types': typeof SettingsUserTypesRoute
   '/system-config/roles': typeof SystemConfigRolesRoute
   '/system-config/user-types': typeof SystemConfigUserTypesRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
@@ -340,6 +378,7 @@ export interface FileRoutesByTo {
   '/wages/$id': typeof WagesIdRoute
   '/operatives': typeof OperativesIndexRoute
   '/properties': typeof PropertiesIndexRoute
+  '/settings': typeof SettingsIndexRoute
   '/system-config': typeof SystemConfigIndexRoute
   '/trade-builder': typeof TradeBuilderIndexRoute
   '/users': typeof UsersIndexRoute
@@ -366,7 +405,7 @@ export interface FileRoutesById {
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
   '/system-config': typeof SystemConfigRouteWithChildren
@@ -376,6 +415,10 @@ export interface FileRoutesById {
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/settings/email-smtp': typeof SettingsEmailSmtpRoute
+  '/settings/role-permissions': typeof SettingsRolePermissionsRoute
+  '/settings/roles': typeof SettingsRolesRoute
+  '/settings/user-types': typeof SettingsUserTypesRoute
   '/system-config/roles': typeof SystemConfigRolesRoute
   '/system-config/user-types': typeof SystemConfigUserTypesRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
@@ -385,6 +428,7 @@ export interface FileRoutesById {
   '/wages/$id': typeof WagesIdRoute
   '/operatives/': typeof OperativesIndexRoute
   '/properties/': typeof PropertiesIndexRoute
+  '/settings/': typeof SettingsIndexRoute
   '/system-config/': typeof SystemConfigIndexRoute
   '/trade-builder/': typeof TradeBuilderIndexRoute
   '/users/': typeof UsersIndexRoute
@@ -422,6 +466,10 @@ export interface FileRouteTypes {
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/settings/email-smtp'
+    | '/settings/role-permissions'
+    | '/settings/roles'
+    | '/settings/user-types'
     | '/system-config/roles'
     | '/system-config/user-types'
     | '/trade-builder/groups'
@@ -431,6 +479,7 @@ export interface FileRouteTypes {
     | '/wages/$id'
     | '/operatives/'
     | '/properties/'
+    | '/settings/'
     | '/system-config/'
     | '/trade-builder/'
     | '/users/'
@@ -454,12 +503,15 @@ export interface FileRouteTypes {
     | '/rates'
     | '/reports'
     | '/reset-password'
-    | '/settings'
     | '/signin'
     | '/statements'
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/settings/email-smtp'
+    | '/settings/role-permissions'
+    | '/settings/roles'
+    | '/settings/user-types'
     | '/system-config/roles'
     | '/system-config/user-types'
     | '/trade-builder/groups'
@@ -469,6 +521,7 @@ export interface FileRouteTypes {
     | '/wages/$id'
     | '/operatives'
     | '/properties'
+    | '/settings'
     | '/system-config'
     | '/trade-builder'
     | '/users'
@@ -504,6 +557,10 @@ export interface FileRouteTypes {
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/settings/email-smtp'
+    | '/settings/role-permissions'
+    | '/settings/roles'
+    | '/settings/user-types'
     | '/system-config/roles'
     | '/system-config/user-types'
     | '/trade-builder/groups'
@@ -513,6 +570,7 @@ export interface FileRouteTypes {
     | '/wages/$id'
     | '/operatives/'
     | '/properties/'
+    | '/settings/'
     | '/system-config/'
     | '/trade-builder/'
     | '/users/'
@@ -539,7 +597,7 @@ export interface RootRouteChildren {
   RatesRoute: typeof RatesRoute
   ReportsRoute: typeof ReportsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  SettingsRoute: typeof SettingsRoute
+  SettingsRoute: typeof SettingsRouteWithChildren
   SigninRoute: typeof SigninRoute
   StatementsRoute: typeof StatementsRoute
   SystemConfigRoute: typeof SystemConfigRouteWithChildren
@@ -760,6 +818,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SystemConfigIndexRouteImport
       parentRoute: typeof SystemConfigRoute
     }
+    '/settings/': {
+      id: '/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/properties/': {
       id: '/properties/'
       path: '/'
@@ -823,6 +888,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SystemConfigRolesRouteImport
       parentRoute: typeof SystemConfigRoute
     }
+    '/settings/user-types': {
+      id: '/settings/user-types'
+      path: '/user-types'
+      fullPath: '/settings/user-types'
+      preLoaderRoute: typeof SettingsUserTypesRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/roles': {
+      id: '/settings/roles'
+      path: '/roles'
+      fullPath: '/settings/roles'
+      preLoaderRoute: typeof SettingsRolesRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/role-permissions': {
+      id: '/settings/role-permissions'
+      path: '/role-permissions'
+      fullPath: '/settings/role-permissions'
+      preLoaderRoute: typeof SettingsRolePermissionsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/email-smtp': {
+      id: '/settings/email-smtp'
+      path: '/email-smtp'
+      fullPath: '/settings/email-smtp'
+      preLoaderRoute: typeof SettingsEmailSmtpRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/properties/$id': {
       id: '/properties/$id'
       path: '/$id'
@@ -875,6 +968,26 @@ const PropertiesRouteChildren: PropertiesRouteChildren = {
 
 const PropertiesRouteWithChildren = PropertiesRoute._addFileChildren(
   PropertiesRouteChildren,
+)
+
+interface SettingsRouteChildren {
+  SettingsEmailSmtpRoute: typeof SettingsEmailSmtpRoute
+  SettingsRolePermissionsRoute: typeof SettingsRolePermissionsRoute
+  SettingsRolesRoute: typeof SettingsRolesRoute
+  SettingsUserTypesRoute: typeof SettingsUserTypesRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
+}
+
+const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsEmailSmtpRoute: SettingsEmailSmtpRoute,
+  SettingsRolePermissionsRoute: SettingsRolePermissionsRoute,
+  SettingsRolesRoute: SettingsRolesRoute,
+  SettingsUserTypesRoute: SettingsUserTypesRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
+}
+
+const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
+  SettingsRouteChildren,
 )
 
 interface SystemConfigRouteChildren {
@@ -955,7 +1068,7 @@ const rootRouteChildren: RootRouteChildren = {
   RatesRoute: RatesRoute,
   ReportsRoute: ReportsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  SettingsRoute: SettingsRoute,
+  SettingsRoute: SettingsRouteWithChildren,
   SigninRoute: SigninRoute,
   StatementsRoute: StatementsRoute,
   SystemConfigRoute: SystemConfigRouteWithChildren,
@@ -966,3 +1079,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -10,7 +10,7 @@ import { toast } from "sonner";
 /**
  * Centralised Axios instance for the Schore platform.
  *
- * Base URL is fixed to the production API root. All feature-level
+ * Base URL comes from `VITE_API_BASE_URL`. All feature-level
  * services (`src/lib/api/services/*`) MUST import `api` from here — never
  * call `axios` directly, never hard-code the base URL elsewhere.
  *
@@ -25,7 +25,8 @@ import { toast } from "sonner";
  * both inside and outside components (loaders, effects, event handlers).
  */
 
-export const API_BASE_URL = "https://schore.yehtohoga.com/api/";
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? "https://schore.yehtohoga.com/api/";
 
 /* ----------------------------- token store ----------------------------- */
 

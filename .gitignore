@@ -16,11 +16,17 @@ dist-ssr
 .nitro
 *.local
 
+# Env (keep .env.example committed)
+.env
+.env.*
+!.env.example
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
 
 # Editor directories and files
+.cursor/
 .vscode/*
 !.vscode/extensions.json
 .idea
