@@ -11,7 +11,7 @@ import { Modal } from "@/components/Modal";
 import { Pagination } from "@/components/Pagination";
 import { Form, TextField, TextareaField, CheckboxField, SubmitButton } from "@/components/form";
 import { rolesService, type ApiRole, type RolePayload } from "@/lib/api/services/system-config";
-import type { ApiError } from "@/lib/api/axios";
+import { notifyApiError } from "@/lib/api/axios";
 
 export const Route = createFileRoute("/settings/roles")({
   head: () => ({ meta: [{ title: "Roles — Settings" }] }),
@@ -67,7 +67,7 @@ function RolesPage() {
       setConfirmDel(null);
       qc.invalidateQueries({ queryKey: rolesKey });
     },
-    onError: (err: ApiError) => toast.error(err?.message || "Failed to delete role"),
+    onError: (err) => notifyApiError(err, "Failed to delete role"),
   });
 
   return (
@@ -224,7 +224,7 @@ function RoleFormModal({ mode, onClose, onSaved }: { mode: Mode; onClose: () => 
       toast.success(res.message || (mode.kind === "edit" ? "Role updated" : "Role created"));
       onSaved();
     },
-    onError: (err: ApiError) => toast.error(err?.message || "Failed to save role"),
+    onError: (err) => notifyApiError(err, "Failed to save role"),
   });
 
   async function submit(v: Values) {

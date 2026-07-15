@@ -18,7 +18,7 @@ import {
   type ApiPermission,
   type UpsertPermission,
 } from "@/lib/api/services/permissions";
-import type { ApiError } from "@/lib/api/axios";
+import { notifyApiError } from "@/lib/api/axios";
 
 export const Route = createFileRoute("/settings/role-permissions")({
   head: () => ({ meta: [{ title: "Role Permissions — Settings" }] }),
@@ -116,9 +116,7 @@ function RolePermissionsPage() {
       qc.setQueryData(["permissions", "role", vars.roleId], next);
       setDraft(toDraft(next));
     },
-    onError: (err: ApiError) => {
-      toast.error(err?.message || "Failed to save permissions");
-    },
+    onError: (err) => notifyApiError(err, "Failed to save permissions"),
   });
 
   function toggle(menuId: number, flag: PermFlag) {

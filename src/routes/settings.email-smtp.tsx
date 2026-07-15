@@ -7,7 +7,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { settingsService } from "@/lib/api/services/settings";
-import type { ApiError } from "@/lib/api/axios";
+import { notifyApiError } from "@/lib/api/axios";
 import {
   Form, TextField, SwitchField, PasswordField, SubmitButton,
 } from "@/components/form";
@@ -86,8 +86,7 @@ function EmailSmtpPage() {
       setHasExisting(true);
       toast.success("SMTP configuration saved");
     } catch (err) {
-      const e = err as ApiError;
-      toast.error(e?.message || "Failed to save SMTP configuration");
+      notifyApiError(err, "Failed to save SMTP configuration");
     }
   }
 

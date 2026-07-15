@@ -11,7 +11,7 @@ import { Modal } from "@/components/Modal";
 import { Pagination } from "@/components/Pagination";
 import { Form, TextField, CheckboxField, SubmitButton } from "@/components/form";
 import { userTypesService, type ApiUserType, type UserTypePayload } from "@/lib/api/services/system-config";
-import type { ApiError } from "@/lib/api/axios";
+import { notifyApiError } from "@/lib/api/axios";
 
 export const Route = createFileRoute("/settings/user-types")({
   head: () => ({ meta: [{ title: "User Types — Settings" }] }),
@@ -66,7 +66,7 @@ function UserTypesPage() {
       setConfirmDel(null);
       qc.invalidateQueries({ queryKey: listKey });
     },
-    onError: (err: ApiError) => toast.error(err?.message || "Failed to delete user type"),
+    onError: (err) => notifyApiError(err, "Failed to delete user type"),
   });
 
   return (
@@ -220,7 +220,7 @@ function UserTypeFormModal({ mode, onClose, onSaved }: { mode: Mode; onClose: ()
       toast.success(res.message || (mode.kind === "edit" ? "User type updated" : "User type created"));
       onSaved();
     },
-    onError: (err: ApiError) => toast.error(err?.message || "Failed to save user type"),
+    onError: (err) => notifyApiError(err, "Failed to save user type"),
   });
 
   async function submit(v: Values) {

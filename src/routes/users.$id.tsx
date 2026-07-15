@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, TextField, SelectField, CheckboxField, SubmitButton } from "@/components/form";
 import { usersService, type UpdateUserPayload } from "@/lib/api/services/users";
 import { lookupsService } from "@/lib/api/services/lookups";
-import type { ApiError } from "@/lib/api/axios";
+import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { usersQueryKey } from "./users.index";
 
 export const Route = createFileRoute("/users/$id")({
@@ -67,7 +67,7 @@ function UserDetail() {
       queryClient.setQueryData(["users", id], res.data);
       queryClient.invalidateQueries({ queryKey: usersQueryKey });
     },
-    onError: (err: ApiError) => toast.error(err?.message || "Failed to update user"),
+    onError: (err) => notifyApiError(err, "Failed to update user"),
   });
 
   const deleteMutation = useMutation({
@@ -77,7 +77,7 @@ function UserDetail() {
       queryClient.invalidateQueries({ queryKey: usersQueryKey });
       navigate({ to: "/users" });
     },
-    onError: (err: ApiError) => toast.error(err?.message || "Failed to delete user"),
+    onError: (err) => notifyApiError(err, "Failed to delete user"),
   });
 
   async function save(values: Values) {

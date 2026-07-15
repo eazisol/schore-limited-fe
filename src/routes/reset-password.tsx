@@ -1,26 +1,29 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { HardHat, Lock, CheckCircle2, AlertCircle } from "lucide-react";
+import { Lock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authService } from "@/lib/api/services/auth";
-import type { ApiError } from "@/lib/api/axios";
-import { cn } from "@/lib/utils";
+import { notifyApiError } from "@/lib/api/axios";
+import { AuthLayout } from "@/components/AuthLayout";
 import { Form, PasswordField, SubmitButton } from "@/components/form";
+import { newPasswordSchema, PasswordRequirements } from "@/lib/password";
 
 const search = z.object({
   token: z.string().optional(),
   email: z.string().optional(),
 });
 
-const schema = z.object({
-  password: z.string()
-    .min(8, "Must be at least 8 characters")
-    .regex(/[A-Z]/, "Include at least one uppercase letter")
-    .regex(/[0-9]/, "Include at least one number"),
-  confirm: z.string().min(1, "Please confirm your password"),
-}).refine(v => v.password === v.confirm, { path: ["confirm"], message: "Passwords do not match" });
+const schema = z
+  .object({
+    password: newPasswordSchema,
+    confirm: z.string().min(1, "Please confirm your password"),
+  })
+  .refine((v) => v.password === v.confirm, {
+    path: ["confirm"],
+    message: "Passwords do not match",
+  });
 type Values = z.infer<typeof schema>;
 
 export const Route = createFileRoute("/reset-password")({
@@ -38,13 +41,14 @@ function ResetPassword() {
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { password: "", confirm: "" },
-    mode: "onBlur",
   });
   const pw = form.watch("password");
 
   async function onSubmit(values: Values) {
     if (!token) {
-      toast.error("Missing or invalid reset token. Request a new reset link.");
+      toast.error("Missing or invalid reset token. Request a new reset link.", {
+        id: "api-error",
+      });
       return;
     }
     try {
@@ -56,69 +60,65 @@ function ResetPassword() {
       toast.success(res.message || "Password updated");
       navigate({ to: "/signin" });
     } catch (err) {
-      const e = err as ApiError;
-      toast.error(e?.message || "Failed to reset password");
+      notifyApiError(err, "Failed to reset password");
     }
   }
 
   return (
-    <div className="min-h-screen w-full grid place-items-center bg-background p-6">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex items-center gap-2.5">
-          <div className="grid h-9 w-9 place-items-center rounded-md bg-accent text-accent-foreground">
-            <HardHat className="h-5 w-5" />
-          </div>
-          <div className="font-display font-semibold">SCHORE</div>
+    <AuthLayout
+      title="Set a new password"
+      subtitle={
+        email ? (
+          <>
+            For <span className="font-medium text-foreground">{email}</span>
+          </>
+        ) : (
+          "Enter and confirm your new password."
+        )
+      }
+      footer={
+        <p className="text-xs text-muted-foreground text-center">
+          <Link to="/signin" className="text-foreground hover:underline">
+            Back to Sign In
+          </Link>
+        </p>
+      }
+    >
+      {!token && (
+        <div
+          role="alert"
+          className="mb-4 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+        >
+          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>
+            Missing reset token. Please use the link from your reset email or request a new one.
+          </span>
         </div>
+      )}
 
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Set a new password</h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          {email ? <>For <span className="font-medium text-foreground">{email}</span></> : "Enter and confirm your new password."}
-        </p>
+      <Form form={form} onSubmit={onSubmit} className="space-y-4">
+        <PasswordField<Values>
+          name="password"
+          label="New password"
+          required
+          autoComplete="new-password"
+          leftIcon={Lock}
+        />
+        <PasswordField<Values>
+          name="confirm"
+          label="Confirm password"
+          required
+          autoComplete="new-password"
+          leftIcon={Lock}
+          showToggle={false}
+        />
 
-        {!token && (
-          <div role="alert" className="mt-5 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-            <span>Missing reset token. Please use the link from your reset email or request a new one.</span>
-          </div>
-        )}
+        <PasswordRequirements password={pw} />
 
-        <Form form={form} onSubmit={onSubmit} className="mt-6 space-y-4">
-          <PasswordField<Values>
-            name="password"
-            label="New password"
-            required
-            autoComplete="new-password"
-            leftIcon={Lock}
-          />
-          <PasswordField<Values>
-            name="confirm"
-            label="Confirm password"
-            required
-            autoComplete="new-password"
-            leftIcon={Lock}
-            showToggle={false}
-          />
-
-          <ul className="text-xs text-muted-foreground space-y-1">
-            <li className={cn("flex items-center gap-1.5", pw.length >= 8 && "text-info")}>
-              <CheckCircle2 className="h-3.5 w-3.5" /> At least 8 characters
-            </li>
-            <li className={cn("flex items-center gap-1.5", /[A-Z]/.test(pw) && "text-info")}>
-              <CheckCircle2 className="h-3.5 w-3.5" /> One uppercase letter
-            </li>
-            <li className={cn("flex items-center gap-1.5", /[0-9]/.test(pw) && "text-info")}>
-              <CheckCircle2 className="h-3.5 w-3.5" /> One number
-            </li>
-          </ul>
-
-          <SubmitButton className="w-full h-10" loadingText="Updating…" disabled={!token}>Update password</SubmitButton>
-        </Form>
-
-        <p className="mt-6 text-xs text-muted-foreground text-center">
-          <Link to="/signin" className="text-foreground hover:underline">Back to sign in</Link>
-        </p>
-      </div>
-    </div>
+        <SubmitButton className="w-full h-10" loadingText="Updating…" disabled={!token}>
+          Update password
+        </SubmitButton>
+      </Form>
+    </AuthLayout>
   );
 }

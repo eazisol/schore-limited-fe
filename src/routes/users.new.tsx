@@ -12,7 +12,7 @@ import {
 } from "@/components/form";
 import { usersService, type ApiUser, type CreateUserPayload } from "@/lib/api/services/users";
 import { lookupsService } from "@/lib/api/services/lookups";
-import type { ApiError } from "@/lib/api/axios";
+import { notifyApiError } from "@/lib/api/axios";
 import { usersQueryKey } from "./users.index";
 
 export const Route = createFileRoute("/users/new")({
@@ -66,9 +66,7 @@ function NewUser() {
       if (id != null) navigate({ to: "/users/$id", params: { id: String(id) } });
       else navigate({ to: "/users" });
     },
-    onError: (err: ApiError) => {
-      toast.error(err?.message || "Failed to create user");
-    },
+    onError: (err) => notifyApiError(err, "Failed to create user"),
   });
 
   async function submit(values: Values) {

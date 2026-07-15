@@ -1,9 +1,16 @@
-import { FormProvider, type FieldValues, type UseFormReturn, type FieldErrors } from "react-hook-form";
+import {
+  FormProvider,
+  type FieldValues,
+  type UseFormReturn,
+  type FieldErrors,
+} from "react-hook-form";
 import type { FormHTMLAttributes, ReactNode } from "react";
 import { toast } from "sonner";
 
-export interface FormProps<T extends FieldValues>
-  extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit" | "onInvalid"> {
+export interface FormProps<T extends FieldValues> extends Omit<
+  FormHTMLAttributes<HTMLFormElement>,
+  "onSubmit" | "onInvalid"
+> {
   form: UseFormReturn<T>;
   onSubmit: (values: T) => void | Promise<void>;
   /** Toast message shown when submit is attempted with invalid required fields. */
@@ -33,7 +40,8 @@ export function Form<T extends FieldValues>({
   ...rest
 }: FormProps<T>) {
   const handleInvalid = (errors: FieldErrors<T>) => {
-    toast.error(invalidToastMessage);
+    const firstMsg = firstErrorMessage(errors);
+    toast.error(firstMsg || invalidToastMessage, { id: "form-validation" });
     focusFirstInvalid(errors, form);
     onInvalidSubmit?.(errors);
   };
@@ -47,10 +55,7 @@ export function Form<T extends FieldValues>({
   );
 }
 
-function focusFirstInvalid<T extends FieldValues>(
-  errors: FieldErrors<T>,
-  form: UseFormReturn<T>,
-) {
+function focusFirstInvalid<T extends FieldValues>(errors: FieldErrors<T>, form: UseFormReturn<T>) {
   const name = firstErrorPath(errors);
   if (!name) return;
 
@@ -69,10 +74,26 @@ function focusFirstInvalid<T extends FieldValues>(
         (document.querySelector(`[data-field="${cssEscape(name)}"]`) as HTMLElement | null);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
       if (el && document.activeElement !== el) {
-        try { (el as HTMLElement).focus({ preventScroll: true }); } catch { /* ignore */ }
+        try {
+          (el as HTMLElement).focus({ preventScroll: true });
+        } catch {
+          /* ignore */
+        }
       }
     });
   }
+}
+
+function firstErrorMessage(errors: any): string | null {
+  if (!errors || typeof errors !== "object") return null;
+  for (const key of Object.keys(errors)) {
+    const val = errors[key];
+    if (!val) continue;
+    if (typeof val.message === "string" && val.message.trim()) return val.message.trim();
+    const nested = firstErrorMessage(val);
+    if (nested) return nested;
+  }
+  return null;
 }
 
 function firstErrorPath(errors: any, prefix = ""): string | null {

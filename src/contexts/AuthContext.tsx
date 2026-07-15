@@ -77,9 +77,10 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isHydrated: boolean;
   isSigningIn: boolean;
-  signIn: (emailOrUsername: string, password: string) => Promise<
-    { ok: true; user: AuthUser } | { ok: false; message: string }
-  >;
+  signIn: (
+    emailOrUsername: string,
+    password: string,
+  ) => Promise<{ ok: true; user: AuthUser } | { ok: false; message: string; toasted?: boolean }>;
   signOut: () => void;
 }
 
@@ -109,36 +110,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const signIn: AuthContextValue["signIn"] = useCallback(
-    async (emailOrUsername, password) => {
-      setSigningIn(true);
-      try {
-        const res = await authService.login({ emailOrUsername, password });
-        if (!res?.success || !res.data?.token) {
-          return { ok: false, message: res?.message ?? "Login failed" };
-        }
-        const user = toAuthUser(res.data);
-        const next: SessionShape = {
-          token: res.data.token,
-          expiresAt: res.data.expiresAt,
-          user,
-        };
-        saveSession(next);
-        tokenStore.set(next.token, true);
-        setSession(next);
-        return { ok: true, user };
-      } catch (err) {
-        const e = err as ApiError;
-        return {
-          ok: false,
-          message: e?.message || "Unable to sign in. Please try again.",
-        };
-      } finally {
-        setSigningIn(false);
+  const signIn: AuthContextValue["signIn"] = useCallback(async (emailOrUsername, password) => {
+    setSigningIn(true);
+    try {
+      const res = await authService.login({ emailOrUsername, password });
+      if (!res?.success || !res.data?.token) {
+        return { ok: false, message: res?.message ?? "Login failed" };
       }
-    },
-    [],
-  );
+      const user = toAuthUser(res.data);
+      const next: SessionShape = {
+        token: res.data.token,
+        expiresAt: res.data.expiresAt,
+        user,
+      };
+      saveSession(next);
+      tokenStore.set(next.token, true);
+      setSession(next);
+      return { ok: true, user };
+    } catch (err) {
+      const e = err as ApiError;
+      return {
+        ok: false,
+        message: e?.message || "Unable to sign in. Please try again.",
+        toasted: e?.toasted,
+      };
+    } finally {
+      setSigningIn(false);
+    }
+  }, []);
 
   const signOut = useCallback(() => {
     saveSession(null);

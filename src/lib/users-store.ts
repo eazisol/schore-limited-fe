@@ -138,8 +138,5 @@ export function validateUser(input: {
   if (!input.role) errs.role = "Role is required";
   else if (!ROLES.includes(input.role as UserRole)) errs.role = "Invalid role";
 
-  if (input.phone && input.phone.trim() && !/^[\d +()-]{7,20}$/.test(input.phone.trim())) {
-    errs.phone = "Enter a valid phone number";
-  }
   return errs;
 }

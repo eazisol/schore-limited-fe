@@ -7,7 +7,7 @@ import { Pagination } from "@/components/Pagination";
 import { Plus, Search, Eye, Pencil, Trash2, Mail, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { usersService, type ApiUser } from "@/lib/api/services/users";
-import type { ApiError } from "@/lib/api/axios";
+import { notifyApiError, type ApiError } from "@/lib/api/axios";
 
 export const Route = createFileRoute("/users/")({
   head: () => ({ meta: [{ title: "User Management — Schore" }] }),
@@ -50,9 +50,7 @@ function UsersList() {
       setConfirmDel(null);
       queryClient.invalidateQueries({ queryKey: usersQueryKey });
     },
-    onError: (err: ApiError) => {
-      toast.error(err?.message || "Failed to delete user");
-    },
+    onError: (err) => notifyApiError(err, "Failed to delete user"),
   });
 
   const rows = data?.items ?? [];

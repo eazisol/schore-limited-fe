@@ -18,8 +18,9 @@ import { toast } from "sonner";
  *   1. Provide one configured instance (`api`).
  *   2. Attach the auth token from the token store on every request.
  *   3. Normalise responses (`response.data` -> handler value).
- *   4. Centralise error handling: 401 -> emit unauthorized signal,
- *      network / 5xx -> toast, everything else -> throw a normalised error.
+ *   4. Centralise error handling: 401 -> emit unauthorized signal;
+ *      network / 5xx / 403 -> toast once (callers use `notifyApiError`),
+ *      everything else -> throw a normalised error for the caller to handle.
  *
  * Token storage is intentionally decoupled from React so this file works
  * both inside and outside components (loaders, effects, event handlers).
@@ -38,10 +39,7 @@ const tokenListeners = new Set<TokenListener>();
 function readToken(): string | null {
   if (typeof window === "undefined") return null;
   try {
-    return (
-      window.localStorage.getItem(TOKEN_KEY) ??
-      window.sessionStorage.getItem(TOKEN_KEY)
-    );
+    return window.localStorage.getItem(TOKEN_KEY) ?? window.sessionStorage.getItem(TOKEN_KEY);
   } catch {
     return null;
   }
@@ -64,7 +62,7 @@ export const tokenStore = {
     } catch {
       /* storage disabled — ignore */
     }
-    tokenListeners.forEach(l => l(token));
+    tokenListeners.forEach((l) => l(token));
   },
   clear() {
     this.set(null);
@@ -98,7 +96,18 @@ export interface ApiError {
   code?: string;
   details?: unknown;
   isNetworkError: boolean;
+  /** True when the axios interceptor already showed a toast for this error. */
+  toasted?: boolean;
   original: unknown;
+}
+
+function backendMessage(data: unknown, fallback: string): string {
+  if (data && typeof data === "object") {
+    const d = data as Record<string, unknown>;
+    const msg = d.message ?? d.error ?? d.title;
+    if (typeof msg === "string" && msg.trim()) return msg.trim();
+  }
+  return fallback;
 }
 
 function toApiError(err: unknown): ApiError {
@@ -106,13 +115,17 @@ function toApiError(err: unknown): ApiError {
     const ax = err as AxiosError<any>;
     const status = ax.response?.status ?? 0;
     const data = ax.response?.data;
-    const message =
-      (data && typeof data === "object" && (data.message || data.error)) ||
-      ax.message ||
-      "Request failed";
+    const fallback =
+      ax.message && ax.message !== "Network Error"
+        ? ax.message
+        : status >= 500
+          ? "Server error. Please try again in a moment."
+          : !ax.response
+            ? "Network error. Check your connection and try again."
+            : "Request failed";
     return {
       status,
-      message: String(message),
+      message: backendMessage(data, fallback),
       code: ax.code,
       details: data,
       isNetworkError: !ax.response,
@@ -142,11 +155,7 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (token && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);
   }
-  if (
-    config.data &&
-    !(config.data instanceof FormData) &&
-    !headers.has("Content-Type")
-  ) {
+  if (config.data && !(config.data instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
   config.headers = headers;
@@ -154,32 +163,44 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 });
 
 // Response interceptor — normalise + centralise errors.
+// Toasts once for network / 5xx / 403 so callers must not toast those again
+// (use `notifyApiError` which respects `apiError.toasted`).
 api.interceptors.response.use(
-  response => response,
+  (response) => response,
   (error: unknown) => {
     const apiError = toApiError(error);
 
     // 401 — token invalid/expired. Emit signal, don't toast (AuthContext handles UX).
     if (apiError.status === 401) {
       tokenStore.clear();
-      unauthorizedListeners.forEach(l => l());
+      unauthorizedListeners.forEach((l) => l());
     }
-    // 403 — permission denied.
-    else if (apiError.status === 403) {
-      toast.error("You don't have permission to perform this action.");
-    }
-    // 5xx — server error.
-    else if (apiError.status >= 500) {
-      toast.error("Server error. Please try again in a moment.");
-    }
-    // Network / timeout.
-    else if (apiError.isNetworkError) {
-      toast.error("Network error. Check your connection and try again.");
+    // 403 / 5xx / network — toast once here with backend message when present.
+    else if (apiError.status === 403 || apiError.status >= 500 || apiError.isNetworkError) {
+      const fallback =
+        apiError.status === 403
+          ? "You don't have permission to perform this action."
+          : apiError.isNetworkError
+            ? "Network error. Check your connection and try again."
+            : "Server error. Please try again in a moment.";
+      toast.error(apiError.message || fallback, { id: "api-error" });
+      apiError.toasted = true;
     }
 
     return Promise.reject(apiError);
   },
 );
+
+/**
+ * Show an API error toast unless the interceptor already did.
+ * Prefer the backend message; use `fallback` only when message is empty.
+ */
+export function notifyApiError(err: unknown, fallback = "Request failed") {
+  const apiError = err as ApiError;
+  if (apiError?.toasted) return;
+  const message = (typeof apiError?.message === "string" && apiError.message.trim()) || fallback;
+  toast.error(message, { id: "api-error" });
+}
 
 /* ------------------------------ helpers ------------------------------ */
 

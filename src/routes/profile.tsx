@@ -11,7 +11,8 @@ import { usersStore } from "@/lib/users-store";
 import { Form, TextField, PasswordField, AvatarUploadField, SubmitButton } from "@/components/form";
 import { authService } from "@/lib/api/services/auth";
 import { usersService, type ApiUser } from "@/lib/api/services/users";
-import type { ApiError } from "@/lib/api/axios";
+import { notifyApiError } from "@/lib/api/axios";
+import { newPasswordSchema, PasswordRequirements } from "@/lib/password";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "My profile — Schore" }] }),
@@ -19,23 +20,31 @@ export const Route = createFileRoute("/profile")({
 });
 
 const profileSchema = z.object({
-  firstName: z.string().trim().min(1, "First name is required").max(80, "Must be under 80 characters"),
-  lastName: z.string().trim().min(1, "Last name is required").max(80, "Must be under 80 characters"),
-  phone: z.string().trim().max(20).regex(/^[\d +()-]{7,20}$/, "Enter a valid phone number").or(z.literal("")),
+  firstName: z
+    .string()
+    .trim()
+    .min(1, "First name is required")
+    .max(80, "Must be under 80 characters"),
+  lastName: z
+    .string()
+    .trim()
+    .min(1, "Last name is required")
+    .max(80, "Must be under 80 characters"),
+  phone: z.string().trim(),
   avatar: z.string().or(z.literal("")),
 });
 type ProfileValues = z.infer<typeof profileSchema>;
 
-const passwordSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required"),
-  password: z.string()
-    .min(8, "Must be at least 8 characters")
-    .regex(/[A-Z]/, "Include one uppercase letter")
-    .regex(/[a-z]/, "Include one lowercase letter")
-    .regex(/[0-9]/, "Include one number")
-    .regex(/[^A-Za-z0-9]/, "Include one special character"),
-  confirm: z.string(),
-}).refine(v => v.password === v.confirm, { path: ["confirm"], message: "Passwords do not match" });
+const passwordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    password: newPasswordSchema,
+    confirm: z.string().min(1, "Please confirm your password"),
+  })
+  .refine((v) => v.password === v.confirm, {
+    path: ["confirm"],
+    message: "Passwords do not match",
+  });
 type PasswordValues = z.infer<typeof passwordSchema>;
 
 function ProfilePage() {
@@ -59,8 +68,8 @@ function ProfilePage() {
     resolver: zodResolver(passwordSchema),
     defaultValues: { currentPassword: "", password: "", confirm: "" },
   });
+  const newPw = pwForm.watch("password");
 
-  // Load full API user (for userTypeId + roleIds required by PUT payload).
   useEffect(() => {
     if (!authUser) return;
     let cancelled = false;
@@ -75,27 +84,34 @@ function ProfilePage() {
           phone: localExtras?.phone ?? "",
           avatar: localExtras?.avatar ?? "",
         });
-      } catch {
-        /* interceptor toasts */
+      } catch (err) {
+        notifyApiError(err, "Failed to load profile");
       } finally {
         if (!cancelled) setLoadingUser(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.id]);
 
   const initials = useMemo(() => {
-    const name = `${authUser?.firstName ?? ""} ${authUser?.lastName ?? ""}`.trim() || authUser?.username || "";
-    return name.split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+    const name =
+      `${authUser?.firstName ?? ""} ${authUser?.lastName ?? ""}`.trim() || authUser?.username || "";
+    return name
+      .split(/\s+/)
+      .map((s) => s[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
   }, [authUser]);
 
   if (!authUser) return null;
 
   const jobTitle = apiUser?.userTypeName ?? "";
   const roleLabel = (apiUser?.roleNames ?? []).filter(Boolean).join(", ");
-
-  
 
   async function onSaveProfile(values: ProfileValues) {
     if (!apiUser) return;
@@ -108,15 +124,13 @@ function ProfilePage() {
         userTypeId: apiUser.userTypeId,
         roleIds: apiUser.roleIds ?? [],
       });
-      // Persist local-only extras (phone/avatar) so they survive reloads.
       usersStore.update(String(apiUser.id), {
         phone: values.phone.trim() || undefined,
         avatar: values.avatar || undefined,
       });
       toast.success("Profile updated");
     } catch (err) {
-      const e = err as ApiError;
-      toast.error(e?.message || "Failed to update profile");
+      notifyApiError(err, "Failed to update profile");
     }
   }
 
@@ -130,8 +144,7 @@ function ProfilePage() {
       pwForm.reset({ currentPassword: "", password: "", confirm: "" });
       toast.success(res.message || "Password changed");
     } catch (err) {
-      const e = err as ApiError;
-      toast.error(e?.message || "Failed to change password");
+      notifyApiError(err, "Failed to change password");
     }
   }
 
@@ -157,25 +170,43 @@ function ProfilePage() {
           <TextField<ProfileValues> name="lastName" label="Last name" required maxLength={80} />
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Email</label>
-            <input value={authUser.email} disabled className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground" />
+            <input
+              value={authUser.email}
+              disabled
+              className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground"
+            />
             <p className="text-xs text-muted-foreground">Email cannot be changed here.</p>
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Job title</label>
-            <input value={jobTitle} disabled className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground" />
-            <p className="text-xs text-muted-foreground">Job title is managed by an administrator.</p>
+            <input
+              value={jobTitle}
+              disabled
+              className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground"
+            />
+            <p className="text-xs text-muted-foreground">
+              Job title is managed by an administrator.
+            </p>
           </div>
           <TextField<ProfileValues> name="phone" label="Phone" placeholder="07700 900000" />
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Role</label>
-            <input value={roleLabel} disabled className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground" />
+            <input
+              value={roleLabel}
+              disabled
+              className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground"
+            />
             <p className="text-xs text-muted-foreground">Assigned by an administrator.</p>
           </div>
         </div>
 
         <div className="flex justify-end">
           <SubmitButton loadingText="Saving…" disabled={loadingUser || !apiUser}>
-            {loadingUser ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {loadingUser ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
             Save changes
           </SubmitButton>
         </div>
@@ -186,23 +217,32 @@ function ProfilePage() {
           <KeyRound className="h-4 w-4 text-muted-foreground" />
           <h2 className="font-display font-semibold">Change password</h2>
         </div>
-        <PasswordField<PasswordValues> name="currentPassword" label="Current password" required autoComplete="current-password" />
+        <PasswordField<PasswordValues>
+          name="currentPassword"
+          label="Current password"
+          required
+          autoComplete="current-password"
+        />
         <div className="grid sm:grid-cols-2 gap-4">
-          <PasswordField<PasswordValues> name="password" label="New password" required autoComplete="new-password" />
-          <PasswordField<PasswordValues> name="confirm" label="Confirm new password" required autoComplete="new-password" showToggle={false} />
+          <PasswordField<PasswordValues>
+            name="password"
+            label="New password"
+            required
+            autoComplete="new-password"
+          />
+          <PasswordField<PasswordValues>
+            name="confirm"
+            label="Confirm new password"
+            required
+            autoComplete="new-password"
+            showToggle={false}
+          />
         </div>
-        <div className="rounded-md border bg-muted/30 px-4 py-3">
-          <div className="text-xs font-medium text-foreground mb-1.5">Password must include:</div>
-          <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-0.5">
-            <li>At least one uppercase letter</li>
-            <li>At least one lowercase letter</li>
-            <li>At least one number</li>
-            <li>At least one special character</li>
-            <li>Minimum 8 characters</li>
-          </ul>
-        </div>
+        <PasswordRequirements password={newPw} />
         <div className="flex justify-end pt-2 border-t">
-          <SubmitButton variant="outline" loadingText="Updating…">Update password</SubmitButton>
+          <SubmitButton variant="outline" loadingText="Updating…">
+            Update password
+          </SubmitButton>
         </div>
       </Form>
     </div>
