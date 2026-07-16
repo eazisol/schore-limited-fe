@@ -4,10 +4,13 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/Pagination";
+import { Can, usePermission } from "@/components/Permission";
 import { Plus, Search, Eye, Pencil, Trash2, Mail, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { usersService, type ApiUser } from "@/lib/api/services/users";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
+
+const USERS_ROUTE = "/users";
 
 export const Route = createFileRoute("/users/")({
   head: () => ({ meta: [{ title: "User Management — Schore" }] }),
@@ -19,6 +22,8 @@ export const usersQueryKey = ["users"] as const;
 function UsersList() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const canModify = usePermission({ route: USERS_ROUTE, action: "modify" });
+  const canDelete = usePermission({ route: USERS_ROUTE, action: "delete" });
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -70,9 +75,11 @@ function UsersList() {
         title="User Management"
         subtitle="Platform users · roles, access and account status"
         actions={
-          <Button size="sm" asChild>
-            <Link to="/users/new"><Plus className="h-4 w-4" />Add user</Link>
-          </Button>
+          <Can route={USERS_ROUTE} action="modify">
+            <Button size="sm" asChild>
+              <Link to="/users/new"><Plus className="h-4 w-4" />Add user</Link>
+            </Button>
+          </Can>
         }
       />
 
@@ -160,12 +167,16 @@ function UsersList() {
                           <IconBtn label="View" onClick={() => navigate({ to: "/users/$id", params: { id: String(u.id) } })}>
                             <Eye className="h-4 w-4" />
                           </IconBtn>
-                          <IconBtn label="Edit" onClick={() => navigate({ to: "/users/$id", params: { id: String(u.id) } })}>
-                            <Pencil className="h-4 w-4" />
-                          </IconBtn>
-                          <IconBtn label="Delete" danger onClick={() => setConfirmDel(u)}>
-                            <Trash2 className="h-4 w-4" />
-                          </IconBtn>
+                          {canModify && (
+                            <IconBtn label="Edit" onClick={() => navigate({ to: "/users/$id", params: { id: String(u.id) } })}>
+                              <Pencil className="h-4 w-4" />
+                            </IconBtn>
+                          )}
+                          {canDelete && (
+                            <IconBtn label="Delete" danger onClick={() => setConfirmDel(u)}>
+                              <Trash2 className="h-4 w-4" />
+                            </IconBtn>
+                          )}
                         </div>
                       </td>
                     </tr>

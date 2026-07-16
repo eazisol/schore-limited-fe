@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
 import { Pagination } from "@/components/Pagination";
 import { Form, TextField, CheckboxField, SubmitButton } from "@/components/form";
+import { Can, usePathPermission } from "@/components/Permission";
 import { userTypesService, type ApiUserType, type UserTypePayload } from "@/lib/api/services/system-config";
 import { notifyApiError } from "@/lib/api/axios";
 
@@ -31,6 +32,8 @@ type Mode = { kind: "create" } | { kind: "edit"; item: ApiUserType } | { kind: "
 
 function UserTypesPage() {
   const qc = useQueryClient();
+  const canModify = usePathPermission("modify");
+  const canDelete = usePathPermission("delete");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -85,9 +88,11 @@ function UserTypesPage() {
           </div>
           <div className="ml-auto flex items-center gap-3">
             {query.isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-            <Button size="sm" onClick={() => setMode({ kind: "create" })}>
-              <Plus className="h-4 w-4" /> Add user type
-            </Button>
+            <Can action="modify">
+              <Button size="sm" onClick={() => setMode({ kind: "create" })}>
+                <Plus className="h-4 w-4" /> Add user type
+              </Button>
+            </Can>
           </div>
         </div>
 
@@ -128,8 +133,12 @@ function UserTypesPage() {
                     <td className="px-5 py-3">
                       <div className="flex justify-end gap-1">
                         <IconBtn label="View" onClick={() => setMode({ kind: "view", item: r })}><Eye className="h-4 w-4" /></IconBtn>
-                        <IconBtn label="Edit" onClick={() => setMode({ kind: "edit", item: r })}><Pencil className="h-4 w-4" /></IconBtn>
-                        <IconBtn label="Delete" danger onClick={() => setConfirmDel(r)}><Trash2 className="h-4 w-4" /></IconBtn>
+                        {canModify && (
+                          <IconBtn label="Edit" onClick={() => setMode({ kind: "edit", item: r })}><Pencil className="h-4 w-4" /></IconBtn>
+                        )}
+                        {canDelete && (
+                          <IconBtn label="Delete" danger onClick={() => setConfirmDel(r)}><Trash2 className="h-4 w-4" /></IconBtn>
+                        )}
                       </div>
                     </td>
                   </tr>

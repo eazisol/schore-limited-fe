@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ShieldAlert, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/AppShell";
+import { useAuth } from "@/contexts/AuthContext";
+import { buildNavMenus, toAppPath } from "@/lib/authorization";
 
 export const Route = createFileRoute("/forbidden")({
   head: () => ({ meta: [{ title: "Access denied — Schore" }] }),
@@ -9,6 +11,10 @@ export const Route = createFileRoute("/forbidden")({
 });
 
 function Forbidden() {
+  const { menus } = useAuth();
+  const firstReadable = buildNavMenus(menus)[0];
+  const safeTo = firstReadable ? toAppPath(firstReadable.route) : "/profile";
+
   return (
     <div>
       <PageHeader title="Access denied" subtitle="You don't have permission to view this page." />
@@ -19,7 +25,10 @@ function Forbidden() {
           This screen is restricted by your role. If you believe you need access, please contact your administrator.
         </p>
         <Button asChild className="mt-6">
-          <Link to="/"><ArrowLeft className="h-4 w-4" /> Back to dashboard</Link>
+          <Link to={safeTo}>
+            <ArrowLeft className="h-4 w-4" />
+            {firstReadable ? `Go to ${firstReadable.name}` : "Go to profile"}
+          </Link>
         </Button>
       </div>
     </div>

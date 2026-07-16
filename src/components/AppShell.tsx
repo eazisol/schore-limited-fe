@@ -1,12 +1,10 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
-  LayoutDashboard,
-  Settings,
   Bell,
   HardHat,
   ChevronRight,
-  ShieldCheck,
   LogOut,
   UserCircle,
   PanelLeft,
@@ -15,8 +13,11 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { ROLE_BADGE, type UserRole } from "@/lib/users-store";
-import { permissionsForRole } from "@/lib/roles-store";
-import type { PermissionKey } from "@/lib/permissions";
+import { buildNavMenus, isPublicPath, toAppPath } from "@/lib/authorization";
+import { resolveMenuIcon } from "@/lib/menu-icons";
+import type { ApiMenu } from "@/lib/api/services/auth";
+import { RoutePermissionGuard } from "@/components/Permission";
+import { resolveProfileImageUrl, usersService } from "@/lib/api/services/users";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -30,73 +31,22 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 
-type NavItem = {
-  to: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  exact?: boolean;
-  permission?: PermissionKey;
-  anyOf?: PermissionKey[];
-};
-type NavSection = { label: string; items: NavItem[] };
-
-// NOTE (Phase 1): Only Authentication, User Management and Settings are active.
-// Other modules are hidden from the sidebar for now; their routes and code are
-// preserved and will be re-enabled section by section in later phases.
-const sections: NavSection[] = [
-  {
-    label: "Overview",
-    items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true }],
-  },
-  // { label: "Operations", items: [
-  //   { to: "/daily",         label: "Daily Programme",   icon: CalendarDays,    permission: "daily.view" },
-  //   { to: "/allocation",    label: "Daily Allocation",  icon: ListChecks,      permission: "daily.allocate" },
-  //   { to: "/confirmation",  label: "Work Confirmation", icon: ClipboardCheck,  permission: "daily.confirm" },
-  //   { to: "/hold",          label: "Hold Management",   icon: OctagonPause,    permission: "hold.view" },
-  //   { to: "/kpi",           label: "KPI Board",         icon: Activity,        permission: "kpi.view" },
-  // ]},
-  // { label: "Workforce", items: [
-  //   { to: "/operatives",    label: "Operatives",        icon: Users,           permission: "operatives.view" },
-  //   { to: "/trade-builder", label: "Trade Builder",     icon: Hammer,          permission: "trades.view" },
-  //   { to: "/prelims",       label: "Prelims",           icon: UserCog,         permission: "prelims.view" },
-  // ]},
-  // { label: "Finance", items: [
-  //   { to: "/payroll",       label: "Payroll Engine",    icon: Banknote,        permission: "payroll.view" },
-  //   { to: "/wages",         label: "Wage Sheets",       icon: Receipt,         permission: "wages.view" },
-  //   { to: "/statements",    label: "Statement Approval",icon: FileCheck2,      permission: "statements.view" },
-  //   { to: "/cost-budget",   label: "Cost & Budget",     icon: PoundSterling,   permission: "costs.view" },
-  //   { to: "/rates",         label: "Rate Catalogue",    icon: Tags,            permission: "rates.view" },
-  //   { to: "/legend-codes",  label: "Legend Codes",      icon: BookMarked,      permission: "legend.view" },
-  // ]},
-  // { label: "Records", items: [
-  //   { to: "/properties",    label: "Properties",        icon: Building2,       permission: "properties.view" },
-  //   { to: "/contracts",     label: "Contracts",         icon: Briefcase,       permission: "contracts.view" },
-  //   { to: "/reports",       label: "Reports & Exports", icon: FileBarChart2,   permission: "reports.view" },
-  // ]},
-  {
-    label: "Admin",
-    items: [
-      { to: "/users", label: "User Management", icon: ShieldCheck, permission: "users.view" },
-      { to: "/settings", label: "Settings", icon: Settings, permission: "settings.view" },
-    ],
-  },
-];
-
-const PUBLIC_PATHS = ["/signin", "/forgot-password", "/reset-password"];
-
 export function AppShell() {
-  const { user: authUser, isHydrated, isAuthenticated, signOut } = useAuth();
+  const { user: authUser, isHydrated, isAuthenticated, signOut, menus } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
 
-  if (isHydrated && !isAuthenticated && !PUBLIC_PATHS.includes(pathname)) {
-    navigate({ to: "/signin", search: { redirect: pathname } as any });
+  if (isHydrated && !isAuthenticated && !isPublicPath(pathname)) {
+    navigate({ to: "/signin", search: { redirect: pathname } as never });
   }
 
   if (!isHydrated || !authUser) {
@@ -107,23 +57,14 @@ export function AppShell() {
     );
   }
 
-  const user = {
-    name: authUser.fullName,
-    role: authUser.role as UserRole,
-    jobTitle: authUser.roles.join(", "),
-    avatar: undefined as string | undefined,
-  };
-
-  // Role & permission gating is intentionally disabled for now.
-  void permissionsForRole;
-  const can = (_p?: PermissionKey, _anyOf?: PermissionKey[]) => true;
-
   return (
     <SidebarProvider className="h-svh overflow-hidden !min-h-0">
       <AppShellChrome
-        user={user}
+        userId={authUser.id}
+        userName={authUser.fullName}
+        userRole={authUser.role as UserRole}
         email={authUser.email}
-        can={can}
+        menus={menus}
         onSignOut={() => {
           signOut();
           toast.success("Signed out");
@@ -135,19 +76,35 @@ export function AppShell() {
 }
 
 function AppShellChrome({
-  user,
+  userId,
+  userName,
+  userRole,
   email,
-  can,
+  menus,
   onSignOut,
 }: {
-  user: { name: string; role: UserRole; avatar?: string };
+  userId: number;
+  userName: string;
+  userRole: UserRole;
   email: string;
-  can: (p?: PermissionKey, anyOf?: PermissionKey[]) => boolean;
+  menus: ApiMenu[];
   onSignOut: () => void;
 }) {
+  const profileQuery = useQuery({
+    queryKey: ["users", userId],
+    queryFn: async () => (await usersService.get(userId)).data,
+    staleTime: 60_000,
+  });
+
+  const user = {
+    name: userName,
+    role: userRole,
+    avatar: resolveProfileImageUrl(profileQuery.data?.profileImagePath) || undefined,
+  };
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { setOpenMobile, state, isMobile, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed" && !isMobile;
+  const navMenus = buildNavMenus(menus);
 
   const crumbs = pathname.split("/").filter(Boolean);
   const initials = user.name
@@ -186,44 +143,27 @@ function AppShellChrome({
         </SidebarHeader>
 
         <SidebarContent className="scrollbar-sidebar">
-          {sections.map((section) => {
-            const items = section.items.filter((i) => can(i.permission, i.anyOf));
-            if (items.length === 0) return null;
-            return (
-              <SidebarGroup key={section.label}>
-                <SidebarGroupLabel className="uppercase tracking-wider text-[10px] font-semibold text-sidebar-foreground/40">
-                  {section.label}
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {items.map(({ to, label, icon: Icon, exact }) => {
-                      const active = exact
-                        ? pathname === to
-                        : pathname === to || pathname.startsWith(to + "/");
-                      return (
-                        <SidebarMenuItem key={to}>
-                          <SidebarMenuButton
-                            asChild
-                            isActive={active}
-                            tooltip={label}
-                            className={cn(
-                              "text-sidebar-foreground/75 hover:text-sidebar-foreground",
-                              active && "font-medium",
-                            )}
-                          >
-                            <Link to={to} onClick={closeMobileNav}>
-                              <Icon />
-                              <span>{label}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            );
-          })}
+          <SidebarGroup>
+            <SidebarGroupLabel className="uppercase tracking-wider text-[10px] font-semibold text-sidebar-foreground/40">
+              Navigation
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {navMenus.length === 0 ? (
+                  <li className="px-3 py-2 text-xs text-sidebar-foreground/50">No menus assigned</li>
+                ) : (
+                  navMenus.map((menu) => (
+                    <NavMenuItem
+                      key={menu.id}
+                      menu={menu}
+                      pathname={pathname}
+                      onNavigate={closeMobileNav}
+                    />
+                  ))
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
         </SidebarContent>
 
         <SidebarFooter className="border-t border-sidebar-border">
@@ -344,10 +284,93 @@ function AppShellChrome({
         </header>
 
         <div className="flex-1 overflow-y-auto scrollbar-elegant p-4 lg:p-8 min-w-0">
-          <Outlet />
+          <RoutePermissionGuard pathname={pathname}>
+            <Outlet />
+          </RoutePermissionGuard>
         </div>
       </SidebarInset>
     </>
+  );
+}
+
+function NavMenuItem({
+  menu,
+  pathname,
+  onNavigate,
+}: {
+  menu: ApiMenu;
+  pathname: string;
+  onNavigate: () => void;
+}) {
+  const to = toAppPath(menu.route);
+  const Icon = resolveMenuIcon(menu.icon);
+  const children = menu.children ?? [];
+  const hasChildren = children.length > 0;
+  const exact = to === "/";
+  const active = exact
+    ? pathname === "/"
+    : pathname === to || pathname.startsWith(`${to}/`);
+  const childActive = children.some((c) => {
+    const childTo = toAppPath(c.route);
+    return pathname === childTo || pathname.startsWith(`${childTo}/`);
+  });
+
+  if (hasChildren) {
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          asChild
+          isActive={active || childActive}
+          tooltip={menu.name}
+          className={cn(
+            "text-sidebar-foreground/75 hover:text-sidebar-foreground",
+            (active || childActive) && "font-medium",
+          )}
+        >
+          <Link to={to} onClick={onNavigate}>
+            <Icon />
+            <span>{menu.name}</span>
+          </Link>
+        </SidebarMenuButton>
+        <SidebarMenuSub>
+          {children.map((child) => {
+            const childTo = toAppPath(child.route);
+            const ChildIcon = resolveMenuIcon(child.icon);
+            const childIsActive =
+              pathname === childTo || pathname.startsWith(`${childTo}/`);
+            return (
+              <SidebarMenuSubItem key={child.id}>
+                <SidebarMenuSubButton asChild isActive={childIsActive}>
+                  <Link to={childTo} onClick={onNavigate}>
+                    <ChildIcon />
+                    <span>{child.name}</span>
+                  </Link>
+                </SidebarMenuSubButton>
+              </SidebarMenuSubItem>
+            );
+          })}
+        </SidebarMenuSub>
+      </SidebarMenuItem>
+    );
+  }
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        asChild
+        isActive={active}
+        tooltip={menu.name}
+        className={cn(
+          "text-sidebar-foreground/75 hover:text-sidebar-foreground",
+          active && "font-medium",
+        )}
+      >
+        <Link to={to} onClick={onNavigate}>
+          <Icon />
+          <span>{menu.name}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   );
 }
 

@@ -17,10 +17,11 @@ export interface TextFieldProps<T extends FieldValues>
 
 export function TextField<T extends FieldValues>({
   name, label, description, required, leftIcon: Icon, rightSlot,
-  className, inputClassName, disabled, ...rest
+  className, inputClassName, disabled, type, ...rest
 }: TextFieldProps<T>) {
   const { control, formState } = useFormContext<T>();
   const submitting = formState.isSubmitting;
+  const isDateField = type === "date";
 
   return (
     <FormField
@@ -41,6 +42,7 @@ export function TextField<T extends FieldValues>({
             <FormControl>
               <Input
                 {...rest}
+                type={type}
                 {...field}
                 value={field.value ?? ""}
                 aria-required={required}
@@ -49,6 +51,8 @@ export function TextField<T extends FieldValues>({
                 className={cn(
                   Icon && "pl-9",
                   rightSlot && "pr-10",
+                  isDateField &&
+                    "relative pr-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:top-1/2 [&::-webkit-calendar-picker-indicator]:-translate-y-1/2 [&::-webkit-calendar-picker-indicator]:cursor-pointer",
                   fieldState.error && "border-destructive focus-visible:ring-destructive",
                   inputClassName,
                 )}

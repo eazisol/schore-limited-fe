@@ -19,6 +19,7 @@ import {
   type UpsertPermission,
 } from "@/lib/api/services/permissions";
 import { notifyApiError } from "@/lib/api/axios";
+import { Can, usePathPermission } from "@/components/Permission";
 
 export const Route = createFileRoute("/settings/role-permissions")({
   head: () => ({ meta: [{ title: "Role Permissions — Settings" }] }),
@@ -66,6 +67,7 @@ function sameDraft(a: DraftPermission[], b: DraftPermission[]): boolean {
 
 function RolePermissionsPage() {
   const qc = useQueryClient();
+  const canModify = usePathPermission("modify");
   const [roleId, setRoleId] = useState<number | null>(null);
   const [draft, setDraft] = useState<DraftPermission[]>([]);
 
@@ -187,14 +189,16 @@ function RolePermissionsPage() {
             ) : null}
           </div>
 
-          <Button
-            size="sm"
-            onClick={handleSave}
-            disabled={!isDirty || saving || roleId == null || draft.length === 0}
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {saving ? "Saving…" : "Save permissions"}
-          </Button>
+          <Can action="modify">
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={!isDirty || saving || roleId == null || draft.length === 0}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saving ? "Saving…" : "Save permissions"}
+            </Button>
+          </Can>
         </div>
       </div>
 
@@ -244,7 +248,7 @@ function RolePermissionsPage() {
                       <div className="inline-flex justify-center">
                         <Checkbox
                           checked={row[flag]}
-                          disabled={saving}
+                          disabled={saving || !canModify}
                           onCheckedChange={() => toggle(row.menuId, flag)}
                           aria-label={`${row.menuName} ${flag}`}
                         />

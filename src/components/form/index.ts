@@ -7,4 +7,5 @@ export { CheckboxField } from "./CheckboxField";
 export { RadioGroupField, type RadioOption } from "./RadioGroupField";
 export { SwitchField } from "./SwitchField";
 export { AvatarUploadField } from "./AvatarUploadField";
+export { PhoneNumberField } from "./PhoneNumberField";
 export { SubmitButton } from "./SubmitButton";

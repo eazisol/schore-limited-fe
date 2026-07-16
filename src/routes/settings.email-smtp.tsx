@@ -11,6 +11,7 @@ import { notifyApiError } from "@/lib/api/axios";
 import {
   Form, TextField, SwitchField, PasswordField, SubmitButton,
 } from "@/components/form";
+import { usePathPermission } from "@/components/Permission";
 
 export const Route = createFileRoute("/settings/email-smtp")({
   head: () => ({ meta: [{ title: "Email SMTP — Settings" }] }),
@@ -35,7 +36,7 @@ const SMTP_DEFAULTS: SmtpValues = {
 };
 
 function EmailSmtpPage() {
-  const canEdit = true;
+  const canEdit = usePathPermission("modify");
   const [loading, setLoading] = useState(true);
   const [hasExisting, setHasExisting] = useState(false);
   const form = useForm<SmtpValues>({ resolver: zodResolver(smtpSchema), defaultValues: SMTP_DEFAULTS });

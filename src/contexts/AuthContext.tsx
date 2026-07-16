@@ -7,14 +7,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { authService, type ApiLoginData } from "@/lib/api/services/auth";
+import { authService, type ApiLoginData, type ApiMenu } from "@/lib/api/services/auth";
 import { tokenStore, onUnauthorized, type ApiError } from "@/lib/api/axios";
 
 /**
  * API-backed authentication session.
- * Persisted in localStorage under `SESSION_KEY` (see below); token is
- * mirrored into the axios `tokenStore` so all requests carry
- * `Authorization: Bearer <token>` automatically.
+ * Persisted in localStorage under `SESSION_KEY`; token is mirrored into the
+ * axios `tokenStore` so all requests carry `Authorization: Bearer <token>`.
+ * `menus` from the login response is the single source of truth for ACL.
  */
 export interface AuthUser {
   id: number;
@@ -31,9 +31,10 @@ interface SessionShape {
   token: string;
   expiresAt: string;
   user: AuthUser;
+  menus: ApiMenu[];
 }
 
-const SESSION_KEY = "schore.api.session.v1";
+const SESSION_KEY = "schore.api.session.v2";
 
 function loadSession(): SessionShape | null {
   if (typeof window === "undefined") return null;
@@ -45,7 +46,8 @@ function loadSession(): SessionShape | null {
       window.localStorage.removeItem(SESSION_KEY);
       return null;
     }
-    return s;
+    if (!s.token || !s.user) return null;
+    return { ...s, menus: Array.isArray(s.menus) ? s.menus : [] };
   } catch {
     return null;
   }
@@ -74,6 +76,7 @@ function toAuthUser(d: ApiLoginData): AuthUser {
 interface AuthContextValue {
   user: AuthUser | null;
   token: string | null;
+  menus: ApiMenu[];
   isAuthenticated: boolean;
   isHydrated: boolean;
   isSigningIn: boolean;
@@ -91,15 +94,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isHydrated, setHydrated] = useState(false);
   const [isSigningIn, setSigningIn] = useState(false);
 
-  // Hydrate from storage on mount (SSR-safe).
   useEffect(() => {
+    // Drop legacy session keys that did not include menus.
+    try {
+      window.localStorage.removeItem("schore.api.session.v1");
+    } catch {
+      /* ignore */
+    }
     const s = loadSession();
     if (s) tokenStore.set(s.token, true);
     setSession(s);
     setHydrated(true);
   }, []);
 
-  // Global 401 → sign out.
   useEffect(
     () =>
       onUnauthorized(() => {
@@ -122,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token: res.data.token,
         expiresAt: res.data.expiresAt,
         user,
+        menus: res.data.menus ?? [],
       };
       saveSession(next);
       tokenStore.set(next.token, true);
@@ -149,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user: session?.user ?? null,
       token: session?.token ?? null,
+      menus: session?.menus ?? [],
       isAuthenticated: !!session,
       isHydrated,
       isSigningIn,

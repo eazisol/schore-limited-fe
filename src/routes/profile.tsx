@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { KeyRound, Save, Loader2 } from "lucide-react";
 import { z } from "zod";
@@ -7,10 +8,21 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/AppShell";
 import { useAuth } from "@/contexts/AuthContext";
-import { usersStore } from "@/lib/users-store";
-import { Form, TextField, PasswordField, AvatarUploadField, SubmitButton } from "@/components/form";
+import {
+  Form,
+  TextField,
+  PasswordField,
+  AvatarUploadField,
+  SubmitButton,
+  PhoneNumberField,
+} from "@/components/form";
 import { authService } from "@/lib/api/services/auth";
-import { usersService, type ApiUser } from "@/lib/api/services/users";
+import {
+  resolveProfileImageUrl,
+  toDateInputValue,
+  usersService,
+  type ApiUser,
+} from "@/lib/api/services/users";
 import { notifyApiError } from "@/lib/api/axios";
 import { newPasswordSchema, PasswordRequirements } from "@/lib/password";
 
@@ -18,6 +30,19 @@ export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "My profile — Schore" }] }),
   component: ProfilePage,
 });
+
+function parseDobInput(value: string): Date | null {
+  const v = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+  const d = new Date(`${v}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
+}
+
+function validatePhoneNumber(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 10 && digits.length <= 15;
+}
 
 const profileSchema = z.object({
   firstName: z
@@ -30,7 +55,31 @@ const profileSchema = z.object({
     .trim()
     .min(1, "Last name is required")
     .max(80, "Must be under 80 characters"),
-  phone: z.string().trim(),
+  phone: z
+    .string()
+    .trim()
+    .superRefine((v, ctx) => {
+      if (!v) return;
+      if (!validatePhoneNumber(v)) {
+        ctx.addIssue({ code: "custom", message: "Enter a valid phone number (10-15 digits)." });
+      }
+    }),
+  dateOfBirth: z
+    .string()
+    .trim()
+    .superRefine((v, ctx) => {
+      if (!v) return;
+      const d = parseDobInput(v);
+      if (!d) {
+        ctx.addIssue({ code: "custom", message: "Enter a valid date of birth." });
+        return;
+      }
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (d.getTime() > today.getTime()) {
+        ctx.addIssue({ code: "custom", message: "Date of birth cannot be in the future." });
+      }
+    }),
   avatar: z.string().or(z.literal("")),
 });
 type ProfileValues = z.infer<typeof profileSchema>;
@@ -49,18 +98,19 @@ type PasswordValues = z.infer<typeof passwordSchema>;
 
 function ProfilePage() {
   const { user: authUser } = useAuth();
+  const queryClient = useQueryClient();
   const [apiUser, setApiUser] = useState<ApiUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
-
-  const localExtras = authUser ? usersStore.get(String(authUser.id)) : null;
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const profileForm = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       firstName: authUser?.firstName ?? "",
       lastName: authUser?.lastName ?? "",
-      phone: localExtras?.phone ?? "",
-      avatar: localExtras?.avatar ?? "",
+      phone: "",
+      dateOfBirth: "",
+      avatar: "",
     },
   });
 
@@ -81,9 +131,11 @@ function ProfilePage() {
         profileForm.reset({
           firstName: res.data.firstName ?? "",
           lastName: res.data.lastName ?? "",
-          phone: localExtras?.phone ?? "",
-          avatar: localExtras?.avatar ?? "",
+          phone: res.data.phone ?? "",
+          dateOfBirth: toDateInputValue(res.data.dateOfBirth),
+          avatar: resolveProfileImageUrl(res.data.profileImagePath),
         });
+        setAvatarFile(null);
       } catch (err) {
         notifyApiError(err, "Failed to load profile");
       } finally {
@@ -116,18 +168,30 @@ function ProfilePage() {
   async function onSaveProfile(values: ProfileValues) {
     if (!apiUser) return;
     try {
-      await usersService.update(apiUser.id, {
-        email: apiUser.email,
-        firstName: values.firstName.trim(),
-        lastName: values.lastName.trim(),
-        isActive: apiUser.isActive,
-        userTypeId: apiUser.userTypeId,
-        roleIds: apiUser.roleIds ?? [],
+      const res = await usersService.update(
+        apiUser.id,
+        {
+          email: apiUser.email,
+          firstName: values.firstName.trim(),
+          lastName: values.lastName.trim(),
+          phone: values.phone.trim() || null,
+          dateOfBirth: values.dateOfBirth.trim() || null,
+          isActive: apiUser.isActive,
+          userTypeId: apiUser.userTypeId,
+          roleIds: apiUser.roleIds ?? [],
+        },
+        avatarFile,
+      );
+      setApiUser(res.data);
+      profileForm.reset({
+        firstName: res.data.firstName ?? "",
+        lastName: res.data.lastName ?? "",
+        phone: res.data.phone ?? "",
+        dateOfBirth: toDateInputValue(res.data.dateOfBirth),
+        avatar: resolveProfileImageUrl(res.data.profileImagePath),
       });
-      usersStore.update(String(apiUser.id), {
-        phone: values.phone.trim() || undefined,
-        avatar: values.avatar || undefined,
-      });
+      setAvatarFile(null);
+      queryClient.invalidateQueries({ queryKey: ["users", authUser.id] });
       toast.success("Profile updated");
     } catch (err) {
       notifyApiError(err, "Failed to update profile");
@@ -153,17 +217,14 @@ function ProfilePage() {
       <PageHeader title="My profile" subtitle="Your personal details, avatar and password." />
 
       <Form form={profileForm} onSubmit={onSaveProfile} className="card-elevated p-6 space-y-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4">
-            <AvatarUploadField<ProfileValues> name="avatar" initials={initials} />
-            <div className="min-w-0">
-              <div className="font-display font-semibold text-lg truncate">
-                {`${authUser.firstName} ${authUser.lastName}`.trim() || authUser.username}
-              </div>
-              <div className="text-xs text-muted-foreground">{authUser.email}</div>
-            </div>
-          </div>
-        </div>
+        <AvatarUploadField<ProfileValues>
+          name="avatar"
+          layout="profile"
+          initials={initials}
+          title={`${authUser.firstName} ${authUser.lastName}`.trim() || authUser.username}
+          subtitle={authUser.email}
+          onFileChange={setAvatarFile}
+        />
 
         <div className="grid sm:grid-cols-2 gap-4">
           <TextField<ProfileValues> name="firstName" label="First name" required maxLength={80} />
@@ -188,7 +249,8 @@ function ProfilePage() {
               Job title is managed by an administrator.
             </p>
           </div>
-          <TextField<ProfileValues> name="phone" label="Phone" placeholder="07700 900000" />
+          <PhoneNumberField<ProfileValues> name="phone" label="Phone" placeholder="07700 900000" />
+          <TextField<ProfileValues> name="dateOfBirth" label="Date of birth" type="date" />
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Role</label>
             <input
