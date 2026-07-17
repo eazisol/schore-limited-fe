@@ -114,7 +114,9 @@ function NewUser() {
   const createMutation = useMutation({
     mutationFn: (payload: CreateUserPayload) => usersService.create(payload),
     onSuccess: (res) => {
-      toast.success(`${res.data?.firstName || res.data?.username || "User"} created`);
+      toast.success(
+        res.message || `${res.data?.firstName || res.data?.username || "User"} created`,
+      );
       queryClient.invalidateQueries({ queryKey: usersQueryKey });
       navigate({ to: "/users" });
     },

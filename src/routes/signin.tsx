@@ -11,7 +11,11 @@ import { Form, TextField, PasswordField, CheckboxField, SubmitButton } from "@/c
 const signinSearchSchema = z.object({ redirect: z.string().optional() });
 
 const signinSchema = z.object({
-  emailOrUsername: z.string().trim().min(1, "Email is required"),
+  emailOrUsername: z
+    .string()
+    .trim()
+    .min(1, "Email is required")
+    .email("Enter a valid email address"),
   password: z.string().min(1, "Password is required"),
   remember: z.boolean(),
 });
@@ -43,9 +47,9 @@ function SignIn() {
       }
       return;
     }
-    toast.success(`Welcome back, ${result.user.firstName || result.user.username}`, {
-      description: result.user.role ? `Signed in as ${result.user.role}` : undefined,
-    });
+    toast.success(
+      result.message || `Welcome back, ${result.user.firstName || result.user.username}`,
+    );
     const target = search.redirect && search.redirect.startsWith("/") ? search.redirect : "/";
     navigate({ to: target });
   }
@@ -72,7 +76,8 @@ function SignIn() {
           name="emailOrUsername"
           label="Email"
           required
-          autoComplete="username"
+          type="email"
+          autoComplete="email"
           placeholder="you@schore.co.uk"
           leftIcon={Mail}
         />

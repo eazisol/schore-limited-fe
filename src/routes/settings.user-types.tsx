@@ -74,8 +74,8 @@ function UserTypesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => userTypesService.remove(id),
-    onSuccess: () => {
-      toast.success("User type deleted");
+    onSuccess: (res) => {
+      toast.success(res.message || "User type deleted");
       setConfirmDel(null);
       qc.invalidateQueries({ queryKey: listKey });
     },

@@ -40,7 +40,11 @@ interface AuthContextValue {
   signIn: (
     emailOrUsername: string,
     password: string,
-  ) => Promise<{ ok: true; user: AuthUser } | { ok: false; message: string; toasted?: boolean }>;
+  ) => Promise<
+    { ok: true; user: AuthUser; message: string } |
+    { ok: false; message: string; toasted?: boolean }
+  >;
+  updateUser: (patch: Partial<AuthUser>) => void;
   signOut: () => void;
 }
 
@@ -85,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       saveStoredSession(next);
       tokenStore.set(next.token, true);
       setSession(next);
-      return { ok: true, user };
+      return { ok: true, user, message: res.message };
     } catch (err) {
       const e = err as ApiError;
       return {
@@ -104,6 +108,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   }, []);
 
+  const updateUser = useCallback((patch: Partial<AuthUser>) => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      const user = { ...prev.user, ...patch };
+      if (patch.firstName != null || patch.lastName != null) {
+        user.fullName =
+          [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || user.username;
+      }
+      const next = { ...prev, user };
+      saveStoredSession(next);
+      return next;
+    });
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user: session?.user ?? null,
@@ -112,9 +130,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isHydrated,
       isSigningIn,
       signIn,
+      updateUser,
       signOut,
     }),
-    [session, isHydrated, isSigningIn, signIn, signOut],
+    [session, isHydrated, isSigningIn, signIn, updateUser, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

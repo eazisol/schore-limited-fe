@@ -14,7 +14,7 @@ export function DataTableToolbar({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 border-b p-4">
+    <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
       {search && (
         <div className="flex h-9 w-full items-center gap-2 rounded-md border border-input bg-background px-3 sm:w-80">
           <Search className="h-4 w-4 text-muted-foreground" />

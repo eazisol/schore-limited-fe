@@ -1,6 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { type ComponentType, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,9 +20,6 @@ import {
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
   TextField,
@@ -27,6 +27,7 @@ import {
   CheckboxField,
   SubmitButton,
   PhoneNumberField,
+  PasswordField,
 } from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
 import {
@@ -40,11 +41,17 @@ import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { usersQueryKey } from "./users.index";
 import { getPhoneLengthError } from "@/components/form/PhoneNumberField";
 import { userNameSchema } from "@/lib/user-validation";
+import { newPasswordSchema, PasswordRequirements } from "@/lib/password";
 
 const USERS_ROUTE = "/users";
 
+const userDetailSearchSchema = z.object({
+  mode: z.enum(["edit", "view"]).optional(),
+});
+
 export const Route = createFileRoute("/users/$id")({
   head: ({ params }) => ({ meta: [{ title: `User #${params.id} | Schore` }] }),
+  validateSearch: userDetailSearchSchema,
   component: UserDetail,
 });
 
@@ -92,18 +99,45 @@ const schema = z.object({
     }),
   roleId: z.string().min(1, "Role is required"),
   isActive: z.boolean(),
+  password: z.string().superRefine((value, ctx) => {
+    if (!value.trim()) return;
+    const parsed = newPasswordSchema.safeParse(value);
+    if (parsed.success) return;
+    for (const issue of parsed.error.issues) {
+      ctx.addIssue({ ...issue, path: [] });
+    }
+  }),
 });
 type Values = z.infer<typeof schema>;
 
 function UserDetail() {
   const { id } = Route.useParams();
+  const { mode } = Route.useSearch();
   const numericId = Number(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canModify = usePermission({ route: USERS_ROUTE, action: "modify" });
   const canDelete = usePermission({ route: USERS_ROUTE, action: "delete" });
   const [confirmDel, setConfirmDel] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const isEditing = mode === "edit" && canModify;
+
+  function openEdit() {
+    navigate({
+      to: "/users/$id",
+      params: { id },
+      search: { mode: "edit" },
+      replace: true,
+    });
+  }
+
+  function openView() {
+    navigate({
+      to: "/users/$id",
+      params: { id },
+      search: {},
+      replace: true,
+    });
+  }
 
   const userQuery = useQuery({
     queryKey: ["users", id],
@@ -124,6 +158,7 @@ function UserDetail() {
       dateOfBirth: toDateInputValue(user?.dateOfBirth),
       roleId: user?.roleIds?.[0] != null ? String(user.roleIds[0]) : "",
       isActive: user?.isActive ?? true,
+      password: "",
     }),
     [user],
   );
@@ -136,7 +171,7 @@ function UserDetail() {
   const updateMutation = useMutation({
     mutationFn: (payload: UpdateUserPayload) => usersService.update(numericId, payload),
     onSuccess: (res) => {
-      toast.success("User updated");
+      toast.success(res.message || "User updated");
       queryClient.setQueryData(["users", id], res.data);
       queryClient.invalidateQueries({ queryKey: usersQueryKey });
       navigate({ to: "/users" });
@@ -146,8 +181,8 @@ function UserDetail() {
 
   const deleteMutation = useMutation({
     mutationFn: () => usersService.remove(numericId),
-    onSuccess: () => {
-      toast.success("User deleted");
+    onSuccess: (res) => {
+      toast.success(res.message || "User deleted");
       queryClient.invalidateQueries({ queryKey: usersQueryKey });
       navigate({ to: "/users" });
     },
@@ -155,6 +190,7 @@ function UserDetail() {
   });
 
   async function save(values: Values) {
+    const nextPassword = values.password.trim();
     const payload: UpdateUserPayload = {
       email: values.email.trim(),
       firstName: values.firstName.trim(),
@@ -164,6 +200,7 @@ function UserDetail() {
       isActive: values.isActive,
       userTypeId: user?.userTypeId ?? 0,
       roleIds: [Number(values.roleId)],
+      ...(nextPassword ? { password: nextPassword } : {}),
     };
     await updateMutation.mutateAsync(payload);
   }
@@ -194,6 +231,7 @@ function UserDetail() {
   }
 
   const dirty = form.formState.isDirty;
+  const password = form.watch("password");
   const displayName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || user.username;
   const lookupsLoading = rolesQuery.isLoading;
   const profileImageUrl = resolveProfileImageUrl(user.profileImagePath);
@@ -229,7 +267,7 @@ function UserDetail() {
               {user.isActive ? "Active" : "Inactive"}
             </span>
             {!isEditing && canModify && (
-              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+              <Button variant="outline" size="sm" onClick={openEdit}>
                 <Pencil className="h-4 w-4" />
                 Edit user
               </Button>
@@ -278,6 +316,17 @@ function UserDetail() {
                   }))}
                 />
               </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <PasswordField<Values>
+                    name="password"
+                    label="Password"
+                    autoComplete="new-password"
+                    placeholder="Leave blank to keep current password"
+                  />
+                  {password ? <PasswordRequirements password={password} /> : null}
+                </div>
+              </div>
 
               <CheckboxField<Values> name="isActive" label="Active" description="User can sign in." />
             </fieldset>
@@ -292,7 +341,7 @@ function UserDetail() {
                 disabled={updateMutation.isPending}
                 onClick={() => {
                   form.reset(defaults);
-                  setIsEditing(false);
+                  openView();
                 }}
               >
                 Cancel

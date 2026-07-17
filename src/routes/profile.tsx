@@ -7,6 +7,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/AppShell";
+import { AppTooltip } from "@/components/AppTooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Form,
@@ -56,6 +57,11 @@ const profileSchema = z.object({
     .trim()
     .min(1, "Last name is required")
     .max(80, "Must be under 80 characters"),
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email is required")
+    .email("Enter a valid email address"),
   phone: z
     .string()
     .trim()
@@ -98,7 +104,7 @@ const passwordSchema = z
 type PasswordValues = z.infer<typeof passwordSchema>;
 
 function ProfilePage() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const [apiUser, setApiUser] = useState<ApiUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
@@ -111,6 +117,7 @@ function ProfilePage() {
     defaultValues: {
       firstName: authUser?.firstName ?? "",
       lastName: authUser?.lastName ?? "",
+      email: authUser?.email ?? "",
       phone: "",
       dateOfBirth: "",
       avatar: "",
@@ -134,6 +141,7 @@ function ProfilePage() {
         profileForm.reset({
           firstName: res.data.firstName ?? "",
           lastName: res.data.lastName ?? "",
+          email: res.data.email ?? "",
           phone: res.data.phone ?? "",
           dateOfBirth: toDateInputValue(res.data.dateOfBirth),
           avatar: resolveProfileImageUrl(res.data.profileImagePath, res.data.editDate),
@@ -174,7 +182,7 @@ function ProfilePage() {
       const res = await usersService.update(
         apiUser.id,
         {
-          email: apiUser.email,
+          email: values.email.trim(),
           firstName: values.firstName.trim(),
           lastName: values.lastName.trim(),
           phone: values.phone.trim() || null,
@@ -189,14 +197,20 @@ function ProfilePage() {
       profileForm.reset({
         firstName: res.data.firstName ?? "",
         lastName: res.data.lastName ?? "",
+        email: res.data.email ?? "",
         phone: res.data.phone ?? "",
         dateOfBirth: toDateInputValue(res.data.dateOfBirth),
         avatar: resolveProfileImageUrl(res.data.profileImagePath, res.data.editDate),
       });
       setAvatarFile(null);
+      updateUser({
+        email: res.data.email,
+        firstName: res.data.firstName ?? "",
+        lastName: res.data.lastName ?? "",
+      });
       queryClient.setQueryData(["users", authUser.id], res.data);
       await queryClient.invalidateQueries({ queryKey: ["users", authUser.id] });
-      toast.success("Profile updated");
+      toast.success(res.message || "Profile updated");
     } catch (err) {
       notifyApiError(err, "Failed to update profile");
     }
@@ -206,7 +220,7 @@ function ProfilePage() {
     if (!apiUser || removingImage) return;
     setRemovingImage(true);
     try {
-      await usersService.removeProfileImage(apiUser.id);
+      const res = await usersService.removeProfileImage(apiUser.id);
       const nextUser = { ...apiUser, profileImagePath: null };
       setApiUser(nextUser);
       setAvatarFile(null);
@@ -214,7 +228,7 @@ function ProfilePage() {
       queryClient.setQueryData(["users", authUser.id], nextUser);
       await queryClient.invalidateQueries({ queryKey: ["users", authUser.id] });
       setConfirmImageRemoval(false);
-      toast.success("Profile image removed");
+      toast.success(res.message || "Profile image removed");
     } catch (err) {
       notifyApiError(err, "Failed to remove profile image");
     } finally {
@@ -246,7 +260,7 @@ function ProfilePage() {
           layout="profile"
           initials={initials}
           title={`${authUser.firstName} ${authUser.lastName}`.trim() || authUser.username}
-          subtitle={authUser.email}
+          subtitle={profileForm.watch("email") || authUser.email}
           onFileChange={setAvatarFile}
           onRemove={() => setConfirmImageRemoval(true)}
           disabled={loadingUser || removingImage}
@@ -255,36 +269,34 @@ function ProfilePage() {
         <div className="grid sm:grid-cols-2 gap-4">
           <TextField<ProfileValues> name="firstName" label="First name" required maxLength={80} />
           <TextField<ProfileValues> name="lastName" label="Last name" required maxLength={80} />
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Email</label>
-            <input
-              value={authUser.email}
-              disabled
-              className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground"
-            />
-            <p className="text-xs text-muted-foreground">Email cannot be changed here.</p>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Job title</label>
-            <input
-              value={jobTitle}
-              disabled
-              className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground"
-            />
-            <p className="text-xs text-muted-foreground">
-              Job title is managed by an administrator.
-            </p>
-          </div>
+          <TextField<ProfileValues>
+            name="email"
+            label="Email"
+            required
+            type="email"
+            autoComplete="email"
+          />
           <PhoneNumberField<ProfileValues> name="phone" label="Phone" placeholder="07700 900000" />
           <TextField<ProfileValues> name="dateOfBirth" label="Date of birth" type="date" />
           <div className="space-y-1.5">
+            <label className="text-sm font-medium">Job title</label>
+            <AppTooltip content="Job title is managed by an administrator." className="w-full">
+              <input
+                value={jobTitle}
+                disabled
+                className="pointer-events-none flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground"
+              />
+            </AppTooltip>
+          </div>
+          <div className="space-y-1.5">
             <label className="text-sm font-medium">Role</label>
-            <input
-              value={roleLabel}
-              disabled
-              className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground"
-            />
-            <p className="text-xs text-muted-foreground">Assigned by an administrator.</p>
+            <AppTooltip content="Assigned by an administrator." className="w-full">
+              <input
+                value={roleLabel}
+                disabled
+                className="pointer-events-none flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground"
+              />
+            </AppTooltip>
           </div>
         </div>
 

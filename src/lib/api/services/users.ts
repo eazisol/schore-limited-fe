@@ -63,6 +63,7 @@ export interface UpdateUserPayload {
   lastName: string;
   dateOfBirth?: string | null;
   phone?: string | null;
+  password?: string | null;
   isActive: boolean;
   userTypeId: number;
   roleIds: number[];

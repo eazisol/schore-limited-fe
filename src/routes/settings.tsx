@@ -73,7 +73,7 @@ function SettingsLayout() {
         title="Settings"
         subtitle=""
       />
-      <div className="border-b mb-6">
+      <div className="border-b mb-2">
         <div className="flex gap-1 overflow-x-auto overflow-y-hidden">
           {tabs.map((t) => {
             const active = pathname === t.to || pathname.startsWith(`${t.to}/`);

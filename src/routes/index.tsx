@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Construction } from "lucide-react";
 
 export const Route = createFileRoute("/")({
-  head: () => ({ meta: [{ title: "Dashboard | Schore Limited" }] }),
+  head: () => ({ meta: [{ title: "Schore Limited" }] }),
   component: Dashboard,
 });
 

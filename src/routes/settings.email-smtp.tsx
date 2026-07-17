@@ -74,7 +74,7 @@ function EmailSmtpPage() {
   async function save(values: SmtpValues) {
     if (!canEdit) return;
     try {
-      await settingsService.updateEmail({
+      const res = await settingsService.updateEmail({
         host: values.host,
         port: Number(values.port),
         username: "",
@@ -85,7 +85,7 @@ function EmailSmtpPage() {
         isActive: values.enabled,
       });
       setHasExisting(true);
-      toast.success("SMTP configuration saved");
+      toast.success(res.message || "SMTP configuration saved");
     } catch (err) {
       notifyApiError(err, "Failed to save SMTP configuration");
     }

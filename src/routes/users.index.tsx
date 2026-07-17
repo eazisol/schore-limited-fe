@@ -7,7 +7,6 @@ import { Can, usePermission } from "@/components/Permission";
 import {
   DataTable,
   downloadCsv,
-  fetchAllPages,
   useDebouncedSearch,
   type DataTableColumn,
   type DataTableRowAction,
@@ -108,9 +107,8 @@ function UsersList() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => usersService.remove(id),
-    onSuccess: () => {
-      const name = confirmDel?.firstName || confirmDel?.username || "User";
-      toast.success(`${name} deleted`);
+    onSuccess: (res) => {
+      toast.success(res.message || "User deleted");
       setConfirmDel(null);
       queryClient.invalidateQueries({ queryKey: usersQueryKey });
     },
@@ -121,40 +119,24 @@ function UsersList() {
   const totalCount = data?.totalCount ?? 0;
   const totalPages = data?.totalPages ?? 1;
 
-  async function handleExportCsv() {
+  function handleExportCsv() {
+    if (rows.length === 0) {
+      toast.warning("No users to export for the current page.");
+      return;
+    }
     setExporting(true);
     try {
-      const users = await fetchAllPages<ApiUser>({
-        search,
-        fetchPage: async ({ page: exportPage, pageSize: exportPageSize, search: exportSearch }) =>
-          (
-            await usersService.list({
-              page: exportPage,
-              pageSize: exportPageSize,
-              search: exportSearch,
-              roleId,
-              sortBy,
-              sortDir,
-            })
-          ).data,
-      });
-      if (users.length === 0) {
-        toast.warning("No users to export for the current filters.");
-        return;
-      }
       downloadCsv({
         filename: `users-export-${new Date().toISOString().slice(0, 10)}.csv`,
         headers: ["Name", "Email", "Roles", "Status"],
-        rows: users.map((user) => [
+        rows: rows.map((user) => [
           displayName(user),
           user.email,
           (user.roleNames ?? []).join("; "),
           user.isActive ? "Active" : "Inactive",
         ]),
       });
-      toast.success(`Exported ${users.length} user${users.length === 1 ? "" : "s"} to CSV`);
-    } catch (err) {
-      notifyApiError(err, "Failed to export users");
+      toast.success(`Exported ${rows.length} user${rows.length === 1 ? "" : "s"} to CSV`);
     } finally {
       setExporting(false);
     }
@@ -242,7 +224,12 @@ function UsersList() {
         label: "Edit",
         icon: <Pencil className="h-4 w-4" />,
         hidden: () => !canModify,
-        onClick: (user) => navigate({ to: "/users/$id", params: { id: String(user.id) } }),
+        onClick: (user) =>
+          navigate({
+            to: "/users/$id",
+            params: { id: String(user.id) },
+            search: { mode: "edit" },
+          }),
       },
       {
         id: "delete",

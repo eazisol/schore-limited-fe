@@ -11,7 +11,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ApiProvider } from "@/contexts/ApiContext";
 import { PermissionProvider } from "@/contexts/PermissionContext";
 import { isPublicPath } from "@/lib/authorization";
-import { getStoredSession } from "@/lib/session";
+import { AUTH_BOOTSTRAP_SCRIPT, getStoredSession } from "@/lib/session";
 
 
 function NotFoundComponent() {
@@ -77,8 +77,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <head><HeadContent /></head>
-      <body>{children}<Scripts /></body>
+      <head>
+        {/* Runs before paint — no Dashboard flash when logged out */}
+        <script dangerouslySetInnerHTML={{ __html: AUTH_BOOTSTRAP_SCRIPT }} />
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
     </html>
   );
 }
@@ -103,9 +110,14 @@ function AppRouter() {
     if (!isHydrated) return;
     if (!isAuthenticated && !isPublicPath(pathname)) {
       navigate({ to: "/signin", replace: true });
+      return;
+    }
+    if (isAuthenticated && pathname === "/signin") {
+      navigate({ to: "/", replace: true });
     }
   }, [isHydrated, isAuthenticated, pathname, navigate]);
 
+  // Never paint protected UI until we know session state.
   if (!isHydrated) {
     return <AuthLoadingScreen />;
   }
@@ -114,7 +126,11 @@ function AppRouter() {
     return isAuthRoute ? <Outlet /> : <AuthLoadingScreen />;
   }
 
-  return isAuthRoute ? <Outlet /> : <AppShell />;
+  if (isAuthRoute) {
+    return <AuthLoadingScreen />;
+  }
+
+  return <AppShell />;
 }
 
 function RootComponent() {

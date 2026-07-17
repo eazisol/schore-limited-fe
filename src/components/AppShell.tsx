@@ -299,7 +299,7 @@ function AppShellChrome({
       </Sidebar>
 
       <SidebarInset className="min-h-svh max-h-svh overflow-hidden">
-        <header className="shrink-0 h-16 bg-background/80 backdrop-blur border-b border-border flex items-center gap-3 px-4 lg:px-8">
+        <header className="shrink-0 h-16 bg-background/80 backdrop-blur border-b border-border flex items-center gap-3 px-4 lg:px-6">
           <Button
             type="button"
             variant="outline"
@@ -330,7 +330,7 @@ function AppShellChrome({
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto scrollbar-elegant p-4 lg:p-8 min-w-0">
+        <div className="flex-1 overflow-y-auto scrollbar-elegant px-4 pb-4 pt-2 lg:px-6 min-w-0">
           <RoutePermissionGuard pathname={pathname}>
             <Outlet />
           </RoutePermissionGuard>
@@ -433,7 +433,7 @@ export function PageHeader({
   leading?: ReactNode;
 }) {
   return (
-    <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+    <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-1">
       <div className="flex min-w-0 items-center gap-2">
         {leading}
         <div className="min-w-0">

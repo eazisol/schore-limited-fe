@@ -71,8 +71,8 @@ function RolesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => rolesService.remove(id),
-    onSuccess: () => {
-      toast.success("Role deleted");
+    onSuccess: (res) => {
+      toast.success(res.message || "Role deleted");
       setConfirmDel(null);
       qc.invalidateQueries({ queryKey: rolesKey });
     },

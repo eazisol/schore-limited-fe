@@ -15,7 +15,7 @@ export interface SessionShape {
   user: AuthUser;
 }
 
-const SESSION_KEY = "schore.api.session.v2";
+export const SESSION_KEY = "schore.api.session.v2";
 
 export function getStoredSession(): SessionShape | null {
   if (typeof window === "undefined") return null;
@@ -48,3 +48,9 @@ export function clearLegacySessionKeys() {
     /* ignore */
   }
 }
+
+/**
+ * Runs before React paints. Prevents protected pages (e.g. Dashboard) from
+ * flashing when there is no valid local session.
+ */
+export const AUTH_BOOTSTRAP_SCRIPT = `(function(){try{var p=location.pathname;var pub=p==="/signin"||p==="/forgot-password"||p==="/reset-password";var raw=localStorage.getItem(${JSON.stringify(SESSION_KEY)});var ok=false;if(raw){var s=JSON.parse(raw);ok=!!(s&&s.token&&s.user&&!(s.expiresAt&&Date.parse(s.expiresAt)<Date.now()));if(!ok)localStorage.removeItem(${JSON.stringify(SESSION_KEY)});}if(!pub&&!ok){location.replace("/signin");return;}if(p==="/signin"&&ok){location.replace("/");}}catch(e){if(location.pathname!=="/signin"&&location.pathname!=="/forgot-password"&&location.pathname!=="/reset-password")location.replace("/signin");}})();`;
