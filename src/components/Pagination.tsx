@@ -10,6 +10,7 @@ export interface PaginationProps {
   pageSizeOptions?: readonly number[];
   itemLabel?: string;
   disabled?: boolean;
+  controlsAlign?: "start" | "center";
 }
 
 const DEFAULT_SIZES = [10, 25, 50, 100] as const;
@@ -24,62 +25,92 @@ export function Pagination({
   pageSizeOptions = DEFAULT_SIZES,
   itemLabel = "records",
   disabled,
+  controlsAlign = "start",
 }: PaginationProps) {
   const safeTotal = Math.max(totalPages, 1);
   const start = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, totalCount);
   const pages = buildPageList(page, safeTotal);
 
+  const controls = (
+    <>
+      <PageBtn aria-label="First page" disabled={disabled || page <= 1} onClick={() => onPageChange(1)}>
+        <ChevronsLeft className="h-4 w-4" />
+      </PageBtn>
+      <PageBtn aria-label="Previous page" disabled={disabled || page <= 1} onClick={() => onPageChange(page - 1)}>
+        <ChevronLeft className="h-4 w-4" />
+      </PageBtn>
+      {pages.map((n, i) =>
+        n === "…" ? (
+          <span key={`gap-${i}`} className="px-2 text-xs text-muted-foreground">…</span>
+        ) : (
+          <PageBtn
+            key={n}
+            active={n === page}
+            disabled={disabled}
+            aria-current={n === page ? "page" : undefined}
+            onClick={() => onPageChange(n)}
+          >
+            {n}
+          </PageBtn>
+        ),
+      )}
+      <PageBtn aria-label="Next page" disabled={disabled || page >= safeTotal} onClick={() => onPageChange(page + 1)}>
+        <ChevronRight className="h-4 w-4" />
+      </PageBtn>
+      <PageBtn aria-label="Last page" disabled={disabled || page >= safeTotal} onClick={() => onPageChange(safeTotal)}>
+        <ChevronsRight className="h-4 w-4" />
+      </PageBtn>
+    </>
+  );
+
+  const summary = (
+    <div className="text-xs text-muted-foreground text-center">
+      Showing <span className="text-muted-foreground">{start}</span> to{" "}
+      <span className="text-muted-foreground">{end}</span> of{" "}
+      <span className="text-muted-foreground">{totalCount}</span> {itemLabel}
+    </div>
+  );
+
+  const pageSizeSelect = (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <span>Rows per page</span>
+      <select
+        value={pageSize}
+        onChange={e => onPageSizeChange(Number(e.target.value))}
+        disabled={disabled}
+        className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+        aria-label="Rows per page"
+      >
+        {pageSizeOptions.map(n => <option key={n} value={n}>{n}</option>)}
+      </select>
+    </div>
+  );
+
+  if (controlsAlign === "center") {
+    return (
+      <div className="p-4 border-t">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-x-4 gap-y-2">
+          <div className="hidden md:block" aria-hidden />
+          <div className="flex items-center gap-1 flex-wrap justify-center justify-self-center">
+            {controls}
+          </div>
+          <div className="flex justify-center md:justify-end md:self-center">
+            {pageSizeSelect}
+          </div>
+          <div className="hidden md:block" aria-hidden />
+          <div className="justify-self-center md:col-start-2">{summary}</div>
+          <div className="hidden md:block" aria-hidden />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 border-t grid grid-cols-1 md:grid-cols-3 items-center gap-3">
-      <div className="flex items-center gap-1 justify-self-start">
-        <PageBtn aria-label="First page" disabled={disabled || page <= 1} onClick={() => onPageChange(1)}>
-          <ChevronsLeft className="h-4 w-4" />
-        </PageBtn>
-        <PageBtn aria-label="Previous page" disabled={disabled || page <= 1} onClick={() => onPageChange(page - 1)}>
-          <ChevronLeft className="h-4 w-4" />
-        </PageBtn>
-        {pages.map((n, i) =>
-          n === "…" ? (
-            <span key={`gap-${i}`} className="px-2 text-xs text-muted-foreground">…</span>
-          ) : (
-            <PageBtn
-              key={n}
-              active={n === page}
-              disabled={disabled}
-              aria-current={n === page ? "page" : undefined}
-              onClick={() => onPageChange(n)}
-            >
-              {n}
-            </PageBtn>
-          ),
-        )}
-        <PageBtn aria-label="Next page" disabled={disabled || page >= safeTotal} onClick={() => onPageChange(page + 1)}>
-          <ChevronRight className="h-4 w-4" />
-        </PageBtn>
-        <PageBtn aria-label="Last page" disabled={disabled || page >= safeTotal} onClick={() => onPageChange(safeTotal)}>
-          <ChevronsRight className="h-4 w-4" />
-        </PageBtn>
-      </div>
-
-      <div className="text-xs text-muted-foreground text-center">
-        Showing <span className="font-medium text-foreground">{start}</span> to{" "}
-        <span className="font-medium text-foreground">{end}</span> of{" "}
-        <span className="font-medium text-foreground">{totalCount}</span> {itemLabel}
-      </div>
-
-      <div className="flex items-center gap-2 justify-self-end text-xs text-muted-foreground">
-        <span>Rows per page</span>
-        <select
-          value={pageSize}
-          onChange={e => onPageSizeChange(Number(e.target.value))}
-          disabled={disabled}
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-          aria-label="Rows per page"
-        >
-          {pageSizeOptions.map(n => <option key={n} value={n}>{n}</option>)}
-        </select>
-      </div>
+      <div className="flex items-center gap-1 justify-self-start">{controls}</div>
+      {summary}
+      <div className="justify-self-end">{pageSizeSelect}</div>
     </div>
   );
 }

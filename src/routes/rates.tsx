@@ -10,7 +10,7 @@ import { Can, useCan } from "@/components/Can";
 
 
 export const Route = createFileRoute("/rates")({
-  head: () => ({ meta: [{ title: "Rate Catalogue — Schore" }] }),
+  head: () => ({ meta: [{ title: "Rate Catalogue | Schore" }] }),
   component: Rates,
 });
 

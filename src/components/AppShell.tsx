@@ -1,10 +1,9 @@
-import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   HardHat,
-  ChevronRight,
   LogOut,
   UserCircle,
   PanelLeft,
@@ -12,12 +11,14 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/contexts/PermissionContext";
 import { ROLE_BADGE, type UserRole } from "@/lib/users-store";
-import { buildNavMenus, isPublicPath, toAppPath } from "@/lib/authorization";
+import { buildNavMenus, toAppPath } from "@/lib/authorization";
 import { resolveMenuIcon } from "@/lib/menu-icons";
 import type { ApiMenu } from "@/lib/api/services/auth";
 import { RoutePermissionGuard } from "@/components/Permission";
 import { resolveProfileImageUrl, usersService } from "@/lib/api/services/users";
+import type { ApiError } from "@/lib/api/axios";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -40,19 +41,78 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-export function AppShell() {
-  const { user: authUser, isHydrated, isAuthenticated, signOut, menus } = useAuth();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const navigate = useNavigate();
+function AuthLoadingScreen() {
+  return (
+    <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
+      Loading…
+    </div>
+  );
+}
 
-  if (isHydrated && !isAuthenticated && !isPublicPath(pathname)) {
-    navigate({ to: "/signin", search: { redirect: pathname } as never });
+function sessionGateAllowsShell(
+  sessionCheck: {
+    isPending: boolean;
+    isSuccess: boolean;
+    isError: boolean;
+    error: unknown;
+  },
+  isAuthenticated: boolean,
+): boolean {
+  if (sessionCheck.isPending) return false;
+  if (sessionCheck.isSuccess) return true;
+  if (!sessionCheck.isError || !isAuthenticated) return false;
+
+  const err = sessionCheck.error as ApiError | undefined;
+  if (!err) return false;
+  if (err.status === 401 || err.status === 403) return false;
+  return err.isNetworkError || err.status >= 500;
+}
+
+export function AppShell() {
+  const { user: authUser, isAuthenticated, signOut } = useAuth();
+  const { menus, isLoading: permissionsLoading, error: permissionsError, refreshPermissions } =
+    usePermissions();
+  const queryClient = useQueryClient();
+
+  // Validate the stored session against the server before rendering any
+  // protected UI. A 401 clears the session (via the axios interceptor), so an
+  // invalid token can never flash the dashboard before redirecting to sign-in.
+  const sessionCheck = useQuery({
+    queryKey: ["users", authUser?.id],
+    queryFn: async () => (await usersService.get(authUser!.id)).data,
+    enabled: !!authUser,
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  if (!authUser) {
+    return <AuthLoadingScreen />;
   }
 
-  if (!isHydrated || !authUser) {
+  if (!sessionGateAllowsShell(sessionCheck, isAuthenticated)) {
+    return <AuthLoadingScreen />;
+  }
+
+  if (permissionsLoading && menus.length === 0) {
+    return <AuthLoadingScreen />;
+  }
+
+  if (permissionsError && menus.length === 0) {
     return (
-      <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
-        Loading…
+      <div className="min-h-screen grid place-items-center p-4">
+        <div className="card-elevated max-w-md p-8 text-center">
+          <div className="font-display font-semibold">Unable to load permissions</div>
+          <p className="mt-1 text-sm text-muted-foreground">Please try again.</p>
+          <Button
+            className="mt-4"
+            variant="outline"
+            onClick={() => {
+              void refreshPermissions().catch(() => undefined);
+            }}
+          >
+            Retry
+          </Button>
+        </div>
       </div>
     );
   }
@@ -66,9 +126,9 @@ export function AppShell() {
         email={authUser.email}
         menus={menus}
         onSignOut={() => {
+          queryClient.clear();
           signOut();
           toast.success("Signed out");
-          navigate({ to: "/signin" });
         }}
       />
     </SidebarProvider>
@@ -99,14 +159,15 @@ function AppShellChrome({
   const user = {
     name: userName,
     role: userRole,
-    avatar: resolveProfileImageUrl(profileQuery.data?.profileImagePath) || undefined,
+    avatar:
+      resolveProfileImageUrl(profileQuery.data?.profileImagePath, profileQuery.data?.editDate) ||
+      undefined,
   };
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { setOpenMobile, state, isMobile, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed" && !isMobile;
   const navMenus = buildNavMenus(menus);
 
-  const crumbs = pathname.split("/").filter(Boolean);
   const initials = user.name
     .split(/\s+/)
     .map((s) => s[0])
@@ -144,9 +205,7 @@ function AppShellChrome({
 
         <SidebarContent className="scrollbar-sidebar">
           <SidebarGroup>
-            <SidebarGroupLabel className="uppercase tracking-wider text-[10px] font-semibold text-sidebar-foreground/40">
-              Navigation
-            </SidebarGroupLabel>
+           
             <SidebarGroupContent>
               <SidebarMenu>
                 {navMenus.length === 0 ? (
@@ -226,7 +285,7 @@ function AppShellChrome({
                   onSignOut();
                 }}
                 className={cn(
-                  "flex items-center justify-center gap-1.5 h-8 rounded-md border border-sidebar-border text-xs text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                  "flex items-center justify-center gap-1.5 h-8 rounded-md border border-destructive/40 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive",
                   collapsed && "size-8 p-0",
                 )}
               >
@@ -255,18 +314,6 @@ function AppShellChrome({
             className="hidden md:inline-flex h-9 w-9 border border-input bg-card hover:bg-accent/10"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           />
-
-          <div className="flex items-center text-xs text-muted-foreground gap-1.5 min-w-0">
-            <Link to="/" className="hover:text-foreground shrink-0">
-              Home
-            </Link>
-            {crumbs.map((c, i) => (
-              <span key={i} className="flex items-center gap-1.5 truncate">
-                <ChevronRight className="h-3 w-3 shrink-0" />
-                <span className="capitalize truncate">{c.replace(/-/g, " ")}</span>
-              </span>
-            ))}
-          </div>
 
           <div className="ml-auto flex items-center gap-2">
             <button
@@ -378,18 +425,23 @@ export function PageHeader({
   title,
   subtitle,
   actions,
+  leading,
 }: {
   title: string;
   subtitle?: string;
   actions?: ReactNode;
+  leading?: ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 mb-6">
-      <div className="min-w-0">
-        <h1 className="text-2xl font-display font-semibold tracking-tight truncate">{title}</h1>
-        {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+    <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+      <div className="flex min-w-0 items-center gap-2">
+        {leading}
+        <div className="min-w-0">
+          <h1 className="truncate font-display text-2xl font-semibold tracking-tight">{title}</h1>
+          {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
+        </div>
       </div>
-      {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
     </div>
   );
 }

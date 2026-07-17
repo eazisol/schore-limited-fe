@@ -1,4 +1,6 @@
 import type { ApiMenu } from "@/lib/api/services/auth";
+import type { ApiMenuDefinition } from "@/lib/api/services/menus";
+import type { ApiPermission } from "@/lib/api/services/permissions";
 
 export type MenuAction = "read" | "modify" | "delete";
 
@@ -14,6 +16,45 @@ export interface SettingsTab {
   code: string;
   orderBy: number;
   menu: ApiMenu;
+}
+
+/** Build one authorized menu tree by unioning grants from every assigned role. */
+export function buildAuthorizedMenus(
+  menuTree: ApiMenuDefinition[],
+  rolePermissions: ApiPermission[][],
+): ApiMenu[] {
+  const grants = new Map<number, Pick<ApiMenu, "read" | "modify" | "delete">>();
+
+  for (const permission of rolePermissions.flat()) {
+    const current = grants.get(permission.menuId);
+    grants.set(permission.menuId, {
+      read: Boolean(current?.read || permission.read),
+      modify: Boolean(current?.modify || permission.modify),
+      delete: Boolean(current?.delete || permission.delete),
+    });
+  }
+
+  const mapMenus = (items: ApiMenuDefinition[]): ApiMenu[] =>
+    items
+      .filter((menu) => menu.isActive)
+      .map((menu) => {
+        const permission = grants.get(menu.id);
+        return {
+          id: menu.id,
+          name: menu.name?.trim() || `Menu ${menu.id}`,
+          code: menu.code?.trim() || "",
+          route: menu.route?.trim() || "",
+          icon: menu.icon,
+          parentMenuId: menu.parentMenuId,
+          orderBy: menu.orderBy,
+          read: permission?.read ?? false,
+          modify: permission?.modify ?? false,
+          delete: permission?.delete ?? false,
+          children: mapMenus(menu.children ?? []),
+        };
+      });
+
+  return mapMenus(menuTree);
 }
 
 /**

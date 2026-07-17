@@ -8,7 +8,7 @@ import type { MenuAction } from "@/lib/authorization";
 /**
  * Legacy hook used by phase-2 modules (e.g. rates) that still rely on the
  * mock role catalogue. Prefer `usePermission` from `@/components/Permission`
- * for menu-backed ACL from the login response.
+ * for API-backed menu authorization.
  */
 export function useCan(permission: PermissionKey | PermissionKey[] | undefined): boolean {
   useAuthSession();
@@ -37,7 +37,7 @@ type MenuCanProps = {
 
 /**
  * Dual-mode gate:
- * - Menu ACL (preferred): `code` / `route` + `action` from login `menus`
+ * - Menu ACL (preferred): `code` / `route` + `action` from PermissionContext
  * - Legacy: `permission` / `any` PermissionKey (phase-2 pages)
  */
 export function Can(props: LegacyCanProps | MenuCanProps) {

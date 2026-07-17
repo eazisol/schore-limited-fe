@@ -14,7 +14,7 @@ import {
 import { usePathPermission } from "@/components/Permission";
 
 export const Route = createFileRoute("/settings/email-smtp")({
-  head: () => ({ meta: [{ title: "Email SMTP — Settings" }] }),
+  head: () => ({ meta: [{ title: "Email SMTP | Settings" }] }),
   component: EmailSmtpPage,
 });
 
@@ -53,7 +53,7 @@ function EmailSmtpPage() {
           form.reset({
             host: d.host ?? "",
             port: Number(d.port ?? 587),
-            username: d.username ?? "",
+            username: "",
             password: d.password ?? "",
             fromName: d.fromName ?? "",
             fromEmail: d.fromEmail ?? "",
@@ -77,7 +77,7 @@ function EmailSmtpPage() {
       await settingsService.updateEmail({
         host: values.host,
         port: Number(values.port),
-        username: values.username,
+        username: "",
         password: values.password,
         fromEmail: values.fromEmail,
         fromName: values.fromName,
@@ -95,7 +95,7 @@ function EmailSmtpPage() {
     const v = form.getValues();
     if (!v.host || !v.fromEmail) return toast.error("Fill in host and from address before testing");
     toast.success("Test email queued", {
-      description: `(Demo) Would attempt connection to ${v.host}:${v.port} as ${v.username || v.fromEmail}`,
+      description: `(Demo) Would attempt connection to ${v.host}:${v.port} as ${v.fromEmail}`,
     });
   }
 
@@ -118,12 +118,11 @@ function EmailSmtpPage() {
       />
 
       <div className="grid sm:grid-cols-2 gap-4">
+        <TextField<SmtpValues> name="fromEmail" label="Email" required type="email" disabled={!canEdit || loading} />
+        <PasswordField<SmtpValues> name="password" label="Password" autoComplete="new-password" disabled={!canEdit || loading} />
         <TextField<SmtpValues> name="host" label="Host" required placeholder="smtp.office365.com" disabled={!canEdit || loading} />
         <TextField<SmtpValues> name="port" label="Port" required type="number" disabled={!canEdit || loading} />
-        <TextField<SmtpValues> name="username" label="Username" placeholder="apikey or user@domain" autoComplete="off" disabled={!canEdit || loading} />
-        <PasswordField<SmtpValues> name="password" label="Password" autoComplete="new-password" disabled={!canEdit || loading} />
-        <TextField<SmtpValues> name="fromName" label="From name" required disabled={!canEdit || loading} />
-        <TextField<SmtpValues> name="fromEmail" label="From email" required type="email" disabled={!canEdit || loading} />
+        <TextField<SmtpValues> name="fromName" label="Name" required disabled={!canEdit || loading} />
         <SwitchField<SmtpValues>
           name="enableSsl"
           label="Enable SSL"

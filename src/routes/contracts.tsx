@@ -4,7 +4,7 @@ import { contracts, properties, fmtGBP } from "@/lib/data";
 import { Briefcase } from "lucide-react";
 
 export const Route = createFileRoute("/contracts")({
-  head: () => ({ meta: [{ title: "Contracts & Budgets — Schore" }] }),
+  head: () => ({ meta: [{ title: "Contracts & Budgets | Schore" }] }),
   component: Contracts,
 });
 

@@ -1,49 +1,108 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Pagination } from "@/components/Pagination";
 import { Can, usePermission } from "@/components/Permission";
-import { Plus, Search, Eye, Pencil, Trash2, Mail, Loader2, AlertCircle } from "lucide-react";
+import {
+  DataTable,
+  downloadCsv,
+  fetchAllPages,
+  useDebouncedSearch,
+  type DataTableColumn,
+  type DataTableRowAction,
+} from "@/components/data-table";
+import { Plus, Eye, Pencil, Trash2, Mail, Loader2, Download, User } from "lucide-react";
 import { toast } from "sonner";
-import { usersService, type ApiUser } from "@/lib/api/services/users";
+import { usersService, resolveProfileImageUrl, type ApiUser, type UsersSortBy } from "@/lib/api/services/users";
+import { lookupsService } from "@/lib/api/services/lookups";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ROLE_BADGE, ROLE_LABEL, type UserRole } from "@/lib/users-store";
 
 const USERS_ROUTE = "/users";
 
+const ROLE_NAME_TO_KEY = Object.entries(ROLE_LABEL).reduce<Record<string, UserRole>>(
+  (acc, [key, label]) => {
+    acc[label] = key as UserRole;
+    acc[key] = key as UserRole;
+    return acc;
+  },
+  {},
+);
+
+const FALLBACK_ROLE_BADGES = [
+  "bg-info/10 text-info border-info/20",
+  "bg-warning/15 text-warning-foreground border-warning/30",
+  "bg-accent/15 text-accent border-accent/30",
+  "bg-secondary text-secondary-foreground border-border",
+] as const;
+
 export const Route = createFileRoute("/users/")({
-  head: () => ({ meta: [{ title: "User Management — Schore" }] }),
+  head: () => ({ meta: [{ title: "User Management | Schore" }] }),
   component: UsersList,
 });
 
 export const usersQueryKey = ["users"] as const;
+
+const USER_COLUMN_SORT_KEYS: Record<string, UsersSortBy> = {
+  name: "name",
+  role: "roles",
+  status: "status",
+};
+
+function roleBadgeClass(roleName: string, index: number): string {
+  const key = ROLE_NAME_TO_KEY[roleName];
+  if (key === "PM") return "bg-accent/20 text-accent border-accent/35";
+  if (key && ROLE_BADGE[key]) return ROLE_BADGE[key];
+  return FALLBACK_ROLE_BADGES[index % FALLBACK_ROLE_BADGES.length];
+}
+
+function displayName(user: ApiUser) {
+  return `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || user.username;
+}
 
 function UsersList() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canModify = usePermission({ route: USERS_ROUTE, action: "modify" });
   const canDelete = usePermission({ route: USERS_ROUTE, action: "delete" });
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(10);
+  const [roleId, setRoleId] = useState<number | undefined>(undefined);
+  const [sortBy, setSortBy] = useState<UsersSortBy>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [confirmDel, setConfirmDel] = useState<ApiUser | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
+    onPageReset: () => setPage(1),
+  });
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setSearch(prev => {
-        if (prev === searchInput.trim()) return prev;
-        setPage(1);
-        return searchInput.trim();
-      });
-    }, 300);
-    return () => clearTimeout(t);
-  }, [searchInput]);
+  const rolesQuery = useQuery({
+    queryKey: ["roles"],
+    queryFn: async () => (await lookupsService.roles()).data,
+    staleTime: 60_000,
+  });
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: [...usersQueryKey, { page, pageSize, search }],
-    queryFn: async () => (await usersService.list({ page, pageSize, search })).data,
+    queryKey: [...usersQueryKey, { page, pageSize, search, roleId, sortBy, sortDir }],
+    queryFn: async () =>
+      (
+        await usersService.list({
+          page,
+          pageSize,
+          search,
+          roleId,
+          sortBy,
+          sortDir,
+        })
+      ).data,
     placeholderData: keepPreviousData,
   });
 
@@ -62,156 +121,289 @@ function UsersList() {
   const totalCount = data?.totalCount ?? 0;
   const totalPages = data?.totalPages ?? 1;
 
-  const headerRange = useMemo(() => {
-    if (totalCount === 0) return "0 of 0";
-    const start = (page - 1) * pageSize + 1;
-    const end = Math.min(page * pageSize, totalCount);
-    return `${start}–${end} of ${totalCount}`;
-  }, [page, pageSize, totalCount]);
+  async function handleExportCsv() {
+    setExporting(true);
+    try {
+      const users = await fetchAllPages<ApiUser>({
+        search,
+        fetchPage: async ({ page: exportPage, pageSize: exportPageSize, search: exportSearch }) =>
+          (
+            await usersService.list({
+              page: exportPage,
+              pageSize: exportPageSize,
+              search: exportSearch,
+              roleId,
+              sortBy,
+              sortDir,
+            })
+          ).data,
+      });
+      if (users.length === 0) {
+        toast.warning("No users to export for the current filters.");
+        return;
+      }
+      downloadCsv({
+        filename: `users-export-${new Date().toISOString().slice(0, 10)}.csv`,
+        headers: ["Name", "Email", "Roles", "Status"],
+        rows: users.map((user) => [
+          displayName(user),
+          user.email,
+          (user.roleNames ?? []).join("; "),
+          user.isActive ? "Active" : "Inactive",
+        ]),
+      });
+      toast.success(`Exported ${users.length} user${users.length === 1 ? "" : "s"} to CSV`);
+    } catch (err) {
+      notifyApiError(err, "Failed to export users");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  const columns = useMemo<DataTableColumn<ApiUser>[]>(
+    () => [
+      {
+        id: "name",
+        header: "Name",
+        sortable: true,
+        cell: (user) => {
+          const name = displayName(user);
+          return (
+            <div className="flex items-center gap-3">
+              <UserAvatar name={name} src={resolveProfileImageUrl(user.profileImagePath)} />
+              <div className="min-w-0">
+                <Link
+                  to="/users/$id"
+                  params={{ id: String(user.id) }}
+                  className="block truncate font-medium hover:text-info hover:underline"
+                  title={name}
+                >
+                  {name}
+                </Link>
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <Mail className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{user.email}</span>
+                </div>
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        id: "role",
+        header: "Role",
+        sortable: true,
+        cell: (user) => (
+          <div className="flex flex-wrap gap-1">
+            {(user.roleNames ?? []).map((role, index) => (
+              <span
+                key={`${user.id}-${role}`}
+                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${roleBadgeClass(role, index)}`}
+              >
+                {role}
+              </span>
+            ))}
+            {(!user.roleNames || user.roleNames.length === 0) && (
+              <span className="text-xs text-muted-foreground">—</span>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        sortable: true,
+        cell: (user) => (
+          <span
+            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+              user.isActive
+                ? "border-success/20 bg-success/10 text-success"
+                : "border-destructive/20 bg-destructive/10 text-destructive"
+            }`}
+          >
+            {user.isActive ? "Active" : "Inactive"}
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const rowActions = useMemo<DataTableRowAction<ApiUser>[]>(
+    () => [
+      {
+        id: "view",
+        label: "View",
+        icon: <Eye className="h-4 w-4" />,
+        onClick: (user) => navigate({ to: "/users/$id", params: { id: String(user.id) } }),
+      },
+      {
+        id: "edit",
+        label: "Edit",
+        icon: <Pencil className="h-4 w-4" />,
+        hidden: () => !canModify,
+        onClick: (user) => navigate({ to: "/users/$id", params: { id: String(user.id) } }),
+      },
+      {
+        id: "delete",
+        label: "Delete",
+        icon: <Trash2 className="h-4 w-4" />,
+        danger: true,
+        hidden: () => !canDelete,
+        onClick: (user) => setConfirmDel(user),
+      },
+    ],
+    [canDelete, canModify, navigate],
+  );
+
+  const activeSortColumn =
+    Object.entries(USER_COLUMN_SORT_KEYS).find(([, apiKey]) => apiKey === sortBy)?.[0] ?? "name";
+
+  function handleSortChange(columnId: string, direction: "asc" | "desc") {
+    const apiSortBy = USER_COLUMN_SORT_KEYS[columnId];
+    if (!apiSortBy) return;
+    setSortBy(apiSortBy);
+    setSortDir(direction);
+    setPage(1);
+  }
+
+  function clearFilters() {
+    clearSearch();
+    setRoleId(undefined);
+    setPage(1);
+  }
+
+  const hasActiveFilters = Boolean(search) || roleId != null;
+  const roles = rolesQuery.data ?? [];
 
   return (
     <div>
       <PageHeader
         title="User Management"
-        subtitle="Platform users · roles, access and account status"
         actions={
-          <Can route={USERS_ROUTE} action="modify">
-            <Button size="sm" asChild>
-              <Link to="/users/new"><Plus className="h-4 w-4" />Add user</Link>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCsv}
+              disabled={exporting || isLoading}
+            >
+              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Export CSV
             </Button>
-          </Can>
+            <Can route={USERS_ROUTE} action="modify">
+              <Button size="sm" asChild>
+                <Link to="/users/new">
+                  <Plus className="h-4 w-4" />
+                  Add user
+                </Link>
+              </Button>
+            </Can>
+          </div>
         }
       />
 
-      <div className="card-elevated">
-        <div className="p-4 flex flex-wrap items-center gap-3 border-b">
-          <div className="flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-background w-full sm:w-80">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <input
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              placeholder="Search by name, username or email…"
-              className="bg-transparent text-sm outline-none w-full"
-              aria-label="Search users"
-            />
-          </div>
-          <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
-            {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            <span>{headerRange}</span>
-          </div>
-        </div>
-
-        {isLoading ? (
-          <div className="p-12 grid place-items-center text-sm text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin mb-2" />
-            Loading users…
-          </div>
-        ) : isError ? (
-          <div className="p-12 text-center">
-            <AlertCircle className="h-5 w-5 mx-auto text-destructive mb-2" />
-            <div className="text-sm font-medium">Unable to load users</div>
-            <p className="text-xs text-muted-foreground mt-1">{(error as unknown as ApiError)?.message || "Please try again."}</p>
-            <Button variant="outline" size="sm" className="mt-4" onClick={() => refetch()}>Retry</Button>
-          </div>
-        ) : rows.length === 0 ? (
-          <div className="p-12 text-center">
-            <div className="text-sm font-medium">No users match your filters</div>
-            <p className="text-xs text-muted-foreground mt-1">Try clearing the search.</p>
-            <Button variant="outline" size="sm" className="mt-4" onClick={() => { setSearchInput(""); }}>
-              Clear search
+      <DataTable
+        columns={columns}
+        rows={rows}
+        getRowId={(user) => user.id}
+        loading={isLoading}
+        fetching={isFetching}
+        loadingText="Loading users…"
+        error={
+          isError
+            ? {
+                title: "Unable to load users",
+                message: (error as unknown as ApiError)?.message || "Please try again.",
+                onRetry: () => {
+                  void refetch();
+                },
+              }
+            : null
+        }
+        search={{
+          value: searchInput,
+          onChange: setSearchInput,
+          placeholder: "Search by name, username or email…",
+          "aria-label": "Search users",
+        }}
+        filters={
+          <Select
+            value={roleId != null ? String(roleId) : "all"}
+            onValueChange={(value) => {
+              setRoleId(value === "all" ? undefined : Number(value));
+              setPage(1);
+            }}
+          >
+            <SelectTrigger
+              className="h-9 w-full min-w-[11rem] sm:w-60 [&>span]:whitespace-nowrap"
+              aria-label="Filter by role"
+            >
+              <SelectValue placeholder="All roles" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All roles</SelectItem>
+              {roles.map((role) => (
+                <SelectItem key={role.id} value={String(role.id)}>
+                  {role.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+        sort={{
+          sortBy: activeSortColumn,
+          sortDir,
+          onSortChange: handleSortChange,
+        }}
+        emptyState={{
+          title: "No users match your filters",
+          description: "Try clearing the search or role filter.",
+          action: hasActiveFilters ? (
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              Clear filters
             </Button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-xs text-muted-foreground">
-                <tr>
-                  <th className="text-left font-medium px-5 py-2.5">Name</th>
-                  <th className="text-left font-medium px-3 py-2.5">Username</th>
-                  <th className="text-left font-medium px-3 py-2.5">Roles</th>
-                  <th className="text-left font-medium px-3 py-2.5">User type</th>
-                  <th className="text-left font-medium px-3 py-2.5">Status</th>
-                  <th className="text-right font-medium px-5 py-2.5 w-32">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {rows.map((u: ApiUser) => {
-                  const displayName = `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.username;
-                  return (
-                    <tr key={u.id} className="hover:bg-muted/30">
-                      <td className="px-5 py-3">
-                        <Link to="/users/$id" params={{ id: String(u.id) }} className="font-medium hover:text-info hover:underline">
-                          {displayName}
-                        </Link>
-                        <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                          <Mail className="h-3 w-3" /> {u.email}
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 text-muted-foreground">{u.username}</td>
-                      <td className="px-3 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {(u.roleNames ?? []).map((r: string) => (
-                            <span key={r} className="text-[11px] px-2 py-0.5 rounded-full border bg-muted">{r}</span>
-                          ))}
-                          {(!u.roleNames || u.roleNames.length === 0) && <span className="text-xs text-muted-foreground">—</span>}
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 text-muted-foreground">{u.userTypeName || "—"}</td>
-                      <td className="px-3 py-3">
-                        <span className={`inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full border ${u.isActive ? "bg-success/10 text-success border-success/20" : "bg-muted text-muted-foreground border-border"}`}>
-                          {u.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3">
-                        <div className="flex justify-end gap-1">
-                          <IconBtn label="View" onClick={() => navigate({ to: "/users/$id", params: { id: String(u.id) } })}>
-                            <Eye className="h-4 w-4" />
-                          </IconBtn>
-                          {canModify && (
-                            <IconBtn label="Edit" onClick={() => navigate({ to: "/users/$id", params: { id: String(u.id) } })}>
-                              <Pencil className="h-4 w-4" />
-                            </IconBtn>
-                          )}
-                          {canDelete && (
-                            <IconBtn label="Delete" danger onClick={() => setConfirmDel(u)}>
-                              <Trash2 className="h-4 w-4" />
-                            </IconBtn>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {rows.length > 0 && (
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            totalCount={totalCount}
-            totalPages={totalPages}
-            onPageChange={setPage}
-            onPageSizeChange={s => { setPageSize(s); setPage(1); }}
-            itemLabel="users"
-            disabled={isFetching}
-          />
-        )}
-      </div>
+          ) : undefined,
+        }}
+        rowActions={rowActions}
+        pagination={{
+          page,
+          pageSize,
+          totalCount,
+          totalPages,
+          onPageChange: setPage,
+          onPageSizeChange: (size) => {
+            setPageSize(size);
+            setPage(1);
+          },
+          itemLabel: "users",
+          disabled: isFetching,
+          controlsAlign: "center",
+        }}
+      />
 
       {confirmDel && (
-        <div className="fixed inset-0 bg-black/50 grid place-items-center z-50 p-4" onClick={() => setConfirmDel(null)}>
-          <div className="bg-card rounded-lg max-w-md w-full p-6 border" onClick={e => e.stopPropagation()}>
-            <h3 className="font-display font-semibold text-lg">
-              Delete {`${confirmDel.firstName ?? ""} ${confirmDel.lastName ?? ""}`.trim() || confirmDel.username}?
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+          onClick={() => setConfirmDel(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg border bg-card p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="font-display text-lg font-semibold">
+              Delete {displayName(confirmDel)}?
             </h3>
-            <p className="text-sm text-muted-foreground mt-2">
-              This permanently removes the account and revokes platform access. This action cannot be undone.
+            <p className="mt-2 text-sm text-muted-foreground">
+              This permanently removes the account and revokes platform access. This action cannot be
+              undone.
             </p>
-            <div className="flex justify-end gap-2 mt-6">
-              <Button variant="outline" onClick={() => setConfirmDel(null)} disabled={deleteMutation.isPending}>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setConfirmDel(null)}
+                disabled={deleteMutation.isPending}
+              >
                 Cancel
               </Button>
               <Button
@@ -219,7 +411,11 @@ function UsersList() {
                 disabled={deleteMutation.isPending}
                 onClick={() => deleteMutation.mutate(confirmDel.id)}
               >
-                {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {deleteMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
                 Delete user
               </Button>
             </div>
@@ -230,16 +426,22 @@ function UsersList() {
   );
 }
 
-function IconBtn({ children, onClick, label, danger }: { children: React.ReactNode; onClick: () => void; label: string; danger?: boolean }) {
+function UserAvatar({ name, src }: { name: string; src: string }) {
+  const initials = name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  if (src) {
+    return <img src={src} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />;
+  }
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      className={`h-8 w-8 inline-grid place-items-center rounded-md hover:bg-accent/40 ${danger ? "text-destructive hover:bg-destructive/10" : ""}`}
-    >
-      {children}
-    </button>
+    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-[11px] font-semibold text-accent">
+      {initials || <User className="h-4 w-4" />}
+    </span>
   );
 }

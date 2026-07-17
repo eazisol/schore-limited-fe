@@ -7,57 +7,15 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { authService, type ApiLoginData, type ApiMenu } from "@/lib/api/services/auth";
+import { authService, type ApiLoginData } from "@/lib/api/services/auth";
 import { tokenStore, onUnauthorized, type ApiError } from "@/lib/api/axios";
-
-/**
- * API-backed authentication session.
- * Persisted in localStorage under `SESSION_KEY`; token is mirrored into the
- * axios `tokenStore` so all requests carry `Authorization: Bearer <token>`.
- * `menus` from the login response is the single source of truth for ACL.
- */
-export interface AuthUser {
-  id: number;
-  username: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  roles: string[];
-  role: string; // primary role code (first element)
-}
-
-interface SessionShape {
-  token: string;
-  expiresAt: string;
-  user: AuthUser;
-  menus: ApiMenu[];
-}
-
-const SESSION_KEY = "schore.api.session.v2";
-
-function loadSession(): SessionShape | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    const s = JSON.parse(raw) as SessionShape;
-    if (s.expiresAt && new Date(s.expiresAt).getTime() < Date.now()) {
-      window.localStorage.removeItem(SESSION_KEY);
-      return null;
-    }
-    if (!s.token || !s.user) return null;
-    return { ...s, menus: Array.isArray(s.menus) ? s.menus : [] };
-  } catch {
-    return null;
-  }
-}
-
-function saveSession(s: SessionShape | null) {
-  if (typeof window === "undefined") return;
-  if (!s) window.localStorage.removeItem(SESSION_KEY);
-  else window.localStorage.setItem(SESSION_KEY, JSON.stringify(s));
-}
+import {
+  clearLegacySessionKeys,
+  getStoredSession,
+  saveStoredSession,
+  type AuthUser,
+  type SessionShape,
+} from "@/lib/session";
 
 function toAuthUser(d: ApiLoginData): AuthUser {
   const fullName = [d.firstName, d.lastName].filter(Boolean).join(" ").trim() || d.username;
@@ -76,7 +34,6 @@ function toAuthUser(d: ApiLoginData): AuthUser {
 interface AuthContextValue {
   user: AuthUser | null;
   token: string | null;
-  menus: ApiMenu[];
   isAuthenticated: boolean;
   isHydrated: boolean;
   isSigningIn: boolean;
@@ -95,22 +52,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSigningIn, setSigningIn] = useState(false);
 
   useEffect(() => {
-    // Drop legacy session keys that did not include menus.
-    try {
-      window.localStorage.removeItem("schore.api.session.v1");
-    } catch {
-      /* ignore */
-    }
-    const s = loadSession();
-    if (s) tokenStore.set(s.token, true);
-    setSession(s);
+    clearLegacySessionKeys();
+    const stored = getStoredSession();
+    if (stored) tokenStore.set(stored.token, true);
+    setSession(stored);
     setHydrated(true);
   }, []);
 
   useEffect(
     () =>
       onUnauthorized(() => {
-        saveSession(null);
+        saveStoredSession(null);
         tokenStore.clear();
         setSession(null);
       }),
@@ -129,9 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token: res.data.token,
         expiresAt: res.data.expiresAt,
         user,
-        menus: res.data.menus ?? [],
       };
-      saveSession(next);
+      saveStoredSession(next);
       tokenStore.set(next.token, true);
       setSession(next);
       return { ok: true, user };
@@ -148,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(() => {
-    saveSession(null);
+    saveStoredSession(null);
     tokenStore.clear();
     setSession(null);
   }, []);
@@ -157,7 +108,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user: session?.user ?? null,
       token: session?.token ?? null,
-      menus: session?.menus ?? [],
       isAuthenticated: !!session,
       isHydrated,
       isSigningIn,
@@ -175,3 +125,5 @@ export function useAuth(): AuthContextValue {
   if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
   return ctx;
 }
+
+export type { AuthUser } from "@/lib/session";

@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/AppShell";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/trade-builder")({
-  head: () => ({ meta: [{ title: "Trade Builder — Schore" }] }),
+  head: () => ({ meta: [{ title: "Trade Builder | Schore" }] }),
   component: TradeBuilderLayout,
 });
 

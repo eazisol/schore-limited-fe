@@ -1,24 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PageHeader } from "@/components/AppShell";
-import { Sparkles } from "lucide-react";
+import { Construction } from "lucide-react";
 
 export const Route = createFileRoute("/")({
-  head: () => ({ meta: [{ title: "Dashboard — Schore Limited" }] }),
+  head: () => ({ meta: [{ title: "Dashboard | Schore Limited" }] }),
   component: Dashboard,
 });
 
 function Dashboard() {
   return (
-    <div className="space-y-6">
-      <PageHeader title="Dashboard" subtitle="Overview of your workspace" />
-
-      <div className="card-elevated p-12 grid place-items-center text-center">
-        <div className="grid h-14 w-14 place-items-center rounded-full bg-accent/15 text-accent-foreground mb-4">
-          <Sparkles className="h-6 w-6" />
+    <div className="flex min-h-[calc(100svh-8rem)] items-center justify-center p-4">
+      <div className="card-elevated w-full max-w-lg p-8 sm:p-10 text-center">
+        <div className="mx-auto mb-5 grid h-12 w-12 place-items-center rounded-full bg-accent/10 text-accent">
+          <Construction className="h-6 w-6" aria-hidden />
         </div>
-        <h2 className="font-display text-2xl font-semibold tracking-tight">Coming Soon</h2>
-        <p className="mt-2 text-sm text-muted-foreground max-w-md">
-          The dashboard is being crafted. Check back shortly for a live view of your operations.
+        <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-tight">
+          Dashboard
+        </h1>
+        <p className="mt-3 text-sm text-muted-foreground leading-relaxed max-w-md mx-auto">
+          This module hasn&apos;t been built yet. It&apos;ll be available in a later phase of the
+          roadmap.
         </p>
       </div>
     </div>

@@ -1,56 +1,66 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { AlertCircle, Eye, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Eye, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
-import { Pagination } from "@/components/Pagination";
 import { Form, TextField, CheckboxField, SubmitButton } from "@/components/form";
 import { Can, usePathPermission } from "@/components/Permission";
-import { userTypesService, type ApiUserType, type UserTypePayload } from "@/lib/api/services/system-config";
-import { notifyApiError } from "@/lib/api/axios";
+import {
+  DataTable,
+  useDebouncedSearch,
+  type DataTableColumn,
+  type DataTableRowAction,
+} from "@/components/data-table";
+import {
+  userTypesService,
+  type ApiUserType,
+  type UserTypePayload,
+} from "@/lib/api/services/system-config";
+import { notifyApiError, type ApiError } from "@/lib/api/axios";
 
 export const Route = createFileRoute("/settings/user-types")({
-  head: () => ({ meta: [{ title: "User Types — Settings" }] }),
+  head: () => ({ meta: [{ title: "User Types | Settings" }] }),
   component: UserTypesPage,
 });
 
 const listKey = ["settings", "user-types"] as const;
 
 const schema = z.object({
-  name: z.string().trim().min(1, "Name is required"),
-  code: z.string().trim().min(1, "Code is required"),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(50, "Name must be 50 characters or fewer"),
+  code: z
+    .string()
+    .trim()
+    .min(1, "Code is required")
+    .max(50, "Code must be 50 characters or fewer"),
   isActive: z.boolean(),
 });
 type Values = z.infer<typeof schema>;
 
-type Mode = { kind: "create" } | { kind: "edit"; item: ApiUserType } | { kind: "view"; item: ApiUserType };
+type Mode =
+  | { kind: "create" }
+  | { kind: "edit"; item: ApiUserType }
+  | { kind: "view"; item: ApiUserType };
 
 function UserTypesPage() {
   const qc = useQueryClient();
   const canModify = usePathPermission("modify");
   const canDelete = usePathPermission("delete");
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [mode, setMode] = useState<Mode | null>(null);
   const [confirmDel, setConfirmDel] = useState<ApiUserType | null>(null);
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setSearch(prev => {
-        if (prev === searchInput.trim()) return prev;
-        setPage(1);
-        return searchInput.trim();
-      });
-    }, 300);
-    return () => clearTimeout(t);
-  }, [searchInput]);
+  const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
+    onPageReset: () => setPage(1),
+  });
 
   const query = useQuery({
     queryKey: [...listKey, { page, pageSize, search }],
@@ -72,117 +82,166 @@ function UserTypesPage() {
     onError: (err) => notifyApiError(err, "Failed to delete user type"),
   });
 
+  const columns = useMemo<DataTableColumn<ApiUserType>[]>(
+    () => [
+      {
+        id: "name",
+        header: "Name",
+        cell: (item) => <span className="font-medium">{item.name}</span>,
+      },
+      {
+        id: "code",
+        header: "Code",
+        cell: (item) => <span className="text-muted-foreground">{item.code}</span>,
+      },
+      {
+        id: "status",
+        header: "Status",
+        headerClassName: "w-24",
+        cell: (item) => (
+          <span
+            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+              item.isActive
+                ? "border-success/20 bg-success/10 text-success"
+                : "border-border bg-muted text-muted-foreground"
+            }`}
+          >
+            {item.isActive ? "Active" : "Inactive"}
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const rowActions = useMemo<DataTableRowAction<ApiUserType>[]>(
+    () => [
+      {
+        id: "view",
+        label: "View",
+        icon: <Eye className="h-4 w-4" />,
+        onClick: (item) => setMode({ kind: "view", item }),
+      },
+      {
+        id: "edit",
+        label: "Edit",
+        icon: <Pencil className="h-4 w-4" />,
+        hidden: () => !canModify,
+        onClick: (item) => setMode({ kind: "edit", item }),
+      },
+      {
+        id: "delete",
+        label: "Delete",
+        icon: <Trash2 className="h-4 w-4" />,
+        danger: true,
+        hidden: () => !canDelete,
+        onClick: (item) => setConfirmDel(item),
+      },
+    ],
+    [canDelete, canModify],
+  );
+
   return (
     <div>
-      <div className="card-elevated">
-        <div className="p-4 flex flex-wrap items-center gap-3 border-b">
-          <div className="flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-background w-full sm:w-80">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <input
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              placeholder="Search by name or code…"
-              className="bg-transparent text-sm outline-none w-full"
-              aria-label="Search user types"
-            />
-          </div>
-          <div className="ml-auto flex items-center gap-3">
-            {query.isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-            <Can action="modify">
-              <Button size="sm" onClick={() => setMode({ kind: "create" })}>
-                <Plus className="h-4 w-4" /> Add user type
-              </Button>
-            </Can>
-          </div>
-        </div>
-
-        {query.isLoading ? (
-          <div className="p-12 grid place-items-center text-sm text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin mb-2" />
-            Loading user types…
-          </div>
-        ) : query.isError ? (
-          <div className="p-12 text-center">
-            <AlertCircle className="h-5 w-5 mx-auto text-destructive mb-2" />
-            <div className="text-sm font-medium">Unable to load user types</div>
-            <Button variant="outline" size="sm" className="mt-4" onClick={() => query.refetch()}>Retry</Button>
-          </div>
-        ) : rows.length === 0 ? (
-          <div className="p-12 text-center text-sm text-muted-foreground">No user types found.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-xs text-muted-foreground">
-                <tr>
-                  <th className="text-left font-medium px-5 py-2.5">Name</th>
-                  <th className="text-left font-medium px-3 py-2.5">Code</th>
-                  <th className="text-left font-medium px-3 py-2.5 w-24">Status</th>
-                  <th className="text-right font-medium px-5 py-2.5 w-32">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {rows.map(r => (
-                  <tr key={r.id} className="hover:bg-muted/30">
-                    <td className="px-5 py-3 font-medium">{r.name}</td>
-                    <td className="px-3 py-3 text-muted-foreground">{r.code}</td>
-                    <td className="px-3 py-3">
-                      <span className={`inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full border ${r.isActive ? "bg-success/10 text-success border-success/20" : "bg-muted text-muted-foreground border-border"}`}>
-                        {r.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end gap-1">
-                        <IconBtn label="View" onClick={() => setMode({ kind: "view", item: r })}><Eye className="h-4 w-4" /></IconBtn>
-                        {canModify && (
-                          <IconBtn label="Edit" onClick={() => setMode({ kind: "edit", item: r })}><Pencil className="h-4 w-4" /></IconBtn>
-                        )}
-                        {canDelete && (
-                          <IconBtn label="Delete" danger onClick={() => setConfirmDel(r)}><Trash2 className="h-4 w-4" /></IconBtn>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {rows.length > 0 && (
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            totalCount={totalCount}
-            totalPages={totalPages}
-            onPageChange={setPage}
-            onPageSizeChange={s => { setPageSize(s); setPage(1); }}
-            itemLabel="user types"
-            disabled={query.isFetching}
-          />
-        )}
-      </div>
+      <DataTable
+        columns={columns}
+        rows={rows}
+        getRowId={(item) => item.id}
+        loading={query.isLoading}
+        fetching={query.isFetching}
+        loadingText="Loading user types…"
+        error={
+          query.isError
+            ? {
+                title: "Unable to load user types",
+                message: (query.error as unknown as ApiError)?.message || "Please try again.",
+                onRetry: () => {
+                  void query.refetch();
+                },
+              }
+            : null
+        }
+        search={{
+          value: searchInput,
+          onChange: setSearchInput,
+          placeholder: "Search by name or code…",
+          "aria-label": "Search user types",
+        }}
+        toolbarActions={
+          <Can action="modify">
+            <Button size="sm" onClick={() => setMode({ kind: "create" })}>
+              <Plus className="h-4 w-4" /> Add user type
+            </Button>
+          </Can>
+        }
+        emptyState={{
+          title: "No user types found.",
+          description: search ? "Try clearing the search." : undefined,
+          action: search ? (
+            <Button variant="outline" size="sm" onClick={clearSearch}>
+              Clear search
+            </Button>
+          ) : undefined,
+        }}
+        rowActions={rowActions}
+        pagination={{
+          page,
+          pageSize,
+          totalCount,
+          totalPages,
+          onPageChange: setPage,
+          onPageSizeChange: (size) => {
+            setPageSize(size);
+            setPage(1);
+          },
+          itemLabel: "user types",
+          disabled: query.isFetching,
+          controlsAlign: "center",
+        }}
+      />
 
       {mode && (
         <UserTypeFormModal
           mode={mode}
           onClose={() => setMode(null)}
-          onSaved={() => { setMode(null); qc.invalidateQueries({ queryKey: listKey }); }}
+          onSaved={() => {
+            setMode(null);
+            qc.invalidateQueries({ queryKey: listKey });
+          }}
         />
       )}
 
       {confirmDel && (
-        <div className="fixed inset-0 bg-black/50 grid place-items-center z-50 p-4" onClick={() => setConfirmDel(null)}>
-          <div className="bg-card rounded-lg max-w-md w-full p-6 border" onClick={e => e.stopPropagation()}>
-            <h3 className="font-display font-semibold text-lg">Delete user type “{confirmDel.name}”?</h3>
-            <p className="text-sm text-muted-foreground mt-2">This action cannot be undone.</p>
-            <div className="flex justify-end gap-2 mt-6">
-              <Button variant="outline" onClick={() => setConfirmDel(null)} disabled={deleteMutation.isPending}>Cancel</Button>
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+          onClick={() => setConfirmDel(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg border bg-card p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="font-display text-lg font-semibold">
+              Delete user type “{confirmDel.name}”?
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">This action cannot be undone.</p>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setConfirmDel(null)}
+                disabled={deleteMutation.isPending}
+              >
+                Cancel
+              </Button>
               <Button
                 variant="destructive"
                 disabled={deleteMutation.isPending}
                 onClick={() => deleteMutation.mutate(confirmDel.id)}
               >
-                {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {deleteMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
                 Delete
               </Button>
             </div>
@@ -193,21 +252,15 @@ function UserTypesPage() {
   );
 }
 
-function IconBtn({ children, onClick, label, danger }: { children: React.ReactNode; onClick: () => void; label: string; danger?: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      className={`h-8 w-8 inline-grid place-items-center rounded-md hover:bg-accent/40 ${danger ? "text-destructive hover:bg-destructive/10" : ""}`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function UserTypeFormModal({ mode, onClose, onSaved }: { mode: Mode; onClose: () => void; onSaved: () => void }) {
+function UserTypeFormModal({
+  mode,
+  onClose,
+  onSaved,
+}: {
+  mode: Mode;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const isView = mode.kind === "view";
   const existing = mode.kind === "create" ? null : mode.item;
 
@@ -225,38 +278,53 @@ function UserTypeFormModal({ mode, onClose, onSaved }: { mode: Mode; onClose: ()
       if (mode.kind === "edit") return userTypesService.update(mode.item.id, payload);
       return userTypesService.create(payload);
     },
-    onSuccess: res => {
-      toast.success(res.message || (mode.kind === "edit" ? "User type updated" : "User type created"));
+    onSuccess: (res) => {
+      toast.success(
+        res.message || (mode.kind === "edit" ? "User type updated" : "User type created"),
+      );
       onSaved();
     },
     onError: (err) => notifyApiError(err, "Failed to save user type"),
   });
 
-  async function submit(v: Values) {
+  async function submit(values: Values) {
     await mutation.mutateAsync({
-      name: v.name.trim(),
-      code: v.code.trim(),
-      isActive: v.isActive,
+      name: values.name.trim(),
+      code: values.code.trim(),
+      isActive: values.isActive,
     });
   }
 
-  const title = mode.kind === "create" ? "Add user type" : mode.kind === "edit" ? "Edit user type" : "View user type";
+  const title =
+    mode.kind === "create"
+      ? "Add user type"
+      : mode.kind === "edit"
+        ? "Edit user type"
+        : "View user type";
 
   return (
     <Modal open onClose={onClose} title={title} size="md">
       <Form form={form} onSubmit={submit} className="space-y-4">
         <fieldset disabled={isView} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <TextField<Values> name="name" label="Name" required autoFocus={!isView} />
-            <TextField<Values> name="code" label="Code" required />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <TextField<Values>
+              name="name"
+              label="Name"
+              required
+              autoFocus={!isView}
+              maxLength={50}
+            />
+            <TextField<Values> name="code" label="Code" required maxLength={50} />
           </div>
           <CheckboxField<Values> name="isActive" label="Active" />
         </fieldset>
-        <div className="flex justify-end gap-2 pt-2 border-t">
-          <Button type="button" variant="outline" onClick={onClose}>{isView ? "Close" : "Cancel"}</Button>
+        <div className="flex justify-end gap-2 border-t pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>
+            {isView ? "Close" : "Cancel"}
+          </Button>
           {!isView && (
             <SubmitButton loadingText="Saving…">
-              {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              {mutation.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
               {mode.kind === "edit" ? "Update user type" : "Create user type"}
             </SubmitButton>
           )}

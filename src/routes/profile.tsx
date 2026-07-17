@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { KeyRound, Save, Loader2 } from "lucide-react";
+import { KeyRound, Save, Loader2, Trash2 } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,9 +25,11 @@ import {
 } from "@/lib/api/services/users";
 import { notifyApiError } from "@/lib/api/axios";
 import { newPasswordSchema, PasswordRequirements } from "@/lib/password";
+import { getPhoneLengthError } from "@/components/form/PhoneNumberField";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/profile")({
-  head: () => ({ meta: [{ title: "My profile — Schore" }] }),
+  head: () => ({ meta: [{ title: "My profile | Schore" }] }),
   component: ProfilePage,
 });
 
@@ -40,8 +42,7 @@ function parseDobInput(value: string): Date | null {
 }
 
 function validatePhoneNumber(value: string) {
-  const digits = value.replace(/\D/g, "");
-  return digits.length >= 10 && digits.length <= 15;
+  return !getPhoneLengthError(value.trim(), undefined, { requireMin: true });
 }
 
 const profileSchema = z.object({
@@ -61,7 +62,7 @@ const profileSchema = z.object({
     .superRefine((v, ctx) => {
       if (!v) return;
       if (!validatePhoneNumber(v)) {
-        ctx.addIssue({ code: "custom", message: "Enter a valid phone number (10-15 digits)." });
+        ctx.addIssue({ code: "custom", message: "Enter a valid phone number for the selected country." });
       }
     }),
   dateOfBirth: z
@@ -102,6 +103,8 @@ function ProfilePage() {
   const [apiUser, setApiUser] = useState<ApiUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [confirmImageRemoval, setConfirmImageRemoval] = useState(false);
+  const [removingImage, setRemovingImage] = useState(false);
 
   const profileForm = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
@@ -133,7 +136,7 @@ function ProfilePage() {
           lastName: res.data.lastName ?? "",
           phone: res.data.phone ?? "",
           dateOfBirth: toDateInputValue(res.data.dateOfBirth),
-          avatar: resolveProfileImageUrl(res.data.profileImagePath),
+          avatar: resolveProfileImageUrl(res.data.profileImagePath, res.data.editDate),
         });
         setAvatarFile(null);
       } catch (err) {
@@ -188,13 +191,34 @@ function ProfilePage() {
         lastName: res.data.lastName ?? "",
         phone: res.data.phone ?? "",
         dateOfBirth: toDateInputValue(res.data.dateOfBirth),
-        avatar: resolveProfileImageUrl(res.data.profileImagePath),
+        avatar: resolveProfileImageUrl(res.data.profileImagePath, res.data.editDate),
       });
       setAvatarFile(null);
-      queryClient.invalidateQueries({ queryKey: ["users", authUser.id] });
+      queryClient.setQueryData(["users", authUser.id], res.data);
+      await queryClient.invalidateQueries({ queryKey: ["users", authUser.id] });
       toast.success("Profile updated");
     } catch (err) {
       notifyApiError(err, "Failed to update profile");
+    }
+  }
+
+  async function removeProfileImage() {
+    if (!apiUser || removingImage) return;
+    setRemovingImage(true);
+    try {
+      await usersService.removeProfileImage(apiUser.id);
+      const nextUser = { ...apiUser, profileImagePath: null };
+      setApiUser(nextUser);
+      setAvatarFile(null);
+      profileForm.setValue("avatar", "", { shouldDirty: false });
+      queryClient.setQueryData(["users", authUser.id], nextUser);
+      await queryClient.invalidateQueries({ queryKey: ["users", authUser.id] });
+      setConfirmImageRemoval(false);
+      toast.success("Profile image removed");
+    } catch (err) {
+      notifyApiError(err, "Failed to remove profile image");
+    } finally {
+      setRemovingImage(false);
     }
   }
 
@@ -224,6 +248,8 @@ function ProfilePage() {
           title={`${authUser.firstName} ${authUser.lastName}`.trim() || authUser.username}
           subtitle={authUser.email}
           onFileChange={setAvatarFile}
+          onRemove={() => setConfirmImageRemoval(true)}
+          disabled={loadingUser || removingImage}
         />
 
         <div className="grid sm:grid-cols-2 gap-4">
@@ -279,19 +305,21 @@ function ProfilePage() {
           <KeyRound className="h-4 w-4 text-muted-foreground" />
           <h2 className="font-display font-semibold">Change password</h2>
         </div>
-        <PasswordField<PasswordValues>
-          name="currentPassword"
-          label="Current password"
-          required
-          autoComplete="current-password"
-        />
         <div className="grid sm:grid-cols-2 gap-4">
+          <PasswordField<PasswordValues>
+            name="currentPassword"
+            label="Current password"
+            required
+            autoComplete="current-password"
+          />
           <PasswordField<PasswordValues>
             name="password"
             label="New password"
             required
             autoComplete="new-password"
           />
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4">
           <PasswordField<PasswordValues>
             name="confirm"
             label="Confirm new password"
@@ -307,6 +335,53 @@ function ProfilePage() {
           </SubmitButton>
         </div>
       </Form>
+
+      {confirmImageRemoval && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+          onClick={() => {
+            if (!removingImage) setConfirmImageRemoval(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="remove-profile-image-title"
+            className="w-full max-w-md rounded-lg border bg-card p-6 shadow-lg"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="remove-profile-image-title" className="font-display text-lg font-semibold">
+              Remove profile image?
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This will permanently remove your current profile image.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={removingImage}
+                onClick={() => setConfirmImageRemoval(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={removingImage}
+                onClick={removeProfileImage}
+              >
+                {removingImage ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                Remove image
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -20,9 +20,13 @@ import {
 } from "@/lib/api/services/permissions";
 import { notifyApiError } from "@/lib/api/axios";
 import { Can, usePathPermission } from "@/components/Permission";
+import {
+  PERMISSION_UPDATED_STORAGE_KEY,
+  usePermissions,
+} from "@/contexts/PermissionContext";
 
 export const Route = createFileRoute("/settings/role-permissions")({
-  head: () => ({ meta: [{ title: "Role Permissions — Settings" }] }),
+  head: () => ({ meta: [{ title: "Role Permissions | Settings" }] }),
   component: RolePermissionsPage,
 });
 
@@ -68,6 +72,7 @@ function sameDraft(a: DraftPermission[], b: DraftPermission[]): boolean {
 function RolePermissionsPage() {
   const qc = useQueryClient();
   const canModify = usePathPermission("modify");
+  const { refreshPermissions } = usePermissions();
   const [roleId, setRoleId] = useState<number | null>(null);
   const [draft, setDraft] = useState<DraftPermission[]>([]);
 
@@ -112,11 +117,21 @@ function RolePermissionsPage() {
   const saveMutation = useMutation({
     mutationFn: (payload: { roleId: number; permissions: UpsertPermission[] }) =>
       permissionsService.assign(payload),
-    onSuccess: (res, vars) => {
+    onSuccess: async (res, vars) => {
       toast.success(res.message || "Permissions saved");
       const next = res.data ?? [];
       qc.setQueryData(["permissions", "role", vars.roleId], next);
       setDraft(toDraft(next));
+      try {
+        window.localStorage.setItem(PERMISSION_UPDATED_STORAGE_KEY, String(Date.now()));
+      } catch {
+        // Cross-tab refresh is best-effort; the current tab still refreshes below.
+      }
+      try {
+        await refreshPermissions();
+      } catch (err) {
+        notifyApiError(err, "Permissions saved, but authorization could not be refreshed");
+      }
     },
     onError: (err) => notifyApiError(err, "Failed to save permissions"),
   });
@@ -140,7 +155,6 @@ function RolePermissionsPage() {
     });
   }
 
-  const selectedRole = roles.find((r: ApiRole) => r.id === roleId);
   const showTable = roleId != null && permsQuery.isSuccess && draft.length > 0;
   const saving = saveMutation.isPending;
 
@@ -148,7 +162,7 @@ function RolePermissionsPage() {
     <div className="space-y-6">
       <div className="card-elevated p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="min-w-0 flex-1 max-w-sm space-y-2">
+          <div className="w-full space-y-2 sm:w-64">
             <label htmlFor="role-permissions-role" className="text-xs font-medium text-muted-foreground">
               Role
             </label>
@@ -184,9 +198,6 @@ function RolePermissionsPage() {
                 </SelectContent>
               </Select>
             )}
-            {selectedRole?.description ? (
-              <p className="text-xs text-muted-foreground">{selectedRole.description}</p>
-            ) : null}
           </div>
 
           <Can action="modify">
@@ -239,9 +250,6 @@ function RolePermissionsPage() {
                 <tr key={row.menuId} className="hover:bg-muted/30">
                   <td className="px-5 py-3">
                     <div className="font-medium">{row.menuName}</div>
-                    {row.menuCode ? (
-                      <code className="text-[10px] text-muted-foreground font-mono">{row.menuCode}</code>
-                    ) : null}
                   </td>
                   {(["read", "modify", "delete"] as const).map(flag => (
                     <td key={flag} className="px-3 py-3 text-center">

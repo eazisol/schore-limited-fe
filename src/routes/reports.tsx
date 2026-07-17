@@ -6,7 +6,7 @@ import { Download, Loader2, FileSpreadsheet, FileText, Mail } from "lucide-react
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/reports")({
-  head: () => ({ meta: [{ title: "Reports & Exports — Schore" }] }),
+  head: () => ({ meta: [{ title: "Reports & Exports | Schore" }] }),
   component: Reports,
 });
 

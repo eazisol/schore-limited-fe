@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { wageSheets, operatives, fmtGBP } from "@/lib/data";
 
 export const Route = createFileRoute("/payroll")({
-  head: () => ({ meta: [{ title: "Payroll Engine — Schore" }] }),
+  head: () => ({ meta: [{ title: "Payroll Engine | Schore" }] }),
   component: Payroll,
 });
 

@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/contexts/PermissionContext";
 import {
   canAccessPath,
   getMenuPermission,
@@ -9,7 +10,7 @@ import {
 } from "@/lib/authorization";
 
 export type PermissionTarget = {
-  /** Menu code from the login response (e.g. `USERS`). */
+  /** Menu code from the permission-backed menu tree (e.g. `USERS`). */
   code?: string;
   /** Menu route or app path (e.g. `/users`). */
   route?: string;
@@ -18,9 +19,10 @@ export type PermissionTarget = {
   action?: MenuAction;
 };
 
-/** Hook: check read/modify/delete against login `menus`. */
+/** Hook: check read/modify/delete against the centralized permission state. */
 export function usePermission(target: PermissionTarget): boolean {
-  const { menus, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const { menus } = usePermissions();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const action = target.action ?? "read";
   if (!isAuthenticated) return false;
@@ -37,22 +39,23 @@ export function usePermission(target: PermissionTarget): boolean {
 
 /** Permission check for the current route pathname. */
 export function usePathPermission(action: MenuAction = "read"): boolean {
-  const { menus, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const { menus } = usePermissions();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   if (!isAuthenticated) return false;
   return getMenuPermission(menus, action, { pathname });
 }
 
-/** The login menu entry governing the current route. */
+/** The permission-backed menu entry governing the current route. */
 export function useRouteMenu() {
-  const { menus } = useAuth();
+  const { menus } = usePermissions();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return resolveMenuForAppPath(menus, pathname);
 }
 
 /**
  * Render children only when the user has the given menu permission.
- * Prefer `pathname`, `code`, or `route` from login menus.
+ * Prefer `pathname`, `code`, or `route` from the permission-backed menu tree.
  */
 export function Can({
   code,
@@ -100,16 +103,19 @@ export function RoutePermissionGuard({
   pathname: string;
   children: ReactNode;
 }) {
-  const { menus, isHydrated, isAuthenticated } = useAuth();
+  const { isHydrated, isAuthenticated } = useAuth();
+  const { menus, isLoading } = usePermissions();
   const navigate = useNavigate();
-  const allowed = !isHydrated || !isAuthenticated || canAccessPath(menus, pathname);
+  const permissionsBlocking = isLoading && menus.length === 0;
+  const allowed =
+    isHydrated && isAuthenticated && !permissionsBlocking && canAccessPath(menus, pathname);
 
   useEffect(() => {
-    if (!isHydrated || !isAuthenticated) return;
+    if (!isHydrated || !isAuthenticated || permissionsBlocking) return;
     if (!canAccessPath(menus, pathname)) {
       navigate({ to: "/forbidden" });
     }
-  }, [isHydrated, isAuthenticated, menus, pathname, navigate]);
+  }, [isHydrated, isAuthenticated, permissionsBlocking, menus, pathname, navigate]);
 
   if (!allowed) return null;
   return <>{children}</>;

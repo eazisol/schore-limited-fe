@@ -22,18 +22,19 @@ export interface ApiUser {
 }
 
 /** Build absolute URL for a profile image returned by the API. */
-export function resolveProfileImageUrl(path: string | null | undefined): string {
+export function resolveProfileImageUrl(
+  path: string | null | undefined,
+  version?: string | number | null,
+): string {
   if (!path?.trim()) return "";
   const trimmed = path.trim();
-  if (
-    trimmed.startsWith("http://") ||
-    trimmed.startsWith("https://") ||
-    trimmed.startsWith("data:")
-  ) {
-    return trimmed;
-  }
-  const origin = API_BASE_URL.replace(/\/api\/?$/, "");
-  return `${origin}${trimmed.startsWith("/") ? trimmed : `/${trimmed}`}`;
+  if (trimmed.startsWith("data:")) return trimmed;
+  const url =
+    trimmed.startsWith("http://") || trimmed.startsWith("https://")
+      ? trimmed
+      : `${API_BASE_URL.replace(/\/api\/?$/, "")}${trimmed.startsWith("/") ? trimmed : `/${trimmed}`}`;
+  if (version == null || version === "") return url;
+  return `${url}${url.includes("?") ? "&" : "?"}v=${encodeURIComponent(String(version))}`;
 }
 
 function toUserFormData(userData: object, file?: File | null): FormData {
@@ -77,7 +78,13 @@ export interface UsersListParams {
   page: number;
   pageSize: number;
   search?: string;
+  roleId?: number;
+  sortBy?: UsersSortBy;
+  sortDir?: UsersSortDir;
 }
+
+export type UsersSortBy = "name" | "roles" | "usertype" | "status";
+export type UsersSortDir = "asc" | "desc";
 
 export interface PagedResult<T> {
   items: T[];
@@ -94,6 +101,9 @@ export const usersService = {
         Page: params.page,
         PageSize: params.pageSize,
         Search: params.search ?? "",
+        ...(params.roleId != null ? { RoleId: params.roleId } : {}),
+        ...(params.sortBy ? { SortBy: params.sortBy } : {}),
+        ...(params.sortDir ? { SortDir: params.sortDir } : {}),
       },
     }),
   get: (id: number | string) => http.get<ApiEnvelope<ApiUser>>(`Users/${id}`),
@@ -101,6 +111,8 @@ export const usersService = {
     http.post<ApiEnvelope<ApiUser>>("Users", toUserFormData(payload)),
   update: (id: number | string, payload: UpdateUserPayload, file?: File | null) =>
     http.put<ApiEnvelope<ApiUser>>(`Users/${id}`, toUserFormData(payload, file)),
+  removeProfileImage: (id: number | string) =>
+    http.delete<ApiEnvelope<null>>(`Users/${id}/profile-image`),
   remove: (id: number | string) =>
     http.delete<ApiEnvelope<null>>(`Users/${id}`),
 };

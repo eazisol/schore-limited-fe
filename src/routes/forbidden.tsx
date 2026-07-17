@@ -2,16 +2,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ShieldAlert, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/AppShell";
-import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/contexts/PermissionContext";
 import { buildNavMenus, toAppPath } from "@/lib/authorization";
 
 export const Route = createFileRoute("/forbidden")({
-  head: () => ({ meta: [{ title: "Access denied — Schore" }] }),
+  head: () => ({ meta: [{ title: "Access denied | Schore" }] }),
   component: Forbidden,
 });
 
 function Forbidden() {
-  const { menus } = useAuth();
+  const { menus } = usePermissions();
   const firstReadable = buildNavMenus(menus)[0];
   const safeTo = firstReadable ? toAppPath(firstReadable.route) : "/profile";
 

@@ -1,6 +1,6 @@
 import { useRef, type ReactNode } from "react";
 import { useFormContext, type FieldValues, type Path } from "react-hook-form";
-import { Camera } from "lucide-react";
+import { Camera, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { FormField, FormItem, FormLabel, FormDescription } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,8 @@ export interface AvatarUploadFieldProps<T extends FieldValues> {
   subtitle?: string;
   /** Called when the user selects or removes an image file (for API upload). */
   onFileChange?: (file: File | null) => void;
+  /** Called before a persisted image is removed. */
+  onRemove?: () => void;
 }
 
 export function AvatarUploadField<T extends FieldValues>({
@@ -32,6 +34,7 @@ export function AvatarUploadField<T extends FieldValues>({
   title,
   subtitle,
   onFileChange,
+  onRemove,
 }: AvatarUploadFieldProps<T>) {
   const { control, formState } = useFormContext<T>();
   const submitting = formState.isSubmitting;
@@ -81,7 +84,7 @@ export function AvatarUploadField<T extends FieldValues>({
                 onClick={openPicker}
                 disabled={disabled || submitting}
                 aria-label="Change photo"
-                className="absolute inset-0 rounded-full grid place-items-center bg-foreground/45 text-primary-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 disabled:opacity-50 pointer-events-none"
+                className="absolute inset-0 grid cursor-pointer place-items-center rounded-full bg-foreground/45 text-primary-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 disabled:opacity-50"
               >
                 <Camera className="h-5 w-5" />
               </button>
@@ -140,18 +143,20 @@ export function AvatarUploadField<T extends FieldValues>({
                         type="button"
                         onClick={openPicker}
                         disabled={disabled || submitting}
-                        className="text-xs font-medium text-foreground hover:underline disabled:opacity-50"
+                        className="inline-flex h-8 items-center gap-1.5 rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground shadow-sm transition-colors hover:bg-accent/90 disabled:opacity-50"
                       >
+                        <Camera className="h-3.5 w-3.5" />
                         Change photo
                       </button>
                       {value && (
                         <button
                           type="button"
-                          onClick={clearImage}
+                          onClick={onRemove ?? clearImage}
                           disabled={disabled || submitting}
-                          className="text-xs text-muted-foreground hover:text-destructive disabled:opacity-50"
+                          className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
                         >
-                          Remove
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Remove image
                         </button>
                       )}
                     </div>
@@ -184,11 +189,12 @@ export function AvatarUploadField<T extends FieldValues>({
                 {value && (
                   <button
                     type="button"
-                    onClick={clearImage}
+                    onClick={onRemove ?? clearImage}
                     disabled={disabled || submitting}
-                    className="text-sm text-muted-foreground hover:text-destructive disabled:opacity-50 text-left"
+                    className="inline-flex items-center gap-1.5 text-left text-sm text-destructive hover:underline disabled:opacity-50"
                   >
-                    Remove
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Remove image
                   </button>
                 )}
               </div>

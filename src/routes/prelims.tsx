@@ -9,7 +9,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Modal, Field, inputCls } from "@/components/Modal";
 
 export const Route = createFileRoute("/prelims")({
-  head: () => ({ meta: [{ title: "Prelims — Schore" }] }),
+  head: () => ({ meta: [{ title: "Prelims | Schore" }] }),
   component: Prelims,
 });
 

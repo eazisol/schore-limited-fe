@@ -22,7 +22,7 @@ export function PasswordField<T extends FieldValues>(props: Omit<TextFieldProps<
             tabIndex={-1}
             className="h-7 w-7 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/10"
           >
-            {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {show ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
           </button>
         ) : undefined
       }

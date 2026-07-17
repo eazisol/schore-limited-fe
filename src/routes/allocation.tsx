@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { operatives, properties, rates, fmtGBP } from "@/lib/data";
 
 export const Route = createFileRoute("/allocation")({
-  head: () => ({ meta: [{ title: "Daily Allocation — Schore" }] }),
+  head: () => ({ meta: [{ title: "Daily Allocation | Schore" }] }),
   component: Allocation,
 });
 

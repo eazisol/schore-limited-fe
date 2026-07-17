@@ -21,11 +21,14 @@ import { usersService, type ApiUser, type CreateUserPayload } from "@/lib/api/se
 import { lookupsService } from "@/lib/api/services/lookups";
 import { notifyApiError } from "@/lib/api/axios";
 import { usersQueryKey } from "./users.index";
+import { getPhoneLengthError } from "@/components/form/PhoneNumberField";
+import { newPasswordSchema, PasswordRequirements } from "@/lib/password";
+import { userNameSchema } from "@/lib/user-validation";
 
 const USERS_ROUTE = "/users";
 
 export const Route = createFileRoute("/users/new")({
-  head: () => ({ meta: [{ title: "Add User — Schore" }] }),
+  head: () => ({ meta: [{ title: "Add User | Schore" }] }),
   component: NewUser,
 });
 
@@ -38,26 +41,22 @@ function parseDobInput(value: string): Date | null {
 }
 
 function validatePhoneNumber(value: string) {
-  const digits = value.replace(/\D/g, "");
-  return digits.length >= 10 && digits.length <= 15;
+  if (!value.trim()) return true;
+  return !getPhoneLengthError(value.trim(), undefined, { requireMin: true });
 }
 
 const schema = z.object({
-  username: z.string().trim().min(1, "Username is required"),
-  firstName: z.string().trim().min(1, "First name is required"),
-  lastName: z.string().trim().min(1, "Last name is required"),
+  firstName: userNameSchema("First name"),
+  lastName: userNameSchema("Last name"),
   email: z.string().trim().min(1, "Email is required").email("Enter a valid email address"),
-  password: z
-    .string()
-    .min(1, "Password is required")
-    .min(6, "Password must be at least 6 characters"),
+  password: newPasswordSchema,
   phone: z
     .string()
     .trim()
     .superRefine((v, ctx) => {
       if (!v) return;
       if (!validatePhoneNumber(v)) {
-        ctx.addIssue({ code: "custom", message: "Enter a valid phone number (10-15 digits)." });
+        ctx.addIssue({ code: "custom", message: "Enter a valid phone number for the selected country." });
       }
     }),
   dateOfBirth: z
@@ -76,7 +75,6 @@ const schema = z.object({
         ctx.addIssue({ code: "custom", message: "Date of birth cannot be in the future." });
       }
     }),
-  userTypeId: z.string().min(1, "User type is required"),
   roleId: z.string().min(1, "Role is required"),
   isActive: z.boolean(),
 });
@@ -102,14 +100,12 @@ function NewUser() {
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: {
-      username: "",
       firstName: "",
       lastName: "",
       email: "",
       password: "",
       phone: "",
       dateOfBirth: "",
-      userTypeId: "",
       roleId: "",
       isActive: true,
     },
@@ -120,16 +116,17 @@ function NewUser() {
     onSuccess: (res) => {
       toast.success(`${res.data?.firstName || res.data?.username || "User"} created`);
       queryClient.invalidateQueries({ queryKey: usersQueryKey });
-      const id = res.data?.id;
-      if (id != null) navigate({ to: "/users/$id", params: { id: String(id) } });
-      else navigate({ to: "/users" });
+      navigate({ to: "/users" });
     },
     onError: (err) => notifyApiError(err, "Failed to create user"),
   });
 
   async function submit(values: Values) {
+    const types = typesQuery.data ?? [];
+    const defaultType =
+      types.find((type) => type.name?.toLowerCase().includes("system")) ?? types[0];
     const payload: CreateUserPayload = {
-      username: values.username.trim(),
+      username: values.email.trim(),
       email: values.email.trim(),
       password: values.password,
       firstName: values.firstName.trim(),
@@ -137,39 +134,45 @@ function NewUser() {
       phone: values.phone.trim() || null,
       dateOfBirth: values.dateOfBirth.trim() || null,
       isActive: values.isActive,
-      userTypeId: Number(values.userTypeId),
+      userTypeId: defaultType ? Number(defaultType.id) : 0,
       roleIds: [Number(values.roleId)],
     };
     await createMutation.mutateAsync(payload);
   }
 
   const rolesLoading = rolesQuery.isLoading || typesQuery.isLoading;
+  const password = form.watch("password");
 
   return (
     <RequirePermission route={USERS_ROUTE} action="modify">
       <div>
-        <Link
-          to="/users"
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-3"
-        >
-          <ArrowLeft className="h-3 w-3" /> All users
-        </Link>
-
-        <PageHeader title="Add user" subtitle="Create a platform account and assign a role" />
+        <PageHeader
+          title="Add User"
+          leading={
+            <Link
+              to="/users"
+              aria-label="Back to users"
+              title="Back to users"
+              className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          }
+        />
 
         <Form form={form} onSubmit={submit} className="max-w-3xl space-y-6">
-          <Section title="Identity" hint="Login credentials and personal details.">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <TextField<Values> name="firstName" label="First name" required autoFocus />
-              <TextField<Values> name="lastName" label="Last name" required />
-            </div>
+          <Section title="Personal Information">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <TextField<Values>
-                name="username"
-                label="Username"
+                name="firstName"
+                label="First name"
                 required
-                autoComplete="username"
+                autoFocus
+                maxLength={50}
               />
+              <TextField<Values> name="lastName" label="Last name" required maxLength={50} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <TextField<Values>
                 name="email"
                 label="Email"
@@ -177,37 +180,29 @@ function NewUser() {
                 type="email"
                 placeholder="name@schore.co.uk"
               />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <PasswordField<Values>
-                name="password"
-                label="Password"
-                required
-                autoComplete="new-password"
-              />
-              <TextField<Values> name="dateOfBirth" label="Date of birth" type="date" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <PhoneNumberField<Values> name="phone" label="Phone" placeholder="07700 900000" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <PasswordField<Values>
+                  name="password"
+                  label="Password"
+                  required
+                  autoComplete="new-password"
+                />
+                <PasswordRequirements password={password} />
+              </div>
+              <TextField<Values> name="dateOfBirth" label="Date of birth" type="date" />
             </div>
           </Section>
 
           <Section title="Access" hint="Roles control what this user can see and edit.">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <SelectField<Values>
-                name="userTypeId"
-                label="User type"
-                required
-                disabled={rolesLoading}
-                options={(typesQuery.data ?? []).map((t) => ({
-                  value: String(t.id),
-                  label: t.name,
-                }))}
-              />
-              <SelectField<Values>
                 name="roleId"
                 label="Role"
                 required
+                placeholder="Select role"
                 disabled={rolesLoading}
                 options={(rolesQuery.data ?? []).map((r) => ({
                   value: String(r.id),

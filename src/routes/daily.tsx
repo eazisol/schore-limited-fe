@@ -9,7 +9,7 @@ import { Lock, CheckCircle2, ChevronLeft, ChevronRight, Plus, Loader2 } from "lu
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/daily")({
-  head: () => ({ meta: [{ title: "Daily Programme — Schore" }] }),
+  head: () => ({ meta: [{ title: "Daily Programme | Schore" }] }),
   component: Daily,
 });
 

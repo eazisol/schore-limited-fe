@@ -3,15 +3,17 @@ import { useEffect, useMemo, useRef } from "react";
 import { PageHeader } from "@/components/AppShell";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/contexts/PermissionContext";
 import { buildSettingsTabs, hasSettingsAccess } from "@/lib/authorization";
 
 export const Route = createFileRoute("/settings")({
-  head: () => ({ meta: [{ title: "Settings — Schore" }] }),
+  head: () => ({ meta: [{ title: "Settings | Schore" }] }),
   component: SettingsLayout,
 });
 
 function SettingsLayout() {
-  const { menus } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const { menus } = usePermissions();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
 
@@ -35,6 +37,8 @@ function SettingsLayout() {
   //   • Effect B saw an incomplete pathname mid-transition and immediately
   //     redirected to /forbidden, cancelling Effect A's navigation
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const nav = navigateRef.current;
 
     if (!canAccessSettings) {
@@ -59,15 +63,15 @@ function SettingsLayout() {
     }
   // `navigate` is intentionally excluded — see navigateRef comment above.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canAccessSettings, pathname, tabs]);
+  }, [isAuthenticated, canAccessSettings, pathname, tabs]);
 
-  if (!canAccessSettings || tabs.length === 0) return null;
+  if (!isAuthenticated || !canAccessSettings || tabs.length === 0) return null;
 
   return (
     <div>
       <PageHeader
         title="Settings"
-        subtitle="Manage user types, roles, permissions and email configuration."
+        subtitle=""
       />
       <div className="border-b mb-6">
         <div className="flex gap-1 overflow-x-auto overflow-y-hidden">

@@ -1,14 +1,17 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outlet, Link, createRootRouteWithContext, useRouter, useRouterState, HeadContent, Scripts,
+  Outlet, Link, createRootRouteWithContext, redirect, useNavigate, useRouter, useRouterState, HeadContent, Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "@/components/AppShell";
 import { Toaster } from "@/components/ui/sonner";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ApiProvider } from "@/contexts/ApiContext";
+import { PermissionProvider } from "@/contexts/PermissionContext";
+import { isPublicPath } from "@/lib/authorization";
+import { getStoredSession } from "@/lib/session";
 
 
 function NotFoundComponent() {
@@ -44,11 +47,18 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  beforeLoad: ({ location }) => {
+    if (typeof window === "undefined") return;
+    if (isPublicPath(location.pathname)) return;
+    if (!getStoredSession()) {
+      throw redirect({ to: "/signin", replace: true });
+    }
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Schore Limited — Workforce & Payroll Platform" },
+      { title: "Schore Limited | Workforce & Payroll Platform" },
       { name: "description", content: "Digitised workforce, daily programme and weekly pay management for Schore Limited." },
     ],
     links: [
@@ -73,17 +83,50 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function AuthLoadingScreen() {
+  return (
+    <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
+      Loading…
+    </div>
+  );
+}
+
+const AUTH_ROUTES = ["/signin", "/forgot-password", "/reset-password"] as const;
+
+function AppRouter() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const { isHydrated, isAuthenticated } = useAuth();
+  const isAuthRoute = AUTH_ROUTES.includes(pathname as (typeof AUTH_ROUTES)[number]);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!isAuthenticated && !isPublicPath(pathname)) {
+      navigate({ to: "/signin", replace: true });
+    }
+  }, [isHydrated, isAuthenticated, pathname, navigate]);
+
+  if (!isHydrated) {
+    return <AuthLoadingScreen />;
+  }
+
+  if (!isAuthenticated) {
+    return isAuthRoute ? <Outlet /> : <AuthLoadingScreen />;
+  }
+
+  return isAuthRoute ? <Outlet /> : <AppShell />;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const pathname = useRouterState({ select: s => s.location.pathname });
-  const fullScreen = ["/signin", "/forgot-password", "/reset-password"];
-  const isAuthRoute = fullScreen.includes(pathname);
   return (
     <QueryClientProvider client={queryClient}>
       <ApiProvider>
         <AuthProvider>
-          {isAuthRoute ? <Outlet /> : <AppShell />}
-          <Toaster position="bottom-right" />
+          <PermissionProvider>
+            <AppRouter />
+            <Toaster position="bottom-right" />
+          </PermissionProvider>
         </AuthProvider>
       </ApiProvider>
     </QueryClientProvider>

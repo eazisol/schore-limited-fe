@@ -1,9 +1,21 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { type ComponentType, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Trash2, Loader2, AlertCircle } from "lucide-react";
+import {
+  Activity,
+  AlertCircle,
+  ArrowLeft,
+  CalendarDays,
+  Loader2,
+  Mail,
+  Pencil,
+  Phone,
+  ShieldCheck,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -17,15 +29,22 @@ import {
   PhoneNumberField,
 } from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
-import { usersService, toDateInputValue, type UpdateUserPayload } from "@/lib/api/services/users";
+import {
+  resolveProfileImageUrl,
+  usersService,
+  toDateInputValue,
+  type UpdateUserPayload,
+} from "@/lib/api/services/users";
 import { lookupsService } from "@/lib/api/services/lookups";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { usersQueryKey } from "./users.index";
+import { getPhoneLengthError } from "@/components/form/PhoneNumberField";
+import { userNameSchema } from "@/lib/user-validation";
 
 const USERS_ROUTE = "/users";
 
 export const Route = createFileRoute("/users/$id")({
-  head: ({ params }) => ({ meta: [{ title: `User #${params.id} — Schore` }] }),
+  head: ({ params }) => ({ meta: [{ title: `User #${params.id} | Schore` }] }),
   component: UserDetail,
 });
 
@@ -38,13 +57,13 @@ function parseDobInput(value: string): Date | null {
 }
 
 function validatePhoneNumber(value: string) {
-  const digits = value.replace(/\D/g, "");
-  return digits.length >= 10 && digits.length <= 15;
+  if (!value.trim()) return true;
+  return !getPhoneLengthError(value.trim(), undefined, { requireMin: true });
 }
 
 const schema = z.object({
-  firstName: z.string().trim().min(1, "First name is required"),
-  lastName: z.string().trim().min(1, "Last name is required"),
+  firstName: userNameSchema("First name"),
+  lastName: userNameSchema("Last name"),
   email: z.string().trim().min(1, "Email is required").email("Enter a valid email address"),
   phone: z
     .string()
@@ -52,7 +71,7 @@ const schema = z.object({
     .superRefine((v, ctx) => {
       if (!v) return;
       if (!validatePhoneNumber(v)) {
-        ctx.addIssue({ code: "custom", message: "Enter a valid phone number (10-15 digits)." });
+        ctx.addIssue({ code: "custom", message: "Enter a valid phone number for the selected country." });
       }
     }),
   dateOfBirth: z
@@ -71,7 +90,6 @@ const schema = z.object({
         ctx.addIssue({ code: "custom", message: "Date of birth cannot be in the future." });
       }
     }),
-  userTypeId: z.string().min(1, "User type is required"),
   roleId: z.string().min(1, "Role is required"),
   isActive: z.boolean(),
 });
@@ -85,6 +103,7 @@ function UserDetail() {
   const canModify = usePermission({ route: USERS_ROUTE, action: "modify" });
   const canDelete = usePermission({ route: USERS_ROUTE, action: "delete" });
   const [confirmDel, setConfirmDel] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const userQuery = useQuery({
     queryKey: ["users", id],
@@ -94,11 +113,6 @@ function UserDetail() {
     queryKey: ["roles"],
     queryFn: async () => (await lookupsService.roles()).data,
   });
-  const typesQuery = useQuery({
-    queryKey: ["userTypes"],
-    queryFn: async () => (await lookupsService.userTypes()).data,
-  });
-
   const user = userQuery.data;
 
   const defaults = useMemo<Values>(
@@ -108,7 +122,6 @@ function UserDetail() {
       email: user?.email ?? "",
       phone: user?.phone ?? "",
       dateOfBirth: toDateInputValue(user?.dateOfBirth),
-      userTypeId: user?.userTypeId != null ? String(user.userTypeId) : "",
       roleId: user?.roleIds?.[0] != null ? String(user.roleIds[0]) : "",
       isActive: user?.isActive ?? true,
     }),
@@ -126,6 +139,7 @@ function UserDetail() {
       toast.success("User updated");
       queryClient.setQueryData(["users", id], res.data);
       queryClient.invalidateQueries({ queryKey: usersQueryKey });
+      navigate({ to: "/users" });
     },
     onError: (err) => notifyApiError(err, "Failed to update user"),
   });
@@ -148,7 +162,7 @@ function UserDetail() {
       phone: values.phone.trim() || null,
       dateOfBirth: values.dateOfBirth.trim() || null,
       isActive: values.isActive,
-      userTypeId: Number(values.userTypeId),
+      userTypeId: user?.userTypeId ?? 0,
       roleIds: [Number(values.roleId)],
     };
     await updateMutation.mutateAsync(payload);
@@ -181,32 +195,50 @@ function UserDetail() {
 
   const dirty = form.formState.isDirty;
   const displayName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || user.username;
-  const lookupsLoading = rolesQuery.isLoading || typesQuery.isLoading;
+  const lookupsLoading = rolesQuery.isLoading;
+  const profileImageUrl = resolveProfileImageUrl(user.profileImagePath);
 
   return (
     <div className="space-y-6">
-      <Link
-        to="/users"
-        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-3 w-3" /> All users
-      </Link>
-
       <PageHeader
-        title={displayName}
-        subtitle={user.email}
+        title={isEditing ? "Edit user" : "User details"}
+        leading={
+          <>
+            <Link
+              to="/users"
+              aria-label="Back to users"
+              title="Back to users"
+              className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            {!isEditing && profileImageUrl ? (
+              <img
+                src={profileImageUrl}
+                alt="User profile"
+                className="h-10 w-10 shrink-0 rounded-full object-cover"
+              />
+            ) : null}
+          </>
+        }
         actions={
           <>
             <span
-              className={`inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full border ${user.isActive ? "bg-success/10 text-success border-success/20" : "bg-muted text-muted-foreground border-border"}`}
+              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${user.isActive ? "border-success/20 bg-success/10 text-success" : "border-border bg-muted text-muted-foreground"}`}
             >
               {user.isActive ? "Active" : "Inactive"}
             </span>
+            {!isEditing && canModify && (
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                <Pencil className="h-4 w-4" />
+                Edit user
+              </Button>
+            )}
             <Can route={USERS_ROUTE} action="delete">
               <Button
                 variant="outline"
                 size="sm"
-                className="text-destructive border-destructive/30 hover:bg-destructive/5"
+                className="border-destructive/30 text-destructive hover:bg-destructive/5"
                 onClick={() => setConfirmDel(true)}
               >
                 <Trash2 className="h-4 w-4" />
@@ -217,47 +249,39 @@ function UserDetail() {
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Form form={form} onSubmit={save} className="lg:col-span-2 card-elevated p-6 space-y-4">
-          <h3 className="font-display font-semibold">{canModify ? "Edit details" : "Details"}</h3>
+      {isEditing ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Form form={form} onSubmit={save} className="lg:col-span-2 card-elevated p-6 space-y-4">
+            <h3 className="font-display font-semibold">Edit details</h3>
 
-          <fieldset disabled={!canModify} className="space-y-4 disabled:opacity-80">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <TextField<Values> name="firstName" label="First name" required />
-              <TextField<Values> name="lastName" label="Last name" required />
-              <TextField<Values> name="email" label="Email" required type="email" />
-              <PhoneNumberField<Values> name="phone" label="Phone" placeholder="07700 900000" />
-              <TextField<Values> name="dateOfBirth" label="Date of birth" type="date" />
-            </div>
+            <fieldset className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <TextField<Values> name="firstName" label="First name" required maxLength={50} />
+                <TextField<Values> name="lastName" label="Last name" required maxLength={50} />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <TextField<Values> name="email" label="Email" required type="email" />
+                <PhoneNumberField<Values> name="phone" label="Phone" placeholder="07700 900000" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <TextField<Values> name="dateOfBirth" label="Date of birth" type="date" />
+                <SelectField<Values>
+                  name="roleId"
+                  label="Role"
+                  required
+                  placeholder="Select role"
+                  disabled={lookupsLoading}
+                  options={(rolesQuery.data ?? []).map((r) => ({
+                    value: String(r.id),
+                    label: r.name,
+                    description: r.description ?? undefined,
+                  }))}
+                />
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <SelectField<Values>
-                name="userTypeId"
-                label="User type"
-                required
-                disabled={lookupsLoading || !canModify}
-                options={(typesQuery.data ?? []).map((t) => ({
-                  value: String(t.id),
-                  label: t.name,
-                }))}
-              />
-              <SelectField<Values>
-                name="roleId"
-                label="Role"
-                required
-                disabled={lookupsLoading || !canModify}
-                options={(rolesQuery.data ?? []).map((r) => ({
-                  value: String(r.id),
-                  label: r.name,
-                  description: r.description ?? undefined,
-                }))}
-              />
-            </div>
+              <CheckboxField<Values> name="isActive" label="Active" description="User can sign in." />
+            </fieldset>
 
-            <CheckboxField<Values> name="isActive" label="Active" description="User can sign in." />
-          </fieldset>
-
-          {canModify && (
             <div className="flex items-center justify-end gap-2 pt-2 border-t">
               <span className="text-xs text-muted-foreground mr-auto">
                 {dirty ? "Unsaved changes" : "All changes saved"}
@@ -265,36 +289,50 @@ function UserDetail() {
               <Button
                 type="button"
                 variant="outline"
-                disabled={!dirty || updateMutation.isPending}
-                onClick={() => form.reset(defaults)}
+                disabled={updateMutation.isPending}
+                onClick={() => {
+                  form.reset(defaults);
+                  setIsEditing(false);
+                }}
               >
-                Reset
+                Cancel
               </Button>
               <SubmitButton disabled={!dirty || lookupsLoading} loadingText="Saving…">
                 Save changes
               </SubmitButton>
             </div>
-          )}
-        </Form>
+          </Form>
 
-        <div className="space-y-6">
-          <div className="card-elevated p-6">
+          <div className="card-elevated p-6 self-start">
             <h3 className="font-display font-semibold mb-4">Account</h3>
             <dl className="space-y-3 text-sm">
-              <Row label="User ID">
-                <code className="text-xs font-mono">{user.id}</code>
-              </Row>
-              <Row label="Username">{user.username}</Row>
-              <Row label="Phone">{user.phone || "—"}</Row>
-              <Row label="Date of birth">{toDateInputValue(user.dateOfBirth) || "—"}</Row>
-              <Row label="User type">{user.userTypeName}</Row>
-              <Row label="Roles">{(user.roleNames ?? []).join(", ") || "—"}</Row>
+              <Row label="User ID">{user.id}</Row>
               <Row label="Created">{formatDateTime(user.createdDate)}</Row>
               <Row label="Last edited">{formatDateTime(user.editDate)}</Row>
             </dl>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="space-y-4">
+          <InformationCard title="Personal information" icon={UserRound}>
+            <InfoItem icon={UserRound} label="Full name" value={displayName} />
+            <InfoItem icon={Phone} label="Phone" value={user.phone || "—"} />
+            <InfoItem icon={ShieldCheck} label="Role" value={(user.roleNames ?? []).join(", ") || "—"} />
+            <InfoItem icon={Mail} label="Email" value={user.email} />
+            <InfoItem
+              icon={CalendarDays}
+              label="Date of birth"
+              value={toDateInputValue(user.dateOfBirth) || "—"}
+            />
+            <InfoItem
+              icon={Activity}
+              label="Status"
+              value={user.isActive ? "Active" : "Inactive"}
+              status={user.isActive}
+            />
+          </InformationCard>
+        </div>
+      )}
 
       {confirmDel && canDelete && (
         <div
@@ -334,6 +372,66 @@ function UserDetail() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function InformationCard({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="card-elevated p-6">
+      <div className="mb-5 flex items-center gap-2">
+        <span className="grid h-8 w-8 place-items-center rounded-md bg-primary text-primary-foreground">
+          <Icon className="h-4 w-4" />
+        </span>
+        <h2 className="font-display font-semibold">{title}</h2>
+      </div>
+      <dl className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+        {children}
+      </dl>
+    </section>
+  );
+}
+
+function InfoItem({
+  icon: Icon,
+  label,
+  value,
+  status,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  status?: boolean;
+}) {
+  return (
+    <div className="flex min-w-0 gap-3 lg:border-r lg:pr-6 lg:last:border-r-0">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+        <dd className="mt-1 break-words text-sm font-medium">
+          {status === undefined ? (
+            value
+          ) : (
+            <span
+              className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] ${
+                status
+                  ? "border-success/20 bg-success/10 text-success"
+                  : "border-destructive/20 bg-destructive/10 text-destructive"
+              }`}
+            >
+              {value}
+            </span>
+          )}
+        </dd>
+      </div>
     </div>
   );
 }

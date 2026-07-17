@@ -8,7 +8,7 @@ import { Plus, Pause, Play } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/kpi")({
-  head: () => ({ meta: [{ title: "KPI & Hold Board — Schore" }] }),
+  head: () => ({ meta: [{ title: "KPI & Hold Board | Schore" }] }),
   component: KPI,
 });
 

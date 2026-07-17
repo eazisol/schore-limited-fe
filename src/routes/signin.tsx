@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -11,14 +11,14 @@ import { Form, TextField, PasswordField, CheckboxField, SubmitButton } from "@/c
 const signinSearchSchema = z.object({ redirect: z.string().optional() });
 
 const signinSchema = z.object({
-  emailOrUsername: z.string().trim().min(1, "Email or username is required"),
+  emailOrUsername: z.string().trim().min(1, "Email is required"),
   password: z.string().min(1, "Password is required"),
   remember: z.boolean(),
 });
 type SignInValues = z.infer<typeof signinSchema>;
 
 export const Route = createFileRoute("/signin")({
-  head: () => ({ meta: [{ title: "Sign in — Schore Limited" }] }),
+  head: () => ({ meta: [{ title: "Sign in | Schore Limited" }] }),
   validateSearch: signinSearchSchema,
   component: SignIn,
 });
@@ -54,20 +54,23 @@ function SignIn() {
     <AuthLayout
       title="Sign in to your account"
       subtitle="Enter your credentials to access the dashboard."
-      // footer={
-      //   <p className="text-xs text-muted-foreground text-center">
-      //     Need access?{" "}
-      //     <Link to="/" className="text-foreground hover:underline">
-      //       Contact your administrator
-      //     </Link>
-      //     .
-      //   </p>
-      // }
+      footer={
+        <p className="text-xs text-muted-foreground text-center leading-relaxed">
+          Need access?{" "}
+          <a
+            href="mailto:support@schore.co.uk"
+            className="font-medium text-accent hover:text-accent/80 underline-offset-2 hover:underline"
+          >
+            Contact your administrator
+          </a>
+          .
+        </p>
+      }
     >
-      <Form form={form} onSubmit={onSubmit} className="space-y-4">
+      <Form form={form} onSubmit={onSubmit} className="space-y-5">
         <TextField<SignInValues>
           name="emailOrUsername"
-          label="Email or username"
+          label="Email"
           required
           autoComplete="username"
           placeholder="you@schore.co.uk"
@@ -75,18 +78,20 @@ function SignIn() {
         />
 
         <div className="space-y-1.5">
-          <div className="flex items-center justify-end -mb-1">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-medium leading-none">
+              Password <span className="text-destructive">*</span>
+            </span>
             <Link
               to="/forgot-password"
               search={{ email: form.getValues("emailOrUsername") } as any}
-              className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+              className="text-xs font-medium text-accent hover:text-accent/80 underline-offset-2 hover:underline shrink-0"
             >
               Forgot password?
             </Link>
           </div>
           <PasswordField<SignInValues>
             name="password"
-            label="Password"
             required
             autoComplete="current-password"
             placeholder="Enter your password"
@@ -98,8 +103,9 @@ function SignIn() {
           <CheckboxField<SignInValues> name="remember" label="Remember me for 30 days" />
         </div>
 
-        <SubmitButton className="w-full h-10" loadingText="Signing in…">
+        <SubmitButton className="w-full h-10 gap-2" loadingText="Signing in…">
           Sign in
+          <ArrowRight className="h-4 w-4" />
         </SubmitButton>
       </Form>
     </AuthLayout>

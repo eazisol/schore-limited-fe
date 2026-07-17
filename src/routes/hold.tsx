@@ -8,7 +8,7 @@ import { properties, holdReasons } from "@/lib/data";
 import { useSession } from "@/lib/session-store";
 
 export const Route = createFileRoute("/hold")({
-  head: () => ({ meta: [{ title: "Hold Management — Schore" }] }),
+  head: () => ({ meta: [{ title: "Hold Management | Schore" }] }),
   component: Hold,
 });
 

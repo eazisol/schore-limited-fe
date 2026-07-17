@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/operatives/new")({
-  head: () => ({ meta: [{ title: "New Operative — Schore" }] }),
+  head: () => ({ meta: [{ title: "New Operative | Schore" }] }),
   component: NewOperative,
 });
 

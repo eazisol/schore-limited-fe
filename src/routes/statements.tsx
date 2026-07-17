@@ -8,7 +8,7 @@ import { wageSheets, operatives, fmtGBP } from "@/lib/data";
 import { StatusBadge } from "@/components/StatusBadge";
 
 export const Route = createFileRoute("/statements")({
-  head: () => ({ meta: [{ title: "Statement Approval — Schore" }] }),
+  head: () => ({ meta: [{ title: "Statement Approval | Schore" }] }),
   component: Statements,
 });
 

@@ -14,7 +14,7 @@ export const Route = createFileRoute("/wages/$id")({
     if (!w) throw notFound();
     return { w };
   },
-  head: ({ loaderData }) => ({ meta: [{ title: `Wage Sheet ${loaderData?.w.invoiceNo ?? ""} — Schore` }] }),
+  head: ({ loaderData }) => ({ meta: [{ title: `Wage Sheet ${loaderData?.w.invoiceNo ?? ""} | Schore` }] }),
   notFoundComponent: () => (
     <div className="card-elevated p-12 text-center">
       <h2 className="font-display font-semibold">Wage sheet not found</h2>

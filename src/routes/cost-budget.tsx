@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { properties, contracts, allocations, operatives, fmtGBP } from "@/lib/data";
 
 export const Route = createFileRoute("/cost-budget")({
-  head: () => ({ meta: [{ title: "Cost & Budget — Schore" }] }),
+  head: () => ({ meta: [{ title: "Cost & Budget | Schore" }] }),
   component: CostBudget,
 });
 

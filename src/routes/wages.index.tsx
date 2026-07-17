@@ -8,7 +8,7 @@ import { Download, Send } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/wages/")({
-  head: () => ({ meta: [{ title: "Wage Sheets — Schore" }] }),
+  head: () => ({ meta: [{ title: "Wage Sheets | Schore" }] }),
   component: WagesList,
 });
 

@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { Modal, Field, inputCls } from "@/components/Modal";
 
 export const Route = createFileRoute("/properties/")({
-  head: () => ({ meta: [{ title: "Properties — Schore" }] }),
+  head: () => ({ meta: [{ title: "Properties | Schore" }] }),
   component: PropertiesList,
 });
 

@@ -60,11 +60,13 @@ export function SelectField<T extends FieldValues>({
             </FormControl>
             <SelectContent>
               {options.map(o => (
-                <SelectItem key={o.value} value={o.value} disabled={o.disabled}>
-                  <div>
-                    <div>{o.label}</div>
-                    {o.description && <div className="text-xs text-muted-foreground">{o.description}</div>}
-                  </div>
+                <SelectItem
+                  key={o.value}
+                  value={o.value}
+                  disabled={o.disabled}
+                  description={o.description}
+                >
+                  {o.label}
                 </SelectItem>
               ))}
             </SelectContent>

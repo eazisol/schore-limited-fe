@@ -27,7 +27,7 @@ const schema = z
 type Values = z.infer<typeof schema>;
 
 export const Route = createFileRoute("/reset-password")({
-  head: () => ({ meta: [{ title: "Reset password — Schore" }] }),
+  head: () => ({ meta: [{ title: "Reset password | Schore" }] }),
   validateSearch: search,
   component: ResetPassword,
 });

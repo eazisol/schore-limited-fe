@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Modal, Field, inputCls } from "@/components/Modal";
 
 export const Route = createFileRoute("/legend-codes")({
-  head: () => ({ meta: [{ title: "Legend Codes — Schore" }] }),
+  head: () => ({ meta: [{ title: "Legend Codes | Schore" }] }),
   component: Legends,
 });
 

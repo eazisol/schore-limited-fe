@@ -18,7 +18,7 @@ export const Route = createFileRoute("/properties/$id")({
     if (!p) throw notFound();
     return { id: params.id };
   },
-  head: ({ loaderData }) => ({ meta: [{ title: `Property ${loaderData?.id ?? ""} — Schore` }] }),
+  head: ({ loaderData }) => ({ meta: [{ title: `Property ${loaderData?.id ?? ""} | Schore` }] }),
   notFoundComponent: () => (
     <div className="card-elevated p-12 text-center">
       <h2 className="font-display font-semibold">Property not found</h2>

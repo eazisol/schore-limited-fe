@@ -8,7 +8,7 @@ import { allocations, operatives, properties, fmtGBP } from "@/lib/data";
 import { StatusBadge } from "@/components/StatusBadge";
 
 export const Route = createFileRoute("/confirmation")({
-  head: () => ({ meta: [{ title: "Work Confirmation — Schore" }] }),
+  head: () => ({ meta: [{ title: "Work Confirmation | Schore" }] }),
   component: Confirmation,
 });
 

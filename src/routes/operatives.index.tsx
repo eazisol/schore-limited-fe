@@ -7,7 +7,7 @@ import { operatives, fmtGBP } from "@/lib/data";
 import { Plus, Search, Filter } from "lucide-react";
 
 export const Route = createFileRoute("/operatives/")({
-  head: () => ({ meta: [{ title: "Operatives — Schore" }] }),
+  head: () => ({ meta: [{ title: "Operatives | Schore" }] }),
   component: OperativesList,
 });
 

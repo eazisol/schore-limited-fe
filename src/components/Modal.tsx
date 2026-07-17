@@ -23,12 +23,19 @@ export function Modal({ open, onClose, title, subtitle, children, size = "md" }:
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50" onClick={onClose}>
       <div className="flex min-h-full items-center justify-center p-4 sm:p-8">
         <div className={`card-elevated w-full ${maxW} bg-background shadow-xl`} onClick={e => e.stopPropagation()}>
-          <div className="flex items-start justify-between gap-4 p-5 border-b">
+          <div className="flex items-center justify-between gap-4 border-b px-5 py-3">
             <div className="min-w-0">
               <h2 className="font-display font-semibold text-lg truncate">{title}</h2>
               {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
             </div>
-            <button type="button" onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground -mt-1"><X className="h-4 w-4" /></button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
           <div className="p-5">{children}</div>
         </div>

@@ -13,7 +13,7 @@ export const Route = createFileRoute("/operatives/$id")({
     if (!op) throw notFound();
     return { op };
   },
-  head: ({ loaderData }) => ({ meta: [{ title: `${loaderData?.op.name ?? "Operative"} — Schore` }] }),
+  head: ({ loaderData }) => ({ meta: [{ title: `${loaderData?.op.name ?? "Operative"} | Schore` }] }),
   notFoundComponent: () => (
     <div className="card-elevated p-12 text-center">
       <h2 className="font-display font-semibold text-lg">Operative not found</h2>
