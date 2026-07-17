@@ -137,9 +137,9 @@ function EmailSmtpPage() {
         </div>
 
         <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={testConnection} disabled={!canEdit || loading}>
+          {/* <Button type="button" variant="outline" onClick={testConnection} disabled={!canEdit || loading}>
             <Send className="h-4 w-4" /> Send test email
-          </Button>
+          </Button> */}
           <SubmitButton disabled={!canEdit || loading} loadingText="Saving…">
             <Save className="h-4 w-4" /> Save configuration
           </SubmitButton>

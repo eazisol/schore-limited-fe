@@ -3,6 +3,13 @@ export function escapeCsv(value: string): string {
   return value;
 }
 
+/** Keep long digit strings (phones, IDs) as text when opened in Excel. */
+export function csvForceText(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  return `="${trimmed.replace(/"/g, '""')}"`;
+}
+
 export function downloadCsv(options: {
   filename: string;
   headers: string[];
@@ -11,10 +18,19 @@ export function downloadCsv(options: {
   const lines = [
     options.headers.map((header) => escapeCsv(header)).join(","),
     ...options.rows.map((row) =>
-      row.map((cell) => escapeCsv(cell == null ? "" : String(cell))).join(","),
+      row
+        .map((cell) => {
+          if (cell == null) return "";
+          const text = String(cell);
+          // Already an Excel text formula — do not re-escape quotes.
+          if (text.startsWith('="') && text.endsWith('"')) return text;
+          return escapeCsv(text);
+        })
+        .join(","),
     ),
   ];
-  const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  // UTF-8 BOM helps Excel detect encoding correctly.
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;

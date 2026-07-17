@@ -22,6 +22,7 @@ export function AppTooltip({
   className,
   contentClassName,
   disabled = false,
+  asChild = false,
 }: {
   content: ReactNode;
   children: ReactNode;
@@ -32,6 +33,8 @@ export function AppTooltip({
   contentClassName?: string;
   /** When true, renders children without a tooltip. */
   disabled?: boolean;
+  /** When true, merges trigger props onto the child element (for links/buttons). */
+  asChild?: boolean;
 }) {
   if (disabled || content == null || content === "") {
     return <>{children}</>;
@@ -41,9 +44,13 @@ export function AppTooltip({
     <TooltipProvider delayDuration={delayDuration}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className={cn("inline-flex max-w-full cursor-default", className)}>
-            {children}
-          </span>
+          {asChild ? (
+            children
+          ) : (
+            <span className={cn("inline-flex max-w-full cursor-default", className)}>
+              {children}
+            </span>
+          )}
         </TooltipTrigger>
         <TooltipContent
           side={side}

@@ -33,47 +33,54 @@ export function SelectField<T extends FieldValues>({
     <FormField
       control={control}
       name={name}
-      render={({ field, fieldState }) => (
-        <FormItem className={className}>
-          {label && (
-            <FormLabel>
-              {label}
-              {required && <span className="text-destructive ml-0.5" aria-hidden>*</span>}
-            </FormLabel>
-          )}
-          <Select
-            value={field.value ?? ""}
-            onValueChange={field.onChange}
-            disabled={disabled || submitting}
-          >
-            <FormControl>
-              <SelectTrigger
-                aria-required={required}
-                aria-invalid={!!fieldState.error}
-                className={cn(
-                  fieldState.error && "border-destructive focus-visible:ring-destructive",
-                  triggerClassName,
-                )}
-              >
-                <SelectValue placeholder={placeholder ?? "Select…"} />
-              </SelectTrigger>
-            </FormControl>
-            <SelectContent>
-              {options.map(o => (
-                <SelectItem
-                  key={o.value}
-                  value={o.value}
-                  disabled={o.disabled}
-                  description={o.description}
+      render={({ field, fieldState }) => {
+        const rawValue = field.value == null ? "" : String(field.value);
+        // Only pass values that exist in options — Radix clears unmatched values.
+        const selectedValue =
+          rawValue && options.some((o) => String(o.value) === rawValue) ? rawValue : undefined;
+        return (
+          <FormItem className={className}>
+            {label && (
+              <FormLabel>
+                {label}
+                {required && <span className="text-destructive ml-0.5" aria-hidden>*</span>}
+              </FormLabel>
+            )}
+            <Select
+              key={`${selectedValue ?? "empty"}:${options.map((o) => o.value).join(",")}`}
+              value={selectedValue}
+              onValueChange={field.onChange}
+              disabled={disabled || submitting}
+            >
+              <FormControl>
+                <SelectTrigger
+                  aria-required={required}
+                  aria-invalid={!!fieldState.error}
+                  className={cn(
+                    fieldState.error && "border-destructive focus-visible:ring-destructive",
+                    triggerClassName,
+                  )}
                 >
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {description && <FormDescription>{description}</FormDescription>}
-        </FormItem>
-      )}
+                  <SelectValue placeholder={placeholder ?? "Select…"} />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {options.map((o) => (
+                  <SelectItem
+                    key={o.value}
+                    value={String(o.value)}
+                    disabled={o.disabled}
+                    description={o.description}
+                  >
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {description && <FormDescription>{description}</FormDescription>}
+          </FormItem>
+        );
+      }}
     />
   );
 }

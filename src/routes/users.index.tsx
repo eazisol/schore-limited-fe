@@ -7,13 +7,14 @@ import { Can, usePermission } from "@/components/Permission";
 import {
   DataTable,
   downloadCsv,
+  csvForceText,
   useDebouncedSearch,
   type DataTableColumn,
   type DataTableRowAction,
 } from "@/components/data-table";
 import { Plus, Eye, Pencil, Trash2, Mail, Loader2, Download, User } from "lucide-react";
 import { toast } from "sonner";
-import { usersService, resolveProfileImageUrl, type ApiUser, type UsersSortBy } from "@/lib/api/services/users";
+import { usersService, resolveProfileImageUrl, toDateInputValue, type ApiUser, type UsersSortBy } from "@/lib/api/services/users";
 import { lookupsService } from "@/lib/api/services/lookups";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import {
@@ -24,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ROLE_BADGE, ROLE_LABEL, type UserRole } from "@/lib/users-store";
+import { AppTooltip } from "@/components/AppTooltip";
 
 const USERS_ROUTE = "/users";
 
@@ -128,10 +130,12 @@ function UsersList() {
     try {
       downloadCsv({
         filename: `users-export-${new Date().toISOString().slice(0, 10)}.csv`,
-        headers: ["Name", "Email", "Roles", "Status"],
+        headers: ["Name", "Email", "Phone", "Date of birth", "Roles", "Status"],
         rows: rows.map((user) => [
           displayName(user),
           user.email,
+          csvForceText(user.phone ?? ""),
+          toDateInputValue(user.dateOfBirth),
           (user.roleNames ?? []).join("; "),
           user.isActive ? "Active" : "Inactive",
         ]),
@@ -154,14 +158,15 @@ function UsersList() {
             <div className="flex items-center gap-3">
               <UserAvatar name={name} src={resolveProfileImageUrl(user.profileImagePath)} />
               <div className="min-w-0">
-                <Link
-                  to="/users/$id"
-                  params={{ id: String(user.id) }}
-                  className="block truncate font-medium hover:text-info hover:underline"
-                  title={name}
-                >
-                  {name}
-                </Link>
+                <AppTooltip content={name} asChild>
+                  <Link
+                    to="/users/$id"
+                    params={{ id: String(user.id) }}
+                    className="block truncate font-medium hover:text-info hover:underline"
+                  >
+                    {name}
+                  </Link>
+                </AppTooltip>
                 <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                   <Mail className="h-3 w-3 shrink-0" />
                   <span className="truncate">{user.email}</span>

@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
+import { AppTooltip } from "@/components/AppTooltip";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -151,14 +152,15 @@ function NewUser() {
         <PageHeader
           title="Add User"
           leading={
-            <Link
-              to="/users"
-              aria-label="Back to users"
-              title="Back to users"
-              className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
+            <AppTooltip content="Back to users" asChild>
+              <Link
+                to="/users"
+                aria-label="Back to users"
+                className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </AppTooltip>
           }
         />
 

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { AppTooltip } from "@/components/AppTooltip";
 import type { DataTableRowAction } from "./types";
 
 export function DataTableRowActions<T>({
@@ -40,17 +41,18 @@ function ActionIconButton({
   danger?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      className={cn(
-        "inline-grid h-7 w-7 place-items-center rounded-md hover:bg-accent/40",
-        danger && "text-destructive hover:bg-destructive/10",
-      )}
-    >
-      {children}
-    </button>
+    <AppTooltip content={label} asChild>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        className={cn(
+          "inline-grid h-7 w-7 place-items-center rounded-md hover:bg-accent/40",
+          danger && "text-destructive hover:bg-destructive/10",
+        )}
+      >
+        {children}
+      </button>
+    </AppTooltip>
   );
 }

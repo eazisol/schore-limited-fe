@@ -1,8 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { KeyRound, Save, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, KeyRound, Save, Loader2, Trash2 } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -252,7 +252,21 @@ function ProfilePage() {
 
   return (
     <div className="max-w-3xl">
-      <PageHeader title="My profile" subtitle="Your personal details, avatar and password." />
+      <PageHeader
+        title="My profile"
+        subtitle=""
+        leading={
+          <AppTooltip content="Back to dashboard" asChild>
+            <Link
+              to="/"
+              aria-label="Back to dashboard"
+              className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </AppTooltip>
+        }
+      />
 
       <Form form={profileForm} onSubmit={onSaveProfile} className="card-elevated p-6 space-y-6">
         <AvatarUploadField<ProfileValues>
@@ -337,7 +351,6 @@ function ProfilePage() {
             label="Confirm new password"
             required
             autoComplete="new-password"
-            showToggle={false}
           />
         </div>
         <PasswordRequirements password={newPw} />

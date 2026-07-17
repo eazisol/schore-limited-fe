@@ -1,5 +1,5 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
@@ -17,6 +17,7 @@ import { buildNavMenus, toAppPath } from "@/lib/authorization";
 import { resolveMenuIcon } from "@/lib/menu-icons";
 import type { ApiMenu } from "@/lib/api/services/auth";
 import { RoutePermissionGuard } from "@/components/Permission";
+import { AppTooltip } from "@/components/AppTooltip";
 import { resolveProfileImageUrl, usersService } from "@/lib/api/services/users";
 import type { ApiError } from "@/lib/api/axios";
 import { Button } from "@/components/ui/button";
@@ -164,9 +165,25 @@ function AppShellChrome({
       undefined,
   };
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const locationHref = useRouterState({ select: (s) => s.location.href });
+  const contentRef = useRef<HTMLDivElement>(null);
   const { setOpenMobile, state, isMobile, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed" && !isMobile;
   const navMenus = buildNavMenus(menus);
+
+  useEffect(() => {
+    const scrollToTop = () => {
+      if (contentRef.current) {
+        contentRef.current.scrollTop = 0;
+        contentRef.current.scrollLeft = 0;
+      }
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    };
+
+    scrollToTop();
+    const frame = window.requestAnimationFrame(scrollToTop);
+    return () => window.cancelAnimationFrame(frame);
+  }, [locationHref]);
 
   const initials = user.name
     .split(/\s+/)
@@ -265,33 +282,35 @@ function AppShellChrome({
                 collapsed ? "flex flex-col items-center gap-1.5" : "grid grid-cols-2 gap-1.5 px-2",
               )}
             >
-              <Link
-                to="/profile"
-                onClick={closeMobileNav}
-                title="Profile"
-                className={cn(
-                  "flex items-center justify-center gap-1.5 h-8 rounded-md border border-sidebar-border text-xs text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
-                  collapsed && "size-8 p-0",
-                )}
-              >
-                <UserCircle className="h-3.5 w-3.5" />
-                <span className={cn(collapsed && "sr-only")}>Profile</span>
-              </Link>
-              <button
-                type="button"
-                title="Sign out"
-                onClick={() => {
-                  closeMobileNav();
-                  onSignOut();
-                }}
-                className={cn(
-                  "flex items-center justify-center gap-1.5 h-8 rounded-md border border-destructive/40 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive",
-                  collapsed && "size-8 p-0",
-                )}
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                <span className={cn(collapsed && "sr-only")}>Sign out</span>
-              </button>
+              <AppTooltip content="Profile" asChild>
+                <Link
+                  to="/profile"
+                  onClick={closeMobileNav}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 h-8 rounded-md border border-sidebar-border text-xs text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                    collapsed && "size-8 p-0",
+                  )}
+                >
+                  <UserCircle className="h-3.5 w-3.5" />
+                  <span className={cn(collapsed && "sr-only")}>Profile</span>
+                </Link>
+              </AppTooltip>
+              <AppTooltip content="Sign out" asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeMobileNav();
+                    onSignOut();
+                  }}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 h-8 rounded-md border border-destructive/40 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive",
+                    collapsed && "size-8 p-0",
+                  )}
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span className={cn(collapsed && "sr-only")}>Sign out</span>
+                </button>
+              </AppTooltip>
             </div>
           </div>
         </SidebarFooter>
@@ -330,7 +349,10 @@ function AppShellChrome({
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto scrollbar-elegant px-4 pb-4 pt-2 lg:px-6 min-w-0">
+        <div
+          ref={contentRef}
+          className="flex-1 overflow-y-auto scrollbar-elegant px-4 pb-4 pt-2 lg:px-6 min-w-0"
+        >
           <RoutePermissionGuard pathname={pathname}>
             <Outlet />
           </RoutePermissionGuard>

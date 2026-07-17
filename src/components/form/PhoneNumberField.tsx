@@ -17,6 +17,7 @@ import {
 import "react-phone-number-input/style.css";
 import { ChevronDown, Globe, Search } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { AppTooltip } from "@/components/AppTooltip";
 import { cn } from "@/lib/utils";
 
 /** Countries shown before searching (and per search page) — keeps the list light. */
@@ -164,7 +165,7 @@ function CountryFlag({ country, label }: { country?: string; label: string }) {
   const Flag = country ? (flags as Record<string, React.FC<{ title?: string }>>)[country] : undefined;
   return (
     <span className="flex h-4 w-6 items-center justify-center overflow-hidden rounded-[2px]">
-      {Flag ? <Flag title={label} /> : <Globe className="h-3.5 w-3.5 text-muted-foreground" />}
+      {Flag ? <Flag title="" /> : <Globe className="h-3.5 w-3.5 text-muted-foreground" />}
     </span>
   );
 }
@@ -183,6 +184,9 @@ function CountrySelect({ value, onChange, options, disabled, readOnly }: Country
   }, [countries, query]);
 
   const selected = countries.find((o) => o.value === value);
+  const countryLabel = selected?.label ?? "Select country";
+  const dialCode = dialCodeFor(value);
+  const tooltipContent = dialCode ? `${countryLabel} (${dialCode})` : countryLabel;
 
   return (
     <Popover
@@ -193,17 +197,19 @@ function CountrySelect({ value, onChange, options, disabled, readOnly }: Country
         if (!next) setQuery("");
       }}
     >
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          disabled={disabled || readOnly}
-          aria-label="Select country"
-          className="mr-2 flex items-center gap-1 rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
-        >
-          <CountryFlag country={value} label={selected?.label ?? "International"} />
-          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-        </button>
-      </PopoverTrigger>
+      <AppTooltip content={tooltipContent} disabled={open}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled || readOnly}
+            aria-label={tooltipContent}
+            className="mr-2 flex items-center gap-1 rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+          >
+            <CountryFlag country={value} label={countryLabel} />
+            <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+          </button>
+        </PopoverTrigger>
+      </AppTooltip>
       <PopoverContent align="start" className="w-64 p-0">
         <div className="flex items-center gap-2 border-b px-3 py-2">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />

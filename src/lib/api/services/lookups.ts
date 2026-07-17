@@ -24,13 +24,17 @@ export interface ApiUserType {
  * (`{ success, message, data }`) so existing consumers keep working.
  */
 async function fetchAll<T>(url: string): Promise<ApiEnvelope<T[]>> {
-  const res = await http.get<ApiEnvelope<PagedResult<T>>>(url, {
+  const res = await http.get<ApiEnvelope<PagedResult<T> | T[]>>(url, {
     params: { Page: 1, PageSize: 500 },
   });
+  const payload = res.data;
+  const items = Array.isArray(payload)
+    ? payload
+    : (payload?.items ?? []);
   return {
     success: res.success,
     message: res.message,
-    data: res.data?.items ?? [],
+    data: items,
   };
 }
 
