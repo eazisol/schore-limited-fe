@@ -13,8 +13,8 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { ROLE_BADGE, type UserRole } from "@/lib/users-store";
-import { buildNavMenus, toAppPath } from "@/lib/authorization";
-import { resolveMenuIcon } from "@/lib/menu-icons";
+import { buildNavMenus } from "@/lib/authorization";
+import { NavSidebarMenu } from "@/components/nav/NavSidebarMenu";
 import type { ApiMenu } from "@/lib/api/services/auth";
 import { RoutePermissionGuard } from "@/components/Permission";
 import { AppTooltip } from "@/components/AppTooltip";
@@ -30,12 +30,6 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
@@ -224,20 +218,7 @@ function AppShellChrome({
           <SidebarGroup>
            
             <SidebarGroupContent>
-              <SidebarMenu>
-                {navMenus.length === 0 ? (
-                  <li className="px-3 py-2 text-xs text-sidebar-foreground/50">No menus assigned</li>
-                ) : (
-                  navMenus.map((menu) => (
-                    <NavMenuItem
-                      key={menu.id}
-                      menu={menu}
-                      pathname={pathname}
-                      onNavigate={closeMobileNav}
-                    />
-                  ))
-                )}
-              </SidebarMenu>
+              <NavSidebarMenu menus={navMenus} pathname={pathname} onNavigate={closeMobileNav} />
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
@@ -359,87 +340,6 @@ function AppShellChrome({
         </div>
       </SidebarInset>
     </>
-  );
-}
-
-function NavMenuItem({
-  menu,
-  pathname,
-  onNavigate,
-}: {
-  menu: ApiMenu;
-  pathname: string;
-  onNavigate: () => void;
-}) {
-  const to = toAppPath(menu.route);
-  const Icon = resolveMenuIcon(menu.icon);
-  const children = menu.children ?? [];
-  const hasChildren = children.length > 0;
-  const exact = to === "/";
-  const active = exact
-    ? pathname === "/"
-    : pathname === to || pathname.startsWith(`${to}/`);
-  const childActive = children.some((c) => {
-    const childTo = toAppPath(c.route);
-    return pathname === childTo || pathname.startsWith(`${childTo}/`);
-  });
-
-  if (hasChildren) {
-    return (
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={active || childActive}
-          tooltip={menu.name}
-          className={cn(
-            "text-sidebar-foreground/75 hover:text-sidebar-foreground",
-            (active || childActive) && "font-medium",
-          )}
-        >
-          <Link to={to} onClick={onNavigate}>
-            <Icon />
-            <span>{menu.name}</span>
-          </Link>
-        </SidebarMenuButton>
-        <SidebarMenuSub>
-          {children.map((child) => {
-            const childTo = toAppPath(child.route);
-            const ChildIcon = resolveMenuIcon(child.icon);
-            const childIsActive =
-              pathname === childTo || pathname.startsWith(`${childTo}/`);
-            return (
-              <SidebarMenuSubItem key={child.id}>
-                <SidebarMenuSubButton asChild isActive={childIsActive}>
-                  <Link to={childTo} onClick={onNavigate}>
-                    <ChildIcon />
-                    <span>{child.name}</span>
-                  </Link>
-                </SidebarMenuSubButton>
-              </SidebarMenuSubItem>
-            );
-          })}
-        </SidebarMenuSub>
-      </SidebarMenuItem>
-    );
-  }
-
-  return (
-    <SidebarMenuItem>
-      <SidebarMenuButton
-        asChild
-        isActive={active}
-        tooltip={menu.name}
-        className={cn(
-          "text-sidebar-foreground/75 hover:text-sidebar-foreground",
-          active && "font-medium",
-        )}
-      >
-        <Link to={to} onClick={onNavigate}>
-          <Icon />
-          <span>{menu.name}</span>
-        </Link>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
   );
 }
 

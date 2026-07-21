@@ -1,170 +1,470 @@
-import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/AppShell";
-import { StatusBadge } from "@/components/StatusBadge";
+import { AppTooltip } from "@/components/AppTooltip";
 import { Button } from "@/components/ui/button";
-import { operatives, wageSheets, allocations, getOperative, getProperty, fmtGBP } from "@/lib/data";
-import { Edit, Trash2, ArrowLeft } from "lucide-react";
+import { AlertCircle, ArrowLeft, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Form,
+  TextField,
+  SelectField,
+  CheckboxField,
+  SubmitButton,
+  PhoneNumberField,
+} from "@/components/form";
+import { Can, usePermission } from "@/components/Permission";
+import { operativesService, type OperativePayload } from "@/lib/api/services/operatives";
+import { tradesService } from "@/lib/api/services/trades";
+import { cisService } from "@/lib/api/services/cis";
+import { notifyApiError, type ApiError } from "@/lib/api/axios";
+import { operativesQueryKey } from "./operatives.index";
+import { getPhoneLengthError } from "@/components/form/PhoneNumberField";
+import { activeStatusClass, formatCisRate, formatDateTime, formatGbp } from "@/lib/module-ui";
+
+const OPERATIVES_ROUTE = "/operatives";
+
+const detailSearchSchema = z.object({
+  mode: z.enum(["edit", "view"]).optional(),
+});
 
 export const Route = createFileRoute("/operatives/$id")({
-  loader: ({ params }) => {
-    const op = getOperative(params.id);
-    if (!op) throw notFound();
-    return { op };
-  },
-  head: ({ loaderData }) => ({ meta: [{ title: `${loaderData?.op.name ?? "Operative"} | Schore` }] }),
-  notFoundComponent: () => (
-    <div className="card-elevated p-12 text-center">
-      <h2 className="font-display font-semibold text-lg">Operative not found</h2>
-      <p className="text-sm text-muted-foreground mt-1">This record may have been removed.</p>
-      <Button className="mt-4" asChild><Link to="/operatives">Back to operatives</Link></Button>
-    </div>
-  ),
+  head: ({ params }) => ({ meta: [{ title: `Operative #${params.id} | Schore` }] }),
+  validateSearch: detailSearchSchema,
   component: OperativeDetail,
 });
 
-function OperativeDetail() {
-  const { op } = Route.useLoaderData();
-  const navigate = useNavigate();
-  const [editing, setEditing] = useState(false);
-  const [confirmDel, setConfirmDel] = useState(false);
-  const [form, setForm] = useState(op);
+function validatePhoneNumber(value: string) {
+  if (!value.trim()) return true;
+  return !getPhoneLengthError(value.trim(), undefined, { requireMin: true });
+}
 
-  const opAllocs = allocations.filter(a => a.operativeId === op.id);
-  const opWages = wageSheets.filter(w => w.operativeId === op.id);
-  const totalEarned = opWages.reduce((s, w) => s + w.net, 0);
+const schema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(2, "Name must be at least 2 characters")
+      .max(100, "Name must be 100 characters or fewer"),
+    tradeId: z.string().min(1, "Trade is required"),
+    cisRate: z.string().min(1, "CIS status is required"),
+    dailyRate: z.coerce.number().positive("Daily rate must be greater than 0"),
+    phone: z
+      .string()
+      .trim()
+      .superRefine((v, ctx) => {
+        if (!v) return;
+        if (!validatePhoneNumber(v)) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Enter a valid phone number for the selected country.",
+          });
+        }
+      }),
+    email: z
+      .string()
+      .trim()
+      .superRefine((v, ctx) => {
+        if (!v) return;
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
+          ctx.addIssue({ code: "custom", message: "Enter a valid email address" });
+        }
+      }),
+    utr: z.string().trim(),
+    emergencyContact: z.string().trim().max(150, "Emergency contact must be 150 characters or fewer"),
+    startDate: z.string().trim(),
+    isActive: z.boolean(),
+  })
+  .superRefine((values, ctx) => {
+    const rate = Number(values.cisRate);
+    if (rate !== 0 && values.utr && !/^\d{10}$/.test(values.utr)) {
+      ctx.addIssue({ code: "custom", path: ["utr"], message: "UTR must be 10 digits" });
+    }
+    if (rate !== 0 && !values.utr) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["utr"],
+        message: "UTR is required for 20%/30% CIS",
+      });
+    }
+  });
+type Values = z.infer<typeof schema>;
+
+function OperativeDetail() {
+  const { id } = Route.useParams();
+  const { mode } = Route.useSearch();
+  const numericId = Number(id);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const canModify = usePermission({ route: OPERATIVES_ROUTE, action: "modify" });
+  const canDelete = usePermission({ route: OPERATIVES_ROUTE, action: "delete" });
+  const [confirmDel, setConfirmDel] = useState(false);
+  const isEditing = mode === "edit" && canModify;
+
+  function openEdit() {
+    navigate({
+      to: "/operatives/$id",
+      params: { id },
+      search: { mode: "edit" },
+      replace: true,
+    });
+  }
+
+  function openView() {
+    navigate({
+      to: "/operatives/$id",
+      params: { id },
+      search: {},
+      replace: true,
+    });
+  }
+
+  const operativeQuery = useQuery({
+    queryKey: ["operatives", id],
+    queryFn: async () => (await operativesService.get(id)).data,
+  });
+  const tradesQuery = useQuery({
+    queryKey: ["trades", "options"],
+    queryFn: async () => (await tradesService.options()).data,
+  });
+  const cisQuery = useQuery({
+    queryKey: ["cis", "options"],
+    queryFn: async () => (await cisService.options()).data,
+  });
+
+  const operative = operativeQuery.data;
+  const trades = tradesQuery.data ?? [];
+  const cisOptions = cisQuery.data ?? [];
+  const lookupsReady = tradesQuery.isSuccess && cisQuery.isSuccess;
+
+  const tradeOptions = useMemo(() => {
+    const options = trades.map((t) => ({ value: String(t.id), label: t.name }));
+    if (
+      operative?.tradeId != null &&
+      !options.some((o) => o.value === String(operative.tradeId))
+    ) {
+      options.unshift({
+        value: String(operative.tradeId),
+        label: operative.tradeName || `Trade #${operative.tradeId}`,
+      });
+    }
+    return options;
+  }, [trades, operative?.tradeId, operative?.tradeName]);
+
+  const cisSelectOptions = useMemo(() => {
+    const options = cisOptions.map((c) => ({
+      value: String(c.rate),
+      label: `${c.name} (${formatCisRate(c.rate)})`,
+    }));
+    if (
+      operative &&
+      !options.some((o) => o.value === String(operative.cisRate))
+    ) {
+      options.unshift({
+        value: String(operative.cisRate),
+        label: formatCisRate(operative.cisRate),
+      });
+    }
+    return options;
+  }, [cisOptions, operative]);
+
+  const defaults = useMemo<Values>(
+    () => ({
+      name: operative?.name ?? "",
+      tradeId: operative?.tradeId != null ? String(operative.tradeId) : "",
+      cisRate: operative != null ? String(operative.cisRate) : "",
+      dailyRate: operative?.dailyRate ?? 0,
+      phone: operative?.phone ?? "",
+      email: operative?.email ?? "",
+      utr: operative?.utr ?? "",
+      emergencyContact: operative?.emergencyContact ?? "",
+      startDate: operative?.startDate ?? "",
+      isActive: operative?.isActive ?? true,
+    }),
+    [operative],
+  );
+
+  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: defaults });
+  useEffect(() => {
+    if (!operative || !lookupsReady) return;
+    form.reset(defaults);
+  }, [operative, defaults, form, lookupsReady]);
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: OperativePayload) => operativesService.update(numericId, payload),
+    onSuccess: (res) => {
+      toast.success(res.message || "Operative updated");
+      queryClient.setQueryData(["operatives", id], res.data);
+      queryClient.invalidateQueries({ queryKey: operativesQueryKey });
+      navigate({ to: "/operatives" });
+    },
+    onError: (err) => notifyApiError(err, "Failed to update operative"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => operativesService.remove(numericId),
+    onSuccess: (res) => {
+      toast.success(res.message || "Operative deleted");
+      queryClient.invalidateQueries({ queryKey: operativesQueryKey });
+      navigate({ to: "/operatives" });
+    },
+    onError: (err) => notifyApiError(err, "Failed to delete operative"),
+  });
+
+  async function save(values: Values) {
+    const trade =
+      trades.find((t) => String(t.id) === values.tradeId) ??
+      (operative?.tradeId != null && String(operative.tradeId) === values.tradeId
+        ? { id: operative.tradeId, name: operative.tradeName }
+        : null);
+    if (!trade) {
+      toast.error("Please fill all required fields.");
+      return;
+    }
+    await updateMutation.mutateAsync({
+      name: values.name.trim(),
+      tradeId: trade.id,
+      tradeName: trade.name,
+      cisRate: Number(values.cisRate),
+      dailyRate: values.dailyRate,
+      phone: values.phone.trim() || null,
+      email: values.email.trim() || null,
+      utr: values.utr.trim() || null,
+      emergencyContact: values.emergencyContact.trim() || null,
+      startDate: values.startDate.trim() || null,
+      isActive: values.isActive,
+    });
+  }
+
+  if (operativeQuery.isLoading) {
+    return (
+      <div className="card-elevated grid place-items-center p-12 text-sm text-muted-foreground">
+        <Loader2 className="mb-2 h-5 w-5 animate-spin" />
+        Loading operative…
+      </div>
+    );
+  }
+
+  if (operativeQuery.isError || !operative) {
+    return (
+      <div className="card-elevated p-12 text-center">
+        <AlertCircle className="mx-auto mb-2 h-5 w-5 text-destructive" />
+        <h2 className="font-display text-lg font-semibold">Unable to load operative</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {(operativeQuery.error as unknown as ApiError)?.message ||
+            "This operative may have been deleted."}
+        </p>
+        <Button className="mt-4" asChild>
+          <Link to="/operatives">Back to operatives</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const dirty = form.formState.isDirty;
+  const lookupsLoading = tradesQuery.isLoading || cisQuery.isLoading;
+  const cisRate = form.watch("cisRate");
 
   return (
     <div className="space-y-6">
-      <Link to="/operatives" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3 w-3" /> All operatives
-      </Link>
-
       <PageHeader
-        title={op.name}
-        subtitle={`${op.trade} · CIS ${op.cis} · ${fmtGBP(op.dailyRate)}/day`}
+        title={isEditing ? "Edit operative" : "Operative details"}
+        leading={
+          <AppTooltip content="Back to operatives" asChild>
+            <Link
+              to="/operatives"
+              aria-label="Back to operatives"
+              className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </AppTooltip>
+        }
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={() => setEditing(!editing)}>
-              <Edit className="h-4 w-4" /> {editing ? "Cancel edit" : "Edit"}
-            </Button>
-            <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/5" onClick={() => setConfirmDel(true)}>
-              <Trash2 className="h-4 w-4" /> Delete
-            </Button>
+            {!isEditing && canModify && (
+              <Button variant="outline" size="sm" onClick={openEdit}>
+                <Pencil className="h-4 w-4" />
+                Edit operative
+              </Button>
+            )}
+            <Can route={OPERATIVES_ROUTE} action="delete">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-destructive/30 text-destructive hover:bg-destructive/5"
+                onClick={() => setConfirmDel(true)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            </Can>
           </>
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="card-elevated p-6">
-            <h3 className="font-display font-semibold mb-4">Profile</h3>
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-              {(["name","trade","cis","dailyRate","phone","utr","startDate","status"] as const).map(k => (
-                <div key={k}>
-                  <dt className="text-xs text-muted-foreground capitalize">{k === "dailyRate" ? "Daily Rate" : k === "utr" ? "UTR" : k === "cis" ? "CIS" : k}</dt>
-                  {editing ? (
-                    <input
-                      className="input mt-1"
-                      value={String((form as any)[k])}
-                      onChange={e => setForm({ ...form, [k]: e.target.value } as typeof form)}
-                    />
-                  ) : (
-                    <dd className="font-medium mt-0.5">
-                      {k === "dailyRate" ? fmtGBP(op.dailyRate) : k === "status" ? <StatusBadge status={op.status} /> : (op as any)[k] || "—"}
-                    </dd>
-                  )}
-                </div>
-              ))}
-            </dl>
-            {editing && (
-              <div className="flex justify-end gap-2 mt-6">
-                <Button variant="outline" onClick={() => { setForm(op); setEditing(false); }}>Cancel</Button>
-                <Button onClick={() => { toast.success("Profile updated"); setEditing(false); }}>Save changes</Button>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {isEditing ? (
+          <Form form={form} onSubmit={save} className="card-elevated space-y-4 p-6 lg:col-span-2">
+            <h3 className="font-display font-semibold">Edit details</h3>
+            <fieldset className="space-y-4">
+              <TextField<Values> name="name" label="Full name" required maxLength={100} />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <SelectField<Values>
+                  name="tradeId"
+                  label="Trade"
+                  required
+                  placeholder={lookupsReady ? "Select trade" : "Loading trades…"}
+                  disabled={lookupsLoading || !lookupsReady}
+                  options={tradeOptions}
+                />
+                <TextField<Values> name="startDate" label="Start date" type="date" />
               </div>
-            )}
-          </div>
-
-          <div className="card-elevated">
-            <div className="p-5 border-b">
-              <h3 className="font-display font-semibold">Recent allocations</h3>
-              <p className="text-xs text-muted-foreground">From the Master · ticked work feeds the wage sheet.</p>
-            </div>
-            {opAllocs.length === 0 ? (
-              <div className="p-10 text-center text-sm text-muted-foreground">No allocations this week.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-xs text-muted-foreground">
-                    <tr>
-                      <th className="text-left font-medium px-5 py-2.5">Date</th>
-                      <th className="text-left font-medium px-3 py-2.5">Property</th>
-                      <th className="text-left font-medium px-3 py-2.5">Code</th>
-                      <th className="text-right font-medium px-5 py-2.5">Value</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {opAllocs.map(a => {
-                      const p = getProperty(a.propertyId);
-                      return (
-                        <tr key={a.id}>
-                          <td className="px-5 py-3">{a.date}</td>
-                          <td className="px-3 py-3">{p?.ref} <span className="text-muted-foreground text-xs">· {p?.contract}</span></td>
-                          <td className="px-3 py-3"><code className="text-xs font-mono bg-secondary px-1.5 py-0.5 rounded">{a.code}</code></td>
-                          <td className="px-5 py-3 text-right font-mono tabular-nums">{fmtGBP(a.value)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <SelectField<Values>
+                  name="cisRate"
+                  label="CIS status"
+                  required
+                  placeholder={lookupsReady ? "Select CIS" : "Loading…"}
+                  disabled={lookupsLoading || !lookupsReady}
+                  options={cisSelectOptions}
+                />
+                <TextField<Values>
+                  name="dailyRate"
+                  label="Daily rate (£)"
+                  required
+                  type="number"
+                  min={1}
+                  step="1"
+                />
+                <TextField<Values>
+                  name="utr"
+                  label="UTR"
+                  required={cisRate !== "0"}
+                  maxLength={10}
+                />
               </div>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="card-elevated p-6">
-            <h3 className="font-display font-semibold mb-4">Earnings summary</h3>
-            <div className="space-y-3">
-              <Stat label="Net paid YTD" value={fmtGBP(totalEarned)} />
-              <Stat label="Wage sheets" value={String(opWages.length)} />
-              <Stat label="Allocations this week" value={String(opAllocs.length)} />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <PhoneNumberField<Values> name="phone" label="Phone" placeholder="07700 900000" />
+                <TextField<Values> name="email" label="Email" type="email" />
+              </div>
+              <TextField<Values>
+                name="emergencyContact"
+                label="Emergency contact"
+                maxLength={150}
+              />
+              <CheckboxField<Values>
+                name="isActive"
+                label="Active"
+                description="Operative can be allocated to properties."
+              />
+            </fieldset>
+            <div className="flex items-center justify-end gap-2 border-t pt-2">
+              <span className="mr-auto text-xs text-muted-foreground">
+                {dirty ? "Unsaved changes" : "All changes saved"}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={updateMutation.isPending}
+                onClick={() => {
+                  form.reset(defaults);
+                  openView();
+                }}
+              >
+                Cancel
+              </Button>
+              <SubmitButton disabled={!dirty || lookupsLoading} loadingText="Saving…">
+                Save changes
+              </SubmitButton>
+            </div>
+          </Form>
+        ) : (
+          <div className="card-elevated space-y-4 p-6 lg:col-span-2">
+            <h3 className="font-display font-semibold">Profile</h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <ReadOnlyField label="Full name" value={operative.name} />
+                <ReadOnlyField label="Trade" value={operative.tradeName} />
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <ReadOnlyField label="CIS" value={formatCisRate(operative.cisRate)} />
+                <ReadOnlyField label="Daily rate" value={formatGbp(operative.dailyRate)} />
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <ReadOnlyField label="UTR" value={operative.utr || "—"} />
+                <ReadOnlyField label="Start date" value={operative.startDate || "—"} />
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <ReadOnlyField label="Phone" value={operative.phone || "—"} />
+                <ReadOnlyField label="Email" value={operative.email || "—"} />
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <ReadOnlyField
+                  label="Emergency contact"
+                  value={operative.emergencyContact || "—"}
+                />
+                <ReadOnlyField
+                  label="Status"
+                  value={
+                    <span
+                      className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(operative.isActive)}`}
+                    >
+                      {operative.isActive ? "Active" : "Inactive"}
+                    </span>
+                  }
+                />
+              </div>
             </div>
           </div>
-          <div className="card-elevated p-6">
-            <h3 className="font-display font-semibold mb-3">Wage sheets</h3>
-            {opWages.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No wage sheets yet.</p>
-            ) : (
-              <ul className="space-y-2">
-                {opWages.map(w => (
-                  <li key={w.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                    <div>
-                      <Link to="/wages/$id" params={{ id: w.id }} className="text-sm font-medium hover:underline">
-                        W/E {w.weekEnding} · {w.contract}
-                      </Link>
-                      <div className="text-[11px] text-muted-foreground">{fmtGBP(w.net)} net</div>
-                    </div>
-                    <StatusBadge status={w.status} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+        )}
+
+        <div className="card-elevated self-start p-6">
+          <h3 className="mb-4 font-display font-semibold">Record</h3>
+          <dl className="space-y-3 text-sm">
+            <Row label="Operative ID">{operative.id}</Row>
+            <Row label="Created">{formatDateTime(operative.createdDate)}</Row>
+            <Row label="Last edited">{formatDateTime(operative.editDate)}</Row>
+          </dl>
         </div>
       </div>
 
-      {confirmDel && (
-        <div className="fixed inset-0 bg-black/50 grid place-items-center z-50 p-4">
-          <div className="bg-card rounded-lg max-w-md w-full p-6 border">
-            <h3 className="font-display font-semibold text-lg">Delete {op.name}?</h3>
-            <p className="text-sm text-muted-foreground mt-2">
-              This will remove the operative from the workforce builder. Past wage sheets and allocations are kept for audit.
+      {confirmDel && canDelete && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+          onClick={() => setConfirmDel(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg border bg-card p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-display text-lg font-semibold">Delete {operative.name}?</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This removes the operative from the workforce builder. Past wage sheets are kept for
+              audit.
             </p>
-            <div className="flex justify-end gap-2 mt-6">
-              <Button variant="outline" onClick={() => setConfirmDel(false)}>Cancel</Button>
-              <Button variant="destructive" onClick={() => { toast.success(`${op.name} deleted`); navigate({ to: "/operatives" }); }}>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setConfirmDel(false)}
+                disabled={deleteMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate()}
+              >
+                {deleteMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
                 Delete operative
               </Button>
             </div>
@@ -175,11 +475,20 @@ function OperativeDetail() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function ReadOnlyField({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="font-display font-semibold tabular-nums">{value}</span>
+    <div className="space-y-1">
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div className="break-words text-sm font-medium">{value}</div>
+    </div>
+  );
+}
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="text-right text-sm font-medium">{children}</dd>
     </div>
   );
 }

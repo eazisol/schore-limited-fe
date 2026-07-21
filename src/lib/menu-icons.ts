@@ -13,6 +13,10 @@ import {
   Briefcase,
   Banknote,
   Tags,
+  Package,
+  Wrench,
+  Percent,
+  HardHat,
 } from "lucide-react";
 
 /**
@@ -35,8 +39,25 @@ const ICON_MAP: Record<string, LucideIcon> = {
   properties: Building2,
   contracts: Briefcase,
   payroll: Banknote,
+  items: Tags,
+  item: Tags,
   rates: Tags,
   grid: LayoutGrid,
+  products: Package,
+  product: Package,
+  package: Package,
+  "product-management": Package,
+  product_management: Package,
+  trades: Wrench,
+  trade: Wrench,
+  "trade-builder": Wrench,
+  wrench: Wrench,
+  cis: Percent,
+  "cis-management": Percent,
+  percent: Percent,
+  operatives: HardHat,
+  operative: HardHat,
+  "hard-hat": HardHat,
 };
 
 export function resolveMenuIcon(icon: string | null | undefined): LucideIcon {

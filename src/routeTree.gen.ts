@@ -21,11 +21,13 @@ import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as PropertiesRouteImport } from './routes/properties'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ProductManagementRouteImport } from './routes/product-management'
 import { Route as PrelimsRouteImport } from './routes/prelims'
 import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as OperativesRouteImport } from './routes/operatives'
 import { Route as LegendCodesRouteImport } from './routes/legend-codes'
 import { Route as KpiRouteImport } from './routes/kpi'
+import { Route as ItemsRouteImport } from './routes/items'
 import { Route as HoldRouteImport } from './routes/hold'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ForbiddenRouteImport } from './routes/forbidden'
@@ -33,6 +35,7 @@ import { Route as DailyRouteImport } from './routes/daily'
 import { Route as CostBudgetRouteImport } from './routes/cost-budget'
 import { Route as ContractsRouteImport } from './routes/contracts'
 import { Route as ConfirmationRouteImport } from './routes/confirmation'
+import { Route as CisManagementRouteImport } from './routes/cis-management'
 import { Route as AllocationRouteImport } from './routes/allocation'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WagesIndexRouteImport } from './routes/wages.index'
@@ -41,12 +44,17 @@ import { Route as TradeBuilderIndexRouteImport } from './routes/trade-builder.in
 import { Route as SystemConfigIndexRouteImport } from './routes/system-config.index'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
+import { Route as ProductManagementIndexRouteImport } from './routes/product-management.index'
 import { Route as OperativesIndexRouteImport } from './routes/operatives.index'
+import { Route as ItemsIndexRouteImport } from './routes/items.index'
+import { Route as CisManagementIndexRouteImport } from './routes/cis-management.index'
 import { Route as WagesIdRouteImport } from './routes/wages.$id'
 import { Route as UsersNewRouteImport } from './routes/users.new'
 import { Route as UsersIdRouteImport } from './routes/users.$id'
 import { Route as TradeBuilderTasksRouteImport } from './routes/trade-builder.tasks'
+import { Route as TradeBuilderNewRouteImport } from './routes/trade-builder.new'
 import { Route as TradeBuilderGroupsRouteImport } from './routes/trade-builder.groups'
+import { Route as TradeBuilderIdRouteImport } from './routes/trade-builder.$id'
 import { Route as SystemConfigUserTypesRouteImport } from './routes/system-config.user-types'
 import { Route as SystemConfigRolesRouteImport } from './routes/system-config.roles'
 import { Route as SettingsUserTypesRouteImport } from './routes/settings.user-types'
@@ -56,6 +64,11 @@ import { Route as SettingsEmailSmtpRouteImport } from './routes/settings.email-s
 import { Route as PropertiesIdRouteImport } from './routes/properties.$id'
 import { Route as OperativesNewRouteImport } from './routes/operatives.new'
 import { Route as OperativesIdRouteImport } from './routes/operatives.$id'
+import { Route as ItemsNewRouteImport } from './routes/items.new'
+import { Route as ItemsIdRouteImport } from './routes/items.$id'
+import { Route as CisManagementNewRouteImport } from './routes/cis-management.new'
+import { Route as CisManagementIdRouteImport } from './routes/cis-management.$id'
+import { Route as ItemsIdEditRouteImport } from './routes/items.$id.edit'
 
 const WagesRoute = WagesRouteImport.update({
   id: '/wages',
@@ -117,6 +130,11 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProductManagementRoute = ProductManagementRouteImport.update({
+  id: '/product-management',
+  path: '/product-management',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrelimsRoute = PrelimsRouteImport.update({
   id: '/prelims',
   path: '/prelims',
@@ -140,6 +158,11 @@ const LegendCodesRoute = LegendCodesRouteImport.update({
 const KpiRoute = KpiRouteImport.update({
   id: '/kpi',
   path: '/kpi',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ItemsRoute = ItemsRouteImport.update({
+  id: '/items',
+  path: '/items',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HoldRoute = HoldRouteImport.update({
@@ -175,6 +198,11 @@ const ContractsRoute = ContractsRouteImport.update({
 const ConfirmationRoute = ConfirmationRouteImport.update({
   id: '/confirmation',
   path: '/confirmation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CisManagementRoute = CisManagementRouteImport.update({
+  id: '/cis-management',
+  path: '/cis-management',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AllocationRoute = AllocationRouteImport.update({
@@ -217,10 +245,25 @@ const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PropertiesRoute,
 } as any)
+const ProductManagementIndexRoute = ProductManagementIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProductManagementRoute,
+} as any)
 const OperativesIndexRoute = OperativesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => OperativesRoute,
+} as any)
+const ItemsIndexRoute = ItemsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ItemsRoute,
+} as any)
+const CisManagementIndexRoute = CisManagementIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CisManagementRoute,
 } as any)
 const WagesIdRoute = WagesIdRouteImport.update({
   id: '/$id',
@@ -242,9 +285,19 @@ const TradeBuilderTasksRoute = TradeBuilderTasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => TradeBuilderRoute,
 } as any)
+const TradeBuilderNewRoute = TradeBuilderNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => TradeBuilderRoute,
+} as any)
 const TradeBuilderGroupsRoute = TradeBuilderGroupsRouteImport.update({
   id: '/groups',
   path: '/groups',
+  getParentRoute: () => TradeBuilderRoute,
+} as any)
+const TradeBuilderIdRoute = TradeBuilderIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
   getParentRoute: () => TradeBuilderRoute,
 } as any)
 const SystemConfigUserTypesRoute = SystemConfigUserTypesRouteImport.update({
@@ -292,10 +345,36 @@ const OperativesIdRoute = OperativesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => OperativesRoute,
 } as any)
+const ItemsNewRoute = ItemsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ItemsRoute,
+} as any)
+const ItemsIdRoute = ItemsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ItemsRoute,
+} as any)
+const CisManagementNewRoute = CisManagementNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => CisManagementRoute,
+} as any)
+const CisManagementIdRoute = CisManagementIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => CisManagementRoute,
+} as any)
+const ItemsIdEditRoute = ItemsIdEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => ItemsIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/allocation': typeof AllocationRoute
+  '/cis-management': typeof CisManagementRouteWithChildren
   '/confirmation': typeof ConfirmationRoute
   '/contracts': typeof ContractsRoute
   '/cost-budget': typeof CostBudgetRoute
@@ -303,11 +382,13 @@ export interface FileRoutesByFullPath {
   '/forbidden': typeof ForbiddenRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/hold': typeof HoldRoute
+  '/items': typeof ItemsRouteWithChildren
   '/kpi': typeof KpiRoute
   '/legend-codes': typeof LegendCodesRoute
   '/operatives': typeof OperativesRouteWithChildren
   '/payroll': typeof PayrollRoute
   '/prelims': typeof PrelimsRoute
+  '/product-management': typeof ProductManagementRouteWithChildren
   '/profile': typeof ProfileRoute
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
@@ -320,6 +401,10 @@ export interface FileRoutesByFullPath {
   '/trade-builder': typeof TradeBuilderRouteWithChildren
   '/users': typeof UsersRouteWithChildren
   '/wages': typeof WagesRouteWithChildren
+  '/cis-management/$id': typeof CisManagementIdRoute
+  '/cis-management/new': typeof CisManagementNewRoute
+  '/items/$id': typeof ItemsIdRouteWithChildren
+  '/items/new': typeof ItemsNewRoute
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
@@ -329,18 +414,24 @@ export interface FileRoutesByFullPath {
   '/settings/user-types': typeof SettingsUserTypesRoute
   '/system-config/roles': typeof SystemConfigRolesRoute
   '/system-config/user-types': typeof SystemConfigUserTypesRoute
+  '/trade-builder/$id': typeof TradeBuilderIdRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
+  '/trade-builder/new': typeof TradeBuilderNewRoute
   '/trade-builder/tasks': typeof TradeBuilderTasksRoute
   '/users/$id': typeof UsersIdRoute
   '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
+  '/cis-management/': typeof CisManagementIndexRoute
+  '/items/': typeof ItemsIndexRoute
   '/operatives/': typeof OperativesIndexRoute
+  '/product-management/': typeof ProductManagementIndexRoute
   '/properties/': typeof PropertiesIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/system-config/': typeof SystemConfigIndexRoute
   '/trade-builder/': typeof TradeBuilderIndexRoute
   '/users/': typeof UsersIndexRoute
   '/wages/': typeof WagesIndexRoute
+  '/items/$id/edit': typeof ItemsIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -362,6 +453,10 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
+  '/cis-management/$id': typeof CisManagementIdRoute
+  '/cis-management/new': typeof CisManagementNewRoute
+  '/items/$id': typeof ItemsIdRouteWithChildren
+  '/items/new': typeof ItemsNewRoute
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
@@ -371,23 +466,30 @@ export interface FileRoutesByTo {
   '/settings/user-types': typeof SettingsUserTypesRoute
   '/system-config/roles': typeof SystemConfigRolesRoute
   '/system-config/user-types': typeof SystemConfigUserTypesRoute
+  '/trade-builder/$id': typeof TradeBuilderIdRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
+  '/trade-builder/new': typeof TradeBuilderNewRoute
   '/trade-builder/tasks': typeof TradeBuilderTasksRoute
   '/users/$id': typeof UsersIdRoute
   '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
+  '/cis-management': typeof CisManagementIndexRoute
+  '/items': typeof ItemsIndexRoute
   '/operatives': typeof OperativesIndexRoute
+  '/product-management': typeof ProductManagementIndexRoute
   '/properties': typeof PropertiesIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/system-config': typeof SystemConfigIndexRoute
   '/trade-builder': typeof TradeBuilderIndexRoute
   '/users': typeof UsersIndexRoute
   '/wages': typeof WagesIndexRoute
+  '/items/$id/edit': typeof ItemsIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/allocation': typeof AllocationRoute
+  '/cis-management': typeof CisManagementRouteWithChildren
   '/confirmation': typeof ConfirmationRoute
   '/contracts': typeof ContractsRoute
   '/cost-budget': typeof CostBudgetRoute
@@ -395,11 +497,13 @@ export interface FileRoutesById {
   '/forbidden': typeof ForbiddenRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/hold': typeof HoldRoute
+  '/items': typeof ItemsRouteWithChildren
   '/kpi': typeof KpiRoute
   '/legend-codes': typeof LegendCodesRoute
   '/operatives': typeof OperativesRouteWithChildren
   '/payroll': typeof PayrollRoute
   '/prelims': typeof PrelimsRoute
+  '/product-management': typeof ProductManagementRouteWithChildren
   '/profile': typeof ProfileRoute
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
@@ -412,6 +516,10 @@ export interface FileRoutesById {
   '/trade-builder': typeof TradeBuilderRouteWithChildren
   '/users': typeof UsersRouteWithChildren
   '/wages': typeof WagesRouteWithChildren
+  '/cis-management/$id': typeof CisManagementIdRoute
+  '/cis-management/new': typeof CisManagementNewRoute
+  '/items/$id': typeof ItemsIdRouteWithChildren
+  '/items/new': typeof ItemsNewRoute
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
@@ -421,24 +529,31 @@ export interface FileRoutesById {
   '/settings/user-types': typeof SettingsUserTypesRoute
   '/system-config/roles': typeof SystemConfigRolesRoute
   '/system-config/user-types': typeof SystemConfigUserTypesRoute
+  '/trade-builder/$id': typeof TradeBuilderIdRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
+  '/trade-builder/new': typeof TradeBuilderNewRoute
   '/trade-builder/tasks': typeof TradeBuilderTasksRoute
   '/users/$id': typeof UsersIdRoute
   '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
+  '/cis-management/': typeof CisManagementIndexRoute
+  '/items/': typeof ItemsIndexRoute
   '/operatives/': typeof OperativesIndexRoute
+  '/product-management/': typeof ProductManagementIndexRoute
   '/properties/': typeof PropertiesIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/system-config/': typeof SystemConfigIndexRoute
   '/trade-builder/': typeof TradeBuilderIndexRoute
   '/users/': typeof UsersIndexRoute
   '/wages/': typeof WagesIndexRoute
+  '/items/$id/edit': typeof ItemsIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/allocation'
+    | '/cis-management'
     | '/confirmation'
     | '/contracts'
     | '/cost-budget'
@@ -446,11 +561,13 @@ export interface FileRouteTypes {
     | '/forbidden'
     | '/forgot-password'
     | '/hold'
+    | '/items'
     | '/kpi'
     | '/legend-codes'
     | '/operatives'
     | '/payroll'
     | '/prelims'
+    | '/product-management'
     | '/profile'
     | '/properties'
     | '/rates'
@@ -463,6 +580,10 @@ export interface FileRouteTypes {
     | '/trade-builder'
     | '/users'
     | '/wages'
+    | '/cis-management/$id'
+    | '/cis-management/new'
+    | '/items/$id'
+    | '/items/new'
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
@@ -472,18 +593,24 @@ export interface FileRouteTypes {
     | '/settings/user-types'
     | '/system-config/roles'
     | '/system-config/user-types'
+    | '/trade-builder/$id'
     | '/trade-builder/groups'
+    | '/trade-builder/new'
     | '/trade-builder/tasks'
     | '/users/$id'
     | '/users/new'
     | '/wages/$id'
+    | '/cis-management/'
+    | '/items/'
     | '/operatives/'
+    | '/product-management/'
     | '/properties/'
     | '/settings/'
     | '/system-config/'
     | '/trade-builder/'
     | '/users/'
     | '/wages/'
+    | '/items/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -505,6 +632,10 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signin'
     | '/statements'
+    | '/cis-management/$id'
+    | '/cis-management/new'
+    | '/items/$id'
+    | '/items/new'
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
@@ -514,22 +645,29 @@ export interface FileRouteTypes {
     | '/settings/user-types'
     | '/system-config/roles'
     | '/system-config/user-types'
+    | '/trade-builder/$id'
     | '/trade-builder/groups'
+    | '/trade-builder/new'
     | '/trade-builder/tasks'
     | '/users/$id'
     | '/users/new'
     | '/wages/$id'
+    | '/cis-management'
+    | '/items'
     | '/operatives'
+    | '/product-management'
     | '/properties'
     | '/settings'
     | '/system-config'
     | '/trade-builder'
     | '/users'
     | '/wages'
+    | '/items/$id/edit'
   id:
     | '__root__'
     | '/'
     | '/allocation'
+    | '/cis-management'
     | '/confirmation'
     | '/contracts'
     | '/cost-budget'
@@ -537,11 +675,13 @@ export interface FileRouteTypes {
     | '/forbidden'
     | '/forgot-password'
     | '/hold'
+    | '/items'
     | '/kpi'
     | '/legend-codes'
     | '/operatives'
     | '/payroll'
     | '/prelims'
+    | '/product-management'
     | '/profile'
     | '/properties'
     | '/rates'
@@ -554,6 +694,10 @@ export interface FileRouteTypes {
     | '/trade-builder'
     | '/users'
     | '/wages'
+    | '/cis-management/$id'
+    | '/cis-management/new'
+    | '/items/$id'
+    | '/items/new'
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
@@ -563,23 +707,30 @@ export interface FileRouteTypes {
     | '/settings/user-types'
     | '/system-config/roles'
     | '/system-config/user-types'
+    | '/trade-builder/$id'
     | '/trade-builder/groups'
+    | '/trade-builder/new'
     | '/trade-builder/tasks'
     | '/users/$id'
     | '/users/new'
     | '/wages/$id'
+    | '/cis-management/'
+    | '/items/'
     | '/operatives/'
+    | '/product-management/'
     | '/properties/'
     | '/settings/'
     | '/system-config/'
     | '/trade-builder/'
     | '/users/'
     | '/wages/'
+    | '/items/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AllocationRoute: typeof AllocationRoute
+  CisManagementRoute: typeof CisManagementRouteWithChildren
   ConfirmationRoute: typeof ConfirmationRoute
   ContractsRoute: typeof ContractsRoute
   CostBudgetRoute: typeof CostBudgetRoute
@@ -587,11 +738,13 @@ export interface RootRouteChildren {
   ForbiddenRoute: typeof ForbiddenRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   HoldRoute: typeof HoldRoute
+  ItemsRoute: typeof ItemsRouteWithChildren
   KpiRoute: typeof KpiRoute
   LegendCodesRoute: typeof LegendCodesRoute
   OperativesRoute: typeof OperativesRouteWithChildren
   PayrollRoute: typeof PayrollRoute
   PrelimsRoute: typeof PrelimsRoute
+  ProductManagementRoute: typeof ProductManagementRouteWithChildren
   ProfileRoute: typeof ProfileRoute
   PropertiesRoute: typeof PropertiesRouteWithChildren
   RatesRoute: typeof RatesRoute
@@ -692,6 +845,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/product-management': {
+      id: '/product-management'
+      path: '/product-management'
+      fullPath: '/product-management'
+      preLoaderRoute: typeof ProductManagementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/prelims': {
       id: '/prelims'
       path: '/prelims'
@@ -725,6 +885,13 @@ declare module '@tanstack/react-router' {
       path: '/kpi'
       fullPath: '/kpi'
       preLoaderRoute: typeof KpiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/items': {
+      id: '/items'
+      path: '/items'
+      fullPath: '/items'
+      preLoaderRoute: typeof ItemsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/hold': {
@@ -774,6 +941,13 @@ declare module '@tanstack/react-router' {
       path: '/confirmation'
       fullPath: '/confirmation'
       preLoaderRoute: typeof ConfirmationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cis-management': {
+      id: '/cis-management'
+      path: '/cis-management'
+      fullPath: '/cis-management'
+      preLoaderRoute: typeof CisManagementRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/allocation': {
@@ -832,12 +1006,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PropertiesIndexRouteImport
       parentRoute: typeof PropertiesRoute
     }
+    '/product-management/': {
+      id: '/product-management/'
+      path: '/'
+      fullPath: '/product-management/'
+      preLoaderRoute: typeof ProductManagementIndexRouteImport
+      parentRoute: typeof ProductManagementRoute
+    }
     '/operatives/': {
       id: '/operatives/'
       path: '/'
       fullPath: '/operatives/'
       preLoaderRoute: typeof OperativesIndexRouteImport
       parentRoute: typeof OperativesRoute
+    }
+    '/items/': {
+      id: '/items/'
+      path: '/'
+      fullPath: '/items/'
+      preLoaderRoute: typeof ItemsIndexRouteImport
+      parentRoute: typeof ItemsRoute
+    }
+    '/cis-management/': {
+      id: '/cis-management/'
+      path: '/'
+      fullPath: '/cis-management/'
+      preLoaderRoute: typeof CisManagementIndexRouteImport
+      parentRoute: typeof CisManagementRoute
     }
     '/wages/$id': {
       id: '/wages/$id'
@@ -867,11 +1062,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TradeBuilderTasksRouteImport
       parentRoute: typeof TradeBuilderRoute
     }
+    '/trade-builder/new': {
+      id: '/trade-builder/new'
+      path: '/new'
+      fullPath: '/trade-builder/new'
+      preLoaderRoute: typeof TradeBuilderNewRouteImport
+      parentRoute: typeof TradeBuilderRoute
+    }
     '/trade-builder/groups': {
       id: '/trade-builder/groups'
       path: '/groups'
       fullPath: '/trade-builder/groups'
       preLoaderRoute: typeof TradeBuilderGroupsRouteImport
+      parentRoute: typeof TradeBuilderRoute
+    }
+    '/trade-builder/$id': {
+      id: '/trade-builder/$id'
+      path: '/$id'
+      fullPath: '/trade-builder/$id'
+      preLoaderRoute: typeof TradeBuilderIdRouteImport
       parentRoute: typeof TradeBuilderRoute
     }
     '/system-config/user-types': {
@@ -937,8 +1146,84 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperativesIdRouteImport
       parentRoute: typeof OperativesRoute
     }
+    '/items/new': {
+      id: '/items/new'
+      path: '/new'
+      fullPath: '/items/new'
+      preLoaderRoute: typeof ItemsNewRouteImport
+      parentRoute: typeof ItemsRoute
+    }
+    '/items/$id': {
+      id: '/items/$id'
+      path: '/$id'
+      fullPath: '/items/$id'
+      preLoaderRoute: typeof ItemsIdRouteImport
+      parentRoute: typeof ItemsRoute
+    }
+    '/cis-management/new': {
+      id: '/cis-management/new'
+      path: '/new'
+      fullPath: '/cis-management/new'
+      preLoaderRoute: typeof CisManagementNewRouteImport
+      parentRoute: typeof CisManagementRoute
+    }
+    '/cis-management/$id': {
+      id: '/cis-management/$id'
+      path: '/$id'
+      fullPath: '/cis-management/$id'
+      preLoaderRoute: typeof CisManagementIdRouteImport
+      parentRoute: typeof CisManagementRoute
+    }
+    '/items/$id/edit': {
+      id: '/items/$id/edit'
+      path: '/edit'
+      fullPath: '/items/$id/edit'
+      preLoaderRoute: typeof ItemsIdEditRouteImport
+      parentRoute: typeof ItemsIdRoute
+    }
   }
 }
+
+interface CisManagementRouteChildren {
+  CisManagementIdRoute: typeof CisManagementIdRoute
+  CisManagementNewRoute: typeof CisManagementNewRoute
+  CisManagementIndexRoute: typeof CisManagementIndexRoute
+}
+
+const CisManagementRouteChildren: CisManagementRouteChildren = {
+  CisManagementIdRoute: CisManagementIdRoute,
+  CisManagementNewRoute: CisManagementNewRoute,
+  CisManagementIndexRoute: CisManagementIndexRoute,
+}
+
+const CisManagementRouteWithChildren = CisManagementRoute._addFileChildren(
+  CisManagementRouteChildren,
+)
+
+interface ItemsIdRouteChildren {
+  ItemsIdEditRoute: typeof ItemsIdEditRoute
+}
+
+const ItemsIdRouteChildren: ItemsIdRouteChildren = {
+  ItemsIdEditRoute: ItemsIdEditRoute,
+}
+
+const ItemsIdRouteWithChildren =
+  ItemsIdRoute._addFileChildren(ItemsIdRouteChildren)
+
+interface ItemsRouteChildren {
+  ItemsIdRoute: typeof ItemsIdRouteWithChildren
+  ItemsNewRoute: typeof ItemsNewRoute
+  ItemsIndexRoute: typeof ItemsIndexRoute
+}
+
+const ItemsRouteChildren: ItemsRouteChildren = {
+  ItemsIdRoute: ItemsIdRouteWithChildren,
+  ItemsNewRoute: ItemsNewRoute,
+  ItemsIndexRoute: ItemsIndexRoute,
+}
+
+const ItemsRouteWithChildren = ItemsRoute._addFileChildren(ItemsRouteChildren)
 
 interface OperativesRouteChildren {
   OperativesIdRoute: typeof OperativesIdRoute
@@ -955,6 +1240,17 @@ const OperativesRouteChildren: OperativesRouteChildren = {
 const OperativesRouteWithChildren = OperativesRoute._addFileChildren(
   OperativesRouteChildren,
 )
+
+interface ProductManagementRouteChildren {
+  ProductManagementIndexRoute: typeof ProductManagementIndexRoute
+}
+
+const ProductManagementRouteChildren: ProductManagementRouteChildren = {
+  ProductManagementIndexRoute: ProductManagementIndexRoute,
+}
+
+const ProductManagementRouteWithChildren =
+  ProductManagementRoute._addFileChildren(ProductManagementRouteChildren)
 
 interface PropertiesRouteChildren {
   PropertiesIdRoute: typeof PropertiesIdRoute
@@ -1007,13 +1303,17 @@ const SystemConfigRouteWithChildren = SystemConfigRoute._addFileChildren(
 )
 
 interface TradeBuilderRouteChildren {
+  TradeBuilderIdRoute: typeof TradeBuilderIdRoute
   TradeBuilderGroupsRoute: typeof TradeBuilderGroupsRoute
+  TradeBuilderNewRoute: typeof TradeBuilderNewRoute
   TradeBuilderTasksRoute: typeof TradeBuilderTasksRoute
   TradeBuilderIndexRoute: typeof TradeBuilderIndexRoute
 }
 
 const TradeBuilderRouteChildren: TradeBuilderRouteChildren = {
+  TradeBuilderIdRoute: TradeBuilderIdRoute,
   TradeBuilderGroupsRoute: TradeBuilderGroupsRoute,
+  TradeBuilderNewRoute: TradeBuilderNewRoute,
   TradeBuilderTasksRoute: TradeBuilderTasksRoute,
   TradeBuilderIndexRoute: TradeBuilderIndexRoute,
 }
@@ -1051,6 +1351,7 @@ const WagesRouteWithChildren = WagesRoute._addFileChildren(WagesRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AllocationRoute: AllocationRoute,
+  CisManagementRoute: CisManagementRouteWithChildren,
   ConfirmationRoute: ConfirmationRoute,
   ContractsRoute: ContractsRoute,
   CostBudgetRoute: CostBudgetRoute,
@@ -1058,11 +1359,13 @@ const rootRouteChildren: RootRouteChildren = {
   ForbiddenRoute: ForbiddenRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   HoldRoute: HoldRoute,
+  ItemsRoute: ItemsRouteWithChildren,
   KpiRoute: KpiRoute,
   LegendCodesRoute: LegendCodesRoute,
   OperativesRoute: OperativesRouteWithChildren,
   PayrollRoute: PayrollRoute,
   PrelimsRoute: PrelimsRoute,
+  ProductManagementRoute: ProductManagementRouteWithChildren,
   ProfileRoute: ProfileRoute,
   PropertiesRoute: PropertiesRouteWithChildren,
   RatesRoute: RatesRoute,

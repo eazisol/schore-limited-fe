@@ -1,6 +1,7 @@
 import type { ApiMenu } from "@/lib/api/services/auth";
 import type { ApiMenuDefinition } from "@/lib/api/services/menus";
 import type { ApiPermission } from "@/lib/api/services/permissions";
+import { buildMenuTree, flattenMenuDefinitions } from "@/lib/menu-tree";
 
 export type MenuAction = "read" | "modify" | "delete";
 
@@ -35,7 +36,7 @@ export function buildAuthorizedMenus(
   }
 
   const mapMenus = (items: ApiMenuDefinition[]): ApiMenu[] =>
-    items
+    sortByOrder(items)
       .filter((menu) => menu.isActive)
       .map((menu) => {
         const permission = grants.get(menu.id);
@@ -54,7 +55,10 @@ export function buildAuthorizedMenus(
         };
       });
 
-  return mapMenus(menuTree);
+  const flatDefinitions = flattenMenuDefinitions(menuTree);
+  const treeDefinitions = buildMenuTree(flatDefinitions);
+
+  return mapMenus(treeDefinitions);
 }
 
 /**
@@ -139,17 +143,43 @@ export function flattenMenus(menus: ApiMenu[]): ApiMenu[] {
   return out;
 }
 
+/** Rebuild sidebar tree from visible flat menus using `parentMenuId`. */
+function rebuildSidebarTree(flat: ApiMenu[]): ApiMenu[] {
+  const visible = flat.filter(isSidebarMenu);
+  const visibleIds = new Set(visible.map((menu) => menu.id));
+  const nodes = new Map<number, ApiMenu & { children: ApiMenu[] }>();
+
+  for (const menu of visible) {
+    nodes.set(menu.id, {
+      ...menu,
+      route: toAppPath(menu.route),
+      children: [],
+    });
+  }
+
+  const roots: (ApiMenu & { children: ApiMenu[] })[] = [];
+
+  for (const node of nodes.values()) {
+    const parentId = node.parentMenuId;
+    if (parentId != null && visibleIds.has(parentId)) {
+      nodes.get(parentId)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  const sortTree = (items: (ApiMenu & { children: ApiMenu[] })[]): ApiMenu[] =>
+    sortByOrder(items).map((item) => ({
+      ...item,
+      children: item.children.length ? sortTree(item.children) : [],
+    }));
+
+  return sortTree(roots);
+}
+
 /** Main sidebar menus: `read` only, excludes Settings child modules (Roles, Permissions, etc.). */
 export function buildNavMenus(menus: ApiMenu[]): ApiMenu[] {
-  const mapVisible = (items: ApiMenu[]): ApiMenu[] =>
-    sortByOrder(items)
-      .filter(isSidebarMenu)
-      .map((m) => ({
-        ...m,
-        route: toAppPath(m.route),
-        children: m.children?.length ? mapVisible(m.children) : [],
-      }));
-  return mapVisible(menus);
+  return rebuildSidebarTree(flattenMenus(menus));
 }
 
 /**
