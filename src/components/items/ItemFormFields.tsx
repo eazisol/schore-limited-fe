@@ -8,6 +8,7 @@ import {
 import { productLookupsService } from "@/lib/api/services/product-lookups";
 import type { ItemFormValues } from "@/lib/item-form";
 import type { SearchableSelectOption } from "@/components/form";
+import { DESCRIPTION_MAX_LENGTH, NAME_MAX_LENGTH } from "@/lib/field-validation";
 
 async function mapLookupOptions(
   fetcher: typeof productLookupsService.categories,
@@ -25,6 +26,8 @@ async function mapLookupOptions(
 export function ItemFormFields({
   selectedLabels,
   onImageFileChange,
+  onImageRemove,
+  imageDisabled,
 }: {
   /** Labels for pre-selected IDs on edit (names from the Products API). */
   selectedLabels?: {
@@ -34,6 +37,9 @@ export function ItemFormFields({
   };
   /** Binary file for FormData `Files` (preview stays in `imageUrl`). */
   onImageFileChange?: (file: File | null) => void;
+  /** Called when removing a persisted server image (edit flow). */
+  onImageRemove?: () => void;
+  imageDisabled?: boolean;
 }) {
   return (
     <>
@@ -41,10 +47,18 @@ export function ItemFormFields({
         name="imageUrl"
         label="Image"
         onFileChange={onImageFileChange}
+        onRemove={onImageRemove}
+        disabled={imageDisabled}
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <TextField<ItemFormValues> name="name" label="Name" required autoFocus maxLength={100} />
+        <TextField<ItemFormValues>
+          name="name"
+          label="Name"
+          required
+          autoFocus
+          maxLength={NAME_MAX_LENGTH}
+        />
         <TextField<ItemFormValues> name="sku" label="SKU" required maxLength={50} />
       </div>
 
@@ -110,7 +124,7 @@ export function ItemFormFields({
         name="description"
         label="Description"
         rows={4}
-        maxLength={500}
+        maxLength={DESCRIPTION_MAX_LENGTH}
         className="md:col-span-full"
       />
     </>

@@ -15,17 +15,9 @@ import { Plus, Eye, Pencil, Trash2, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { cisService, type ApiCisStatus, type CisSortBy } from "@/lib/api/services/cis";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { AppTooltip } from "@/components/AppTooltip";
 import { activeStatusClass, formatCisRate } from "@/lib/module-ui";
-
-const CIS_ROUTE = "/cis-management";
+import { CIS_ROUTE } from "@/lib/cis";
 
 export const Route = createFileRoute("/cis-management/")({
   head: () => ({ meta: [{ title: "CIS Management | Schore" }] }),
@@ -38,6 +30,8 @@ const COLUMN_SORT_KEYS: Record<string, CisSortBy> = {
   name: "name",
   code: "code",
   rate: "rate",
+  description: "description",
+  orderBy: "orderby",
   status: "status",
 };
 
@@ -48,8 +42,7 @@ function CisList() {
   const canDelete = usePermission({ route: CIS_ROUTE, action: "delete" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [status, setStatus] = useState<"active" | "inactive" | undefined>(undefined);
-  const [sortBy, setSortBy] = useState<CisSortBy>("rate");
+  const [sortBy, setSortBy] = useState<CisSortBy>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [confirmDel, setConfirmDel] = useState<ApiCisStatus | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -58,9 +51,9 @@ function CisList() {
   });
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: [...cisQueryKey, { page, pageSize, search, status, sortBy, sortDir }],
+    queryKey: [...cisQueryKey, { page, pageSize, search, sortBy, sortDir }],
     queryFn: async () =>
-      (await cisService.list({ page, pageSize, search, status, sortBy, sortDir })).data,
+      (await cisService.list({ page, pageSize, search, sortBy, sortDir })).data,
     placeholderData: keepPreviousData,
   });
 
@@ -87,12 +80,13 @@ function CisList() {
     try {
       downloadCsv({
         filename: `cis-export-${new Date().toISOString().slice(0, 10)}.csv`,
-        headers: ["Code", "Name", "Rate", "Default", "Status"],
+        headers: ["Name", "Code", "Rate", "Description", "Order", "Status"],
         rows: rows.map((c) => [
-          c.code,
           c.name,
+          c.code,
           formatCisRate(c.rate),
-          c.isDefault ? "Yes" : "No",
+          c.description ?? "",
+          String(c.orderBy ?? 0),
           c.isActive ? "Active" : "Inactive",
         ]),
       });
@@ -108,21 +102,17 @@ function CisList() {
         id: "name",
         header: "Name",
         sortable: true,
+        truncate: false,
         cell: (row) => (
-          <div className="min-w-0">
-            <AppTooltip content={row.name} asChild>
-              <Link
-                to="/cis-management/$id"
-                params={{ id: String(row.id) }}
-                className="block truncate font-medium hover:text-info hover:underline"
-              >
-                {row.name}
-              </Link>
-            </AppTooltip>
-            {row.description ? (
-              <div className="truncate text-[11px] text-muted-foreground">{row.description}</div>
-            ) : null}
-          </div>
+          <AppTooltip content={row.name} asChild>
+            <Link
+              to="/cis-management/$id"
+              params={{ id: String(row.id) }}
+              className="line-clamp-2 break-words font-medium hover:text-info hover:underline"
+            >
+              {row.name}
+            </Link>
+          </AppTooltip>
         ),
       },
       {
@@ -130,7 +120,7 @@ function CisList() {
         header: "Code",
         sortable: true,
         cell: (row) => (
-          <code className="rounded bg-secondary px-1.5 py-0.5 text-xs font-mono">{row.code}</code>
+          <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">{row.code}</code>
         ),
       },
       {
@@ -142,22 +132,39 @@ function CisList() {
         ),
       },
       {
+        id: "description",
+        header: "Description",
+        sortable: true,
+        truncate: false,
+        cell: (row) =>
+          row.description ? (
+            <AppTooltip content={row.description} asChild>
+              <span className="line-clamp-2 break-words text-sm text-muted-foreground">
+                {row.description}
+              </span>
+            </AppTooltip>
+          ) : (
+            "—"
+          ),
+      },
+      {
+        id: "orderBy",
+        header: "Order",
+        sortable: true,
+        cell: (row) => (
+          <span className="font-mono tabular-nums">{row.orderBy ?? 0}</span>
+        ),
+      },
+      {
         id: "status",
         header: "Status",
         sortable: true,
         cell: (row) => (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span
-              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(row.isActive)}`}
-            >
-              {row.isActive ? "Active" : "Inactive"}
-            </span>
-            {row.isDefault ? (
-              <span className="inline-flex items-center rounded-full border border-info/20 bg-info/10 px-2 py-0.5 text-[11px] font-medium text-info">
-                Default
-              </span>
-            ) : null}
-          </div>
+          <span
+            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(row.isActive)}`}
+          >
+            {row.isActive ? "Active" : "Inactive"}
+          </span>
         ),
       },
     ],
@@ -198,7 +205,7 @@ function CisList() {
   );
 
   const activeSortColumn =
-    Object.entries(COLUMN_SORT_KEYS).find(([, apiKey]) => apiKey === sortBy)?.[0] ?? "rate";
+    Object.entries(COLUMN_SORT_KEYS).find(([, apiKey]) => apiKey === sortBy)?.[0] ?? "name";
 
   function handleSortChange(columnId: string, direction: "asc" | "desc") {
     const apiSortBy = COLUMN_SORT_KEYS[columnId];
@@ -210,11 +217,10 @@ function CisList() {
 
   function clearFilters() {
     clearSearch();
-    setStatus(undefined);
     setPage(1);
   }
 
-  const hasActiveFilters = Boolean(search) || status != null;
+  const hasActiveFilters = Boolean(search);
 
   return (
     <div>
@@ -264,30 +270,9 @@ function CisList() {
         search={{
           value: searchInput,
           onChange: setSearchInput,
-          placeholder: "Search by name, code or rate…",
+          placeholder: "Search by name or code…",
           "aria-label": "Search CIS statuses",
         }}
-        filters={
-          <Select
-            value={status ?? "all"}
-            onValueChange={(value) => {
-              setStatus(value === "all" ? undefined : (value as "active" | "inactive"));
-              setPage(1);
-            }}
-          >
-            <SelectTrigger
-              className="h-9 w-full min-w-[11rem] sm:w-60 [&>span]:whitespace-nowrap"
-              aria-label="Filter by status"
-            >
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        }
         sort={{
           sortBy: activeSortColumn,
           sortDir,
@@ -295,7 +280,7 @@ function CisList() {
         }}
         emptyState={{
           title: "No CIS statuses match your filters",
-          description: "Try clearing the search or status filter.",
+          description: "Try clearing the search.",
           action: hasActiveFilters ? (
             <Button variant="outline" size="sm" onClick={clearFilters}>
               Clear filters

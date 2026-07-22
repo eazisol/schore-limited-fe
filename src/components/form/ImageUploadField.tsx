@@ -15,6 +15,11 @@ export interface ImageUploadFieldProps<T extends FieldValues> {
   className?: string;
   /** Called when the user selects or removes an image file. */
   onFileChange?: (file: File | null) => void;
+  /**
+   * Called when removing a persisted (server) image.
+   * Local/new previews (`data:`) are cleared without calling this.
+   */
+  onRemove?: () => void;
 }
 
 /**
@@ -29,6 +34,7 @@ export function ImageUploadField<T extends FieldValues>({
   disabled,
   className,
   onFileChange,
+  onRemove,
 }: ImageUploadFieldProps<T>) {
   const { control, formState } = useFormContext<T>();
   const submitting = formState.isSubmitting;
@@ -44,11 +50,20 @@ export function ImageUploadField<T extends FieldValues>({
       name={name}
       render={({ field, fieldState }) => {
         const value = (field.value as string) || "";
+        const isPersistedImage = Boolean(value) && !value.startsWith("data:");
 
         function clearImage() {
           field.onChange("");
           onFileChange?.(null);
           if (fileRef.current) fileRef.current.value = "";
+        }
+
+        function handleRemove() {
+          if (isPersistedImage && onRemove) {
+            onRemove();
+            return;
+          }
+          clearImage();
         }
 
         return (
@@ -102,7 +117,7 @@ export function ImageUploadField<T extends FieldValues>({
                         variant="outline"
                         size="sm"
                         className="border-destructive/30 text-destructive hover:bg-destructive/5"
-                        onClick={clearImage}
+                        onClick={handleRemove}
                         disabled={disabled || submitting}
                       >
                         <Trash2 className="h-3.5 w-3.5" />

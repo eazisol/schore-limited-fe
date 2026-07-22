@@ -15,6 +15,8 @@ export interface TextFieldProps<T extends FieldValues>
   leftIcon?: ComponentType<{ className?: string }>;
   rightSlot?: ReactNode;
   inputClassName?: string;
+  /** Transform the string value on change (e.g. uppercase Code fields). */
+  transformValue?: (value: string) => string;
 }
 
 function dateTooltipLabel(value: string): string {
@@ -31,7 +33,7 @@ function dateTooltipLabel(value: string): string {
 
 export function TextField<T extends FieldValues>({
   name, label, description, required, leftIcon: Icon, rightSlot,
-  className, inputClassName, disabled, type, ...rest
+  className, inputClassName, disabled, type, transformValue, ...rest
 }: TextFieldProps<T>) {
   const { control, formState } = useFormContext<T>();
   const submitting = formState.isSubmitting;
@@ -62,7 +64,13 @@ export function TextField<T extends FieldValues>({
                   type={type}
                   name={field.name}
                   onBlur={field.onBlur}
-                  onChange={field.onChange}
+                  onChange={(event) => {
+                    if (transformValue && type !== "number") {
+                      field.onChange(transformValue(event.target.value));
+                      return;
+                    }
+                    field.onChange(event);
+                  }}
                   value={field.value ?? ""}
                   ref={(el) => {
                     field.ref(el);

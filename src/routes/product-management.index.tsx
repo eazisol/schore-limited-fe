@@ -1,9 +1,8 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-/**
- * Product Management is a sidebar container. The catalogue lives under Items.
- */
+/** Legacy Product Management index — Menu API now uses `/product`. */
 export const Route = createFileRoute("/product-management/")({
-  head: () => ({ meta: [{ title: "Product Management | Schore" }] }),
-  component: () => <Navigate to="/items" replace />,
+  beforeLoad: () => {
+    throw redirect({ to: "/product" });
+  },
 });

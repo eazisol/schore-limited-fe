@@ -9,20 +9,15 @@ import { AppTooltip } from "@/components/AppTooltip";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, ArrowLeft, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Form,
-  TextField,
-  TextareaField,
-  CheckboxField,
-  SubmitButton,
-} from "@/components/form";
+import { Form, SubmitButton } from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
-import { cisService, type CisStatusPayload } from "@/lib/api/services/cis";
+import { cisService } from "@/lib/api/services/cis";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { cisQueryKey } from "./cis-management.index";
 import { activeStatusClass, formatDateTime, formatCisRate } from "@/lib/module-ui";
-
-const CIS_ROUTE = "/cis-management";
+import { CIS_ROUTE } from "@/lib/cis";
+import { cisFormSchema, toCisPayload, type CisFormValues } from "@/lib/cis-form";
+import { CisFormFields } from "@/components/cis/CisFormFields";
 
 const detailSearchSchema = z.object({
   mode: z.enum(["edit", "view"]).optional(),
@@ -33,27 +28,6 @@ export const Route = createFileRoute("/cis-management/$id")({
   validateSearch: detailSearchSchema,
   component: CisDetail,
 });
-
-const schema = z.object({
-  code: z
-    .string()
-    .trim()
-    .min(1, "Code is required")
-    .max(20, "Code must be 20 characters or fewer"),
-  name: z
-    .string()
-    .trim()
-    .min(1, "Name is required")
-    .max(100, "Name must be 100 characters or fewer"),
-  rate: z.coerce
-    .number()
-    .min(0, "Rate must be 0 or greater")
-    .max(100, "Rate must be 100 or less"),
-  description: z.string().trim().max(500, "Description must be 500 characters or fewer"),
-  isDefault: z.boolean(),
-  isActive: z.boolean(),
-});
-type Values = z.infer<typeof schema>;
 
 function CisDetail() {
   const { id } = Route.useParams();
@@ -75,41 +49,36 @@ function CisDetail() {
     });
   }
 
-  function openView() {
-    navigate({
-      to: "/cis-management/$id",
-      params: { id },
-      search: {},
-      replace: true,
-    });
-  }
-
   const cisQuery = useQuery({
     queryKey: ["cis", id],
     queryFn: async () => (await cisService.get(id)).data,
   });
   const row = cisQuery.data;
 
-  const defaults = useMemo<Values>(
+  const defaults = useMemo<CisFormValues>(
     () => ({
-      code: row?.code ?? "",
       name: row?.name ?? "",
+      code: row?.code ?? "",
       rate: row?.rate ?? 0,
       description: row?.description ?? "",
-      isDefault: row?.isDefault ?? false,
+      orderBy: row?.orderBy ?? 0,
       isActive: row?.isActive ?? true,
     }),
     [row],
   );
 
-  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: defaults });
+  const form = useForm<CisFormValues>({
+    resolver: zodResolver(cisFormSchema),
+    defaultValues: defaults,
+  });
   useEffect(() => {
     if (!row) return;
     form.reset(defaults);
   }, [row, defaults, form]);
 
   const updateMutation = useMutation({
-    mutationFn: (payload: CisStatusPayload) => cisService.update(numericId, payload),
+    mutationFn: (payload: ReturnType<typeof toCisPayload>) =>
+      cisService.update(numericId, payload),
     onSuccess: (res) => {
       toast.success(res.message || "CIS status updated");
       queryClient.setQueryData(["cis", id], res.data);
@@ -129,15 +98,8 @@ function CisDetail() {
     onError: (err) => notifyApiError(err, "Failed to delete CIS status"),
   });
 
-  async function save(values: Values) {
-    await updateMutation.mutateAsync({
-      code: values.code.trim().toUpperCase(),
-      name: values.name.trim(),
-      rate: values.rate,
-      description: values.description.trim() || null,
-      isDefault: values.isDefault,
-      isActive: values.isActive,
-    });
+  async function save(values: CisFormValues) {
+    await updateMutation.mutateAsync(toCisPayload(values));
   }
 
   if (cisQuery.isLoading) {
@@ -209,37 +171,7 @@ function CisDetail() {
         {isEditing ? (
           <Form form={form} onSubmit={save} className="card-elevated space-y-4 p-6 lg:col-span-2">
             <h3 className="font-display font-semibold">Edit details</h3>
-            <fieldset className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <TextField<Values> name="code" label="Code" required maxLength={20} />
-                <TextField<Values> name="name" label="Name" required maxLength={100} />
-              </div>
-              <TextField<Values>
-                name="rate"
-                label="Deduction rate (%)"
-                required
-                type="number"
-                min={0}
-                max={100}
-                step="1"
-              />
-              <TextareaField<Values>
-                name="description"
-                label="Description"
-                rows={3}
-                maxLength={500}
-              />
-              <CheckboxField<Values>
-                name="isDefault"
-                label="Default status"
-                description="New operatives will use this CIS rate when no other is selected."
-              />
-              <CheckboxField<Values>
-                name="isActive"
-                label="Active"
-                description="Status can be selected on operative records."
-              />
-            </fieldset>
+            <CisFormFields disabled={updateMutation.isPending} />
             <div className="flex items-center justify-end gap-2 border-t pt-2">
               <span className="mr-auto text-xs text-muted-foreground">
                 {dirty ? "Unsaved changes" : "All changes saved"}
@@ -248,10 +180,7 @@ function CisDetail() {
                 type="button"
                 variant="outline"
                 disabled={updateMutation.isPending}
-                onClick={() => {
-                  form.reset(defaults);
-                  openView();
-                }}
+                onClick={() => navigate({ to: "/cis-management" })}
               >
                 Cancel
               </Button>
@@ -265,12 +194,12 @@ function CisDetail() {
             <h3 className="font-display font-semibold">CIS details</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <ReadOnlyField label="Code" value={row.code} />
                 <ReadOnlyField label="Name" value={row.name} />
+                <ReadOnlyField label="Code" value={row.code} />
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <ReadOnlyField label="Rate" value={formatCisRate(row.rate)} />
-                <ReadOnlyField label="Default" value={row.isDefault ? "Yes" : "No"} />
+                <ReadOnlyField label="Order" value={String(row.orderBy ?? 0)} />
               </div>
               <ReadOnlyField
                 label="Status"

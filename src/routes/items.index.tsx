@@ -13,9 +13,15 @@ import {
 } from "@/components/data-table";
 import { Plus, Eye, Pencil, Trash2, Loader2, Download, Package } from "lucide-react";
 import { toast } from "sonner";
-import { productsService, resolveProductImageUrl, type ApiProduct } from "@/lib/api/services/products";
+import {
+  productsService,
+  resolveProductImageUrl,
+  type ApiProduct,
+  type ProductsSortBy,
+} from "@/lib/api/services/products";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { AppTooltip } from "@/components/AppTooltip";
+import { TableImagePreview } from "@/components/TableImagePreview";
 import { activeStatusClass, formatGbp } from "@/lib/module-ui";
 import { ITEMS_ROUTE } from "@/lib/items";
 
@@ -26,6 +32,14 @@ export const Route = createFileRoute("/items/")({
 
 export const itemsQueryKey = ["items"] as const;
 
+const ITEM_COLUMN_SORT_KEYS: Record<string, ProductsSortBy> = {
+  name: "name",
+  sku: "sku",
+  category: "category",
+  salePrice: "saleprice",
+  status: "status",
+};
+
 function ItemsList() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -33,6 +47,8 @@ function ItemsList() {
   const canDelete = usePermission({ route: ITEMS_ROUTE, action: "delete" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [sortBy, setSortBy] = useState<ProductsSortBy>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [confirmDel, setConfirmDel] = useState<ApiProduct | null>(null);
   const [exporting, setExporting] = useState(false);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
@@ -40,9 +56,9 @@ function ItemsList() {
   });
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: [...itemsQueryKey, { page, pageSize, search }],
+    queryKey: [...itemsQueryKey, { page, pageSize, search, sortBy, sortDir }],
     queryFn: async () =>
-      (await productsService.list({ page, pageSize, search })).data,
+      (await productsService.list({ page, pageSize, search, sortBy, sortDir })).data,
     placeholderData: keepPreviousData,
   });
 
@@ -91,36 +107,32 @@ function ItemsList() {
       {
         id: "name",
         header: "Name",
+        sortable: true,
+        truncate: false,
         cell: (item) => {
           const src = resolveProductImageUrl(item.imageUrl, item.editDate);
           return (
-            <div className="flex items-center gap-3">
-              {src ? (
-                <img
-                  src={src}
-                  alt=""
-                  className="h-9 w-9 shrink-0 rounded-md border object-cover"
-                />
-              ) : (
-                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md border bg-muted/40 text-muted-foreground">
-                  <Package className="h-4 w-4" />
-                </div>
-              )}
+            <div className="flex min-w-0 items-center gap-3">
+              <TableImagePreview
+                src={src}
+                alt={item.name}
+                className="h-9 w-9"
+                fallback={
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md border bg-muted/40 text-muted-foreground">
+                    <Package className="h-4 w-4" />
+                  </div>
+                }
+              />
               <div className="min-w-0">
                 <AppTooltip content={item.name} asChild>
                   <Link
                     to="/items/$id"
                     params={{ id: String(item.id) }}
-                    className="block truncate font-medium hover:text-info hover:underline"
+                    className="line-clamp-2 break-words font-medium hover:text-info hover:underline"
                   >
                     {item.name}
                   </Link>
                 </AppTooltip>
-                {item.description ? (
-                  <div className="truncate text-[11px] text-muted-foreground">
-                    {item.description}
-                  </div>
-                ) : null}
               </div>
             </div>
           );
@@ -129,6 +141,7 @@ function ItemsList() {
       {
         id: "sku",
         header: "SKU",
+        sortable: true,
         cell: (item) => (
           <code className="rounded bg-secondary px-1.5 py-0.5 text-xs font-mono">{item.sku}</code>
         ),
@@ -136,11 +149,13 @@ function ItemsList() {
       {
         id: "category",
         header: "Category",
+        sortable: true,
         cell: (item) => item.categoryName || "—",
       },
       {
         id: "salePrice",
         header: "Sale price",
+        sortable: true,
         cell: (item) => (
           <span className="font-mono tabular-nums">{formatGbp(item.salePrice)}</span>
         ),
@@ -148,12 +163,28 @@ function ItemsList() {
       {
         id: "status",
         header: "Status",
+        sortable: true,
         cell: (item) => (
           <span
             className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(item.isActive)}`}
           >
             {item.isActive ? "Active" : "Inactive"}
           </span>
+        ),
+      },
+      {
+        id: "image",
+        header: "Image",
+        align: "center",
+        width: "5rem",
+        truncate: false,
+        cell: (item) => (
+          <TableImagePreview
+            src={resolveProductImageUrl(item.imageUrl, item.editDate)}
+            alt={item.name}
+            variant="icon"
+            tooltip={item.imageUrl ? "View image" : "No image"}
+          />
         ),
       },
     ],
@@ -187,6 +218,17 @@ function ItemsList() {
     ],
     [canDelete, canModify, navigate],
   );
+
+  const activeSortColumn =
+    Object.entries(ITEM_COLUMN_SORT_KEYS).find(([, apiKey]) => apiKey === sortBy)?.[0] ?? "name";
+
+  function handleSortChange(columnId: string, direction: "asc" | "desc") {
+    const apiSortBy = ITEM_COLUMN_SORT_KEYS[columnId];
+    if (!apiSortBy) return;
+    setSortBy(apiSortBy);
+    setSortDir(direction);
+    setPage(1);
+  }
 
   function clearFilters() {
     clearSearch();
@@ -245,6 +287,11 @@ function ItemsList() {
           onChange: setSearchInput,
           placeholder: "Search by name, SKU or description…",
           "aria-label": "Search items",
+        }}
+        sort={{
+          sortBy: activeSortColumn,
+          sortDir,
+          onSortChange: handleSortChange,
         }}
         emptyState={{
           title: "No items match your filters",

@@ -133,19 +133,22 @@ function OperativesList() {
         id: "name",
         header: "Name",
         sortable: true,
+        truncate: false,
         cell: (op) => (
           <div className="min-w-0">
             <AppTooltip content={op.name} asChild>
               <Link
                 to="/operatives/$id"
                 params={{ id: String(op.id) }}
-                className="block truncate font-medium hover:text-info hover:underline"
+                className="line-clamp-2 break-words font-medium hover:text-info hover:underline"
               >
                 {op.name}
               </Link>
             </AppTooltip>
             {op.startDate ? (
-              <div className="text-[11px] text-muted-foreground">Joined {op.startDate}</div>
+              <div className="line-clamp-1 break-words text-[11px] text-muted-foreground">
+                Joined {op.startDate}
+              </div>
             ) : null}
           </div>
         ),

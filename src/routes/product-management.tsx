@@ -1,6 +1,8 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-/** Parent container for Product Management child menus (e.g. Items). */
+/** Legacy Product Management path — Menu API now uses `/product`. */
 export const Route = createFileRoute("/product-management")({
-  component: () => <Outlet />,
+  beforeLoad: () => {
+    throw redirect({ to: "/product" });
+  },
 });

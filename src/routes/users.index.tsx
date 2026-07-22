@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { ROLE_BADGE, ROLE_LABEL, type UserRole } from "@/lib/users-store";
 import { AppTooltip } from "@/components/AppTooltip";
+import { TableImagePreview } from "@/components/TableImagePreview";
 
 const USERS_ROUTE = "/users";
 
@@ -152,24 +153,27 @@ function UsersList() {
         id: "name",
         header: "Name",
         sortable: true,
+        truncate: false,
         cell: (user) => {
           const name = displayName(user);
           return (
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <UserAvatar name={name} src={resolveProfileImageUrl(user.profileImagePath)} />
               <div className="min-w-0">
                 <AppTooltip content={name} asChild>
                   <Link
                     to="/users/$id"
                     params={{ id: String(user.id) }}
-                    className="block truncate font-medium hover:text-info hover:underline"
+                    className="line-clamp-2 break-words font-medium hover:text-info hover:underline"
                   >
                     {name}
                   </Link>
                 </AppTooltip>
                 <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                   <Mail className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{user.email}</span>
+                  <AppTooltip content={user.email} asChild>
+                    <span className="line-clamp-1 min-w-0 break-all">{user.email}</span>
+                  </AppTooltip>
                 </div>
               </div>
             </div>
@@ -180,6 +184,7 @@ function UsersList() {
         id: "role",
         header: "Role",
         sortable: true,
+        truncate: false,
         cell: (user) => (
           <div className="flex flex-wrap gap-1">
             {(user.roleNames ?? []).map((role, index) => (
@@ -427,13 +432,16 @@ function UserAvatar({ name, src }: { name: string; src: string }) {
     .join("")
     .toUpperCase();
 
-  if (src) {
-    return <img src={src} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />;
-  }
-
   return (
-    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-[11px] font-semibold text-accent">
-      {initials || <User className="h-4 w-4" />}
-    </span>
+    <TableImagePreview
+      src={src}
+      alt={name}
+      className="h-8 w-8 rounded-full"
+      fallback={
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-[11px] font-semibold text-accent">
+          {initials || <User className="h-4 w-4" />}
+        </span>
+      }
+    />
   );
 }

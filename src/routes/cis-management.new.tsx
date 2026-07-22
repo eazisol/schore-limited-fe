@@ -3,69 +3,42 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
 import { AppTooltip } from "@/components/AppTooltip";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Form,
-  TextField,
-  TextareaField,
-  CheckboxField,
-  SubmitButton,
-} from "@/components/form";
+import { Form, SubmitButton } from "@/components/form";
 import { RequirePermission } from "@/components/Permission";
-import { cisService, type CisStatusPayload } from "@/lib/api/services/cis";
+import { cisService } from "@/lib/api/services/cis";
 import { notifyApiError } from "@/lib/api/axios";
 import { cisQueryKey } from "./cis-management.index";
-
-const CIS_ROUTE = "/cis-management";
+import { CIS_ROUTE } from "@/lib/cis";
+import { cisFormSchema, toCisPayload, type CisFormValues } from "@/lib/cis-form";
+import { CisFormFields } from "@/components/cis/CisFormFields";
 
 export const Route = createFileRoute("/cis-management/new")({
   head: () => ({ meta: [{ title: "Add CIS Status | Schore" }] }),
   component: NewCisStatus,
 });
 
-const schema = z.object({
-  code: z
-    .string()
-    .trim()
-    .min(1, "Code is required")
-    .max(20, "Code must be 20 characters or fewer"),
-  name: z
-    .string()
-    .trim()
-    .min(1, "Name is required")
-    .max(100, "Name must be 100 characters or fewer"),
-  rate: z.coerce
-    .number()
-    .min(0, "Rate must be 0 or greater")
-    .max(100, "Rate must be 100 or less"),
-  description: z.string().trim().max(500, "Description must be 500 characters or fewer"),
-  isDefault: z.boolean(),
-  isActive: z.boolean(),
-});
-type Values = z.infer<typeof schema>;
-
 function NewCisStatus() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const form = useForm<Values>({
-    resolver: zodResolver(schema),
+  const form = useForm<CisFormValues>({
+    resolver: zodResolver(cisFormSchema),
     defaultValues: {
-      code: "",
       name: "",
-      rate: 20,
+      code: "",
+      rate: 0,
       description: "",
-      isDefault: false,
+      orderBy: 0,
       isActive: true,
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: (payload: CisStatusPayload) => cisService.create(payload),
+    mutationFn: (payload: ReturnType<typeof toCisPayload>) => cisService.create(payload),
     onSuccess: (res) => {
       toast.success(res.message || `${res.data?.name || "CIS status"} created`);
       queryClient.invalidateQueries({ queryKey: cisQueryKey });
@@ -74,15 +47,8 @@ function NewCisStatus() {
     onError: (err) => notifyApiError(err, "Failed to create CIS status"),
   });
 
-  async function submit(values: Values) {
-    await createMutation.mutateAsync({
-      code: values.code.trim().toUpperCase(),
-      name: values.name.trim(),
-      rate: values.rate,
-      description: values.description.trim() || null,
-      isDefault: values.isDefault,
-      isActive: values.isActive,
-    });
+  async function submit(values: CisFormValues) {
+    await createMutation.mutateAsync(toCisPayload(values));
   }
 
   return (
@@ -106,35 +72,7 @@ function NewCisStatus() {
         <Form form={form} onSubmit={submit} className="max-w-3xl space-y-6">
           <div className="card-elevated space-y-4 p-6">
             <h3 className="font-display font-semibold">CIS details</h3>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <TextField<Values> name="code" label="Code" required autoFocus maxLength={20} />
-              <TextField<Values> name="name" label="Name" required maxLength={100} />
-            </div>
-            <TextField<Values>
-              name="rate"
-              label="Deduction rate (%)"
-              required
-              type="number"
-              min={0}
-              max={100}
-              step="1"
-            />
-            <TextareaField<Values>
-              name="description"
-              label="Description"
-              rows={3}
-              maxLength={500}
-            />
-            <CheckboxField<Values>
-              name="isDefault"
-              label="Default status"
-              description="New operatives will use this CIS rate when no other is selected."
-            />
-            <CheckboxField<Values>
-              name="isActive"
-              label="Active"
-              description="Status can be selected on operative records."
-            />
+            <CisFormFields disabled={createMutation.isPending} />
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2">
@@ -146,10 +84,7 @@ function NewCisStatus() {
             >
               Cancel
             </Button>
-            <SubmitButton loadingText="Saving…">
-              {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              Create CIS status
-            </SubmitButton>
+            <SubmitButton loadingText="Saving…">Create CIS status</SubmitButton>
           </div>
         </Form>
       </div>

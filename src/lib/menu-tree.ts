@@ -9,6 +9,7 @@ function normalizeAppPath(route: string | null | undefined): string {
   const raw = (route ?? "").trim() || "/";
   const normalized = raw.length > 1 && raw.endsWith("/") ? raw.slice(0, -1) : raw;
   if (normalized === "/dashboard") return "/";
+  if (normalized === "/product-management") return "/product";
   return normalized;
 }
 

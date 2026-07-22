@@ -15,17 +15,9 @@ import { Plus, Eye, Pencil, Trash2, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { tradesService, type ApiTrade, type TradesSortBy } from "@/lib/api/services/trades";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { AppTooltip } from "@/components/AppTooltip";
 import { activeStatusClass } from "@/lib/module-ui";
-
-const TRADES_ROUTE = "/trade-builder";
+import { TRADES_ROUTE } from "@/lib/trades";
 
 export const Route = createFileRoute("/trade-builder/")({
   head: () => ({ meta: [{ title: "Trade Management | Schore" }] }),
@@ -36,8 +28,9 @@ export const tradesQueryKey = ["trades"] as const;
 
 const COLUMN_SORT_KEYS: Record<string, TradesSortBy> = {
   name: "name",
-  groups: "groups",
-  tasks: "tasks",
+  code: "code",
+  description: "description",
+  orderBy: "orderby",
   status: "status",
 };
 
@@ -48,7 +41,6 @@ function TradesList() {
   const canDelete = usePermission({ route: TRADES_ROUTE, action: "delete" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [status, setStatus] = useState<"active" | "inactive" | undefined>(undefined);
   const [sortBy, setSortBy] = useState<TradesSortBy>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [confirmDel, setConfirmDel] = useState<ApiTrade | null>(null);
@@ -58,9 +50,9 @@ function TradesList() {
   });
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: [...tradesQueryKey, { page, pageSize, search, status, sortBy, sortDir }],
+    queryKey: [...tradesQueryKey, { page, pageSize, search, sortBy, sortDir }],
     queryFn: async () =>
-      (await tradesService.list({ page, pageSize, search, status, sortBy, sortDir })).data,
+      (await tradesService.list({ page, pageSize, search, sortBy, sortDir })).data,
     placeholderData: keepPreviousData,
   });
 
@@ -87,11 +79,12 @@ function TradesList() {
     try {
       downloadCsv({
         filename: `trades-export-${new Date().toISOString().slice(0, 10)}.csv`,
-        headers: ["Name", "Groups", "Tasks", "Status"],
+        headers: ["Name", "Code", "Description", "Order", "Status"],
         rows: rows.map((t) => [
           t.name,
-          String(t.groupCount),
-          String(t.taskCount),
+          t.code,
+          t.description ?? "",
+          String(t.orderBy ?? 0),
           t.isActive ? "Active" : "Inactive",
         ]),
       });
@@ -105,39 +98,51 @@ function TradesList() {
     () => [
       {
         id: "name",
-        header: "Trade",
+        header: "Name",
+        sortable: true,
+        truncate: false,
+        cell: (trade) => (
+          <AppTooltip content={trade.name} asChild>
+            <Link
+              to="/trade-builder/$id"
+              params={{ id: String(trade.id) }}
+              className="line-clamp-2 break-words font-medium hover:text-info hover:underline"
+            >
+              {trade.name}
+            </Link>
+          </AppTooltip>
+        ),
+      },
+      {
+        id: "code",
+        header: "Code",
         sortable: true,
         cell: (trade) => (
-          <div className="min-w-0">
-            <AppTooltip content={trade.name} asChild>
-              <Link
-                to="/trade-builder/$id"
-                params={{ id: String(trade.id) }}
-                className="block truncate font-medium hover:text-info hover:underline"
-              >
-                {trade.name}
-              </Link>
+          <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">{trade.code}</code>
+        ),
+      },
+      {
+        id: "description",
+        header: "Description",
+        sortable: true,
+        truncate: false,
+        cell: (trade) =>
+          trade.description ? (
+            <AppTooltip content={trade.description} asChild>
+              <span className="line-clamp-2 break-words text-sm text-muted-foreground">
+                {trade.description}
+              </span>
             </AppTooltip>
-            {trade.description ? (
-              <div className="truncate text-[11px] text-muted-foreground">{trade.description}</div>
-            ) : null}
-          </div>
-        ),
+          ) : (
+            "—"
+          ),
       },
       {
-        id: "groups",
-        header: "Groups",
+        id: "orderBy",
+        header: "Order",
         sortable: true,
         cell: (trade) => (
-          <span className="font-mono tabular-nums">{trade.groupCount}</span>
-        ),
-      },
-      {
-        id: "tasks",
-        header: "Tasks",
-        sortable: true,
-        cell: (trade) => (
-          <span className="font-mono tabular-nums">{trade.taskCount}</span>
+          <span className="font-mono tabular-nums">{trade.orderBy ?? 0}</span>
         ),
       },
       {
@@ -202,11 +207,10 @@ function TradesList() {
 
   function clearFilters() {
     clearSearch();
-    setStatus(undefined);
     setPage(1);
   }
 
-  const hasActiveFilters = Boolean(search) || status != null;
+  const hasActiveFilters = Boolean(search);
 
   return (
     <div>
@@ -256,30 +260,9 @@ function TradesList() {
         search={{
           value: searchInput,
           onChange: setSearchInput,
-          placeholder: "Search by trade name…",
+          placeholder: "Search by name or code…",
           "aria-label": "Search trades",
         }}
-        filters={
-          <Select
-            value={status ?? "all"}
-            onValueChange={(value) => {
-              setStatus(value === "all" ? undefined : (value as "active" | "inactive"));
-              setPage(1);
-            }}
-          >
-            <SelectTrigger
-              className="h-9 w-full min-w-[11rem] sm:w-60 [&>span]:whitespace-nowrap"
-              aria-label="Filter by status"
-            >
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        }
         sort={{
           sortBy: activeSortColumn,
           sortDir,
@@ -287,7 +270,7 @@ function TradesList() {
         }}
         emptyState={{
           title: "No trades match your filters",
-          description: "Try clearing the search or status filter.",
+          description: "Try clearing the search.",
           action: hasActiveFilters ? (
             <Button variant="outline" size="sm" onClick={clearFilters}>
               Clear filters
@@ -322,7 +305,7 @@ function TradesList() {
           >
             <h3 className="font-display text-lg font-semibold">Delete {confirmDel.name}?</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              This permanently removes the trade. Linked groups and tasks may become unavailable.
+              This permanently removes the trade. This action cannot be undone.
             </p>
             <div className="mt-6 flex justify-end gap-2">
               <Button

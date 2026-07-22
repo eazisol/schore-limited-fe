@@ -11,14 +11,6 @@ export const PERMISSION_EXEMPT_PATHS = ["/forbidden", "/profile"] as const;
 /** Unauthenticated / full-screen auth routes. */
 export const PUBLIC_PATHS = ["/signin", "/forgot-password", "/reset-password"] as const;
 
-export interface SettingsTab {
-  to: string;
-  label: string;
-  code: string;
-  orderBy: number;
-  menu: ApiMenu;
-}
-
 /** Build one authorized menu tree by unioning grants from every assigned role. */
 export function buildAuthorizedMenus(
   menuTree: ApiMenuDefinition[],
@@ -69,6 +61,7 @@ export function toAppPath(apiRoute: string | null | undefined): string {
   const raw = (apiRoute ?? "").trim() || "/";
   const normalized = raw.length > 1 && raw.endsWith("/") ? raw.slice(0, -1) : raw;
   if (normalized === "/dashboard") return "/";
+  if (normalized === "/product-management") return "/product";
   return normalized;
 }
 
@@ -88,46 +81,9 @@ function normalizeCode(code: string | null | undefined): string {
   return (code ?? "").trim().toUpperCase();
 }
 
-/**
- * Maps a login menu to a Settings tab route when it belongs inside Settings
- * (not as a separate sidebar item). Returns null for non-settings-tab menus.
- */
-export function resolveSettingsTabPath(menu: ApiMenu): string | null {
-  const code = normalizeCode(menu.code);
-  const route = (menu.route ?? "").trim().replace(/\/$/, "") || "/";
-
-  const byCode: Record<string, string> = {
-    ROLES: "/settings/roles",
-    PERMISSIONS: "/settings/role-permissions",
-    USER_TYPES: "/settings/user-types",
-    USER_TYPE: "/settings/user-types",
-    EMAIL_SMTP: "/settings/email-smtp",
-    SMTP: "/settings/email-smtp",
-    EMAIL: "/settings/email-smtp",
-  };
-  if (byCode[code]) return byCode[code];
-
-  const byRoute: Record<string, string> = {
-    "/roles": "/settings/roles",
-    "/permissions": "/settings/role-permissions",
-    "/user-types": "/settings/user-types",
-    "/email-smtp": "/settings/email-smtp",
-  };
-  if (byRoute[route]) return byRoute[route];
-
-  return null;
-}
-
-/** Menus that render as Settings tabs — never as separate sidebar items. */
-export function isSettingsChildMenu(menu: ApiMenu): boolean {
-  return resolveSettingsTabPath(menu) != null;
-}
-
 /** Whether a menu should appear in the main sidebar. */
 export function isSidebarMenu(menu: ApiMenu): boolean {
-  if (!menu.read) return false;
-  if (isSettingsChildMenu(menu)) return false;
-  return true;
+  return Boolean(menu.read);
 }
 
 /** Depth-first flatten of a menu tree. */
@@ -177,65 +133,59 @@ function rebuildSidebarTree(flat: ApiMenu[]): ApiMenu[] {
   return sortTree(roots);
 }
 
-/** Main sidebar menus: `read` only, excludes Settings child modules (Roles, Permissions, etc.). */
+/** Main sidebar menus: `read` only, nested via Menu API `parentMenuId`. */
 export function buildNavMenus(menus: ApiMenu[]): ApiMenu[] {
   return rebuildSidebarTree(flattenMenus(menus));
 }
 
-/**
- * Settings tabs derived from login menus.
- * - Dedicated menus (Roles, Permissions, …) become their own tab when `read` is true.
- * - User Types & Email SMTP fall under the Settings menu when no dedicated menu exists.
- */
-export function buildSettingsTabs(menus: ApiMenu[]): SettingsTab[] {
+/** Readable child menus of a parent (by code), for container redirects. */
+export function getChildMenusByParentCode(menus: ApiMenu[], parentCode: string): ApiMenu[] {
   const flat = flattenMenus(menus);
-  const tabs: SettingsTab[] = [];
-  const seen = new Set<string>();
+  const parent = flat.find((m) => normalizeCode(m.code) === normalizeCode(parentCode));
+  if (!parent) return [];
+  return sortByOrder(flat.filter((m) => m.parentMenuId === parent.id && m.read)).map((m) => ({
+    ...m,
+    route: toAppPath(m.route),
+  }));
+}
 
-  for (const menu of flat) {
-    if (!menu.read) continue;
-    const tabPath = resolveSettingsTabPath(menu);
-    if (!tabPath || seen.has(tabPath)) continue;
-    seen.add(tabPath);
-    tabs.push({
-      to: tabPath,
-      label: menu.name,
-      code: menu.code,
-      orderBy: menu.orderBy,
-      menu,
-    });
-  }
-
-  const settingsMenu = flat.find((m) => normalizeCode(m.code) === "SETTINGS" && m.read);
-  if (settingsMenu) {
-    const settingsDefaults: Array<{ path: string; label: string; orderBy: number }> = [
-      { path: "/settings/user-types", label: "User Types", orderBy: settingsMenu.orderBy - 0.3 },
-      { path: "/settings/email-smtp", label: "Email SMTP", orderBy: settingsMenu.orderBy + 0.3 },
-    ];
-    for (const def of settingsDefaults) {
-      if (seen.has(def.path)) continue;
-      seen.add(def.path);
-      tabs.push({
-        to: def.path,
-        label: def.label,
-        code: settingsMenu.code,
-        orderBy: def.orderBy,
-        menu: settingsMenu,
-      });
-    }
-  }
-
-  return sortByOrder(tabs);
+/** Readable child menus of Settings (by `parentMenuId`), for redirects. */
+export function getSettingsChildMenus(menus: ApiMenu[]): ApiMenu[] {
+  return getChildMenusByParentCode(menus, "SETTINGS");
 }
 
 export function hasSettingsAccess(menus: ApiMenu[]): boolean {
   const flat = flattenMenus(menus);
   if (flat.some((m) => normalizeCode(m.code) === "SETTINGS" && m.read)) return true;
-  return buildSettingsTabs(menus).length > 0;
+  return getSettingsChildMenus(menus).length > 0;
+}
+
+/** Readable child menus of Product (by `parentMenuId`), for redirects. */
+export function getProductChildMenus(menus: ApiMenu[]): ApiMenu[] {
+  const byProduct = getChildMenusByParentCode(menus, "PRODUCT");
+  if (byProduct.length) return byProduct;
+  return getChildMenusByParentCode(menus, "PRODUCT_MANAGEMENT");
+}
+
+export function hasProductAccess(menus: ApiMenu[]): boolean {
+  const flat = flattenMenus(menus);
+  if (
+    flat.some(
+      (m) =>
+        (normalizeCode(m.code) === "PRODUCT" || normalizeCode(m.code) === "PRODUCT_MANAGEMENT") &&
+        m.read,
+    )
+  ) {
+    return true;
+  }
+  return getProductChildMenus(menus).length > 0;
 }
 
 /**
- * Longest-prefix match of a pathname against menu routes (top-level pages).
+ * Longest-prefix match of a pathname against menu routes.
+ * On equal route length, prefer a leaf (no children) so a parent container
+ * sharing a route with its page (e.g. Roles parent + ROLE_LIST both `/roles`)
+ * does not steal page-level permission checks.
  */
 export function findMenuForPath(menus: ApiMenu[], pathname: string): ApiMenu | null {
   const path = toAppPath(pathname);
@@ -257,6 +207,12 @@ export function findMenuForPath(menus: ApiMenu[], pathname: string): ApiMenu | n
     if (route.length > bestLen) {
       best = menu;
       bestLen = route.length;
+      continue;
+    }
+    if (route.length === bestLen && best) {
+      const bestIsLeaf = (best.children?.length ?? 0) === 0;
+      const menuIsLeaf = (menu.children?.length ?? 0) === 0;
+      if (menuIsLeaf && !bestIsLeaf) best = menu;
     }
   }
 
@@ -265,23 +221,7 @@ export function findMenuForPath(menus: ApiMenu[], pathname: string): ApiMenu | n
 
 /** Resolve the login menu that governs permissions for an app pathname. */
 export function resolveMenuForAppPath(menus: ApiMenu[], pathname: string): ApiMenu | null {
-  const path = toAppPath(pathname);
-
-  if (path.startsWith("/settings")) {
-    const tabs = buildSettingsTabs(menus);
-    const tab = tabs.find((t) => path === t.to || path.startsWith(`${t.to}/`));
-    if (tab) return tab.menu;
-
-    if (path === "/settings" || path === "/settings/") {
-      const settingsMenu = findMenuByCode(menus, "SETTINGS");
-      if (settingsMenu?.read) return settingsMenu;
-      return tabs[0]?.menu ?? null;
-    }
-
-    return null;
-  }
-
-  return findMenuForPath(menus, path);
+  return findMenuForPath(menus, pathname);
 }
 
 export function findMenuByCode(menus: ApiMenu[], code: string): ApiMenu | null {
@@ -307,7 +247,6 @@ export function getMenuPermission(
 /**
  * Whether the current pathname may be rendered.
  * - Public / exempt paths → allowed.
- * - Settings area → requires Settings access and tab-level `read`.
  * - Other paths → matching menu with `read`, or denied if unmatched.
  */
 export function canAccessPath(menus: ApiMenu[], pathname: string): boolean {
@@ -316,14 +255,16 @@ export function canAccessPath(menus: ApiMenu[], pathname: string): boolean {
   const path = toAppPath(pathname);
 
   if (path === "/settings" || path === "/settings/") {
-    return hasSettingsAccess(menus) && buildSettingsTabs(menus).length > 0;
+    return hasSettingsAccess(menus);
   }
 
-  if (path.startsWith("/settings/")) {
-    if (!hasSettingsAccess(menus)) return false;
-    const menu = resolveMenuForAppPath(menus, path);
-    if (!menu) return false;
-    return Boolean(menu.read);
+  if (
+    path === "/product" ||
+    path === "/product/" ||
+    path === "/product-management" ||
+    path === "/product-management/"
+  ) {
+    return hasProductAccess(menus);
   }
 
   const menu = resolveMenuForAppPath(menus, path);

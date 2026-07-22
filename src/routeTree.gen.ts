@@ -11,18 +11,22 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WagesRouteImport } from './routes/wages'
 import { Route as UsersRouteImport } from './routes/users'
+import { Route as UnitsRouteImport } from './routes/units'
 import { Route as TradeBuilderRouteImport } from './routes/trade-builder'
 import { Route as SystemConfigRouteImport } from './routes/system-config'
 import { Route as StatementsRouteImport } from './routes/statements'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as RolesRouteImport } from './routes/roles'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as PropertiesRouteImport } from './routes/properties'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProductManagementRouteImport } from './routes/product-management'
+import { Route as ProductRouteImport } from './routes/product'
 import { Route as PrelimsRouteImport } from './routes/prelims'
+import { Route as PermissionsRouteImport } from './routes/permissions'
 import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as OperativesRouteImport } from './routes/operatives'
 import { Route as LegendCodesRouteImport } from './routes/legend-codes'
@@ -31,11 +35,13 @@ import { Route as ItemsRouteImport } from './routes/items'
 import { Route as HoldRouteImport } from './routes/hold'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ForbiddenRouteImport } from './routes/forbidden'
+import { Route as EmailSmtpRouteImport } from './routes/email-smtp'
 import { Route as DailyRouteImport } from './routes/daily'
 import { Route as CostBudgetRouteImport } from './routes/cost-budget'
 import { Route as ContractsRouteImport } from './routes/contracts'
 import { Route as ConfirmationRouteImport } from './routes/confirmation'
 import { Route as CisManagementRouteImport } from './routes/cis-management'
+import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as AllocationRouteImport } from './routes/allocation'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WagesIndexRouteImport } from './routes/wages.index'
@@ -44,6 +50,7 @@ import { Route as TradeBuilderIndexRouteImport } from './routes/trade-builder.in
 import { Route as SystemConfigIndexRouteImport } from './routes/system-config.index'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
+import { Route as ProductIndexRouteImport } from './routes/product.index'
 import { Route as ProductManagementIndexRouteImport } from './routes/product-management.index'
 import { Route as OperativesIndexRouteImport } from './routes/operatives.index'
 import { Route as ItemsIndexRouteImport } from './routes/items.index'
@@ -80,6 +87,11 @@ const UsersRoute = UsersRouteImport.update({
   path: '/users',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UnitsRoute = UnitsRouteImport.update({
+  id: '/units',
+  path: '/units',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TradeBuilderRoute = TradeBuilderRouteImport.update({
   id: '/trade-builder',
   path: '/trade-builder',
@@ -103,6 +115,11 @@ const SigninRoute = SigninRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RolesRoute = RolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -135,9 +152,19 @@ const ProductManagementRoute = ProductManagementRouteImport.update({
   path: '/product-management',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProductRoute = ProductRouteImport.update({
+  id: '/product',
+  path: '/product',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrelimsRoute = PrelimsRouteImport.update({
   id: '/prelims',
   path: '/prelims',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PermissionsRoute = PermissionsRouteImport.update({
+  id: '/permissions',
+  path: '/permissions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PayrollRoute = PayrollRouteImport.update({
@@ -180,6 +207,11 @@ const ForbiddenRoute = ForbiddenRouteImport.update({
   path: '/forbidden',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmailSmtpRoute = EmailSmtpRouteImport.update({
+  id: '/email-smtp',
+  path: '/email-smtp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DailyRoute = DailyRouteImport.update({
   id: '/daily',
   path: '/daily',
@@ -203,6 +235,11 @@ const ConfirmationRoute = ConfirmationRouteImport.update({
 const CisManagementRoute = CisManagementRouteImport.update({
   id: '/cis-management',
   path: '/cis-management',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CategoriesRoute = CategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AllocationRoute = AllocationRouteImport.update({
@@ -244,6 +281,11 @@ const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PropertiesRoute,
+} as any)
+const ProductIndexRoute = ProductIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProductRoute,
 } as any)
 const ProductManagementIndexRoute = ProductManagementIndexRouteImport.update({
   id: '/',
@@ -374,11 +416,13 @@ const ItemsIdEditRoute = ItemsIdEditRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/allocation': typeof AllocationRoute
+  '/categories': typeof CategoriesRoute
   '/cis-management': typeof CisManagementRouteWithChildren
   '/confirmation': typeof ConfirmationRoute
   '/contracts': typeof ContractsRoute
   '/cost-budget': typeof CostBudgetRoute
   '/daily': typeof DailyRoute
+  '/email-smtp': typeof EmailSmtpRoute
   '/forbidden': typeof ForbiddenRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/hold': typeof HoldRoute
@@ -387,18 +431,22 @@ export interface FileRoutesByFullPath {
   '/legend-codes': typeof LegendCodesRoute
   '/operatives': typeof OperativesRouteWithChildren
   '/payroll': typeof PayrollRoute
+  '/permissions': typeof PermissionsRoute
   '/prelims': typeof PrelimsRoute
+  '/product': typeof ProductRouteWithChildren
   '/product-management': typeof ProductManagementRouteWithChildren
   '/profile': typeof ProfileRoute
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/roles': typeof RolesRoute
   '/settings': typeof SettingsRouteWithChildren
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
   '/system-config': typeof SystemConfigRouteWithChildren
   '/trade-builder': typeof TradeBuilderRouteWithChildren
+  '/units': typeof UnitsRoute
   '/users': typeof UsersRouteWithChildren
   '/wages': typeof WagesRouteWithChildren
   '/cis-management/$id': typeof CisManagementIdRoute
@@ -425,6 +473,7 @@ export interface FileRoutesByFullPath {
   '/items/': typeof ItemsIndexRoute
   '/operatives/': typeof OperativesIndexRoute
   '/product-management/': typeof ProductManagementIndexRoute
+  '/product/': typeof ProductIndexRoute
   '/properties/': typeof PropertiesIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/system-config/': typeof SystemConfigIndexRoute
@@ -436,23 +485,28 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/allocation': typeof AllocationRoute
+  '/categories': typeof CategoriesRoute
   '/confirmation': typeof ConfirmationRoute
   '/contracts': typeof ContractsRoute
   '/cost-budget': typeof CostBudgetRoute
   '/daily': typeof DailyRoute
+  '/email-smtp': typeof EmailSmtpRoute
   '/forbidden': typeof ForbiddenRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/hold': typeof HoldRoute
   '/kpi': typeof KpiRoute
   '/legend-codes': typeof LegendCodesRoute
   '/payroll': typeof PayrollRoute
+  '/permissions': typeof PermissionsRoute
   '/prelims': typeof PrelimsRoute
   '/profile': typeof ProfileRoute
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/roles': typeof RolesRoute
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
+  '/units': typeof UnitsRoute
   '/cis-management/$id': typeof CisManagementIdRoute
   '/cis-management/new': typeof CisManagementNewRoute
   '/items/$id': typeof ItemsIdRouteWithChildren
@@ -477,6 +531,7 @@ export interface FileRoutesByTo {
   '/items': typeof ItemsIndexRoute
   '/operatives': typeof OperativesIndexRoute
   '/product-management': typeof ProductManagementIndexRoute
+  '/product': typeof ProductIndexRoute
   '/properties': typeof PropertiesIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/system-config': typeof SystemConfigIndexRoute
@@ -489,11 +544,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/allocation': typeof AllocationRoute
+  '/categories': typeof CategoriesRoute
   '/cis-management': typeof CisManagementRouteWithChildren
   '/confirmation': typeof ConfirmationRoute
   '/contracts': typeof ContractsRoute
   '/cost-budget': typeof CostBudgetRoute
   '/daily': typeof DailyRoute
+  '/email-smtp': typeof EmailSmtpRoute
   '/forbidden': typeof ForbiddenRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/hold': typeof HoldRoute
@@ -502,18 +559,22 @@ export interface FileRoutesById {
   '/legend-codes': typeof LegendCodesRoute
   '/operatives': typeof OperativesRouteWithChildren
   '/payroll': typeof PayrollRoute
+  '/permissions': typeof PermissionsRoute
   '/prelims': typeof PrelimsRoute
+  '/product': typeof ProductRouteWithChildren
   '/product-management': typeof ProductManagementRouteWithChildren
   '/profile': typeof ProfileRoute
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/roles': typeof RolesRoute
   '/settings': typeof SettingsRouteWithChildren
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
   '/system-config': typeof SystemConfigRouteWithChildren
   '/trade-builder': typeof TradeBuilderRouteWithChildren
+  '/units': typeof UnitsRoute
   '/users': typeof UsersRouteWithChildren
   '/wages': typeof WagesRouteWithChildren
   '/cis-management/$id': typeof CisManagementIdRoute
@@ -540,6 +601,7 @@ export interface FileRoutesById {
   '/items/': typeof ItemsIndexRoute
   '/operatives/': typeof OperativesIndexRoute
   '/product-management/': typeof ProductManagementIndexRoute
+  '/product/': typeof ProductIndexRoute
   '/properties/': typeof PropertiesIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/system-config/': typeof SystemConfigIndexRoute
@@ -553,11 +615,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/allocation'
+    | '/categories'
     | '/cis-management'
     | '/confirmation'
     | '/contracts'
     | '/cost-budget'
     | '/daily'
+    | '/email-smtp'
     | '/forbidden'
     | '/forgot-password'
     | '/hold'
@@ -566,18 +630,22 @@ export interface FileRouteTypes {
     | '/legend-codes'
     | '/operatives'
     | '/payroll'
+    | '/permissions'
     | '/prelims'
+    | '/product'
     | '/product-management'
     | '/profile'
     | '/properties'
     | '/rates'
     | '/reports'
     | '/reset-password'
+    | '/roles'
     | '/settings'
     | '/signin'
     | '/statements'
     | '/system-config'
     | '/trade-builder'
+    | '/units'
     | '/users'
     | '/wages'
     | '/cis-management/$id'
@@ -604,6 +672,7 @@ export interface FileRouteTypes {
     | '/items/'
     | '/operatives/'
     | '/product-management/'
+    | '/product/'
     | '/properties/'
     | '/settings/'
     | '/system-config/'
@@ -615,23 +684,28 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/allocation'
+    | '/categories'
     | '/confirmation'
     | '/contracts'
     | '/cost-budget'
     | '/daily'
+    | '/email-smtp'
     | '/forbidden'
     | '/forgot-password'
     | '/hold'
     | '/kpi'
     | '/legend-codes'
     | '/payroll'
+    | '/permissions'
     | '/prelims'
     | '/profile'
     | '/rates'
     | '/reports'
     | '/reset-password'
+    | '/roles'
     | '/signin'
     | '/statements'
+    | '/units'
     | '/cis-management/$id'
     | '/cis-management/new'
     | '/items/$id'
@@ -656,6 +730,7 @@ export interface FileRouteTypes {
     | '/items'
     | '/operatives'
     | '/product-management'
+    | '/product'
     | '/properties'
     | '/settings'
     | '/system-config'
@@ -667,11 +742,13 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/allocation'
+    | '/categories'
     | '/cis-management'
     | '/confirmation'
     | '/contracts'
     | '/cost-budget'
     | '/daily'
+    | '/email-smtp'
     | '/forbidden'
     | '/forgot-password'
     | '/hold'
@@ -680,18 +757,22 @@ export interface FileRouteTypes {
     | '/legend-codes'
     | '/operatives'
     | '/payroll'
+    | '/permissions'
     | '/prelims'
+    | '/product'
     | '/product-management'
     | '/profile'
     | '/properties'
     | '/rates'
     | '/reports'
     | '/reset-password'
+    | '/roles'
     | '/settings'
     | '/signin'
     | '/statements'
     | '/system-config'
     | '/trade-builder'
+    | '/units'
     | '/users'
     | '/wages'
     | '/cis-management/$id'
@@ -718,6 +799,7 @@ export interface FileRouteTypes {
     | '/items/'
     | '/operatives/'
     | '/product-management/'
+    | '/product/'
     | '/properties/'
     | '/settings/'
     | '/system-config/'
@@ -730,11 +812,13 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AllocationRoute: typeof AllocationRoute
+  CategoriesRoute: typeof CategoriesRoute
   CisManagementRoute: typeof CisManagementRouteWithChildren
   ConfirmationRoute: typeof ConfirmationRoute
   ContractsRoute: typeof ContractsRoute
   CostBudgetRoute: typeof CostBudgetRoute
   DailyRoute: typeof DailyRoute
+  EmailSmtpRoute: typeof EmailSmtpRoute
   ForbiddenRoute: typeof ForbiddenRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   HoldRoute: typeof HoldRoute
@@ -743,18 +827,22 @@ export interface RootRouteChildren {
   LegendCodesRoute: typeof LegendCodesRoute
   OperativesRoute: typeof OperativesRouteWithChildren
   PayrollRoute: typeof PayrollRoute
+  PermissionsRoute: typeof PermissionsRoute
   PrelimsRoute: typeof PrelimsRoute
+  ProductRoute: typeof ProductRouteWithChildren
   ProductManagementRoute: typeof ProductManagementRouteWithChildren
   ProfileRoute: typeof ProfileRoute
   PropertiesRoute: typeof PropertiesRouteWithChildren
   RatesRoute: typeof RatesRoute
   ReportsRoute: typeof ReportsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  RolesRoute: typeof RolesRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   SigninRoute: typeof SigninRoute
   StatementsRoute: typeof StatementsRoute
   SystemConfigRoute: typeof SystemConfigRouteWithChildren
   TradeBuilderRoute: typeof TradeBuilderRouteWithChildren
+  UnitsRoute: typeof UnitsRoute
   UsersRoute: typeof UsersRouteWithChildren
   WagesRoute: typeof WagesRouteWithChildren
 }
@@ -773,6 +861,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/units': {
+      id: '/units'
+      path: '/units'
+      fullPath: '/units'
+      preLoaderRoute: typeof UnitsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/trade-builder': {
@@ -808,6 +903,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/roles': {
+      id: '/roles'
+      path: '/roles'
+      fullPath: '/roles'
+      preLoaderRoute: typeof RolesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -852,11 +954,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductManagementRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/product': {
+      id: '/product'
+      path: '/product'
+      fullPath: '/product'
+      preLoaderRoute: typeof ProductRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/prelims': {
       id: '/prelims'
       path: '/prelims'
       fullPath: '/prelims'
       preLoaderRoute: typeof PrelimsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/permissions': {
+      id: '/permissions'
+      path: '/permissions'
+      fullPath: '/permissions'
+      preLoaderRoute: typeof PermissionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/payroll': {
@@ -915,6 +1031,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForbiddenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/email-smtp': {
+      id: '/email-smtp'
+      path: '/email-smtp'
+      fullPath: '/email-smtp'
+      preLoaderRoute: typeof EmailSmtpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/daily': {
       id: '/daily'
       path: '/daily'
@@ -948,6 +1071,13 @@ declare module '@tanstack/react-router' {
       path: '/cis-management'
       fullPath: '/cis-management'
       preLoaderRoute: typeof CisManagementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/categories': {
+      id: '/categories'
+      path: '/categories'
+      fullPath: '/categories'
+      preLoaderRoute: typeof CategoriesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/allocation': {
@@ -1005,6 +1135,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/properties/'
       preLoaderRoute: typeof PropertiesIndexRouteImport
       parentRoute: typeof PropertiesRoute
+    }
+    '/product/': {
+      id: '/product/'
+      path: '/'
+      fullPath: '/product/'
+      preLoaderRoute: typeof ProductIndexRouteImport
+      parentRoute: typeof ProductRoute
     }
     '/product-management/': {
       id: '/product-management/'
@@ -1241,6 +1378,17 @@ const OperativesRouteWithChildren = OperativesRoute._addFileChildren(
   OperativesRouteChildren,
 )
 
+interface ProductRouteChildren {
+  ProductIndexRoute: typeof ProductIndexRoute
+}
+
+const ProductRouteChildren: ProductRouteChildren = {
+  ProductIndexRoute: ProductIndexRoute,
+}
+
+const ProductRouteWithChildren =
+  ProductRoute._addFileChildren(ProductRouteChildren)
+
 interface ProductManagementRouteChildren {
   ProductManagementIndexRoute: typeof ProductManagementIndexRoute
 }
@@ -1351,11 +1499,13 @@ const WagesRouteWithChildren = WagesRoute._addFileChildren(WagesRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AllocationRoute: AllocationRoute,
+  CategoriesRoute: CategoriesRoute,
   CisManagementRoute: CisManagementRouteWithChildren,
   ConfirmationRoute: ConfirmationRoute,
   ContractsRoute: ContractsRoute,
   CostBudgetRoute: CostBudgetRoute,
   DailyRoute: DailyRoute,
+  EmailSmtpRoute: EmailSmtpRoute,
   ForbiddenRoute: ForbiddenRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   HoldRoute: HoldRoute,
@@ -1364,18 +1514,22 @@ const rootRouteChildren: RootRouteChildren = {
   LegendCodesRoute: LegendCodesRoute,
   OperativesRoute: OperativesRouteWithChildren,
   PayrollRoute: PayrollRoute,
+  PermissionsRoute: PermissionsRoute,
   PrelimsRoute: PrelimsRoute,
+  ProductRoute: ProductRouteWithChildren,
   ProductManagementRoute: ProductManagementRouteWithChildren,
   ProfileRoute: ProfileRoute,
   PropertiesRoute: PropertiesRouteWithChildren,
   RatesRoute: RatesRoute,
   ReportsRoute: ReportsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  RolesRoute: RolesRoute,
   SettingsRoute: SettingsRouteWithChildren,
   SigninRoute: SigninRoute,
   StatementsRoute: StatementsRoute,
   SystemConfigRoute: SystemConfigRouteWithChildren,
   TradeBuilderRoute: TradeBuilderRouteWithChildren,
+  UnitsRoute: UnitsRoute,
   UsersRoute: UsersRouteWithChildren,
   WagesRoute: WagesRouteWithChildren,
 }

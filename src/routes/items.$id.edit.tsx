@@ -6,13 +6,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/AppShell";
 import { AppTooltip } from "@/components/AppTooltip";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Form, SubmitButton } from "@/components/form";
 import { RequirePermission } from "@/components/Permission";
 import {
   productsService,
   resolveProductImageUrl,
+  type ApiProduct,
 } from "@/lib/api/services/products";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { itemsQueryKey } from "./items.index";
@@ -35,6 +36,7 @@ function EditItem() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [confirmImageRemoval, setConfirmImageRemoval] = useState(false);
 
   const itemQuery = useQuery({
     queryKey: ["items", id],
@@ -81,9 +83,25 @@ function EditItem() {
       toast.success(res.message || "Item updated");
       queryClient.setQueryData(["items", id], res.data);
       queryClient.invalidateQueries({ queryKey: itemsQueryKey });
-      navigate({ to: "/items/$id", params: { id } });
+      navigate({ to: "/items" });
     },
     onError: (err) => notifyApiError(err, "Failed to update item"),
+  });
+
+  const removeImageMutation = useMutation({
+    mutationFn: () => productsService.removeImage(numericId),
+    onSuccess: (res) => {
+      toast.success(res.message || "Image removed");
+      setConfirmImageRemoval(false);
+      setImageFile(null);
+      form.setValue("imageUrl", "", { shouldDirty: false });
+      queryClient.setQueryData(["items", id], (prev: ApiProduct | undefined) =>
+        prev ? { ...prev, imageUrl: null } : prev,
+      );
+      queryClient.invalidateQueries({ queryKey: ["items", id] });
+      queryClient.invalidateQueries({ queryKey: itemsQueryKey });
+    },
+    onError: (err) => notifyApiError(err, "Failed to remove image"),
   });
 
   async function save(values: ItemFormValues) {
@@ -119,6 +137,7 @@ function EditItem() {
   }
 
   const dirty = form.formState.isDirty || imageFile != null;
+  const removingImage = removeImageMutation.isPending;
 
   return (
     <RequirePermission route={ITEMS_ROUTE} action="modify">
@@ -126,11 +145,10 @@ function EditItem() {
         <PageHeader
           title="Edit item"
           leading={
-            <AppTooltip content="Back to item" asChild>
+            <AppTooltip content="Back to items" asChild>
               <Link
-                to="/items/$id"
-                params={{ id }}
-                aria-label="Back to item"
+                to="/items"
+                aria-label="Back to items"
                 className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -141,7 +159,7 @@ function EditItem() {
 
         <Form form={form} onSubmit={save} className="card-elevated max-w-3xl space-y-4 p-6">
           <h3 className="font-display font-semibold">Edit details</h3>
-          <fieldset className="space-y-4">
+          <fieldset className="space-y-4" disabled={removingImage}>
             <ItemFormFields
               selectedLabels={{
                 productType: item.productTypeName,
@@ -149,6 +167,8 @@ function EditItem() {
                 unit: item.unitName,
               }}
               onImageFileChange={setImageFile}
+              onImageRemove={() => setConfirmImageRemoval(true)}
+              imageDisabled={removingImage}
             />
           </fieldset>
           <div className="flex items-center justify-end gap-2 border-t pt-2">
@@ -158,16 +178,61 @@ function EditItem() {
             <Button
               type="button"
               variant="outline"
-              disabled={updateMutation.isPending}
-              onClick={() => navigate({ to: "/items/$id", params: { id } })}
+              disabled={updateMutation.isPending || removingImage}
+              onClick={() => navigate({ to: "/items" })}
             >
               Cancel
             </Button>
-            <SubmitButton disabled={!dirty} loadingText="Saving…">
+            <SubmitButton disabled={!dirty || removingImage} loadingText="Saving…">
               Save changes
             </SubmitButton>
           </div>
         </Form>
+
+        {confirmImageRemoval && (
+          <div
+            className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+            onClick={() => !removingImage && setConfirmImageRemoval(false)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="remove-item-image-title"
+              className="w-full max-w-md rounded-lg border bg-card p-6 shadow-lg"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h2 id="remove-item-image-title" className="font-display text-lg font-semibold">
+                Remove image?
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                This will permanently remove the current item image.
+              </p>
+              <div className="mt-6 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={removingImage}
+                  onClick={() => setConfirmImageRemoval(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={removingImage}
+                  onClick={() => removeImageMutation.mutate()}
+                >
+                  {removingImage ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  Remove image
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </RequirePermission>
   );

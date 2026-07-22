@@ -60,8 +60,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
   "hard-hat": HardHat,
 };
 
-export function resolveMenuIcon(icon: string | null | undefined): LucideIcon {
-  if (!icon) return Circle;
+export function resolveMenuIcon(icon: string | null | undefined): LucideIcon | null {
+  if (!icon?.trim()) return null;
   const key = icon.trim().toLowerCase().replace(/\s+/g, "-");
   return ICON_MAP[key] ?? Circle;
 }

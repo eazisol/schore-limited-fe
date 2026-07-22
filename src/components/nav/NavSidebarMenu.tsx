@@ -79,7 +79,7 @@ function NavSidebarMenuNode({
 
     const triggerContent = (
       <>
-        <Icon />
+        {Icon ? <Icon /> : null}
         <span>{menu.name}</span>
         <ChevronRight
           className={cn(
@@ -143,7 +143,7 @@ function NavSidebarMenuNode({
           )}
         >
           <Link to={to} onClick={onNavigate}>
-            <Icon />
+            {Icon ? <Icon /> : null}
             <span>{menu.name}</span>
           </Link>
         </SidebarMenuButton>
@@ -155,7 +155,7 @@ function NavSidebarMenuNode({
     <SidebarMenuSubItem>
       <SidebarMenuSubButton asChild isActive={active}>
         <Link to={to} onClick={onNavigate}>
-          <Icon />
+          {Icon ? <Icon /> : null}
           <span>{menu.name}</span>
         </Link>
       </SidebarMenuSubButton>

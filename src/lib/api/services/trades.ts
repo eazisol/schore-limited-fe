@@ -1,179 +1,94 @@
+import { http } from "@/lib/api/axios";
 import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
-import {
-  compareBool,
-  compareNumber,
-  compareString,
-  createMockStore,
-  mockDelay,
-  mockOk,
-  nowIso,
-} from "./mock-crud";
 
 export interface ApiTrade {
   id: number;
   name: string;
+  code: string;
   description: string | null;
-  groupCount: number;
-  taskCount: number;
+  orderBy: number;
   isActive: boolean;
-  createdDate: string;
-  editDate: string | null;
+  createdBy?: number | null;
+  createdDate?: string | null;
+  editBy?: number | null;
+  editDate?: string | null;
 }
 
 export type TradePayload = {
   name: string;
-  description?: string | null;
+  code: string;
+  description: string;
+  orderBy: number;
   isActive: boolean;
 };
 
-export type TradesSortBy = "name" | "groups" | "tasks" | "status";
+export type TradesSortBy = "name" | "code" | "description" | "orderby" | "status";
 export type TradesSortDir = "asc" | "desc";
 
 export interface TradesListParams {
   page: number;
   pageSize: number;
   search?: string;
-  status?: "active" | "inactive";
   sortBy?: TradesSortBy;
   sortDir?: TradesSortDir;
 }
 
-const seed: ApiTrade[] = [
-  {
-    id: 1,
-    name: "Carpenter",
-    description: "Kitchen, doors and carcass work",
-    groupCount: 4,
-    taskCount: 18,
-    isActive: true,
-    createdDate: "2025-01-10T09:00:00.000Z",
-    editDate: null,
-  },
-  {
-    id: 2,
-    name: "Plumber",
-    description: "1st/2nd fix and heating",
-    groupCount: 3,
-    taskCount: 11,
-    isActive: true,
-    createdDate: "2025-01-10T09:00:00.000Z",
-    editDate: null,
-  },
-  {
-    id: 3,
-    name: "Electrician",
-    description: "1st/2nd fix electrics",
-    groupCount: 3,
-    taskCount: 9,
-    isActive: true,
-    createdDate: "2025-01-10T09:00:00.000Z",
-    editDate: null,
-  },
-  {
-    id: 4,
-    name: "Tiler",
-    description: "Wall and floor tiling",
-    groupCount: 2,
-    taskCount: 6,
-    isActive: true,
-    createdDate: "2025-01-12T09:00:00.000Z",
-    editDate: null,
-  },
-  {
-    id: 5,
-    name: "Labourer",
-    description: "General site labour",
-    groupCount: 2,
-    taskCount: 5,
-    isActive: true,
-    createdDate: "2025-01-12T09:00:00.000Z",
-    editDate: null,
-  },
-  {
-    id: 6,
-    name: "Painter",
-    description: "Decoration and finishing",
-    groupCount: 2,
-    taskCount: 7,
-    isActive: true,
-    createdDate: "2025-02-01T09:00:00.000Z",
-    editDate: null,
-  },
-  {
-    id: 7,
-    name: "Plasterer",
-    description: "Board and skim",
-    groupCount: 1,
-    taskCount: 3,
-    isActive: false,
-    createdDate: "2025-02-01T09:00:00.000Z",
-    editDate: "2026-01-08T14:00:00.000Z",
-  },
-];
+function listQuery(params: TradesListParams) {
+  return {
+    Page: params.page,
+    PageSize: params.pageSize,
+    Search: params.search ?? "",
+    ...(params.sortBy ? { SortBy: params.sortBy } : {}),
+    ...(params.sortDir ? { SortDir: params.sortDir } : {}),
+  };
+}
 
-const store = createMockStore<ApiTrade>({
-  seed,
-  getSearchText: (t) => [t.name, t.description ?? ""].join(" "),
-  matchesFilter: (t, params) => {
-    const status = params.status === "active" || params.status === "inactive" ? params.status : undefined;
-    if (status === "active" && !t.isActive) return false;
-    if (status === "inactive" && t.isActive) return false;
-    return true;
-  },
-  defaultSortBy: "name",
-  sorters: {
-    name: (a, b) => compareString(a.name, b.name),
-    groups: (a, b) => compareNumber(a.groupCount, b.groupCount),
-    tasks: (a, b) => compareNumber(a.taskCount, b.taskCount),
-    status: (a, b) => compareBool(a.isActive, b.isActive),
-  },
-});
+function normalizePaged(
+  data: PagedResult<ApiTrade> | ApiTrade[] | null | undefined,
+): PagedResult<ApiTrade> {
+  if (Array.isArray(data)) {
+    return {
+      items: data,
+      totalCount: data.length,
+      page: 1,
+      pageSize: data.length || 10,
+      totalPages: 1,
+    };
+  }
+  const items = data?.items ?? [];
+  const page = data?.page ?? 1;
+  const pageSize = data?.pageSize ?? 10;
+  const totalCount = data?.totalCount ?? items.length;
+  const totalPages = data?.totalPages ?? Math.max(1, Math.ceil(totalCount / pageSize));
+  return { items, totalCount, page, pageSize, totalPages };
+}
 
 /**
- * Trade Management service — mock adapter.
- * Replace with `http` calls to Trades endpoints when the API is ready.
+ * Trade Management — OperativesBuilder/trades.
  */
 export const tradesService = {
-  list: async (params: TradesListParams): Promise<ApiEnvelope<PagedResult<ApiTrade>>> => {
-    await mockDelay();
-    return mockOk(store.list({ ...params }));
+  list: async (params: TradesListParams) => {
+    const res = await http.get<ApiEnvelope<PagedResult<ApiTrade> | ApiTrade[]>>(
+      "OperativesBuilder/trades",
+      { params: listQuery(params) },
+    );
+    return { ...res, data: normalizePaged(res.data) };
   },
-  get: async (id: number | string): Promise<ApiEnvelope<ApiTrade>> => {
-    await mockDelay();
-    return mockOk(store.get(id));
-  },
-  /** Lookup helper for selects (operatives, etc.). */
+  get: (id: number | string) =>
+    http.get<ApiEnvelope<ApiTrade>>(`OperativesBuilder/trades/${id}`),
+  /** Active trades for selects (operatives, etc.). */
   options: async (): Promise<ApiEnvelope<ApiTrade[]>> => {
-    await mockDelay(120);
-    return mockOk(store.all().filter((t) => t.isActive));
+    const res = await tradesService.list({ page: 1, pageSize: 200, sortBy: "name", sortDir: "asc" });
+    return {
+      ...res,
+      data: (res.data?.items ?? []).filter((t) => t.isActive),
+    };
   },
-  create: async (payload: TradePayload): Promise<ApiEnvelope<ApiTrade>> => {
-    await mockDelay();
-    const created = store.create({
-      name: payload.name.trim(),
-      description: payload.description?.trim() || null,
-      isActive: payload.isActive,
-      groupCount: 0,
-      taskCount: 0,
-      createdDate: nowIso(),
-      editDate: null,
-    });
-    return mockOk(created, "Trade created");
-  },
-  update: async (id: number | string, payload: TradePayload): Promise<ApiEnvelope<ApiTrade>> => {
-    await mockDelay();
-    const updated = store.update(id, {
-      name: payload.name.trim(),
-      description: payload.description?.trim() || null,
-      isActive: payload.isActive,
-      editDate: nowIso(),
-    });
-    return mockOk(updated, "Trade updated");
-  },
-  remove: async (id: number | string): Promise<ApiEnvelope<null>> => {
-    await mockDelay();
-    store.remove(id);
-    return mockOk(null, "Trade deleted");
-  },
+  create: (payload: TradePayload) =>
+    http.post<ApiEnvelope<ApiTrade>>("OperativesBuilder/trades", payload),
+  update: (id: number | string, payload: TradePayload) =>
+    http.put<ApiEnvelope<ApiTrade>>(`OperativesBuilder/trades/${id}`, payload),
+  remove: (id: number | string) =>
+    http.delete<ApiEnvelope<null>>(`OperativesBuilder/trades/${id}`),
 };

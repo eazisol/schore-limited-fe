@@ -12,6 +12,16 @@ export interface DataTableColumn<T> {
   align?: DataTableAlign;
   sortable?: boolean;
   exportable?: boolean;
+  /**
+   * Fixed column width for `table-layout: fixed` (e.g. `"8rem"`, `"20%"`, `"120px"`).
+   * Prefer this over putting width only in `headerClassName`.
+   */
+  width?: string;
+  /**
+   * Clamp overflowing cell content to 2 lines (with AppTooltip for full text).
+   * Defaults to `true`. Set `false` for complex cells (e.g. avatar + text rows).
+   */
+  truncate?: boolean;
 }
 
 export interface DataTableSearchConfig {
@@ -79,3 +89,29 @@ export interface DataTableProps<T> {
   className?: string;
   density?: "compact" | "comfortable";
 }
+
+/** Sensible defaults so common CRUD columns stay stable without per-page width hacks. */
+export const DEFAULT_COLUMN_WIDTHS: Record<string, string> = {
+  name: "38%",
+  code: "18%",
+  sku: "14%",
+  status: "12%",
+  rate: "10%",
+  salePrice: "12%",
+  costPrice: "12%",
+  orderBy: "8%",
+  roles: "18%",
+  role: "18%",
+  usertype: "14%",
+  userType: "14%",
+  trade: "16%",
+  cis: "10%",
+  dailyRate: "12%",
+  category: "16%",
+  productType: "16%",
+  unit: "12%",
+  image: "5rem",
+  groups: "10%",
+  tasks: "10%",
+  description: "28%",
+};

@@ -110,7 +110,9 @@ function NewOperative() {
   });
 
   const defaultCis =
-    cisQuery.data?.find((c) => c.isDefault) ?? cisQuery.data?.find((c) => c.rate === 20);
+    cisQuery.data?.find((c) => c.isDefault) ??
+    cisQuery.data?.find((c) => c.rate === 20) ??
+    cisQuery.data?.[0];
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),

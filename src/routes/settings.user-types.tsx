@@ -87,6 +87,7 @@ function UserTypesPage() {
       {
         id: "name",
         header: "Name",
+        accessor: (item) => item.name,
         cell: (item) => <span className="font-medium">{item.name}</span>,
       },
       {
@@ -97,7 +98,6 @@ function UserTypesPage() {
       {
         id: "status",
         header: "Status",
-        headerClassName: "w-24",
         cell: (item) => (
           <span
             className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${

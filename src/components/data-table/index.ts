@@ -14,3 +14,4 @@ export type {
   DataTableSearchConfig,
   DataTableSortConfig,
 } from "./types";
+export { DEFAULT_COLUMN_WIDTHS } from "./types";

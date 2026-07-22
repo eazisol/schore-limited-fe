@@ -1,16 +1,36 @@
 import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/Pagination";
+import { AppTooltip } from "@/components/AppTooltip";
 import { cn } from "@/lib/utils";
 import { DataTableToolbar } from "./DataTableToolbar";
 import { DataTableRowActions } from "./DataTableRowActions";
-import type { DataTableAlign, DataTableColumn, DataTableProps } from "./types";
+import {
+  DEFAULT_COLUMN_WIDTHS,
+  type DataTableAlign,
+  type DataTableColumn,
+  type DataTableProps,
+} from "./types";
 
 const ALIGN_CLASS: Record<DataTableAlign, string> = {
   left: "text-left",
   center: "text-center",
   right: "text-right",
 };
+
+const ACTIONS_COLUMN_WIDTH = "8rem";
+
+function resolveColumnWidth<T>(column: DataTableColumn<T>): string | undefined {
+  return column.width ?? DEFAULT_COLUMN_WIDTHS[column.id];
+}
+
+function plainTextLabel(content: unknown): string | undefined {
+  if (typeof content === "string" || typeof content === "number") {
+    const text = String(content).trim();
+    return text || undefined;
+  }
+  return undefined;
+}
 
 export function DataTable<T>({
   columns,
@@ -87,7 +107,14 @@ export function DataTable<T>({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full table-fixed text-sm">
+            <colgroup>
+              {columns.map((column) => {
+                const width = resolveColumnWidth(column);
+                return <col key={column.id} style={width ? { width } : undefined} />;
+              })}
+              {actions ? <col style={{ width: ACTIONS_COLUMN_WIDTH }} /> : null}
+            </colgroup>
             <thead className="bg-muted/50 text-xs text-muted-foreground">
               <tr>
                 {columns.map((column) => {
@@ -108,9 +135,9 @@ export function DataTable<T>({
                         <button
                           type="button"
                           onClick={() => handleSort(column)}
-                          className="inline-flex items-center gap-1 hover:text-foreground"
+                          className="inline-flex max-w-full items-center gap-1 hover:text-foreground"
                         >
-                          {column.header}
+                          <span className="truncate">{column.header}</span>
                           {isSorted ? (
                             sort.sortDir === "asc" ? (
                               <ArrowUp className="h-3 w-3 shrink-0" />
@@ -122,13 +149,13 @@ export function DataTable<T>({
                           )}
                         </button>
                       ) : (
-                        column.header
+                        <span className="block truncate">{column.header}</span>
                       )}
                     </th>
                   );
                 })}
                 {actions && (
-                  <th className={cn("w-28 px-5 text-right font-medium", headerPadding)}>
+                  <th className={cn("px-5 text-right font-medium", headerPadding)}>
                     Actions
                   </th>
                 )}
@@ -141,25 +168,41 @@ export function DataTable<T>({
                   <tr key={getRowId(row)} className="hover:bg-muted/30">
                     {columns.map((column) => {
                       const align = column.align ?? "left";
+                      const shouldClamp = column.truncate !== false;
                       const content =
                         column.cell?.(row) ??
                         (column.accessor ? String(column.accessor(row) ?? "—") : "—");
+                      const tooltipText = shouldClamp
+                        ? plainTextLabel(
+                            column.accessor?.(row) ??
+                              (typeof content === "string" || typeof content === "number"
+                                ? content
+                                : undefined),
+                          )
+                        : undefined;
                       return (
                         <td
                           key={column.id}
                           className={cn(
+                            "max-w-0 overflow-hidden align-middle",
                             cellPadding,
                             column.id === columns[0]?.id ? "px-5" : "px-3",
                             ALIGN_CLASS[align],
                             column.cellClassName,
                           )}
                         >
-                          {content}
+                          {shouldClamp ? (
+                            <AppTooltip content={tooltipText} asChild disabled={!tooltipText}>
+                              <div className="line-clamp-2 break-words">{content}</div>
+                            </AppTooltip>
+                          ) : (
+                            <div className="min-w-0 overflow-hidden">{content}</div>
+                          )}
                         </td>
                       );
                     })}
                     {actions && (
-                      <td className={cn("px-5", cellPadding)}>
+                      <td className={cn("overflow-hidden px-5", cellPadding)}>
                         <DataTableRowActions row={row} actions={rowActionsForRow} />
                       </td>
                     )}

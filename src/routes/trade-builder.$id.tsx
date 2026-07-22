@@ -9,14 +9,15 @@ import { AppTooltip } from "@/components/AppTooltip";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, ArrowLeft, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Form, TextField, TextareaField, CheckboxField, SubmitButton } from "@/components/form";
+import { Form, SubmitButton } from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
-import { tradesService, type TradePayload } from "@/lib/api/services/trades";
+import { tradesService } from "@/lib/api/services/trades";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { tradesQueryKey } from "./trade-builder.index";
 import { activeStatusClass, formatDateTime } from "@/lib/module-ui";
-
-const TRADES_ROUTE = "/trade-builder";
+import { TRADES_ROUTE } from "@/lib/trades";
+import { tradeFormSchema, toTradePayload, type TradeFormValues } from "@/lib/trade-form";
+import { TradeFormFields } from "@/components/trades/TradeFormFields";
 
 const detailSearchSchema = z.object({
   mode: z.enum(["edit", "view"]).optional(),
@@ -27,17 +28,6 @@ export const Route = createFileRoute("/trade-builder/$id")({
   validateSearch: detailSearchSchema,
   component: TradeDetail,
 });
-
-const schema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Trade name is required")
-    .max(100, "Trade name must be 100 characters or fewer"),
-  description: z.string().trim().max(500, "Description must be 500 characters or fewer"),
-  isActive: z.boolean(),
-});
-type Values = z.infer<typeof schema>;
 
 function TradeDetail() {
   const { id } = Route.useParams();
@@ -59,38 +49,35 @@ function TradeDetail() {
     });
   }
 
-  function openView() {
-    navigate({
-      to: "/trade-builder/$id",
-      params: { id },
-      search: {},
-      replace: true,
-    });
-  }
-
   const tradeQuery = useQuery({
     queryKey: ["trades", id],
     queryFn: async () => (await tradesService.get(id)).data,
   });
   const trade = tradeQuery.data;
 
-  const defaults = useMemo<Values>(
+  const defaults = useMemo<TradeFormValues>(
     () => ({
       name: trade?.name ?? "",
+      code: trade?.code ?? "",
       description: trade?.description ?? "",
+      orderBy: trade?.orderBy ?? 0,
       isActive: trade?.isActive ?? true,
     }),
     [trade],
   );
 
-  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: defaults });
+  const form = useForm<TradeFormValues>({
+    resolver: zodResolver(tradeFormSchema),
+    defaultValues: defaults,
+  });
   useEffect(() => {
     if (!trade) return;
     form.reset(defaults);
   }, [trade, defaults, form]);
 
   const updateMutation = useMutation({
-    mutationFn: (payload: TradePayload) => tradesService.update(numericId, payload),
+    mutationFn: (payload: ReturnType<typeof toTradePayload>) =>
+      tradesService.update(numericId, payload),
     onSuccess: (res) => {
       toast.success(res.message || "Trade updated");
       queryClient.setQueryData(["trades", id], res.data);
@@ -110,12 +97,8 @@ function TradeDetail() {
     onError: (err) => notifyApiError(err, "Failed to delete trade"),
   });
 
-  async function save(values: Values) {
-    await updateMutation.mutateAsync({
-      name: values.name.trim(),
-      description: values.description.trim() || null,
-      isActive: values.isActive,
-    });
+  async function save(values: TradeFormValues) {
+    await updateMutation.mutateAsync(toTradePayload(values));
   }
 
   if (tradeQuery.isLoading) {
@@ -187,20 +170,7 @@ function TradeDetail() {
         {isEditing ? (
           <Form form={form} onSubmit={save} className="card-elevated space-y-4 p-6 lg:col-span-2">
             <h3 className="font-display font-semibold">Edit details</h3>
-            <fieldset className="space-y-4">
-              <TextField<Values> name="name" label="Trade name" required maxLength={100} />
-              <TextareaField<Values>
-                name="description"
-                label="Description"
-                rows={3}
-                maxLength={500}
-              />
-              <CheckboxField<Values>
-                name="isActive"
-                label="Active"
-                description="Trade appears in operative and allocation dropdowns."
-              />
-            </fieldset>
+            <TradeFormFields disabled={updateMutation.isPending} />
             <div className="flex items-center justify-end gap-2 border-t pt-2">
               <span className="mr-auto text-xs text-muted-foreground">
                 {dirty ? "Unsaved changes" : "All changes saved"}
@@ -209,10 +179,7 @@ function TradeDetail() {
                 type="button"
                 variant="outline"
                 disabled={updateMutation.isPending}
-                onClick={() => {
-                  form.reset(defaults);
-                  openView();
-                }}
+                onClick={() => navigate({ to: "/trade-builder" })}
               >
                 Cancel
               </Button>
@@ -227,6 +194,10 @@ function TradeDetail() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <ReadOnlyField label="Name" value={trade.name} />
+                <ReadOnlyField label="Code" value={trade.code} />
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <ReadOnlyField label="Order" value={String(trade.orderBy ?? 0)} />
                 <ReadOnlyField
                   label="Status"
                   value={
@@ -237,10 +208,6 @@ function TradeDetail() {
                     </span>
                   }
                 />
-              </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <ReadOnlyField label="Groups" value={String(trade.groupCount)} />
-                <ReadOnlyField label="Tasks" value={String(trade.taskCount)} />
               </div>
               <ReadOnlyField label="Description" value={trade.description || "—"} />
             </div>
@@ -268,7 +235,7 @@ function TradeDetail() {
           >
             <h3 className="font-display text-lg font-semibold">Delete {trade.name}?</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              This permanently removes the trade. Linked groups and tasks may become unavailable.
+              This permanently removes the trade. This action cannot be undone.
             </p>
             <div className="mt-6 flex justify-end gap-2">
               <Button

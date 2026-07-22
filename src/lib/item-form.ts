@@ -1,13 +1,10 @@
 import { z } from "zod";
 import type { ProductPayload } from "@/lib/api/services/products";
+import { descriptionSchema, nameSchema } from "@/lib/field-validation";
 
 export const itemFormSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Name is required")
-    .max(100, "Name must be 100 characters or fewer"),
-  description: z.string().trim().max(500, "Description must be 500 characters or fewer"),
+  name: nameSchema(),
+  description: descriptionSchema(),
   sku: z
     .string()
     .trim()

@@ -40,10 +40,15 @@ export type ProductPayload = {
   isActive: boolean;
 };
 
+export type ProductsSortBy = "name" | "sku" | "category" | "saleprice" | "status";
+export type ProductsSortDir = "asc" | "desc";
+
 export interface ProductsListParams {
   page: number;
   pageSize: number;
   search?: string;
+  sortBy?: ProductsSortBy;
+  sortDir?: ProductsSortDir;
 }
 
 /** Build absolute URL for a product image returned by the API. */
@@ -74,6 +79,8 @@ function listQuery(params: ProductsListParams) {
     Page: params.page,
     PageSize: params.pageSize,
     Search: params.search ?? "",
+    ...(params.sortBy ? { SortBy: params.sortBy } : {}),
+    ...(params.sortDir ? { SortDir: params.sortDir } : {}),
   };
 }
 
@@ -114,5 +121,7 @@ export const productsService = {
     http.post<ApiEnvelope<ApiProduct>>("Products", toProductFormData(payload, file)),
   update: (id: number | string, payload: ProductPayload, file?: File | null) =>
     http.put<ApiEnvelope<ApiProduct>>(`Products/${id}`, toProductFormData(payload, file)),
+  removeImage: (id: number | string) =>
+    http.delete<ApiEnvelope<null>>(`Products/${id}/image`),
   remove: (id: number | string) => http.delete<ApiEnvelope<null>>(`Products/${id}`),
 };
