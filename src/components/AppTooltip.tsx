@@ -47,7 +47,7 @@ export function AppTooltip({
           {asChild ? (
             children
           ) : (
-            <span className={cn("inline-flex max-w-full cursor-default", className)}>
+            <span className={cn("inline-flex w-fit max-w-full cursor-default", className)}>
               {children}
             </span>
           )}

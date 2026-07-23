@@ -203,7 +203,7 @@ function CountrySelect({ value, onChange, options, disabled, readOnly }: Country
             type="button"
             disabled={disabled || readOnly}
             aria-label={tooltipContent}
-            className="mr-2 flex items-center gap-1 rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+            className="mr-2 flex cursor-pointer items-center gap-1 rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CountryFlag country={value} label={countryLabel} />
             <ChevronDown className="h-3.5 w-3.5 opacity-60" />

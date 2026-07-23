@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { tradesService, type ApiTrade, type TradesSortBy } from "@/lib/api/services/trades";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { AppTooltip } from "@/components/AppTooltip";
-import { activeStatusClass } from "@/lib/module-ui";
+import { activeStatusClass, formatDateTime, truncateWithEllipsis } from "@/lib/module-ui";
 import { TRADES_ROUTE } from "@/lib/trades";
 
 export const Route = createFileRoute("/trade-builder/")({
@@ -29,8 +29,6 @@ export const tradesQueryKey = ["trades"] as const;
 const COLUMN_SORT_KEYS: Record<string, TradesSortBy> = {
   name: "name",
   code: "code",
-  description: "description",
-  orderBy: "orderby",
   status: "status",
 };
 
@@ -41,8 +39,8 @@ function TradesList() {
   const canDelete = usePermission({ route: TRADES_ROUTE, action: "delete" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [sortBy, setSortBy] = useState<TradesSortBy>("name");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortBy, setSortBy] = useState<TradesSortBy>("createdDate");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [confirmDel, setConfirmDel] = useState<ApiTrade | null>(null);
   const [exporting, setExporting] = useState(false);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
@@ -79,13 +77,14 @@ function TradesList() {
     try {
       downloadCsv({
         filename: `trades-export-${new Date().toISOString().slice(0, 10)}.csv`,
-        headers: ["Name", "Code", "Description", "Order", "Status"],
+        headers: ["Name", "Code", "Description", "Order By", "Status", "Created Date"],
         rows: rows.map((t) => [
           t.name,
           t.code,
-          t.description ?? "",
-          String(t.orderBy ?? 0),
+          t.description?.trim() || "",
+          String(t.orderBy ?? ""),
           t.isActive ? "Active" : "Inactive",
+          formatDateTime(t.createdDate),
         ]),
       });
       toast.success(`Exported ${rows.length} trade${rows.length === 1 ? "" : "s"} to CSV`);
@@ -102,13 +101,13 @@ function TradesList() {
         sortable: true,
         truncate: false,
         cell: (trade) => (
-          <AppTooltip content={trade.name} asChild>
+          <AppTooltip content={trade.name} asChild align="start">
             <Link
               to="/trade-builder/$id"
               params={{ id: String(trade.id) }}
-              className="line-clamp-2 break-words font-medium hover:text-info hover:underline"
+              className="inline-block max-w-full font-medium hover:text-info hover:underline"
             >
-              {trade.name}
+              {truncateWithEllipsis(trade.name)}
             </Link>
           </AppTooltip>
         ),
@@ -119,30 +118,6 @@ function TradesList() {
         sortable: true,
         cell: (trade) => (
           <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">{trade.code}</code>
-        ),
-      },
-      {
-        id: "description",
-        header: "Description",
-        sortable: true,
-        truncate: false,
-        cell: (trade) =>
-          trade.description ? (
-            <AppTooltip content={trade.description} asChild>
-              <span className="line-clamp-2 break-words text-sm text-muted-foreground">
-                {trade.description}
-              </span>
-            </AppTooltip>
-          ) : (
-            "—"
-          ),
-      },
-      {
-        id: "orderBy",
-        header: "Order",
-        sortable: true,
-        cell: (trade) => (
-          <span className="font-mono tabular-nums">{trade.orderBy ?? 0}</span>
         ),
       },
       {
@@ -195,7 +170,7 @@ function TradesList() {
   );
 
   const activeSortColumn =
-    Object.entries(COLUMN_SORT_KEYS).find(([, apiKey]) => apiKey === sortBy)?.[0] ?? "name";
+    Object.entries(COLUMN_SORT_KEYS).find(([, apiKey]) => apiKey === sortBy)?.[0] ?? "";
 
   function handleSortChange(columnId: string, direction: "asc" | "desc") {
     const apiSortBy = COLUMN_SORT_KEYS[columnId];
@@ -217,7 +192,7 @@ function TradesList() {
       <PageHeader
         title="Trade Management"
         actions={
-          <div className="flex items-center gap-2">
+          <>
             <Button
               variant="outline"
               size="sm"
@@ -235,7 +210,7 @@ function TradesList() {
                 </Link>
               </Button>
             </Can>
-          </div>
+          </>
         }
       />
 

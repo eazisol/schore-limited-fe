@@ -40,7 +40,13 @@ export type ProductPayload = {
   isActive: boolean;
 };
 
-export type ProductsSortBy = "name" | "sku" | "category" | "saleprice" | "status";
+export type ProductsSortBy =
+  | "name"
+  | "sku"
+  | "category"
+  | "saleprice"
+  | "status"
+  | "createdDate";
 export type ProductsSortDir = "asc" | "desc";
 
 export interface ProductsListParams {

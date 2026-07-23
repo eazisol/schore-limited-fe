@@ -27,7 +27,7 @@ export type CisStatusPayload = {
   isActive: boolean;
 };
 
-export type CisSortBy = "name" | "code" | "rate" | "description" | "orderby" | "status";
+export type CisSortBy = "name" | "code" | "rate" | "status" | "createdDate";
 export type CisSortDir = "asc" | "desc";
 
 export interface CisListParams {

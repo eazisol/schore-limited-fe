@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Eye, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
-import { Form, TextField, CheckboxField, SubmitButton } from "@/components/form";
+import { Form, TextField, SwitchField, SubmitButton } from "@/components/form";
 import { Can, usePathPermission } from "@/components/Permission";
 import {
   DataTable,
@@ -64,7 +64,16 @@ function UserTypesPage() {
 
   const query = useQuery({
     queryKey: [...listKey, { page, pageSize, search }],
-    queryFn: async () => (await userTypesService.list({ page, pageSize, search })).data,
+    queryFn: async () =>
+      (
+        await userTypesService.list({
+          page,
+          pageSize,
+          search,
+          sortBy: "createdDate",
+          sortDir: "desc",
+        })
+      ).data,
     placeholderData: keepPreviousData,
   });
 
@@ -316,7 +325,9 @@ function UserTypeFormModal({
             />
             <TextField<Values> name="code" label="Code" required maxLength={50} />
           </div>
-          <CheckboxField<Values> name="isActive" label="Active" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <SwitchField<Values> name="isActive" label="Active" />
+          </div>
         </fieldset>
         <div className="flex justify-end gap-2 border-t pt-2">
           <Button type="button" variant="outline" onClick={onClose}>

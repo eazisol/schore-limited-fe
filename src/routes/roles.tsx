@@ -9,7 +9,7 @@ import { Eye, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
-import { Form, TextField, TextareaField, CheckboxField, SubmitButton } from "@/components/form";
+import { Form, TextField, TextareaField, SwitchField, SubmitButton } from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
 import {
   DataTable,
@@ -64,7 +64,16 @@ function RolesPage() {
 
   const query = useQuery({
     queryKey: [...rolesQueryKey, { page, pageSize, search }],
-    queryFn: async () => (await rolesService.list({ page, pageSize, search })).data,
+    queryFn: async () =>
+      (
+        await rolesService.list({
+          page,
+          pageSize,
+          search,
+          sortBy: "createdDate",
+          sortDir: "desc",
+        })
+      ).data,
     placeholderData: keepPreviousData,
   });
 
@@ -323,7 +332,9 @@ function RoleFormModal({
             rows={3}
             maxLength={500}
           />
-          <CheckboxField<Values> name="isActive" label="Active" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <SwitchField<Values> name="isActive" label="Active" />
+          </div>
         </fieldset>
         <div className="flex justify-end gap-2 border-t pt-2">
           <Button type="button" variant="outline" onClick={onClose}>

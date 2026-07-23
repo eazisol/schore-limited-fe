@@ -74,7 +74,7 @@ function NavSidebarMenuNode({
   if (hasChildren) {
     const triggerClassName = cn(
       "text-sidebar-foreground/75 hover:text-sidebar-foreground",
-      branchActive && "font-medium",
+      branchActive && "font-medium text-sidebar-foreground",
     );
 
     const triggerContent = (
@@ -95,14 +95,14 @@ function NavSidebarMenuNode({
         <CollapsibleTrigger asChild>
           {depth === 0 ? (
             <SidebarMenuButton
-              isActive={branchActive}
+              isActive={false}
               tooltip={menu.name}
               className={triggerClassName}
             >
               {triggerContent}
             </SidebarMenuButton>
           ) : (
-            <SidebarMenuSubButton isActive={branchActive} className={triggerClassName}>
+            <SidebarMenuSubButton isActive={false} className={triggerClassName}>
               {triggerContent}
             </SidebarMenuSubButton>
           )}

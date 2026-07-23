@@ -23,7 +23,7 @@ export type TradePayload = {
   isActive: boolean;
 };
 
-export type TradesSortBy = "name" | "code" | "description" | "orderby" | "status";
+export type TradesSortBy = "name" | "code" | "status" | "createdDate";
 export type TradesSortDir = "asc" | "desc";
 
 export interface TradesListParams {

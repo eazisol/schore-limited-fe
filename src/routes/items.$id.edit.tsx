@@ -158,7 +158,6 @@ function EditItem() {
         />
 
         <Form form={form} onSubmit={save} className="card-elevated max-w-3xl space-y-4 p-6">
-          <h3 className="font-display font-semibold">Edit details</h3>
           <fieldset className="space-y-4" disabled={removingImage}>
             <ItemFormFields
               selectedLabels={{
@@ -171,21 +170,23 @@ function EditItem() {
               imageDisabled={removingImage}
             />
           </fieldset>
-          <div className="flex items-center justify-end gap-2 border-t pt-2">
-            <span className="mr-auto text-xs text-muted-foreground">
+          <div className="flex flex-col-reverse gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2 sm:pt-2">
+            <span className="text-xs text-muted-foreground sm:mr-auto">
               {dirty ? "Unsaved changes" : "All changes saved"}
             </span>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={updateMutation.isPending || removingImage}
-              onClick={() => navigate({ to: "/items" })}
-            >
-              Cancel
-            </Button>
-            <SubmitButton disabled={!dirty || removingImage} loadingText="Saving…">
-              Save changes
-            </SubmitButton>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={updateMutation.isPending || removingImage}
+                onClick={() => navigate({ to: "/items" })}
+              >
+                Cancel
+              </Button>
+              <SubmitButton disabled={!dirty || removingImage} loadingText="Saving…">
+                Save changes
+              </SubmitButton>
+            </div>
           </div>
         </Form>
 

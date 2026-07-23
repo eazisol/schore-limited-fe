@@ -112,19 +112,13 @@ function EmailSmtpPage() {
       <PageHeader title="Email SMTP" />
 
       <Form form={form} onSubmit={save} className="card-elevated max-w-3xl space-y-6 p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h3 className="font-display font-semibold">SMTP configuration</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Outbound email for password resets, invites and notifications.
-            </p>
-          </div>
-        </div>
+        <p className="text-xs text-muted-foreground">
+          Outbound email for password resets, invites and notifications.
+        </p>
 
         <SwitchField<SmtpValues>
           name="enabled"
           label="SMTP enabled"
-          description="Turn on to route outgoing emails through this server."
           disabled={!canEdit || loading}
         />
 
@@ -165,7 +159,6 @@ function EmailSmtpPage() {
           <SwitchField<SmtpValues>
             name="enableSsl"
             label="Enable SSL"
-            description="Use SSL/TLS when connecting to the SMTP server."
             disabled={!canEdit || loading}
           />
         </div>

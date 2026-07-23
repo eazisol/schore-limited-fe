@@ -298,7 +298,7 @@ function ProfilePage() {
               <input
                 value={jobTitle}
                 disabled
-                className="pointer-events-none flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground"
+                className="pointer-events-none flex h-9 w-full cursor-default rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground"
               />
             </AppTooltip>
           </div>
@@ -308,7 +308,7 @@ function ProfilePage() {
               <input
                 value={roleLabel}
                 disabled
-                className="pointer-events-none flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground"
+                className="pointer-events-none flex h-9 w-full cursor-default rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground"
               />
             </AppTooltip>
           </div>

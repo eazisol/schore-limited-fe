@@ -1,12 +1,30 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
 import { AppTooltip } from "@/components/AppTooltip";
+import { DetailField, DetailMetaRow } from "@/components/DetailField";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ArrowLeft, Loader2, Pencil, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  BadgeCheck,
+  Briefcase,
+  CirclePoundSterling,
+  FileText,
+  Folder,
+  ImageIcon,
+  Layers,
+  Loader2,
+  Package,
+  Pencil,
+  ScrollText,
+  Tag,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Can, usePermission } from "@/components/Permission";
+import { TableImagePreview } from "@/components/TableImagePreview";
 import { productsService, resolveProductImageUrl } from "@/lib/api/services/products";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { itemsQueryKey } from "./items.index";
@@ -75,6 +93,8 @@ function ItemDetail() {
     );
   }
 
+  const imageSrc = resolveProductImageUrl(item.imageUrl, item.editDate);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -116,12 +136,12 @@ function ItemDetail() {
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="card-elevated space-y-4 p-6 lg:col-span-2">
-          <h3 className="font-display font-semibold">Item details</h3>
-          <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-            <ReadOnlyField label="Name" value={item.name} />
-            <ReadOnlyField label="SKU" value={item.sku} />
-            <ReadOnlyField
+        <div className="card-elevated space-y-5 p-4 sm:p-6 lg:col-span-2">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <DetailField icon={Package} label="Name" value={item.name} />
+            <DetailField icon={Tag} label="SKU" value={item.sku} />
+            <DetailField
+              icon={BadgeCheck}
               label="Status"
               value={
                 <span
@@ -131,42 +151,66 @@ function ItemDetail() {
                 </span>
               }
             />
-
-            <ReadOnlyField label="Product type" value={item.productTypeName || "—"} />
-            <ReadOnlyField label="Category" value={item.categoryName || "—"} />
-            <ReadOnlyField label="Unit" value={item.unitName || "—"} />
-
-            <ReadOnlyField label="Sale price" value={formatGbp(item.salePrice)} />
-            <ReadOnlyField label="Cost price" value={formatGbp(item.costPrice)} />
-
-            <ReadOnlyField
-              label="Image"
-              value={
-                item.imageUrl ? (
-                  <img
-                    src={resolveProductImageUrl(item.imageUrl, item.editDate)}
-                    alt=""
-                    className="mt-0.5 h-24 w-full max-w-[10rem] rounded-md border object-cover"
-                  />
-                ) : (
-                  "—"
-                )
-              }
+            <DetailField
+              icon={Briefcase}
+              label="Product type"
+              value={item.productTypeName || "—"}
             />
-
-            <div className="sm:col-span-2 lg:col-span-3">
-              <ReadOnlyField label="Description" value={item.description || "—"} />
+            <DetailField icon={Folder} label="Category" value={item.categoryName || "—"} />
+            <DetailField icon={Layers} label="Unit" value={item.unitName || "—"} />
+            <DetailField
+              icon={CirclePoundSterling}
+              label="Sale price"
+              value={formatGbp(item.salePrice)}
+            />
+            <DetailField
+              icon={CirclePoundSterling}
+              label="Cost price"
+              value={formatGbp(item.costPrice)}
+            />
+            <div className="sm:col-span-2">
+              <DetailField
+                icon={ScrollText}
+                label="Description"
+                value={
+                  <span className="whitespace-pre-wrap leading-relaxed">
+                    {item.description?.trim() || "—"}
+                  </span>
+                }
+              />
             </div>
           </div>
         </div>
 
-        <div className="card-elevated self-start p-6">
-          <h3 className="mb-4 font-display font-semibold">Record</h3>
-          <dl className="space-y-3 text-sm">
-            <Row label="Item ID">{item.id}</Row>
-            <Row label="Created">{formatDateTime(item.createdDate)}</Row>
-            <Row label="Last edited">{formatDateTime(item.editDate)}</Row>
-          </dl>
+        <div className="space-y-6">
+          <div className="card-elevated self-start p-4 sm:p-6">
+            <h3 className="mb-4 flex items-center gap-2 font-display font-semibold">
+              <FileText className="h-4 w-4 text-muted-foreground" aria-hidden />
+              Record
+            </h3>
+            <dl className="space-y-3">
+              <DetailMetaRow label="Item ID">{item.id}</DetailMetaRow>
+              <DetailMetaRow label="Created">{formatDateTime(item.createdDate)}</DetailMetaRow>
+              <DetailMetaRow label="Last edited">{formatDateTime(item.editDate)}</DetailMetaRow>
+            </dl>
+          </div>
+
+          {imageSrc ? (
+            <div className="card-elevated flex flex-col p-4 sm:p-6">
+              <h3 className="mb-4 flex items-center gap-2 font-display font-semibold">
+                <ImageIcon className="h-4 w-4 text-muted-foreground" aria-hidden />
+                Product image
+              </h3>
+              <div className="flex items-center justify-center rounded-lg bg-muted/40 p-6">
+                <TableImagePreview
+                  src={imageSrc}
+                  alt={item.name}
+                  tooltip="View image"
+                  className="h-40 w-40 sm:h-44 sm:w-44"
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -207,24 +251,6 @@ function ItemDetail() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function ReadOnlyField({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="min-w-0 space-y-1">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="break-words text-sm font-medium">{value}</div>
-    </div>
-  );
-}
-
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-right text-sm font-medium">{children}</dd>
     </div>
   );
 }

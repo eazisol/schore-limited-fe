@@ -66,10 +66,18 @@ export function isPathActive(pathname: string, route: string | null | undefined)
   return path === to || path.startsWith(`${to}/`);
 }
 
-/** True when the pathname matches this menu or any descendant route. */
+/**
+ * True when the pathname matches this menu or any descendant route.
+ * Parent/container menus only follow children — their own route is ignored so an
+ * empty API route (normalized to `/`) does not light up every section on Dashboard.
+ */
 export function isMenuTreeActive(pathname: string, menu: ApiMenu): boolean {
-  if (menu.route && isPathActive(pathname, menu.route)) return true;
-  return (menu.children ?? []).some((child) => isMenuTreeActive(pathname, child));
+  const children = menu.children ?? [];
+  if (children.length > 0) {
+    return children.some((child) => isMenuTreeActive(pathname, child));
+  }
+  if (!menu.route) return false;
+  return isPathActive(pathname, menu.route);
 }
 
 /** Parents with visible children act as expand/collapse containers (no navigation). */

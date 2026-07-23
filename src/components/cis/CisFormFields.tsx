@@ -35,13 +35,9 @@ export function CisFormFields({ disabled = false }: { disabled?: boolean }) {
           min={0}
           step="0.01"
         />
-        <TextField<CisFormValues>
-          name="orderBy"
-          label="Order"
-          required
-          type="number"
-          min={0}
-          step="1"
+        <SwitchField<CisFormValues>
+          name="isActive"
+          label="Active"
         />
       </div>
       <TextareaField<CisFormValues>
@@ -49,11 +45,6 @@ export function CisFormFields({ disabled = false }: { disabled?: boolean }) {
         label="Description"
         rows={3}
         maxLength={DESCRIPTION_MAX_LENGTH}
-      />
-      <SwitchField<CisFormValues>
-        name="isActive"
-        label="Active"
-        description="Status can be selected on operative records."
       />
     </fieldset>
   );

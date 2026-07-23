@@ -80,7 +80,6 @@ function NewItem() {
 
         <Form form={form} onSubmit={submit} className="max-w-3xl space-y-6">
           <div className="card-elevated space-y-4 p-6">
-            <h3 className="font-display font-semibold">Item details</h3>
             <ItemFormFields onImageFileChange={setImageFile} />
           </div>
 

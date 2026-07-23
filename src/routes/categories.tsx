@@ -72,7 +72,16 @@ function CategoriesPage() {
 
   const query = useQuery({
     queryKey: [...categoriesQueryKey, { page, pageSize, search }],
-    queryFn: async () => (await categoriesService.list({ page, pageSize, search })).data,
+    queryFn: async () =>
+      (
+        await categoriesService.list({
+          page,
+          pageSize,
+          search,
+          sortBy: "createdDate",
+          sortDir: "desc",
+        })
+      ).data,
     placeholderData: keepPreviousData,
   });
 
@@ -185,7 +194,7 @@ function CategoriesPage() {
       <PageHeader
         title="Categories"
         actions={
-          <div className="flex items-center gap-2">
+          <>
             <Button
               variant="outline"
               size="sm"
@@ -201,7 +210,7 @@ function CategoriesPage() {
                 Add category
               </Button>
             </Can>
-          </div>
+          </>
         }
       />
 
@@ -391,11 +400,12 @@ function CategoryFormModal({
             rows={3}
             maxLength={DESCRIPTION_MAX_LENGTH}
           />
-          <SwitchField<Values>
-            name="isActive"
-            label="Active"
-            description="Inactive categories cannot be selected on items."
-          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <SwitchField<Values>
+              name="isActive"
+              label="Active"
+            />
+          </div>
         </fieldset>
         <div className="flex justify-end gap-2 border-t pt-2">
           <Button type="button" variant="outline" onClick={onClose}>

@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { cisService, type ApiCisStatus, type CisSortBy } from "@/lib/api/services/cis";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { AppTooltip } from "@/components/AppTooltip";
-import { activeStatusClass, formatCisRate } from "@/lib/module-ui";
+import { activeStatusClass, formatCisRate, truncateWithEllipsis } from "@/lib/module-ui";
 import { CIS_ROUTE } from "@/lib/cis";
 
 export const Route = createFileRoute("/cis-management/")({
@@ -30,8 +30,6 @@ const COLUMN_SORT_KEYS: Record<string, CisSortBy> = {
   name: "name",
   code: "code",
   rate: "rate",
-  description: "description",
-  orderBy: "orderby",
   status: "status",
 };
 
@@ -42,8 +40,8 @@ function CisList() {
   const canDelete = usePermission({ route: CIS_ROUTE, action: "delete" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [sortBy, setSortBy] = useState<CisSortBy>("name");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortBy, setSortBy] = useState<CisSortBy>("createdDate");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [confirmDel, setConfirmDel] = useState<ApiCisStatus | null>(null);
   const [exporting, setExporting] = useState(false);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
@@ -80,13 +78,12 @@ function CisList() {
     try {
       downloadCsv({
         filename: `cis-export-${new Date().toISOString().slice(0, 10)}.csv`,
-        headers: ["Name", "Code", "Rate", "Description", "Order", "Status"],
+        headers: ["Name", "Code", "Rate", "Description", "Status"],
         rows: rows.map((c) => [
           c.name,
           c.code,
           formatCisRate(c.rate),
-          c.description ?? "",
-          String(c.orderBy ?? 0),
+          c.description?.trim() || "",
           c.isActive ? "Active" : "Inactive",
         ]),
       });
@@ -104,13 +101,13 @@ function CisList() {
         sortable: true,
         truncate: false,
         cell: (row) => (
-          <AppTooltip content={row.name} asChild>
+          <AppTooltip content={row.name} asChild align="start">
             <Link
               to="/cis-management/$id"
               params={{ id: String(row.id) }}
-              className="line-clamp-2 break-words font-medium hover:text-info hover:underline"
+              className="inline-block max-w-full font-medium hover:text-info hover:underline"
             >
-              {row.name}
+              {truncateWithEllipsis(row.name)}
             </Link>
           </AppTooltip>
         ),
@@ -129,30 +126,6 @@ function CisList() {
         sortable: true,
         cell: (row) => (
           <span className="font-mono tabular-nums">{formatCisRate(row.rate)}</span>
-        ),
-      },
-      {
-        id: "description",
-        header: "Description",
-        sortable: true,
-        truncate: false,
-        cell: (row) =>
-          row.description ? (
-            <AppTooltip content={row.description} asChild>
-              <span className="line-clamp-2 break-words text-sm text-muted-foreground">
-                {row.description}
-              </span>
-            </AppTooltip>
-          ) : (
-            "—"
-          ),
-      },
-      {
-        id: "orderBy",
-        header: "Order",
-        sortable: true,
-        cell: (row) => (
-          <span className="font-mono tabular-nums">{row.orderBy ?? 0}</span>
         ),
       },
       {
@@ -205,7 +178,7 @@ function CisList() {
   );
 
   const activeSortColumn =
-    Object.entries(COLUMN_SORT_KEYS).find(([, apiKey]) => apiKey === sortBy)?.[0] ?? "name";
+    Object.entries(COLUMN_SORT_KEYS).find(([, apiKey]) => apiKey === sortBy)?.[0] ?? "";
 
   function handleSortChange(columnId: string, direction: "asc" | "desc") {
     const apiSortBy = COLUMN_SORT_KEYS[columnId];
@@ -227,7 +200,7 @@ function CisList() {
       <PageHeader
         title="CIS Management"
         actions={
-          <div className="flex items-center gap-2">
+          <>
             <Button
               variant="outline"
               size="sm"
@@ -245,7 +218,7 @@ function CisList() {
                 </Link>
               </Button>
             </Can>
-          </div>
+          </>
         }
       />
 

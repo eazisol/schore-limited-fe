@@ -32,7 +32,6 @@ function NewCisStatus() {
       code: "",
       rate: 0,
       description: "",
-      orderBy: 0,
       isActive: true,
     },
   });
@@ -48,7 +47,7 @@ function NewCisStatus() {
   });
 
   async function submit(values: CisFormValues) {
-    await createMutation.mutateAsync(toCisPayload(values));
+    await createMutation.mutateAsync(toCisPayload(values, 0));
   }
 
   return (
@@ -70,12 +69,11 @@ function NewCisStatus() {
         />
 
         <Form form={form} onSubmit={submit} className="max-w-3xl space-y-6">
-          <div className="card-elevated space-y-4 p-6">
-            <h3 className="font-display font-semibold">CIS details</h3>
+          <div className="card-elevated space-y-4 p-4 sm:p-6">
             <CisFormFields disabled={createMutation.isPending} />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2">
+          <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
             <Button
               type="button"
               variant="outline"

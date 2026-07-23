@@ -22,7 +22,7 @@ import {
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { AppTooltip } from "@/components/AppTooltip";
 import { TableImagePreview } from "@/components/TableImagePreview";
-import { activeStatusClass, formatGbp } from "@/lib/module-ui";
+import { activeStatusClass, formatGbp, truncateWithEllipsis } from "@/lib/module-ui";
 import { ITEMS_ROUTE } from "@/lib/items";
 
 export const Route = createFileRoute("/items/")({
@@ -47,8 +47,8 @@ function ItemsList() {
   const canDelete = usePermission({ route: ITEMS_ROUTE, action: "delete" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [sortBy, setSortBy] = useState<ProductsSortBy>("name");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortBy, setSortBy] = useState<ProductsSortBy>("createdDate");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [confirmDel, setConfirmDel] = useState<ApiProduct | null>(null);
   const [exporting, setExporting] = useState(false);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
@@ -85,14 +85,26 @@ function ItemsList() {
     try {
       downloadCsv({
         filename: `items-export-${new Date().toISOString().slice(0, 10)}.csv`,
-        headers: ["SKU", "Name", "Type", "Category", "Unit", "Sale price", "Status"],
+        headers: [
+          "SKU",
+          "Name",
+          "Description",
+          "Type",
+          "Category",
+          "Unit",
+          "Sale price",
+          "Cost price",
+          "Status",
+        ],
         rows: rows.map((item) => [
           item.sku,
           item.name,
+          item.description ?? "",
           item.productTypeName ?? "",
           item.categoryName ?? "",
           item.unitName ?? "",
           String(item.salePrice),
+          String(item.costPrice),
           item.isActive ? "Active" : "Inactive",
         ]),
       });
@@ -124,13 +136,13 @@ function ItemsList() {
                 }
               />
               <div className="min-w-0">
-                <AppTooltip content={item.name} asChild>
+                <AppTooltip content={item.name} asChild align="start">
                   <Link
                     to="/items/$id"
                     params={{ id: String(item.id) }}
-                    className="line-clamp-2 break-words font-medium hover:text-info hover:underline"
+                    className="inline-block max-w-full font-medium hover:text-info hover:underline"
                   >
-                    {item.name}
+                    {truncateWithEllipsis(item.name)}
                   </Link>
                 </AppTooltip>
               </div>
@@ -143,21 +155,28 @@ function ItemsList() {
         header: "SKU",
         sortable: true,
         cell: (item) => (
-          <code className="rounded bg-secondary px-1.5 py-0.5 text-xs font-mono">{item.sku}</code>
+          <code className="whitespace-nowrap rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">
+            {item.sku}
+          </code>
         ),
       },
       {
         id: "category",
         header: "Category",
         sortable: true,
-        cell: (item) => item.categoryName || "—",
+        truncate: false,
+        cell: (item) => (
+          <span className="whitespace-nowrap">{item.categoryName || "—"}</span>
+        ),
       },
       {
         id: "salePrice",
         header: "Sale price",
         sortable: true,
         cell: (item) => (
-          <span className="font-mono tabular-nums">{formatGbp(item.salePrice)}</span>
+          <span className="whitespace-nowrap font-mono tabular-nums">
+            {formatGbp(item.salePrice)}
+          </span>
         ),
       },
       {
@@ -220,7 +239,7 @@ function ItemsList() {
   );
 
   const activeSortColumn =
-    Object.entries(ITEM_COLUMN_SORT_KEYS).find(([, apiKey]) => apiKey === sortBy)?.[0] ?? "name";
+    Object.entries(ITEM_COLUMN_SORT_KEYS).find(([, apiKey]) => apiKey === sortBy)?.[0] ?? "";
 
   function handleSortChange(columnId: string, direction: "asc" | "desc") {
     const apiSortBy = ITEM_COLUMN_SORT_KEYS[columnId];
@@ -242,7 +261,7 @@ function ItemsList() {
       <PageHeader
         title="Items"
         actions={
-          <div className="flex items-center gap-2">
+          <>
             <Button
               variant="outline"
               size="sm"
@@ -260,7 +279,7 @@ function ItemsList() {
                 </Link>
               </Button>
             </Can>
-          </div>
+          </>
         }
       />
 

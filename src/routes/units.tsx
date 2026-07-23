@@ -69,7 +69,16 @@ function UnitsPage() {
 
   const query = useQuery({
     queryKey: [...unitsQueryKey, { page, pageSize, search }],
-    queryFn: async () => (await unitsService.list({ page, pageSize, search })).data,
+    queryFn: async () =>
+      (
+        await unitsService.list({
+          page,
+          pageSize,
+          search,
+          sortBy: "createdDate",
+          sortDir: "desc",
+        })
+      ).data,
     placeholderData: keepPreviousData,
   });
 
@@ -172,7 +181,7 @@ function UnitsPage() {
       <PageHeader
         title="Units"
         actions={
-          <div className="flex items-center gap-2">
+          <>
             <Button
               variant="outline"
               size="sm"
@@ -188,7 +197,7 @@ function UnitsPage() {
                 Add unit
               </Button>
             </Can>
-          </div>
+          </>
         }
       />
 
@@ -364,11 +373,12 @@ function UnitFormModal({
               inputClassName="uppercase"
             />
             </div>
-          <SwitchField<Values>
-            name="isActive"
-            label="Active"
-            description="Inactive units cannot be selected on items."
-          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <SwitchField<Values>
+              name="isActive"
+              label="Active"
+            />
+          </div>
         </fieldset>
         <div className="flex justify-end gap-2 border-t pt-2">
           <Button type="button" variant="outline" onClick={onClose}>

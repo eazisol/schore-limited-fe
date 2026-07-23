@@ -15,6 +15,11 @@ export interface ApiUser {
   userTypeName: string;
   roleIds: number[];
   roleNames: string[];
+  tradeId?: number | null;
+  tradeName?: string | null;
+  cisId?: number | null;
+  cisName?: string | null;
+  dailyRate?: number | null;
   createdBy: number | null;
   createdDate: string;
   editBy: number | null;
@@ -47,14 +52,17 @@ function toUserFormData(userData: object, file?: File | null): FormData {
 export interface CreateUserPayload {
   username: string;
   email: string;
-  password: string;
+  password: string | null;
   firstName: string;
   lastName: string;
   dateOfBirth?: string | null;
   phone?: string | null;
   isActive: boolean;
   userTypeId: number;
-  roleIds: number[];
+  roleIds: number[] | null;
+  tradeId?: number | null;
+  cisId?: number | null;
+  dailyRate?: number | null;
 }
 
 export interface UpdateUserPayload {
@@ -66,7 +74,10 @@ export interface UpdateUserPayload {
   password?: string | null;
   isActive: boolean;
   userTypeId: number;
-  roleIds: number[];
+  roleIds: number[] | null;
+  tradeId?: number | null;
+  cisId?: number | null;
+  dailyRate?: number | null;
 }
 
 /** Normalise API date values for `<input type="date">`. */
@@ -80,11 +91,20 @@ export interface UsersListParams {
   pageSize: number;
   search?: string;
   roleId?: number;
+  userTypeId?: number;
   sortBy?: UsersSortBy;
   sortDir?: UsersSortDir;
 }
 
-export type UsersSortBy = "name" | "roles" | "usertype" | "status";
+export type UsersSortBy =
+  | "name"
+  | "roles"
+  | "usertype"
+  | "status"
+  | "trade"
+  | "cis"
+  | "dailyrate"
+  | "createdDate";
 export type UsersSortDir = "asc" | "desc";
 
 export interface PagedResult<T> {
@@ -103,6 +123,7 @@ export const usersService = {
         PageSize: params.pageSize,
         Search: params.search ?? "",
         ...(params.roleId != null ? { RoleId: params.roleId } : {}),
+        ...(params.userTypeId != null ? { UserTypeId: params.userTypeId } : {}),
         ...(params.sortBy ? { SortBy: params.sortBy } : {}),
         ...(params.sortDir ? { SortDir: params.sortDir } : {}),
       },

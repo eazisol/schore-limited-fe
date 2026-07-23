@@ -2,6 +2,36 @@ import { z } from "zod";
 import type { ProductPayload } from "@/lib/api/services/products";
 import { descriptionSchema, nameSchema } from "@/lib/field-validation";
 
+/** Item catalogue image upload limits. */
+export const ITEM_IMAGE_MAX_SIZE_KB = 10 * 1024; // 10 MB
+export const ITEM_IMAGE_EXTENSIONS = [
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "avif",
+  "svg",
+  "jfif",
+] as const;
+export const ITEM_IMAGE_ACCEPT = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/avif",
+  "image/svg+xml",
+  "image/jfif",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".gif",
+  ".webp",
+  ".avif",
+  ".svg",
+  ".jfif",
+].join(",");
+
 export const itemFormSchema = z.object({
   name: nameSchema(),
   description: descriptionSchema(),

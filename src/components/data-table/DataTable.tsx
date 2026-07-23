@@ -7,6 +7,7 @@ import { DataTableToolbar } from "./DataTableToolbar";
 import { DataTableRowActions } from "./DataTableRowActions";
 import {
   DEFAULT_COLUMN_WIDTHS,
+  NOWRAP_COLUMN_IDS,
   type DataTableAlign,
   type DataTableColumn,
   type DataTableProps,
@@ -22,6 +23,27 @@ const ACTIONS_COLUMN_WIDTH = "8rem";
 
 function resolveColumnWidth<T>(column: DataTableColumn<T>): string | undefined {
   return column.width ?? DEFAULT_COLUMN_WIDTHS[column.id];
+}
+
+function widthToRem(width: string | undefined, fallback = 8): number {
+  if (!width) return fallback;
+  const value = parseFloat(width);
+  if (!Number.isFinite(value)) return fallback;
+  if (width.endsWith("rem")) return value;
+  if (width.endsWith("px")) return value / 16;
+  if (width.endsWith("%")) return Math.max(6, (value / 100) * 48);
+  return fallback;
+}
+
+function estimateTableMinWidthRem<T>(
+  columns: DataTableColumn<T>[],
+  hasActions: boolean,
+): number {
+  let total = hasActions ? widthToRem(ACTIONS_COLUMN_WIDTH) : 0;
+  for (const column of columns) {
+    total += widthToRem(resolveColumnWidth(column));
+  }
+  return Math.max(total, 40);
 }
 
 function plainTextLabel(content: unknown): string | undefined {
@@ -58,6 +80,7 @@ export function DataTable<T>({
       : rowActions
         ? () => rowActions
         : null;
+  const tableMinWidthRem = estimateTableMinWidthRem(columns, Boolean(actions));
 
   function handleSort(column: DataTableColumn<T>) {
     if (!column.sortable || !sort?.onSortChange) return;
@@ -106,8 +129,11 @@ export function DataTable<T>({
           {emptyState?.action && <div className="mt-4">{emptyState.action}</div>}
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-sm">
+        <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+          <table
+            className="w-full table-fixed text-sm"
+            style={{ minWidth: `${tableMinWidthRem}rem` }}
+          >
             <colgroup>
               {columns.map((column) => {
                 const width = resolveColumnWidth(column);
@@ -124,7 +150,7 @@ export function DataTable<T>({
                     <th
                       key={column.id}
                       className={cn(
-                        "font-medium",
+                        "whitespace-nowrap font-medium",
                         headerPadding,
                         column.id === columns[0]?.id ? "px-5" : "px-3",
                         ALIGN_CLASS[align],
@@ -135,7 +161,7 @@ export function DataTable<T>({
                         <button
                           type="button"
                           onClick={() => handleSort(column)}
-                          className="inline-flex max-w-full items-center gap-1 hover:text-foreground"
+                          className="inline-flex max-w-full cursor-pointer items-center gap-1 hover:text-foreground"
                         >
                           <span className="truncate">{column.header}</span>
                           {isSorted ? (
@@ -155,7 +181,12 @@ export function DataTable<T>({
                   );
                 })}
                 {actions && (
-                  <th className={cn("px-5 text-right font-medium", headerPadding)}>
+                  <th
+                    className={cn(
+                      "whitespace-nowrap px-5 text-right font-medium",
+                      headerPadding,
+                    )}
+                  >
                     Actions
                   </th>
                 )}
@@ -168,7 +199,8 @@ export function DataTable<T>({
                   <tr key={getRowId(row)} className="hover:bg-muted/30">
                     {columns.map((column) => {
                       const align = column.align ?? "left";
-                      const shouldClamp = column.truncate !== false;
+                      const isNowrapColumn = NOWRAP_COLUMN_IDS.has(column.id);
+                      const shouldClamp = column.truncate !== false && !isNowrapColumn;
                       const content =
                         column.cell?.(row) ??
                         (column.accessor ? String(column.accessor(row) ?? "—") : "—");
@@ -184,7 +216,8 @@ export function DataTable<T>({
                         <td
                           key={column.id}
                           className={cn(
-                            "max-w-0 overflow-hidden align-middle",
+                            "overflow-hidden align-middle",
+                            !isNowrapColumn && "max-w-0",
                             cellPadding,
                             column.id === columns[0]?.id ? "px-5" : "px-3",
                             ALIGN_CLASS[align],
@@ -192,11 +225,25 @@ export function DataTable<T>({
                           )}
                         >
                           {shouldClamp ? (
-                            <AppTooltip content={tooltipText} asChild disabled={!tooltipText}>
-                              <div className="line-clamp-2 break-words">{content}</div>
+                            <AppTooltip
+                              content={tooltipText}
+                              asChild
+                              align="start"
+                              disabled={!tooltipText}
+                            >
+                              <div className="inline-block w-fit max-w-full line-clamp-2 break-words">
+                                {content}
+                              </div>
                             </AppTooltip>
                           ) : (
-                            <div className="min-w-0 overflow-hidden">{content}</div>
+                            <div
+                              className={cn(
+                                "min-w-0 overflow-hidden",
+                                isNowrapColumn && "whitespace-nowrap",
+                              )}
+                            >
+                              {content}
+                            </div>
                           )}
                         </td>
                       );

@@ -33,21 +33,10 @@ export function TradeFormFields({ disabled = false }: { disabled?: boolean }) {
         maxLength={DESCRIPTION_MAX_LENGTH}
       />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <TextField<TradeFormValues>
-          name="orderBy"
-          label="Order"
-          required
-          type="number"
-          min={0}
-          step="1"
+        <SwitchField<TradeFormValues>
+          name="isActive"
+          label="Active"
         />
-        <div className="flex items-end pb-1">
-          <SwitchField<TradeFormValues>
-            name="isActive"
-            label="Active"
-            description="Trade appears in operative dropdowns."
-          />
-        </div>
       </div>
     </fieldset>
   );

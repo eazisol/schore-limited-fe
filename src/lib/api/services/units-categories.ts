@@ -42,16 +42,23 @@ export interface CategoryPayload {
   isActive: boolean;
 }
 
+export type UnitsCategoriesSortBy = "name" | "code" | "status" | "createdDate";
+export type UnitsCategoriesSortDir = "asc" | "desc";
+
 export interface ListParams {
   page: number;
   pageSize: number;
   search?: string;
+  sortBy?: UnitsCategoriesSortBy;
+  sortDir?: UnitsCategoriesSortDir;
 }
 
 const listQuery = (p: ListParams) => ({
   Page: p.page,
   PageSize: p.pageSize,
   Search: p.search ?? "",
+  ...(p.sortBy ? { SortBy: p.sortBy } : {}),
+  ...(p.sortDir ? { SortDir: p.sortDir } : {}),
 });
 
 export const unitsService = {

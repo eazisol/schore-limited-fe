@@ -7,7 +7,7 @@ function ImagePreviewModal({
   open,
   onClose,
   src,
-  title = "Uploaded image",
+  title = "Image",
 }: {
   open: boolean;
   onClose: () => void;

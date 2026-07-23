@@ -2,10 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertCircle, Loader2, Save } from "lucide-react";
+import { AlertCircle, ChevronRight, Loader2, Save } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Select,
   SelectContent,
@@ -14,9 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { lookupsService, type ApiRole } from "@/lib/api/services/lookups";
+import { menusService } from "@/lib/api/services/menus";
 import {
   permissionsService,
-  type ApiPermission,
   type UpsertPermission,
 } from "@/lib/api/services/permissions";
 import { notifyApiError } from "@/lib/api/axios";
@@ -26,62 +31,43 @@ import {
   usePermissions,
 } from "@/contexts/PermissionContext";
 import { PERMISSIONS_ROUTE } from "@/lib/permissions-route";
+import { cn } from "@/lib/utils";
+import {
+  buildPermissionTree,
+  collectExpandableMenuIds,
+  findPermissionNode,
+  flattenTreeForSave,
+  isDescendantLocked,
+  mergePermissions,
+  samePermissionTree,
+  setPermissionFlag,
+  type PermissionFlag,
+  type PermissionTreeNode,
+} from "@/lib/permission-tree";
 
 export const Route = createFileRoute("/permissions")({
   head: () => ({ meta: [{ title: "Permissions | Schore" }] }),
   component: PermissionsPage,
 });
 
-type PermFlag = "read" | "modify" | "delete";
-
-type DraftPermission = {
-  menuId: number;
-  menuName: string;
-  menuCode: string;
-  read: boolean;
-  modify: boolean;
-  delete: boolean;
-};
-
-function toDraft(items: ApiPermission[]): DraftPermission[] {
-  return items.map((p) => ({
-    menuId: p.menuId,
-    menuName: p.menuName?.trim() || p.menuCode?.trim() || `Menu #${p.menuId}`,
-    menuCode: p.menuCode?.trim() || "",
-    read: Boolean(p.read),
-    modify: Boolean(p.modify),
-    delete: Boolean(p.delete),
-  }));
-}
-
-function sameDraft(a: DraftPermission[], b: DraftPermission[]): boolean {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    const x = a[i];
-    const y = b[i];
-    if (
-      x.menuId !== y.menuId ||
-      x.read !== y.read ||
-      x.modify !== y.modify ||
-      x.delete !== y.delete
-    ) {
-      return false;
-    }
-  }
-  return true;
-}
-
 function PermissionsPage() {
   const qc = useQueryClient();
   const canModify = usePermission({ route: PERMISSIONS_ROUTE, action: "modify" });
   const { refreshPermissions } = usePermissions();
   const [roleId, setRoleId] = useState<number | null>(null);
-  const [draft, setDraft] = useState<DraftPermission[]>([]);
+  const [draft, setDraft] = useState<PermissionTreeNode[]>([]);
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(() => new Set());
 
   // Reuse the shared ["roles"] cache from User Management — do not use a different key.
   const rolesQuery = useQuery({
     queryKey: ["roles"],
     queryFn: async () => (await lookupsService.roles()).data ?? [],
+  });
+
+  const menusQuery = useQuery({
+    queryKey: ["menus", "tree"],
+    queryFn: async () => (await menusService.tree()).data ?? [],
+    staleTime: 60_000,
   });
 
   const roles = rolesQuery.data ?? [];
@@ -99,22 +85,28 @@ function PermissionsPage() {
     refetchOnWindowFocus: false,
   });
 
-  const serverDraft = useMemo(
-    () => (permsQuery.data ? toDraft(permsQuery.data) : []),
-    [permsQuery.data],
-  );
+  const serverTree = useMemo(() => {
+    if (!menusQuery.isSuccess || !permsQuery.isSuccess || permsQuery.data == null) {
+      return [] as PermissionTreeNode[];
+    }
+    return mergePermissions(
+      buildPermissionTree(menusQuery.data ?? []),
+      permsQuery.data,
+    );
+  }, [menusQuery.isSuccess, menusQuery.data, permsQuery.isSuccess, permsQuery.data]);
 
   useEffect(() => {
     setDraft([]);
+    setExpandedIds(new Set());
   }, [roleId]);
 
   useEffect(() => {
-    if (permsQuery.isSuccess && permsQuery.data) {
-      setDraft(toDraft(permsQuery.data));
-    }
-  }, [permsQuery.isSuccess, permsQuery.data]);
+    if (serverTree.length === 0) return;
+    setDraft(serverTree);
+    setExpandedIds(new Set(collectExpandableMenuIds(serverTree)));
+  }, [serverTree]);
 
-  const isDirty = draft.length > 0 && !sameDraft(draft, serverDraft);
+  const isDirty = draft.length > 0 && !samePermissionTree(draft, serverTree);
 
   const saveMutation = useMutation({
     mutationFn: (payload: { roleId: number; permissions: UpsertPermission[] }) =>
@@ -123,7 +115,11 @@ function PermissionsPage() {
       toast.success(res.message || "Permissions saved");
       const next = res.data ?? [];
       qc.setQueryData(["permissions", "role", vars.roleId], next);
-      setDraft(toDraft(next));
+      const merged = mergePermissions(
+        buildPermissionTree(menusQuery.data ?? []),
+        next,
+      );
+      setDraft(merged);
       try {
         window.localStorage.setItem(PERMISSION_UPDATED_STORAGE_KEY, String(Date.now()));
       } catch {
@@ -138,26 +134,38 @@ function PermissionsPage() {
     onError: (err) => notifyApiError(err, "Failed to save permissions"),
   });
 
-  function toggle(menuId: number, flag: PermFlag) {
-    setDraft((prev) =>
-      prev.map((row) => (row.menuId === menuId ? { ...row, [flag]: !row[flag] } : row)),
-    );
+  function toggle(menuId: number, flag: PermissionFlag) {
+    setDraft((prev) => {
+      const node = findPermissionNode(prev, menuId);
+      if (!node) return prev;
+      return setPermissionFlag(prev, menuId, flag, !node[flag]);
+    });
   }
 
   function handleSave() {
     if (roleId == null || !isDirty || saveMutation.isPending) return;
     saveMutation.mutate({
       roleId,
-      permissions: draft.map(({ menuId, read, modify, delete: del }) => ({
-        menuId,
-        read,
-        modify,
-        delete: del,
-      })),
+      permissions: flattenTreeForSave(draft),
     });
   }
 
-  const showTable = roleId != null && permsQuery.isSuccess && draft.length > 0;
+  function toggleExpanded(menuId: number, open: boolean) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (open) next.add(menuId);
+      else next.delete(menuId);
+      return next;
+    });
+  }
+
+  const loadingTree =
+    menusQuery.isLoading ||
+    permsQuery.isLoading ||
+    ((menusQuery.isFetching || permsQuery.isFetching) && draft.length === 0);
+
+  const loadError = menusQuery.isError || permsQuery.isError;
+  const showTree = roleId != null && draft.length > 0 && !loadingTree && !loadError;
   const saving = saveMutation.isPending;
 
   return (
@@ -221,58 +229,159 @@ function PermissionsPage() {
         <div className="card-elevated p-12 text-center text-sm text-muted-foreground">
           Select a role to manage its permissions.
         </div>
-      ) : permsQuery.isLoading || (permsQuery.isFetching && draft.length === 0) ? (
+      ) : loadingTree ? (
         <div className="card-elevated grid place-items-center p-12 text-sm text-muted-foreground">
           <Loader2 className="mb-2 h-5 w-5 animate-spin" />
           Loading permissions…
         </div>
-      ) : permsQuery.isError ? (
+      ) : loadError ? (
         <div className="card-elevated p-12 text-center">
           <AlertCircle className="mx-auto mb-2 h-5 w-5 text-destructive" />
           <div className="text-sm font-medium">Unable to load permissions</div>
-          <Button variant="outline" size="sm" className="mt-4" onClick={() => permsQuery.refetch()}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => {
+              void menusQuery.refetch();
+              void permsQuery.refetch();
+            }}
+          >
             Retry
           </Button>
         </div>
-      ) : !showTable ? (
+      ) : !showTree ? (
         <div className="card-elevated p-12 text-center text-sm text-muted-foreground">
           No permissions found for this role.
         </div>
       ) : (
         <div className="card-elevated overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs text-muted-foreground">
-              <tr>
-                <th className="px-5 py-2.5 text-left font-medium">Menu</th>
-                <th className="w-24 px-3 py-2.5 text-center font-medium">Read</th>
-                <th className="w-24 px-3 py-2.5 text-center font-medium">Modify</th>
-                <th className="w-24 px-3 py-2.5 text-center font-medium">Delete</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {draft.map((row) => (
-                <tr key={row.menuId} className="hover:bg-muted/30">
-                  <td className="px-5 py-3">
-                    <div className="font-medium">{row.menuName}</div>
-                  </td>
-                  {(["read", "modify", "delete"] as const).map((flag) => (
-                    <td key={flag} className="px-3 py-3 text-center">
-                      <div className="inline-flex justify-center">
-                        <Checkbox
-                          checked={row[flag]}
-                          disabled={saving || !canModify}
-                          onCheckedChange={() => toggle(row.menuId, flag)}
-                          aria-label={`${row.menuName} ${flag}`}
-                        />
-                      </div>
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="grid min-w-[36rem] grid-cols-[minmax(0,1fr)_6rem_6rem_6rem] gap-0 border-b bg-muted/50 text-xs text-muted-foreground">
+            <div className="px-5 py-2.5 font-medium">Menu</div>
+            <div className="px-3 py-2.5 text-center font-medium">Read</div>
+            <div className="px-3 py-2.5 text-center font-medium">Modify</div>
+            <div className="px-3 py-2.5 text-center font-medium">Delete</div>
+          </div>
+          <div className="divide-y">
+            {draft.map((node) => (
+              <PermissionTreeRow
+                key={node.menuId}
+                node={node}
+                depth={0}
+                tree={draft}
+                expandedIds={expandedIds}
+                onToggleExpanded={toggleExpanded}
+                onToggleFlag={toggle}
+                canModify={canModify}
+                saving={saving}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
+  );
+}
+
+function PermissionTreeRow({
+  node,
+  depth,
+  tree,
+  expandedIds,
+  onToggleExpanded,
+  onToggleFlag,
+  canModify,
+  saving,
+}: {
+  node: PermissionTreeNode;
+  depth: number;
+  tree: PermissionTreeNode[];
+  expandedIds: Set<number>;
+  onToggleExpanded: (menuId: number, open: boolean) => void;
+  onToggleFlag: (menuId: number, flag: PermissionFlag) => void;
+  canModify: boolean;
+  saving: boolean;
+}) {
+  const hasChildren = node.children.length > 0;
+  const open = expandedIds.has(node.menuId);
+  const lockedByAncestor = isDescendantLocked(tree, node.menuId);
+  const baseDisabled = saving || !canModify || lockedByAncestor;
+  const modifyDeleteDisabled = baseDisabled || !node.read;
+
+  const row = (
+    <div
+      className={cn(
+        "grid min-w-[36rem] grid-cols-[minmax(0,1fr)_6rem_6rem_6rem] items-center hover:bg-muted/30",
+        depth === 0 && hasChildren && "bg-muted/10",
+      )}
+    >
+      <div
+        className="flex min-w-0 items-center gap-1.5 px-5 py-3"
+        style={{ paddingLeft: `${1.25 + depth * 1.25}rem` }}
+      >
+        {hasChildren ? (
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label={open ? `Collapse ${node.menuName}` : `Expand ${node.menuName}`}
+            >
+              <ChevronRight
+                className={cn("h-4 w-4 transition-transform", open && "rotate-90")}
+              />
+            </button>
+          </CollapsibleTrigger>
+        ) : (
+          <span className="inline-flex h-6 w-6 shrink-0" aria-hidden />
+        )}
+        <div
+          className={cn(
+            "min-w-0 truncate",
+            hasChildren ? "font-semibold" : "font-medium",
+            depth > 0 && "text-foreground/90",
+          )}
+          title={node.menuName}
+        >
+          {node.menuName}
+        </div>
+      </div>
+      {(["read", "modify", "delete"] as const).map((flag) => (
+        <div key={flag} className="px-3 py-3 text-center">
+          <div className="inline-flex justify-center">
+            <Checkbox
+              checked={node[flag]}
+              disabled={flag === "read" ? baseDisabled : modifyDeleteDisabled}
+              onCheckedChange={() => onToggleFlag(node.menuId, flag)}
+              aria-label={`${node.menuName} ${flag}`}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  if (!hasChildren) {
+    return row;
+  }
+
+  return (
+    <Collapsible open={open} onOpenChange={(next) => onToggleExpanded(node.menuId, next)}>
+      {row}
+      <CollapsibleContent>
+        {node.children.map((child) => (
+          <PermissionTreeRow
+            key={child.menuId}
+            node={child}
+            depth={depth + 1}
+            tree={tree}
+            expandedIds={expandedIds}
+            onToggleExpanded={onToggleExpanded}
+            onToggleFlag={onToggleFlag}
+            canModify={canModify}
+            saving={saving}
+          />
+        ))}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

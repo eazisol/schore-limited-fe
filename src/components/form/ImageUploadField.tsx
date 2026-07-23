@@ -10,7 +10,12 @@ export interface ImageUploadFieldProps<T extends FieldValues> {
   name: Path<T>;
   label?: ReactNode;
   description?: ReactNode;
+  /** Max file size in kilobytes. Default 2 MB. */
   maxSizeKb?: number;
+  /** `accept` attribute for the file input. */
+  accept?: string;
+  /** Allowed file extensions (lowercase, no dot). When set, rejects other types. */
+  allowedExtensions?: readonly string[];
   disabled?: boolean;
   className?: string;
   /** Called when the user selects or removes an image file. */
@@ -22,6 +27,16 @@ export interface ImageUploadFieldProps<T extends FieldValues> {
   onRemove?: () => void;
 }
 
+function fileExtension(file: File): string {
+  const name = file.name.trim();
+  const dot = name.lastIndexOf(".");
+  return dot >= 0 ? name.slice(dot + 1).toLowerCase() : "";
+}
+
+function formatExtensionsLabel(extensions: readonly string[]): string {
+  return extensions.map((ext) => ext.toUpperCase()).join(", ");
+}
+
 /**
  * Rectangular image picker with preview, change, and remove — for catalogue items.
  * Stores a data URL (or existing remote URL) in the form field.
@@ -31,6 +46,8 @@ export function ImageUploadField<T extends FieldValues>({
   label,
   description,
   maxSizeKb = 2048,
+  accept = "image/*",
+  allowedExtensions,
   disabled,
   className,
   onFileChange,
@@ -39,6 +56,10 @@ export function ImageUploadField<T extends FieldValues>({
   const { control, formState } = useFormContext<T>();
   const submitting = formState.isSubmitting;
   const fileRef = useRef<HTMLInputElement>(null);
+  const maxSizeMb = Math.round(maxSizeKb / 1024) || 1;
+  const formatsLabel = allowedExtensions?.length
+    ? formatExtensionsLabel(allowedExtensions)
+    : "JPG, PNG";
 
   function openPicker() {
     if (!disabled && !submitting) fileRef.current?.click();
@@ -82,7 +103,7 @@ export function ImageUploadField<T extends FieldValues>({
                   disabled={disabled || submitting}
                   aria-label={value ? "Change image" : "Upload image"}
                   className={cn(
-                    "relative grid h-28 w-full shrink-0 place-items-center overflow-hidden rounded-md border border-dashed border-border bg-background transition-colors hover:border-accent/50 hover:bg-accent/5 disabled:opacity-50 sm:h-28 sm:w-40",
+                    "relative grid h-28 w-full shrink-0 place-items-center overflow-hidden rounded-md border border-dashed border-border bg-background transition-colors hover:border-accent/50 hover:bg-accent/5 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 sm:h-28 sm:w-40",
                     value && "border-solid",
                   )}
                 >
@@ -98,7 +119,7 @@ export function ImageUploadField<T extends FieldValues>({
 
                 <div className="min-w-0 flex-1 space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    Upload a JPG or PNG image for this item. You can change or remove it anytime.
+                    Upload an image for this item. You can change or remove it anytime.
                   </p>
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
@@ -126,7 +147,7 @@ export function ImageUploadField<T extends FieldValues>({
                     ) : null}
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Max {Math.round(maxSizeKb / 1024) || 2} MB
+                    Allowed: {formatsLabel}. Max {maxSizeMb} MB
                   </p>
                 </div>
               </div>
@@ -135,15 +156,29 @@ export function ImageUploadField<T extends FieldValues>({
             <input
               ref={fileRef}
               type="file"
-              accept="image/*"
+              accept={accept}
               hidden
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
+
+                if (allowedExtensions?.length) {
+                  const ext = fileExtension(file);
+                  if (!ext || !allowedExtensions.includes(ext)) {
+                    toast.error(
+                      `Only ${formatExtensionsLabel(allowedExtensions)} images are allowed.`,
+                    );
+                    e.target.value = "";
+                    return;
+                  }
+                }
+
                 if (file.size > maxSizeKb * 1024) {
-                  toast.error(`Image must be under ${Math.round(maxSizeKb / 1024) || 2} MB`);
+                  toast.error(`Image must be under ${maxSizeMb} MB`);
+                  e.target.value = "";
                   return;
                 }
+
                 onFileChange?.(file);
                 const reader = new FileReader();
                 reader.onload = () => field.onChange(reader.result as string);

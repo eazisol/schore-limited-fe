@@ -30,9 +30,15 @@ export function buildAuthorizedMenus(
   const mapMenus = (items: ApiMenuDefinition[]): ApiMenu[] =>
     sortByOrder(items)
       .filter((menu) => menu.isActive)
-      .map((menu) => {
+      .reduce<ApiMenu[]>((acc, menu) => {
+        const sourceChildren = menu.children ?? [];
+        const children = mapMenus(sourceChildren);
+        // Parent with defined children: hide when every child is inactive (or pruned).
+        if (sourceChildren.length > 0 && children.length === 0) {
+          return acc;
+        }
         const permission = grants.get(menu.id);
-        return {
+        acc.push({
           id: menu.id,
           name: menu.name?.trim() || `Menu ${menu.id}`,
           code: menu.code?.trim() || "",
@@ -43,9 +49,10 @@ export function buildAuthorizedMenus(
           read: permission?.read ?? false,
           modify: permission?.modify ?? false,
           delete: permission?.delete ?? false,
-          children: mapMenus(menu.children ?? []),
-        };
-      });
+          children,
+        });
+        return acc;
+      }, []);
 
   const flatDefinitions = flattenMenuDefinitions(menuTree);
   const treeDefinitions = buildMenuTree(flatDefinitions);

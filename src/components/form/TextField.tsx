@@ -96,7 +96,7 @@ export function TextField<T extends FieldValues>({
                     tabIndex={-1}
                     aria-label={dateLabel}
                     disabled={disabled || submitting}
-                    className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:bg-accent/10 hover:text-foreground disabled:opacity-50"
+                    className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground cursor-pointer hover:bg-accent/10 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                     onClick={() => {
                       const el = inputRef.current;
                       if (!el || disabled || submitting) return;

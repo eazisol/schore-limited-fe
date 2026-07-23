@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/AppShell";
 import { AppTooltip } from "@/components/AppTooltip";
+import { DetailField, DetailMetaRow } from "@/components/DetailField";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, ArrowLeft, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -61,7 +62,6 @@ function CisDetail() {
       code: row?.code ?? "",
       rate: row?.rate ?? 0,
       description: row?.description ?? "",
-      orderBy: row?.orderBy ?? 0,
       isActive: row?.isActive ?? true,
     }),
     [row],
@@ -99,7 +99,7 @@ function CisDetail() {
   });
 
   async function save(values: CisFormValues) {
-    await updateMutation.mutateAsync(toCisPayload(values));
+    await updateMutation.mutateAsync(toCisPayload(values, row?.orderBy ?? 0));
   }
 
   if (cisQuery.isLoading) {
@@ -169,39 +169,36 @@ function CisDetail() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {isEditing ? (
-          <Form form={form} onSubmit={save} className="card-elevated space-y-4 p-6 lg:col-span-2">
-            <h3 className="font-display font-semibold">Edit details</h3>
+          <Form form={form} onSubmit={save} className="card-elevated space-y-4 p-4 sm:p-6 lg:col-span-2">
             <CisFormFields disabled={updateMutation.isPending} />
-            <div className="flex items-center justify-end gap-2 border-t pt-2">
-              <span className="mr-auto text-xs text-muted-foreground">
+            <div className="flex flex-col-reverse gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2 sm:pt-2">
+              <span className="text-xs text-muted-foreground sm:mr-auto">
                 {dirty ? "Unsaved changes" : "All changes saved"}
               </span>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={updateMutation.isPending}
-                onClick={() => navigate({ to: "/cis-management" })}
-              >
-                Cancel
-              </Button>
-              <SubmitButton disabled={!dirty} loadingText="Saving…">
-                Save changes
-              </SubmitButton>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={updateMutation.isPending}
+                  onClick={() => navigate({ to: "/cis-management" })}
+                >
+                  Cancel
+                </Button>
+                <SubmitButton disabled={!dirty} loadingText="Saving…">
+                  Save changes
+                </SubmitButton>
+              </div>
             </div>
           </Form>
         ) : (
-          <div className="card-elevated space-y-4 p-6 lg:col-span-2">
-            <h3 className="font-display font-semibold">CIS details</h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <ReadOnlyField label="Name" value={row.name} />
-                <ReadOnlyField label="Code" value={row.code} />
-              </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <ReadOnlyField label="Rate" value={formatCisRate(row.rate)} />
-                <ReadOnlyField label="Order" value={String(row.orderBy ?? 0)} />
-              </div>
-              <ReadOnlyField
+          <div className="card-elevated space-y-5 p-4 sm:p-6 lg:col-span-2">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <DetailField label="Name" value={row.name} />
+              <DetailField label="Code" value={row.code} />
+            </div>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <DetailField label="Rate" value={formatCisRate(row.rate)} />
+              <DetailField
                 label="Status"
                 value={
                   <span
@@ -211,17 +208,17 @@ function CisDetail() {
                   </span>
                 }
               />
-              <ReadOnlyField label="Description" value={row.description || "—"} />
             </div>
+            <DetailField label="Description" value={row.description || "—"} />
           </div>
         )}
 
         <div className="card-elevated self-start p-6">
           <h3 className="mb-4 font-display font-semibold">Record</h3>
-          <dl className="space-y-3 text-sm">
-            <Row label="CIS ID">{row.id}</Row>
-            <Row label="Created">{formatDateTime(row.createdDate)}</Row>
-            <Row label="Last edited">{formatDateTime(row.editDate)}</Row>
+          <dl className="space-y-3">
+            <DetailMetaRow label="CIS ID">{row.id}</DetailMetaRow>
+            <DetailMetaRow label="Created">{formatDateTime(row.createdDate)}</DetailMetaRow>
+            <DetailMetaRow label="Last edited">{formatDateTime(row.editDate)}</DetailMetaRow>
           </dl>
         </div>
       </div>
@@ -263,24 +260,6 @@ function CisDetail() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function ReadOnlyField({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="break-words text-sm font-medium">{value}</div>
-    </div>
-  );
-}
-
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-right text-sm font-medium">{children}</dd>
     </div>
   );
 }

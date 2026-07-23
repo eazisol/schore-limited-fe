@@ -4,7 +4,6 @@ import {
   codeSchema,
   descriptionSchema,
   nameSchema,
-  orderBySchema,
   rateSchema,
 } from "@/lib/field-validation";
 
@@ -13,19 +12,18 @@ export const cisFormSchema = z.object({
   code: codeSchema(),
   rate: rateSchema(),
   description: descriptionSchema(),
-  orderBy: orderBySchema(),
   isActive: z.boolean(),
 });
 
 export type CisFormValues = z.infer<typeof cisFormSchema>;
 
-export function toCisPayload(values: CisFormValues): CisStatusPayload {
+export function toCisPayload(values: CisFormValues, orderBy = 0): CisStatusPayload {
   return {
     name: values.name.trim(),
     code: values.code.trim().toUpperCase(),
     rate: values.rate,
     description: values.description.trim(),
-    orderBy: values.orderBy,
+    orderBy,
     isActive: values.isActive,
   };
 }

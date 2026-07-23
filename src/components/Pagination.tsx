@@ -107,10 +107,12 @@ export function Pagination({
   }
 
   return (
-    <div className="p-4 border-t grid grid-cols-1 md:grid-cols-3 items-center gap-3">
-      <div className="flex items-center gap-1 justify-self-start">{controls}</div>
-      {summary}
-      <div className="justify-self-end">{pageSizeSelect}</div>
+    <div className="border-t p-4">
+      <div className="flex flex-col gap-3 md:grid md:grid-cols-3 md:items-center">
+        <div className="flex flex-wrap items-center gap-1">{controls}</div>
+        <div className="md:justify-self-center">{summary}</div>
+        <div className="md:justify-self-end">{pageSizeSelect}</div>
+      </div>
     </div>
   );
 }
@@ -124,8 +126,8 @@ function PageBtn({
       onClick={onClick}
       disabled={disabled}
       {...rest}
-      className={
-        "min-w-8 h-8 px-2 inline-flex items-center justify-center rounded-md border text-xs font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none " +
+        className={
+        "min-w-8 h-8 px-2 inline-flex items-center justify-center rounded-md border text-xs font-medium cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-40 " +
         (active
           ? "border-accent bg-accent text-accent-foreground"
           : "border-input bg-background hover:bg-accent/10")

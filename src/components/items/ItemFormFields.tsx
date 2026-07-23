@@ -1,12 +1,17 @@
 import {
   TextField,
   TextareaField,
-  CheckboxField,
+  SwitchField,
   SearchableSelectField,
   ImageUploadField,
 } from "@/components/form";
 import { productLookupsService } from "@/lib/api/services/product-lookups";
-import type { ItemFormValues } from "@/lib/item-form";
+import {
+  ITEM_IMAGE_ACCEPT,
+  ITEM_IMAGE_EXTENSIONS,
+  ITEM_IMAGE_MAX_SIZE_KB,
+  type ItemFormValues,
+} from "@/lib/item-form";
 import type { SearchableSelectOption } from "@/components/form";
 import { DESCRIPTION_MAX_LENGTH, NAME_MAX_LENGTH } from "@/lib/field-validation";
 
@@ -46,6 +51,9 @@ export function ItemFormFields({
       <ImageUploadField<ItemFormValues>
         name="imageUrl"
         label="Image"
+        maxSizeKb={ITEM_IMAGE_MAX_SIZE_KB}
+        accept={ITEM_IMAGE_ACCEPT}
+        allowedExtensions={ITEM_IMAGE_EXTENSIONS}
         onFileChange={onImageFileChange}
         onRemove={onImageRemove}
         disabled={imageDisabled}
@@ -114,18 +122,18 @@ export function ItemFormFields({
         />
       </div>
 
-      <CheckboxField<ItemFormValues>
-        name="isActive"
-        label="Active"
-        description="Item can be selected across the platform."
-      />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <SwitchField<ItemFormValues>
+          name="isActive"
+          label="Active"
+        />
+      </div>
 
       <TextareaField<ItemFormValues>
         name="description"
         label="Description"
         rows={4}
         maxLength={DESCRIPTION_MAX_LENGTH}
-        className="md:col-span-full"
       />
     </>
   );

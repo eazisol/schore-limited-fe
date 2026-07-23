@@ -31,7 +31,6 @@ function NewTrade() {
       name: "",
       code: "",
       description: "",
-      orderBy: 0,
       isActive: true,
     },
   });
@@ -47,7 +46,7 @@ function NewTrade() {
   });
 
   async function submit(values: TradeFormValues) {
-    await createMutation.mutateAsync(toTradePayload(values));
+    await createMutation.mutateAsync(toTradePayload(values, 0));
   }
 
   return (
@@ -69,12 +68,11 @@ function NewTrade() {
         />
 
         <Form form={form} onSubmit={submit} className="max-w-3xl space-y-6">
-          <div className="card-elevated space-y-4 p-6">
-            <h3 className="font-display font-semibold">Trade details</h3>
+          <div className="card-elevated space-y-4 p-4 sm:p-6">
             <TradeFormFields disabled={createMutation.isPending} />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2">
+          <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
             <Button
               type="button"
               variant="outline"

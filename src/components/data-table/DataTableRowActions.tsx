@@ -47,7 +47,7 @@ function ActionIconButton({
         onClick={onClick}
         aria-label={label}
         className={cn(
-          "inline-grid h-7 w-7 place-items-center rounded-md hover:bg-accent/40",
+          "inline-grid h-7 w-7 place-items-center rounded-md cursor-pointer hover:bg-accent/40",
           danger && "text-destructive hover:bg-destructive/10",
         )}
       >

@@ -1,18 +1,21 @@
 import type { ReactNode } from "react";
 import { useFormContext, type FieldValues, type Path } from "react-hook-form";
-import { FormField, FormItem, FormControl, FormLabel, FormDescription } from "@/components/ui/form";
+import { FormField, FormItem, FormControl, FormLabel } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 export interface SwitchFieldProps<T extends FieldValues> {
   name: Path<T>;
   label: ReactNode;
-  description?: ReactNode;
   disabled?: boolean;
   className?: string;
 }
 
 export function SwitchField<T extends FieldValues>({
-  name, label, description, disabled, className,
+  name,
+  label,
+  disabled,
+  className,
 }: SwitchFieldProps<T>) {
   const { control, formState } = useFormContext<T>();
   const submitting = formState.isSubmitting;
@@ -21,11 +24,13 @@ export function SwitchField<T extends FieldValues>({
       control={control}
       name={name}
       render={({ field }) => (
-        <FormItem className={"flex items-center justify-between gap-4 rounded-md border border-input p-3 " + (className ?? "")}>
-          <div className="space-y-0.5 min-w-0">
-            <FormLabel className="cursor-pointer font-medium">{label}</FormLabel>
-            {description && <FormDescription>{description}</FormDescription>}
-          </div>
+        <FormItem
+          className={cn(
+            "flex h-9 items-center justify-start gap-3 space-y-0 self-end",
+            className,
+          )}
+        >
+          <FormLabel className="cursor-pointer font-medium">{label}</FormLabel>
           <FormControl>
             <Switch
               checked={!!field.value}

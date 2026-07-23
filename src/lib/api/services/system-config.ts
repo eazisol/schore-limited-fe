@@ -30,16 +30,23 @@ export interface UserTypePayload {
   isActive: boolean;
 }
 
+export type SystemConfigSortBy = "name" | "code" | "status" | "createdDate";
+export type SystemConfigSortDir = "asc" | "desc";
+
 export interface ListParams {
   page: number;
   pageSize: number;
   search?: string;
+  sortBy?: SystemConfigSortBy;
+  sortDir?: SystemConfigSortDir;
 }
 
 const listQuery = (p: ListParams) => ({
   Page: p.page,
   PageSize: p.pageSize,
   Search: p.search ?? "",
+  ...(p.sortBy ? { SortBy: p.sortBy } : {}),
+  ...(p.sortDir ? { SortDir: p.sortDir } : {}),
 });
 
 export const rolesService = {

@@ -355,15 +355,23 @@ export function PageHeader({
   leading?: ReactNode;
 }) {
   return (
-    <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-1">
+    <div className="mb-2 flex flex-col gap-3 py-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div className="flex min-w-0 items-center gap-2">
-        {leading}
-        <div className="min-w-0">
-          <h1 className="truncate font-display text-2xl font-semibold tracking-tight">{title}</h1>
-          {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
+        {leading ? <div className="shrink-0">{leading}</div> : null}
+        <div className="min-w-0 flex-1">
+          <h1 className="break-words font-display text-xl font-semibold tracking-tight sm:truncate sm:text-2xl">
+            {title}
+          </h1>
+          {subtitle ? (
+            <p className="mt-1 text-sm text-muted-foreground sm:truncate">{subtitle}</p>
+          ) : null}
         </div>
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:justify-end">
+          {actions}
+        </div>
+      ) : null}
     </div>
   );
 }
