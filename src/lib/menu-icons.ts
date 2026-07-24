@@ -1,67 +1,71 @@
-import type { LucideIcon } from "lucide-react";
-import {
-  LayoutDashboard,
-  Users,
-  Settings,
-  ShieldCheck,
-  Menu,
-  KeyRound,
-  Circle,
-  LayoutGrid,
-  FileText,
-  Building2,
-  Briefcase,
-  Banknote,
-  Tags,
-  Package,
-  Wrench,
-  Percent,
-  HardHat,
-} from "lucide-react";
+import { icons, Circle, type LucideIcon } from "lucide-react";
 
 /**
- * Maps API `icon` string values to Lucide components.
- * Unknown icons fall back to a neutral glyph — menus themselves are never hardcoded.
+ * Non-Lucide / legacy API icon keys → Lucide component names.
+ * Prefer sending the Lucide kebab-case name from the API (e.g. `handshake`, `hard-hat`)
+ * so new menus do not need a frontend change.
  */
-const ICON_MAP: Record<string, LucideIcon> = {
-  dashboard: LayoutDashboard,
-  users: Users,
-  user: Users,
-  settings: Settings,
-  setting: Settings,
-  menus: Menu,
-  menu: Menu,
-  permissions: KeyRound,
-  permission: KeyRound,
-  shield: ShieldCheck,
-  roles: ShieldCheck,
-  reports: FileText,
-  properties: Building2,
-  contracts: Briefcase,
-  payroll: Banknote,
-  items: Tags,
-  item: Tags,
-  rates: Tags,
-  grid: LayoutGrid,
-  products: Package,
-  product: Package,
-  package: Package,
-  "product-management": Package,
-  product_management: Package,
-  trades: Wrench,
-  trade: Wrench,
-  "trade-builder": Wrench,
-  wrench: Wrench,
-  cis: Percent,
-  "cis-management": Percent,
-  percent: Percent,
-  operatives: HardHat,
-  operative: HardHat,
-  "hard-hat": HardHat,
+const ICON_ALIASES: Record<string, keyof typeof icons> = {
+  dashboard: "LayoutDashboard",
+  setting: "Settings",
+  menus: "Menu",
+  permissions: "KeyRound",
+  permission: "KeyRound",
+  shield: "ShieldCheck",
+  roles: "ShieldCheck",
+  reports: "FileText",
+  properties: "Building2",
+  contracts: "Briefcase",
+  payroll: "Banknote",
+  items: "Tags",
+  item: "Tags",
+  rates: "Tags",
+  grid: "LayoutGrid",
+  products: "Package",
+  product: "Package",
+  "product-management": "Package",
+  product_management: "Package",
+  trades: "Wrench",
+  trade: "Wrench",
+  "trade-builder": "Wrench",
+  cis: "Percent",
+  "cis-management": "Percent",
+  operatives: "HardHat",
+  operative: "HardHat",
 };
 
+function toKebabKey(icon: string): string {
+  return icon.trim().toLowerCase().replace(/\s+/g, "-");
+}
+
+/** `hard-hat` / `hard_hat` → `HardHat` */
+function toPascalCase(icon: string): string {
+  return icon
+    .trim()
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join("");
+}
+
+/**
+ * Resolve a menu API `icon` string to a Lucide component.
+ * Supports any Lucide icon by kebab-case name (e.g. `handshake` → Handshake).
+ * Unknown values fall back to Circle.
+ */
 export function resolveMenuIcon(icon: string | null | undefined): LucideIcon | null {
   if (!icon?.trim()) return null;
-  const key = icon.trim().toLowerCase().replace(/\s+/g, "-");
-  return ICON_MAP[key] ?? Circle;
+
+  const kebab = toKebabKey(icon);
+  const alias = ICON_ALIASES[kebab];
+  if (alias && icons[alias]) {
+    return icons[alias] as LucideIcon;
+  }
+
+  const pascal = toPascalCase(kebab) as keyof typeof icons;
+  if (icons[pascal]) {
+    return icons[pascal] as LucideIcon;
+  }
+
+  return Circle;
 }
