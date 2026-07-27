@@ -1,11 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ComponentProps } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AlertCircle, ChevronRight, Loader2, Save } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  TreeSortableDragHandle,
+  TreeSortableItem,
+  TreeSortableLevel,
+  TreeSortableProvider,
+} from "@/components/tree-sortable";
+import { useMenuTreeReorder } from "@/hooks/useMenuTreeReorder";
 import {
   Collapsible,
   CollapsibleContent,
@@ -134,6 +141,9 @@ function PermissionsPage() {
     onError: (err) => notifyApiError(err, "Failed to save permissions"),
   });
 
+  const canReorderMenus = canModify && !saveMutation.isPending;
+  const { reorderMenus, isReordering } = useMenuTreeReorder({ enabled: canReorderMenus });
+
   function toggle(menuId: number, flag: PermissionFlag) {
     setDraft((prev) => {
       const node = findPermissionNode(prev, menuId);
@@ -166,7 +176,7 @@ function PermissionsPage() {
 
   const loadError = menusQuery.isError || permsQuery.isError;
   const showTree = roleId != null && draft.length > 0 && !loadingTree && !loadError;
-  const saving = saveMutation.isPending;
+  const saving = saveMutation.isPending || isReordering;
 
   return (
     <div className="space-y-6">
@@ -262,21 +272,39 @@ function PermissionsPage() {
             <div className="px-3 py-2.5 text-center font-medium">Modify</div>
             <div className="px-3 py-2.5 text-center font-medium">Delete</div>
           </div>
-          <div className="divide-y">
-            {draft.map((node) => (
-              <PermissionTreeRow
-                key={node.menuId}
-                node={node}
-                depth={0}
-                tree={draft}
-                expandedIds={expandedIds}
-                onToggleExpanded={toggleExpanded}
-                onToggleFlag={toggle}
-                canModify={canModify}
-                saving={saving}
-              />
-            ))}
-          </div>
+          <TreeSortableProvider
+            disabled={!canReorderMenus}
+            onReorder={reorderMenus}
+            renderOverlay={(activeId) => {
+              const activeNode = findPermissionNode(draft, activeId);
+              return (
+                <div className="grid min-w-[36rem] grid-cols-[minmax(0,1fr)_6rem_6rem_6rem] items-center rounded-md border bg-card px-5 py-3 shadow-lg">
+                  <div className="truncate text-xs font-medium text-foreground">
+                    {activeNode?.menuName ?? `Menu #${activeId}`}
+                  </div>
+                </div>
+              );
+            }}
+          >
+            <TreeSortableLevel items={draft.map((node) => node.menuId)}>
+              <div className="divide-y">
+                {draft.map((node) => (
+                  <PermissionTreeRow
+                    key={node.menuId}
+                    node={node}
+                    depth={0}
+                    tree={draft}
+                    expandedIds={expandedIds}
+                    onToggleExpanded={toggleExpanded}
+                    onToggleFlag={toggle}
+                    canModify={canModify}
+                    canReorder={canReorderMenus}
+                    saving={saving}
+                  />
+                ))}
+              </div>
+            </TreeSortableLevel>
+          </TreeSortableProvider>
         </div>
       )}
     </div>
@@ -291,6 +319,7 @@ function PermissionTreeRow({
   onToggleExpanded,
   onToggleFlag,
   canModify,
+  canReorder,
   saving,
 }: {
   node: PermissionTreeNode;
@@ -300,6 +329,7 @@ function PermissionTreeRow({
   onToggleExpanded: (menuId: number, open: boolean) => void;
   onToggleFlag: (menuId: number, flag: PermissionFlag) => void;
   canModify: boolean;
+  canReorder: boolean;
   saving: boolean;
 }) {
   const hasChildren = node.children.length > 0;
@@ -308,7 +338,7 @@ function PermissionTreeRow({
   const baseDisabled = saving || !canModify || lockedByAncestor;
   const modifyDeleteDisabled = baseDisabled || !node.read;
 
-  const row = (
+  const rowContent = (dragHandleProps: ComponentProps<typeof TreeSortableDragHandle>["dragHandleProps"]) => (
     <div
       className={cn(
         "grid min-w-[36rem] grid-cols-[minmax(0,1fr)_6rem_6rem_6rem] items-center hover:bg-muted/30",
@@ -319,6 +349,11 @@ function PermissionTreeRow({
         className="flex min-w-0 items-center gap-1.5 px-5 py-3"
         style={{ paddingLeft: `${1.25 + depth * 1.25}rem` }}
       >
+        <TreeSortableDragHandle
+          label={node.menuName}
+          dragHandleProps={dragHandleProps}
+          disabled={!canReorder}
+        />
         {hasChildren ? (
           <CollapsibleTrigger asChild>
             <button
@@ -336,9 +371,8 @@ function PermissionTreeRow({
         )}
         <div
           className={cn(
-            "min-w-0 truncate",
-            hasChildren ? "font-semibold" : "font-medium",
-            depth > 0 && "text-foreground/90",
+            "min-w-0 truncate text-xs font-medium text-muted-foreground",
+            hasChildren && "text-foreground/90",
           )}
           title={node.menuName}
         >
@@ -360,27 +394,40 @@ function PermissionTreeRow({
     </div>
   );
 
+  const sortableRow = (
+    <TreeSortableItem
+      id={node.menuId}
+      parentMenuId={node.parentMenuId}
+      disabled={!canReorder}
+    >
+      {({ dragHandleProps }) => rowContent(dragHandleProps)}
+    </TreeSortableItem>
+  );
+
   if (!hasChildren) {
-    return row;
+    return sortableRow;
   }
 
   return (
     <Collapsible open={open} onOpenChange={(next) => onToggleExpanded(node.menuId, next)}>
-      {row}
+      {sortableRow}
       <CollapsibleContent>
-        {node.children.map((child) => (
-          <PermissionTreeRow
-            key={child.menuId}
-            node={child}
-            depth={depth + 1}
-            tree={tree}
-            expandedIds={expandedIds}
-            onToggleExpanded={onToggleExpanded}
-            onToggleFlag={onToggleFlag}
-            canModify={canModify}
-            saving={saving}
-          />
-        ))}
+        <TreeSortableLevel items={node.children.map((child) => child.menuId)}>
+          {node.children.map((child) => (
+            <PermissionTreeRow
+              key={child.menuId}
+              node={child}
+              depth={depth + 1}
+              tree={tree}
+              expandedIds={expandedIds}
+              onToggleExpanded={onToggleExpanded}
+              onToggleFlag={onToggleFlag}
+              canModify={canModify}
+              canReorder={canReorder}
+              saving={saving}
+            />
+          ))}
+        </TreeSortableLevel>
       </CollapsibleContent>
     </Collapsible>
   );

@@ -1,5 +1,6 @@
 import type { ApiMenu } from "@/lib/api/services/auth";
 import type { ApiMenuDefinition } from "@/lib/api/services/menus";
+import { reorderTreeSiblings } from "@/lib/tree-order";
 
 function sortByOrder<T extends { orderBy: number }>(items: T[]): T[] {
   return [...items].sort((a, b) => a.orderBy - b.orderBy);
@@ -25,6 +26,21 @@ export function flattenMenuDefinitions(items: ApiMenuDefinition[]): ApiMenuDefin
   };
   walk(items);
   return out;
+}
+
+/** Find a menu definition anywhere in a nested tree by id. */
+export function findMenuDefinitionInTree(
+  items: ApiMenuDefinition[],
+  menuId: number,
+): ApiMenuDefinition | null {
+  for (const item of items) {
+    if (item.id === menuId) return item;
+    if (item.children?.length) {
+      const found = findMenuDefinitionInTree(item.children, menuId);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 /**
@@ -56,6 +72,64 @@ export function buildMenuTree(items: ApiMenuDefinition[]): ApiMenuDefinition[] {
     }));
 
   return sortTree(roots);
+}
+
+function indexMenus(
+  items: ApiMenuDefinition[],
+  out = new Map<number, ApiMenuDefinition>(),
+): Map<number, ApiMenuDefinition> {
+  for (const item of items) {
+    out.set(item.id, item);
+    if (item.children?.length) indexMenus(item.children, out);
+  }
+  return out;
+}
+
+function toOrderable(menu: ApiMenuDefinition) {
+  return {
+    id: menu.id,
+    parentMenuId: menu.parentMenuId,
+    orderBy: menu.orderBy,
+    children: (menu.children ?? []).map(toOrderable),
+  };
+}
+
+function applyOrderableTree(
+  orderable: ReturnType<typeof toOrderable>[],
+  sourceById: Map<number, ApiMenuDefinition>,
+): ApiMenuDefinition[] {
+  const rebuild = (nodes: ReturnType<typeof toOrderable>[]): ApiMenuDefinition[] =>
+    nodes.map((node) => {
+      const original = sourceById.get(node.id);
+      if (!original) {
+        throw new Error(`Menu #${node.id} not found while applying reorder`);
+      }
+      return {
+        ...original,
+        orderBy: node.orderBy,
+        children: node.children.length ? rebuild(node.children) : [],
+      };
+    });
+
+  return rebuild(orderable);
+}
+
+/** Reorder siblings within a menu tree; only the dragged item's orderBy changes. */
+export function reorderMenuDefinitionTree(
+  tree: ApiMenuDefinition[],
+  draggedId: number,
+  targetId: number,
+  parentMenuId: number | null,
+): { tree: ApiMenuDefinition[]; orderBy: number } | null {
+  const sourceById = indexMenus(tree);
+  const orderable = tree.map(toOrderable);
+  const result = reorderTreeSiblings(orderable, draggedId, targetId, parentMenuId);
+  if (!result) return null;
+
+  return {
+    tree: applyOrderableTree(result.tree, sourceById),
+    orderBy: result.orderBy,
+  };
 }
 
 export function isPathActive(pathname: string, route: string | null | undefined): boolean {

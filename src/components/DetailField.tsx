@@ -16,11 +16,11 @@ export function DetailField({
 }) {
   return (
     <div className={cn("min-w-0 space-y-1.5", className)}>
-      <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-        {Icon ? <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden /> : null}
+      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
         {label}
       </div>
-      <div className="break-words text-sm font-normal leading-relaxed text-muted-foreground">
+      <div className="break-words text-sm font-normal leading-relaxed text-foreground">
         {value}
       </div>
     </div>
@@ -37,8 +37,8 @@ export function DetailMetaRow({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-1">
-      <dt className="shrink-0 text-sm font-semibold text-foreground">{label}</dt>
-      <dd className="min-w-0 text-right text-sm font-normal text-muted-foreground">{children}</dd>
+      <dt className="shrink-0 text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 text-right text-sm font-normal text-foreground">{children}</dd>
     </div>
   );
 }

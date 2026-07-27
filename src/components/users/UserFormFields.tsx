@@ -6,11 +6,27 @@ import {
   SelectField,
   SwitchField,
   PhoneNumberField,
+  SearchableSelectField,
   type SelectOption,
+  type SearchableSelectOption,
 } from "@/components/form";
 import { PasswordRequirements } from "@/lib/password";
 import type { UserFormValues } from "@/lib/user-form";
-import type { UserModuleMode } from "@/lib/user-module";
+import { USER_TYPE_ID, type UserModuleMode } from "@/lib/user-module";
+import { usersService } from "@/lib/api/services/users";
+
+const CONTACT_FIELD_MAX = 30;
+
+async function fetchContractorOptions(search: string): Promise<SearchableSelectOption[]> {
+  const res = await usersService.dropdown({
+    search,
+    userTypeId: USER_TYPE_ID.contractor,
+  });
+  return (res.data ?? []).map((item) => ({
+    value: String(item.id),
+    label: item.name,
+  }));
+}
 
 export function UserFormFields({
   mode,
@@ -20,6 +36,7 @@ export function UserFormFields({
   roleOptions,
   tradeOptions = [],
   cisOptions = [],
+  contractorSelectedLabel,
   autoFocusFirstName = false,
 }: {
   mode: UserModuleMode;
@@ -29,11 +46,16 @@ export function UserFormFields({
   roleOptions: SelectOption[];
   tradeOptions?: SelectOption[];
   cisOptions?: SelectOption[];
+  contractorSelectedLabel?: string | null;
   autoFocusFirstName?: boolean;
 }) {
   const { watch } = useFormContext<UserFormValues>();
   const password = watch("password");
   const isOperative = mode === "operative";
+  const isContractor = mode === "contractor";
+  const isCustomer = mode === "customer";
+  const isUser = mode === "user";
+  const isContactModule = isContractor || isCustomer;
 
   return (
     <fieldset className="space-y-6" disabled={disabled}>
@@ -59,14 +81,36 @@ export function UserFormFields({
           <PhoneNumberField<UserFormValues> name="phone" label="Phone" placeholder="07700 900000" />
         </div>
         {isOperative ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
-            <SwitchField<UserFormValues>
-              name="isActive"
-              label="Active"
-            />
-          </div>
-        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-3">
+                <PasswordField<UserFormValues>
+                  name="password"
+                  label="Password"
+                  required={variant === "create"}
+                  autoComplete="new-password"
+                  placeholder={
+                    variant === "edit" ? "Leave blank to keep current password" : undefined
+                  }
+                />
+                {(variant === "create" || password) && (
+                  <PasswordRequirements password={password} />
+                )}
+              </div>
+              <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <TextField<UserFormValues> name="startDate" label="Joining Date" type="date" />
+              <TextField<UserFormValues> name="endDate" label="Leaving Date" type="date" />
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <SwitchField<UserFormValues>
+                name="isActive"
+                label="Active"
+              />
+            </div>
+          </>
+        ) : isUser ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-3">
               <PasswordField<UserFormValues>
@@ -84,10 +128,20 @@ export function UserFormFields({
             </div>
             <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
           </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
+            {isCustomer ? (
+              <SwitchField<UserFormValues>
+                name="isActive"
+                label="Active"
+              />
+            ) : null}
+          </div>
         )}
       </Section>
 
-      {!isOperative ? (
+      {!isOperative && !isContactModule ? (
         <Section title="Access" hint="Roles control what this user can see and edit.">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <SelectField<UserFormValues>
@@ -139,6 +193,79 @@ export function UserFormFields({
               placeholder="0.00"
             />
           </div>
+        </Section>
+      ) : null}
+
+      {isContactModule ? (
+        <Section title={isContractor ? "Contractor" : "Customer"}>
+          {isCustomer ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <TextField<UserFormValues>
+                name="contactName"
+                label="Contact name"
+                required
+                maxLength={CONTACT_FIELD_MAX}
+              />
+              <SearchableSelectField<UserFormValues>
+                name="contractorId"
+                label="Contractor"
+                required
+                placeholder="Select contractor"
+                searchPlaceholder="Search contractors…"
+                queryKey={["users", "contractors", "dropdown"]}
+                selectedLabel={contractorSelectedLabel}
+                fetchOptions={fetchContractorOptions}
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <TextField<UserFormValues>
+                name="contactName"
+                label="Contact name"
+                required
+                maxLength={CONTACT_FIELD_MAX}
+              />
+              <TextField<UserFormValues>
+                name="address"
+                label="Address"
+                maxLength={CONTACT_FIELD_MAX}
+              />
+            </div>
+          )}
+          {isCustomer ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-4">
+                <TextField<UserFormValues>
+                  name="address"
+                  label="Address"
+                  maxLength={CONTACT_FIELD_MAX}
+                />
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <TextField<UserFormValues> name="state" label="State" maxLength={100} />
+                  <TextField<UserFormValues> name="country" label="Country" maxLength={100} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <TextField<UserFormValues> name="zipCode" label="Zip code" maxLength={20} />
+                <TextField<UserFormValues> name="city" label="City" maxLength={100} />
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <TextField<UserFormValues> name="zipCode" label="Zip code" maxLength={20} />
+              <TextField<UserFormValues> name="city" label="City" maxLength={100} />
+              <TextField<UserFormValues> name="state" label="State" maxLength={100} />
+              <TextField<UserFormValues> name="country" label="Country" maxLength={100} />
+            </div>
+          )}
+          {isContractor ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <SwitchField<UserFormValues>
+                name="isActive"
+                label="Active"
+              />
+            </div>
+          ) : null}
         </Section>
       ) : null}
     </fieldset>

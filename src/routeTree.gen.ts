@@ -37,8 +37,10 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ForbiddenRouteImport } from './routes/forbidden'
 import { Route as EmailSmtpRouteImport } from './routes/email-smtp'
 import { Route as DailyRouteImport } from './routes/daily'
+import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as CostBudgetRouteImport } from './routes/cost-budget'
 import { Route as ContractsRouteImport } from './routes/contracts'
+import { Route as ContractorsRouteImport } from './routes/contractors'
 import { Route as ConfirmationRouteImport } from './routes/confirmation'
 import { Route as CisManagementRouteImport } from './routes/cis-management'
 import { Route as CategoriesRouteImport } from './routes/categories'
@@ -54,6 +56,8 @@ import { Route as ProductIndexRouteImport } from './routes/product.index'
 import { Route as ProductManagementIndexRouteImport } from './routes/product-management.index'
 import { Route as OperativesIndexRouteImport } from './routes/operatives.index'
 import { Route as ItemsIndexRouteImport } from './routes/items.index'
+import { Route as CustomersIndexRouteImport } from './routes/customers.index'
+import { Route as ContractorsIndexRouteImport } from './routes/contractors.index'
 import { Route as CisManagementIndexRouteImport } from './routes/cis-management.index'
 import { Route as WagesIdRouteImport } from './routes/wages.$id'
 import { Route as UsersNewRouteImport } from './routes/users.new'
@@ -73,6 +77,10 @@ import { Route as OperativesNewRouteImport } from './routes/operatives.new'
 import { Route as OperativesIdRouteImport } from './routes/operatives.$id'
 import { Route as ItemsNewRouteImport } from './routes/items.new'
 import { Route as ItemsIdRouteImport } from './routes/items.$id'
+import { Route as CustomersNewRouteImport } from './routes/customers.new'
+import { Route as CustomersIdRouteImport } from './routes/customers.$id'
+import { Route as ContractorsNewRouteImport } from './routes/contractors.new'
+import { Route as ContractorsIdRouteImport } from './routes/contractors.$id'
 import { Route as CisManagementNewRouteImport } from './routes/cis-management.new'
 import { Route as CisManagementIdRouteImport } from './routes/cis-management.$id'
 import { Route as ItemsIdEditRouteImport } from './routes/items.$id.edit'
@@ -217,6 +225,11 @@ const DailyRoute = DailyRouteImport.update({
   path: '/daily',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomersRoute = CustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CostBudgetRoute = CostBudgetRouteImport.update({
   id: '/cost-budget',
   path: '/cost-budget',
@@ -225,6 +238,11 @@ const CostBudgetRoute = CostBudgetRouteImport.update({
 const ContractsRoute = ContractsRouteImport.update({
   id: '/contracts',
   path: '/contracts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContractorsRoute = ContractorsRouteImport.update({
+  id: '/contractors',
+  path: '/contractors',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConfirmationRoute = ConfirmationRouteImport.update({
@@ -301,6 +319,16 @@ const ItemsIndexRoute = ItemsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ItemsRoute,
+} as any)
+const CustomersIndexRoute = CustomersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CustomersRoute,
+} as any)
+const ContractorsIndexRoute = ContractorsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ContractorsRoute,
 } as any)
 const CisManagementIndexRoute = CisManagementIndexRouteImport.update({
   id: '/',
@@ -397,6 +425,26 @@ const ItemsIdRoute = ItemsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ItemsRoute,
 } as any)
+const CustomersNewRoute = CustomersNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => CustomersRoute,
+} as any)
+const CustomersIdRoute = CustomersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => CustomersRoute,
+} as any)
+const ContractorsNewRoute = ContractorsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ContractorsRoute,
+} as any)
+const ContractorsIdRoute = ContractorsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ContractorsRoute,
+} as any)
 const CisManagementNewRoute = CisManagementNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -419,8 +467,10 @@ export interface FileRoutesByFullPath {
   '/categories': typeof CategoriesRoute
   '/cis-management': typeof CisManagementRouteWithChildren
   '/confirmation': typeof ConfirmationRoute
+  '/contractors': typeof ContractorsRouteWithChildren
   '/contracts': typeof ContractsRoute
   '/cost-budget': typeof CostBudgetRoute
+  '/customers': typeof CustomersRouteWithChildren
   '/daily': typeof DailyRoute
   '/email-smtp': typeof EmailSmtpRoute
   '/forbidden': typeof ForbiddenRoute
@@ -451,6 +501,10 @@ export interface FileRoutesByFullPath {
   '/wages': typeof WagesRouteWithChildren
   '/cis-management/$id': typeof CisManagementIdRoute
   '/cis-management/new': typeof CisManagementNewRoute
+  '/contractors/$id': typeof ContractorsIdRoute
+  '/contractors/new': typeof ContractorsNewRoute
+  '/customers/$id': typeof CustomersIdRoute
+  '/customers/new': typeof CustomersNewRoute
   '/items/$id': typeof ItemsIdRouteWithChildren
   '/items/new': typeof ItemsNewRoute
   '/operatives/$id': typeof OperativesIdRoute
@@ -470,6 +524,8 @@ export interface FileRoutesByFullPath {
   '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
   '/cis-management/': typeof CisManagementIndexRoute
+  '/contractors/': typeof ContractorsIndexRoute
+  '/customers/': typeof CustomersIndexRoute
   '/items/': typeof ItemsIndexRoute
   '/operatives/': typeof OperativesIndexRoute
   '/product-management/': typeof ProductManagementIndexRoute
@@ -509,6 +565,10 @@ export interface FileRoutesByTo {
   '/units': typeof UnitsRoute
   '/cis-management/$id': typeof CisManagementIdRoute
   '/cis-management/new': typeof CisManagementNewRoute
+  '/contractors/$id': typeof ContractorsIdRoute
+  '/contractors/new': typeof ContractorsNewRoute
+  '/customers/$id': typeof CustomersIdRoute
+  '/customers/new': typeof CustomersNewRoute
   '/items/$id': typeof ItemsIdRouteWithChildren
   '/items/new': typeof ItemsNewRoute
   '/operatives/$id': typeof OperativesIdRoute
@@ -528,6 +588,8 @@ export interface FileRoutesByTo {
   '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
   '/cis-management': typeof CisManagementIndexRoute
+  '/contractors': typeof ContractorsIndexRoute
+  '/customers': typeof CustomersIndexRoute
   '/items': typeof ItemsIndexRoute
   '/operatives': typeof OperativesIndexRoute
   '/product-management': typeof ProductManagementIndexRoute
@@ -547,8 +609,10 @@ export interface FileRoutesById {
   '/categories': typeof CategoriesRoute
   '/cis-management': typeof CisManagementRouteWithChildren
   '/confirmation': typeof ConfirmationRoute
+  '/contractors': typeof ContractorsRouteWithChildren
   '/contracts': typeof ContractsRoute
   '/cost-budget': typeof CostBudgetRoute
+  '/customers': typeof CustomersRouteWithChildren
   '/daily': typeof DailyRoute
   '/email-smtp': typeof EmailSmtpRoute
   '/forbidden': typeof ForbiddenRoute
@@ -579,6 +643,10 @@ export interface FileRoutesById {
   '/wages': typeof WagesRouteWithChildren
   '/cis-management/$id': typeof CisManagementIdRoute
   '/cis-management/new': typeof CisManagementNewRoute
+  '/contractors/$id': typeof ContractorsIdRoute
+  '/contractors/new': typeof ContractorsNewRoute
+  '/customers/$id': typeof CustomersIdRoute
+  '/customers/new': typeof CustomersNewRoute
   '/items/$id': typeof ItemsIdRouteWithChildren
   '/items/new': typeof ItemsNewRoute
   '/operatives/$id': typeof OperativesIdRoute
@@ -598,6 +666,8 @@ export interface FileRoutesById {
   '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
   '/cis-management/': typeof CisManagementIndexRoute
+  '/contractors/': typeof ContractorsIndexRoute
+  '/customers/': typeof CustomersIndexRoute
   '/items/': typeof ItemsIndexRoute
   '/operatives/': typeof OperativesIndexRoute
   '/product-management/': typeof ProductManagementIndexRoute
@@ -618,8 +688,10 @@ export interface FileRouteTypes {
     | '/categories'
     | '/cis-management'
     | '/confirmation'
+    | '/contractors'
     | '/contracts'
     | '/cost-budget'
+    | '/customers'
     | '/daily'
     | '/email-smtp'
     | '/forbidden'
@@ -650,6 +722,10 @@ export interface FileRouteTypes {
     | '/wages'
     | '/cis-management/$id'
     | '/cis-management/new'
+    | '/contractors/$id'
+    | '/contractors/new'
+    | '/customers/$id'
+    | '/customers/new'
     | '/items/$id'
     | '/items/new'
     | '/operatives/$id'
@@ -669,6 +745,8 @@ export interface FileRouteTypes {
     | '/users/new'
     | '/wages/$id'
     | '/cis-management/'
+    | '/contractors/'
+    | '/customers/'
     | '/items/'
     | '/operatives/'
     | '/product-management/'
@@ -708,6 +786,10 @@ export interface FileRouteTypes {
     | '/units'
     | '/cis-management/$id'
     | '/cis-management/new'
+    | '/contractors/$id'
+    | '/contractors/new'
+    | '/customers/$id'
+    | '/customers/new'
     | '/items/$id'
     | '/items/new'
     | '/operatives/$id'
@@ -727,6 +809,8 @@ export interface FileRouteTypes {
     | '/users/new'
     | '/wages/$id'
     | '/cis-management'
+    | '/contractors'
+    | '/customers'
     | '/items'
     | '/operatives'
     | '/product-management'
@@ -745,8 +829,10 @@ export interface FileRouteTypes {
     | '/categories'
     | '/cis-management'
     | '/confirmation'
+    | '/contractors'
     | '/contracts'
     | '/cost-budget'
+    | '/customers'
     | '/daily'
     | '/email-smtp'
     | '/forbidden'
@@ -777,6 +863,10 @@ export interface FileRouteTypes {
     | '/wages'
     | '/cis-management/$id'
     | '/cis-management/new'
+    | '/contractors/$id'
+    | '/contractors/new'
+    | '/customers/$id'
+    | '/customers/new'
     | '/items/$id'
     | '/items/new'
     | '/operatives/$id'
@@ -796,6 +886,8 @@ export interface FileRouteTypes {
     | '/users/new'
     | '/wages/$id'
     | '/cis-management/'
+    | '/contractors/'
+    | '/customers/'
     | '/items/'
     | '/operatives/'
     | '/product-management/'
@@ -815,8 +907,10 @@ export interface RootRouteChildren {
   CategoriesRoute: typeof CategoriesRoute
   CisManagementRoute: typeof CisManagementRouteWithChildren
   ConfirmationRoute: typeof ConfirmationRoute
+  ContractorsRoute: typeof ContractorsRouteWithChildren
   ContractsRoute: typeof ContractsRoute
   CostBudgetRoute: typeof CostBudgetRoute
+  CustomersRoute: typeof CustomersRouteWithChildren
   DailyRoute: typeof DailyRoute
   EmailSmtpRoute: typeof EmailSmtpRoute
   ForbiddenRoute: typeof ForbiddenRoute
@@ -1045,6 +1139,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DailyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/customers': {
+      id: '/customers'
+      path: '/customers'
+      fullPath: '/customers'
+      preLoaderRoute: typeof CustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cost-budget': {
       id: '/cost-budget'
       path: '/cost-budget'
@@ -1057,6 +1158,13 @@ declare module '@tanstack/react-router' {
       path: '/contracts'
       fullPath: '/contracts'
       preLoaderRoute: typeof ContractsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contractors': {
+      id: '/contractors'
+      path: '/contractors'
+      fullPath: '/contractors'
+      preLoaderRoute: typeof ContractorsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/confirmation': {
@@ -1163,6 +1271,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/items/'
       preLoaderRoute: typeof ItemsIndexRouteImport
       parentRoute: typeof ItemsRoute
+    }
+    '/customers/': {
+      id: '/customers/'
+      path: '/'
+      fullPath: '/customers/'
+      preLoaderRoute: typeof CustomersIndexRouteImport
+      parentRoute: typeof CustomersRoute
+    }
+    '/contractors/': {
+      id: '/contractors/'
+      path: '/'
+      fullPath: '/contractors/'
+      preLoaderRoute: typeof ContractorsIndexRouteImport
+      parentRoute: typeof ContractorsRoute
     }
     '/cis-management/': {
       id: '/cis-management/'
@@ -1297,6 +1419,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ItemsIdRouteImport
       parentRoute: typeof ItemsRoute
     }
+    '/customers/new': {
+      id: '/customers/new'
+      path: '/new'
+      fullPath: '/customers/new'
+      preLoaderRoute: typeof CustomersNewRouteImport
+      parentRoute: typeof CustomersRoute
+    }
+    '/customers/$id': {
+      id: '/customers/$id'
+      path: '/$id'
+      fullPath: '/customers/$id'
+      preLoaderRoute: typeof CustomersIdRouteImport
+      parentRoute: typeof CustomersRoute
+    }
+    '/contractors/new': {
+      id: '/contractors/new'
+      path: '/new'
+      fullPath: '/contractors/new'
+      preLoaderRoute: typeof ContractorsNewRouteImport
+      parentRoute: typeof ContractorsRoute
+    }
+    '/contractors/$id': {
+      id: '/contractors/$id'
+      path: '/$id'
+      fullPath: '/contractors/$id'
+      preLoaderRoute: typeof ContractorsIdRouteImport
+      parentRoute: typeof ContractorsRoute
+    }
     '/cis-management/new': {
       id: '/cis-management/new'
       path: '/new'
@@ -1335,6 +1485,38 @@ const CisManagementRouteChildren: CisManagementRouteChildren = {
 
 const CisManagementRouteWithChildren = CisManagementRoute._addFileChildren(
   CisManagementRouteChildren,
+)
+
+interface ContractorsRouteChildren {
+  ContractorsIdRoute: typeof ContractorsIdRoute
+  ContractorsNewRoute: typeof ContractorsNewRoute
+  ContractorsIndexRoute: typeof ContractorsIndexRoute
+}
+
+const ContractorsRouteChildren: ContractorsRouteChildren = {
+  ContractorsIdRoute: ContractorsIdRoute,
+  ContractorsNewRoute: ContractorsNewRoute,
+  ContractorsIndexRoute: ContractorsIndexRoute,
+}
+
+const ContractorsRouteWithChildren = ContractorsRoute._addFileChildren(
+  ContractorsRouteChildren,
+)
+
+interface CustomersRouteChildren {
+  CustomersIdRoute: typeof CustomersIdRoute
+  CustomersNewRoute: typeof CustomersNewRoute
+  CustomersIndexRoute: typeof CustomersIndexRoute
+}
+
+const CustomersRouteChildren: CustomersRouteChildren = {
+  CustomersIdRoute: CustomersIdRoute,
+  CustomersNewRoute: CustomersNewRoute,
+  CustomersIndexRoute: CustomersIndexRoute,
+}
+
+const CustomersRouteWithChildren = CustomersRoute._addFileChildren(
+  CustomersRouteChildren,
 )
 
 interface ItemsIdRouteChildren {
@@ -1502,8 +1684,10 @@ const rootRouteChildren: RootRouteChildren = {
   CategoriesRoute: CategoriesRoute,
   CisManagementRoute: CisManagementRouteWithChildren,
   ConfirmationRoute: ConfirmationRoute,
+  ContractorsRoute: ContractorsRouteWithChildren,
   ContractsRoute: ContractsRoute,
   CostBudgetRoute: CostBudgetRoute,
+  CustomersRoute: CustomersRouteWithChildren,
   DailyRoute: DailyRoute,
   EmailSmtpRoute: EmailSmtpRoute,
   ForbiddenRoute: ForbiddenRoute,

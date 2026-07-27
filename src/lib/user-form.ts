@@ -14,6 +14,14 @@ function parseDobInput(value: string): Date | null {
   return d;
 }
 
+function parseDateInput(value: string): Date | null {
+  const v = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+  const d = new Date(`${v}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
+}
+
 function validatePhoneNumber(value: string) {
   if (!value.trim()) return true;
   return !getPhoneLengthError(value.trim(), undefined, { requireMin: true });
@@ -72,6 +80,15 @@ export type UserFormValues = {
   tradeId: string;
   cisId: string;
   dailyRate: string;
+  contactName: string;
+  address: string;
+  zipCode: string;
+  city: string;
+  state: string;
+  country: string;
+  contractorId: string;
+  startDate: string;
+  endDate: string;
 };
 
 export const emptyUserFormValues: UserFormValues = {
@@ -86,6 +103,15 @@ export const emptyUserFormValues: UserFormValues = {
   tradeId: "",
   cisId: "",
   dailyRate: "",
+  contactName: "",
+  address: "",
+  zipCode: "",
+  city: "",
+  state: "",
+  country: "",
+  contractorId: "",
+  startDate: "",
+  endDate: "",
 };
 
 function operativeExtrasRefine(values: UserFormValues, ctx: z.RefinementCtx) {
@@ -103,54 +129,156 @@ function operativeExtrasRefine(values: UserFormValues, ctx: z.RefinementCtx) {
   }
 }
 
+const CONTACT_FIELD_MAX = 30;
+
+function contactModuleExtrasRefine(values: UserFormValues, ctx: z.RefinementCtx) {
+  const contactName = values.contactName.trim();
+  if (!contactName) {
+    ctx.addIssue({ code: "custom", path: ["contactName"], message: "Contact name is required" });
+  } else if (contactName.length < 2) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["contactName"],
+      message: "Contact name must be at least 2 characters",
+    });
+  } else if (contactName.length > CONTACT_FIELD_MAX) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["contactName"],
+      message: `Contact name must be ${CONTACT_FIELD_MAX} characters or fewer`,
+    });
+  }
+
+  const optionalAddressFields = [
+    { key: "address" as const, label: "Address", max: CONTACT_FIELD_MAX },
+    { key: "zipCode" as const, label: "Zip code", max: 20 },
+    { key: "city" as const, label: "City", max: 100 },
+    { key: "state" as const, label: "State", max: 100 },
+    { key: "country" as const, label: "Country", max: 100 },
+  ];
+
+  for (const { key, label, max } of optionalAddressFields) {
+    const value = values[key].trim();
+    if (value && value.length > max) {
+      ctx.addIssue({
+        code: "custom",
+        path: [key],
+        message: `${label} must be ${max} characters or fewer`,
+      });
+    }
+  }
+}
+
+function customerExtrasRefine(values: UserFormValues, ctx: z.RefinementCtx) {
+  if (!values.contractorId.trim()) {
+    ctx.addIssue({ code: "custom", path: ["contractorId"], message: "Contractor is required" });
+  }
+}
+
+function employmentDatesRefine(values: UserFormValues, ctx: z.RefinementCtx) {
+  const startDate = values.startDate.trim();
+  const endDate = values.endDate.trim();
+  const parsedStart = startDate ? parseDateInput(startDate) : null;
+  const parsedEnd = endDate ? parseDateInput(endDate) : null;
+
+  if (startDate && !parsedStart) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["startDate"],
+      message: "Enter a valid start date.",
+    });
+  }
+
+  if (endDate && !parsedEnd) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["endDate"],
+      message: "Enter a valid end date.",
+    });
+  }
+
+  if (parsedStart && parsedEnd && parsedEnd.getTime() < parsedStart.getTime()) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["endDate"],
+      message: "End date cannot be earlier than start date.",
+    });
+  }
+}
+
+const sharedFormFields = {
+  firstName: userNameSchema("First name"),
+  lastName: userNameSchema("Last name"),
+  email: emailSchema(),
+  phone: phoneField,
+  dateOfBirth: dateOfBirthField,
+  isActive: z.boolean(),
+  tradeId: z.string(),
+  cisId: z.string(),
+  dailyRate: z.string(),
+  contactName: z.string(),
+  address: z.string(),
+  zipCode: z.string(),
+  city: z.string(),
+  state: z.string(),
+  country: z.string(),
+  contractorId: z.string(),
+  startDate: z.string(),
+  endDate: z.string(),
+};
+
+function applyModeRefinements<T extends z.ZodTypeAny>(mode: UserModuleMode, schema: T) {
+  if (mode === "operative") {
+    return schema.superRefine((values: UserFormValues, ctx) => {
+      operativeExtrasRefine(values, ctx);
+      employmentDatesRefine(values, ctx);
+    });
+  }
+
+  if (mode === "contractor" || mode === "customer") {
+    return schema.superRefine((values: UserFormValues, ctx) => {
+      contactModuleExtrasRefine(values, ctx);
+      if (mode === "customer") customerExtrasRefine(values, ctx);
+    });
+  }
+
+  return schema;
+}
+
 export function createUserFormSchema(mode: UserModuleMode) {
+  const isUser = mode === "user";
+  const isOperative = mode === "operative";
   const schema = z.object({
-    firstName: userNameSchema("First name"),
-    lastName: userNameSchema("Last name"),
-    email: emailSchema(),
-    password: mode === "operative" ? z.string() : newPasswordSchema,
-    phone: phoneField,
-    dateOfBirth: dateOfBirthField,
-    roleId: mode === "operative" ? z.string() : z.string().min(1, "Role is required"),
-    isActive: z.boolean(),
-    tradeId: z.string(),
-    cisId: z.string(),
-    dailyRate: z.string(),
+    ...sharedFormFields,
+    password: isUser || isOperative ? newPasswordSchema : z.string(),
+    roleId: isUser ? z.string().min(1, "Role is required") : z.string(),
   });
 
-  if (mode !== "operative") return schema;
-  return schema.superRefine(operativeExtrasRefine);
+  return applyModeRefinements(mode, schema);
 }
 
 export function editUserFormSchema(mode: UserModuleMode) {
+  const isUser = mode === "user";
+  const isOperative = mode === "operative";
   const passwordField =
-    mode === "operative"
-      ? z.string()
-      : z.string().superRefine((value, ctx) => {
+    isUser || isOperative
+      ? z.string().superRefine((value, ctx) => {
           if (!value.trim()) return;
           const parsed = newPasswordSchema.safeParse(value);
           if (parsed.success) return;
           for (const issue of parsed.error.issues) {
             ctx.addIssue({ ...issue, path: [] });
           }
-        });
+        })
+      : z.string();
 
   const schema = z.object({
-    firstName: userNameSchema("First name"),
-    lastName: userNameSchema("Last name"),
-    email: emailSchema(),
+    ...sharedFormFields,
     password: passwordField,
-    phone: phoneField,
-    dateOfBirth: dateOfBirthField,
-    roleId: mode === "operative" ? z.string() : z.string().min(1, "Role is required"),
-    isActive: z.boolean(),
-    tradeId: z.string(),
-    cisId: z.string(),
-    dailyRate: z.string(),
+    roleId: isUser ? z.string().min(1, "Role is required") : z.string(),
   });
 
-  if (mode !== "operative") return schema;
-  return schema.superRefine(operativeExtrasRefine);
+  return applyModeRefinements(mode, schema);
 }
 
 function parseDailyRate(value: string): number {
@@ -158,28 +286,54 @@ function parseDailyRate(value: string): number {
   return parsed.success ? parsed.data : 0;
 }
 
+function applyContactPayload(
+  payload: CreateUserPayload | UpdateUserPayload,
+  values: UserFormValues,
+) {
+  payload.contactName = values.contactName.trim();
+  payload.address = values.address.trim() || null;
+  payload.zipCode = values.zipCode.trim() || null;
+  payload.city = values.city.trim() || null;
+  payload.state = values.state.trim() || null;
+  payload.country = values.country.trim() || null;
+}
+
 export function toCreateUserPayload(
   values: UserFormValues,
   mode: UserModuleMode,
 ): CreateUserPayload {
+  const isUser = mode === "user";
   const isOperative = mode === "operative";
+  const isContactModule = mode === "contractor" || mode === "customer";
+  const isCustomer = mode === "customer";
+
   const payload: CreateUserPayload = {
     username: values.email.trim(),
     email: values.email.trim(),
-    password: isOperative ? null : values.password,
+    password: isUser || isOperative ? values.password : null,
     firstName: values.firstName.trim(),
     lastName: values.lastName.trim(),
     phone: values.phone.trim() || null,
     dateOfBirth: values.dateOfBirth.trim() || null,
     isActive: values.isActive,
     userTypeId: USER_TYPE_ID[mode],
-    roleIds: isOperative ? null : [Number(values.roleId)],
+    roleIds: isUser ? [Number(values.roleId)] : null,
+    startDate: isOperative ? values.startDate.trim() || null : null,
+    endDate: isOperative ? values.endDate.trim() || null : null,
   };
 
   if (isOperative) {
     payload.tradeId = Number(values.tradeId);
     payload.cisId = Number(values.cisId);
     payload.dailyRate = parseDailyRate(values.dailyRate);
+  }
+
+  if (isContactModule) {
+    applyContactPayload(payload, values);
+  }
+
+  if (isCustomer) {
+    payload.contractorId = Number(values.contractorId);
   }
 
   return payload;
@@ -189,8 +343,12 @@ export function toUpdateUserPayload(
   values: UserFormValues,
   mode: UserModuleMode,
 ): UpdateUserPayload {
+  const isUser = mode === "user";
   const isOperative = mode === "operative";
+  const isContactModule = mode === "contractor" || mode === "customer";
+  const isCustomer = mode === "customer";
   const nextPassword = values.password.trim();
+
   const payload: UpdateUserPayload = {
     email: values.email.trim(),
     firstName: values.firstName.trim(),
@@ -199,14 +357,24 @@ export function toUpdateUserPayload(
     dateOfBirth: values.dateOfBirth.trim() || null,
     isActive: values.isActive,
     userTypeId: USER_TYPE_ID[mode],
-    roleIds: isOperative ? null : [Number(values.roleId)],
-    password: isOperative ? null : nextPassword || null,
+    roleIds: isUser ? [Number(values.roleId)] : null,
+    password: isUser ? nextPassword || null : isOperative ? nextPassword || null : null,
+    startDate: isOperative ? values.startDate.trim() || null : null,
+    endDate: isOperative ? values.endDate.trim() || null : null,
   };
 
   if (isOperative) {
     payload.tradeId = Number(values.tradeId);
     payload.cisId = Number(values.cisId);
     payload.dailyRate = parseDailyRate(values.dailyRate);
+  }
+
+  if (isContactModule) {
+    applyContactPayload(payload, values);
+  }
+
+  if (isCustomer) {
+    payload.contractorId = Number(values.contractorId);
   }
 
   return payload;

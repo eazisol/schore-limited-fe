@@ -20,6 +20,16 @@ export interface ApiUser {
   cisId?: number | null;
   cisName?: string | null;
   dailyRate?: number | null;
+  contactName?: string | null;
+  address?: string | null;
+  zipCode?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  contractorId?: number | null;
+  contractorName?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   createdBy: number | null;
   createdDate: string;
   editBy: number | null;
@@ -63,6 +73,15 @@ export interface CreateUserPayload {
   tradeId?: number | null;
   cisId?: number | null;
   dailyRate?: number | null;
+  contactName?: string | null;
+  address?: string | null;
+  zipCode?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  contractorId?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 export interface UpdateUserPayload {
@@ -78,6 +97,15 @@ export interface UpdateUserPayload {
   tradeId?: number | null;
   cisId?: number | null;
   dailyRate?: number | null;
+  contactName?: string | null;
+  address?: string | null;
+  zipCode?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  contractorId?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 /** Normalise API date values for `<input type="date">`. */
@@ -115,6 +143,11 @@ export interface PagedResult<T> {
   totalPages: number;
 }
 
+export interface UserDropdownOption {
+  id: number;
+  name: string;
+}
+
 export const usersService = {
   list: (params: UsersListParams) =>
     http.get<ApiEnvelope<PagedResult<ApiUser>>>("Users", {
@@ -129,6 +162,13 @@ export const usersService = {
       },
     }),
   get: (id: number | string) => http.get<ApiEnvelope<ApiUser>>(`Users/${id}`),
+  dropdown: (params: { search?: string; userTypeId: number }) =>
+    http.get<ApiEnvelope<UserDropdownOption[]>>("Users/dropdown", {
+      params: {
+        Search: params.search ?? "",
+        UserTypeId: params.userTypeId,
+      },
+    }),
   create: (payload: CreateUserPayload) =>
     http.post<ApiEnvelope<ApiUser>>("Users", toUserFormData(payload)),
   update: (id: number | string, payload: UpdateUserPayload, file?: File | null) =>

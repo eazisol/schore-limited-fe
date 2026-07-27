@@ -34,6 +34,7 @@ export function UserCreatePage() {
   const rolesQuery = useQuery({
     queryKey: ["roles"],
     queryFn: async () => (await lookupsService.roles()).data,
+    enabled: mode === "user",
     staleTime: 0,
     refetchOnMount: "always",
   });
@@ -75,7 +76,7 @@ export function UserCreatePage() {
   }
 
   const lookupsLoading =
-    rolesQuery.isLoading ||
+    (mode === "user" && rolesQuery.isLoading) ||
     (cfg.isOperative && (tradesQuery.isLoading || cisQuery.isLoading));
 
   return (
@@ -122,12 +123,13 @@ export function UserCreatePage() {
             <Button
               type="button"
               variant="outline"
+              size="sm"
               onClick={() => navigate({ to: cfg.listPath })}
               disabled={createMutation.isPending}
             >
               Cancel
             </Button>
-            <SubmitButton loadingText="Saving…" disabled={lookupsLoading}>
+            <SubmitButton size="sm" loadingText="Saving…" disabled={lookupsLoading}>
               {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               {cfg.labels.createButton}
             </SubmitButton>

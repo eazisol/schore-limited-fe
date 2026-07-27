@@ -72,6 +72,7 @@ export function UserDetailPage() {
   const rolesQuery = useQuery({
     queryKey: ["roles"],
     queryFn: async () => (await lookupsService.roles()).data,
+    enabled: mode === "user",
   });
   const tradesQuery = useQuery({
     queryKey: ["trades", "options"],
@@ -89,7 +90,8 @@ export function UserDetailPage() {
   const trades = tradesQuery.data ?? [];
   const cisOptions = cisQuery.data ?? [];
   const lookupsReady =
-    rolesQuery.isSuccess && (!cfg.isOperative || (tradesQuery.isSuccess && cisQuery.isSuccess));
+    (mode !== "user" || rolesQuery.isSuccess) &&
+    (!cfg.isOperative || (tradesQuery.isSuccess && cisQuery.isSuccess));
 
   const resolvedRoleId = useMemo(() => {
     const apiRoleId = user?.roleIds?.[0];
@@ -160,6 +162,15 @@ export function UserDetailPage() {
         user?.dailyRate != null && !Number.isNaN(Number(user.dailyRate))
           ? String(user.dailyRate)
           : "",
+      contactName: user?.contactName ?? "",
+      address: user?.address ?? "",
+      zipCode: user?.zipCode ?? "",
+      city: user?.city ?? "",
+      state: user?.state ?? "",
+      country: user?.country ?? "",
+      contractorId: user?.contractorId != null ? String(user.contractorId) : "",
+      startDate: toDateInputValue(user?.startDate),
+      endDate: toDateInputValue(user?.endDate),
     }),
     [resolvedRoleId, user],
   );
@@ -228,7 +239,7 @@ export function UserDetailPage() {
 
   const dirty = form.formState.isDirty;
   const lookupsLoading =
-    rolesQuery.isLoading ||
+    (mode === "user" && rolesQuery.isLoading) ||
     (cfg.isOperative && (tradesQuery.isLoading || cisQuery.isLoading));
   const profileImageUrl = resolveProfileImageUrl(user.profileImagePath);
   const roleLabel =
@@ -295,6 +306,7 @@ export function UserDetailPage() {
               roleOptions={roleOptions}
               tradeOptions={tradeOptions}
               cisOptions={cisSelectOptions}
+              contractorSelectedLabel={user.contractorName}
             />
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2">
               <span className="text-xs text-muted-foreground sm:mr-auto">
@@ -304,6 +316,7 @@ export function UserDetailPage() {
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
                   disabled={updateMutation.isPending}
                   onClick={() => {
                     form.reset(defaults);
@@ -312,7 +325,7 @@ export function UserDetailPage() {
                 >
                   Cancel
                 </Button>
-                <SubmitButton disabled={!dirty || lookupsLoading} loadingText="Saving…">
+                <SubmitButton size="sm" disabled={!dirty || lookupsLoading} loadingText="Saving…">
                   Save changes
                 </SubmitButton>
               </div>
@@ -336,7 +349,7 @@ export function UserDetailPage() {
                     label="Date of birth"
                     value={toDateInputValue(user.dateOfBirth) || "—"}
                   />
-                  {cfg.isOperative ? (
+                  {cfg.isOperative || cfg.isContactModule ? (
                     <DetailField
                       label="Status"
                       value={
@@ -351,7 +364,56 @@ export function UserDetailPage() {
                     <DetailField label="Role" value={roleLabel} />
                   )}
                 </div>
-                {!cfg.isOperative ? (
+                {cfg.isOperative ? (
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    <DetailField
+                      label="Joining Date"
+                      value={toDateInputValue(user.startDate) || "—"}
+                    />
+                    <DetailField
+                      label="Leaving Date"
+                      value={toDateInputValue(user.endDate) || "—"}
+                    />
+                  </div>
+                ) : null}
+                {cfg.isContactModule ? (
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                      <DetailField label="Contact name" value={user.contactName || "—"} />
+                      {cfg.isCustomer ? (
+                        <DetailField label="Contractor" value={user.contractorName || "—"} />
+                      ) : null}
+                    </div>
+                    {cfg.isCustomer ? (
+                      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <div className="space-y-5">
+                          <DetailField label="Address" value={user.address || "—"} />
+                          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                            <DetailField label="State" value={user.state || "—"} />
+                            <DetailField label="Country" value={user.country || "—"} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                          <DetailField label="Zip code" value={user.zipCode || "—"} />
+                          <DetailField label="City" value={user.city || "—"} />
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <DetailField label="Address" value={user.address || "—"} />
+                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                          <DetailField label="Zip code" value={user.zipCode || "—"} />
+                          <DetailField label="City" value={user.city || "—"} />
+                        </div>
+                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                          <DetailField label="State" value={user.state || "—"} />
+                          <DetailField label="Country" value={user.country || "—"} />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : null}
+                {mode === "user" ? (
                   <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                     <DetailField
                       label="Status"
@@ -407,6 +469,7 @@ export function UserDetailPage() {
             <div className="mt-6 flex justify-end gap-2">
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => setConfirmDel(false)}
                 disabled={deleteMutation.isPending}
               >
@@ -414,6 +477,7 @@ export function UserDetailPage() {
               </Button>
               <Button
                 variant="destructive"
+                size="sm"
                 disabled={deleteMutation.isPending}
                 onClick={() => deleteMutation.mutate()}
               >

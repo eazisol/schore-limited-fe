@@ -87,9 +87,11 @@ export function UsersListPage() {
       status: "status",
       ...(cfg.isOperative
         ? { trade: "trade" as const, cis: "cis" as const, dailyRate: "dailyrate" as const }
-        : { role: "roles" as const }),
+        : cfg.hideAccessFields
+          ? {}
+          : { role: "roles" as const }),
     }),
-    [cfg.isOperative],
+    [cfg.hideAccessFields, cfg.isOperative],
   );
 
   const rolesQuery = useQuery({
@@ -138,7 +140,11 @@ export function UsersListPage() {
     try {
       const headers = cfg.isOperative
         ? ["Name", "Email", "Phone", "Trade", "CIS", "Daily rate", "Status"]
-        : ["Name", "Email", "Phone", "Date of birth", "Roles", "Status"];
+        : cfg.isContractor
+          ? ["Name", "Email", "Phone", "Contact name", "Address", "City", "Status"]
+          : cfg.isCustomer
+            ? ["Name", "Email", "Phone", "Contact name", "Address", "Contractor", "Status"]
+            : ["Name", "Email", "Phone", "Date of birth", "Roles", "Status"];
       downloadCsv({
         filename: `${cfg.labels.itemLabel}-export-${new Date().toISOString().slice(0, 10)}.csv`,
         headers,
@@ -153,14 +159,34 @@ export function UsersListPage() {
                 user.dailyRate != null ? String(user.dailyRate) : "",
                 user.isActive ? "Active" : "Inactive",
               ]
-            : [
-                displayUserName(user),
-                user.email,
-                csvForceText(user.phone ?? ""),
-                toDateInputValue(user.dateOfBirth),
-                (user.roleNames ?? []).join("; "),
-                user.isActive ? "Active" : "Inactive",
-              ],
+            : cfg.isContractor
+              ? [
+                  displayUserName(user),
+                  user.email,
+                  csvForceText(user.phone ?? ""),
+                  user.contactName ?? "",
+                  user.address ?? "",
+                  user.city ?? "",
+                  user.isActive ? "Active" : "Inactive",
+                ]
+              : cfg.isCustomer
+                ? [
+                    displayUserName(user),
+                    user.email,
+                    csvForceText(user.phone ?? ""),
+                    user.contactName ?? "",
+                    user.address ?? "",
+                    user.contractorName ?? "",
+                    user.isActive ? "Active" : "Inactive",
+                  ]
+                : [
+                  displayUserName(user),
+                  user.email,
+                  csvForceText(user.phone ?? ""),
+                  toDateInputValue(user.dateOfBirth),
+                  (user.roleNames ?? []).join("; "),
+                  user.isActive ? "Active" : "Inactive",
+                ],
         ),
       });
       toast.success(
@@ -235,28 +261,59 @@ export function UsersListPage() {
       );
     }
 
+    if (cfg.isContactModule) {
+      cols.push(
+        {
+          id: "contactName",
+          header: "Contact name",
+          cell: (user) => user.contactName || "—",
+        },
+        {
+          id: "address",
+          header: "Address",
+          cell: (user) => user.address || "—",
+        },
+      );
+
+      if (cfg.isCustomer) {
+        cols.push({
+          id: "contractor",
+          header: "Contractor",
+          cell: (user) => user.contractorName || "—",
+        });
+      } else {
+        cols.push({
+          id: "city",
+          header: "City",
+          cell: (user) => user.city || "—",
+        });
+      }
+    }
+
     if (!cfg.isOperative) {
-      cols.push({
-        id: "role",
-        header: "Role",
-        sortable: true,
-        truncate: false,
-        cell: (user) => (
-          <div className="flex flex-wrap gap-1">
-            {(user.roleNames ?? []).map((role, index) => (
-              <span
-                key={`${user.id}-${role}`}
-                className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium ${roleBadgeClass(role, index)}`}
-              >
-                {role}
-              </span>
-            ))}
-            {(!user.roleNames || user.roleNames.length === 0) && (
-              <span className="text-xs text-muted-foreground">—</span>
-            )}
-          </div>
-        ),
-      });
+      if (!cfg.hideAccessFields) {
+        cols.push({
+          id: "role",
+          header: "Role",
+          sortable: true,
+          truncate: false,
+          cell: (user) => (
+            <div className="flex flex-wrap gap-1">
+              {(user.roleNames ?? []).map((role, index) => (
+                <span
+                  key={`${user.id}-${role}`}
+                  className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium ${roleBadgeClass(role, index)}`}
+                >
+                  {role}
+                </span>
+              ))}
+              {(!user.roleNames || user.roleNames.length === 0) && (
+                <span className="text-xs text-muted-foreground">—</span>
+              )}
+            </div>
+          ),
+        });
+      }
     }
 
     cols.push({
@@ -273,7 +330,7 @@ export function UsersListPage() {
     });
 
     return cols;
-  }, [cfg.detailPath, cfg.isOperative]);
+  }, [cfg.detailPath, cfg.hideAccessFields, cfg.isContactModule, cfg.isCustomer, cfg.isOperative]);
 
   const rowActions = useMemo<DataTableRowAction<ApiUser>[]>(
     () => [
@@ -380,7 +437,7 @@ export function UsersListPage() {
           "aria-label": `Search ${cfg.labels.itemLabel}`,
         }}
         filters={
-          cfg.isOperative ? undefined : (
+          cfg.hideAccessFields ? undefined : (
             <Select
               value={roleId != null ? String(roleId) : "all"}
               onValueChange={(value) => {
@@ -412,7 +469,7 @@ export function UsersListPage() {
         }}
         emptyState={{
           title: cfg.labels.emptyTitle,
-          description: cfg.isOperative
+          description: cfg.hideAccessFields
             ? "Try clearing the search."
             : "Try clearing the search or role filter.",
           action: hasActiveFilters ? (
