@@ -8,25 +8,13 @@ import {
   PhoneNumberField,
   SearchableSelectField,
   type SelectOption,
-  type SearchableSelectOption,
 } from "@/components/form";
 import { PasswordRequirements } from "@/lib/password";
 import type { UserFormValues } from "@/lib/user-form";
-import { USER_TYPE_ID, type UserModuleMode } from "@/lib/user-module";
-import { usersService } from "@/lib/api/services/users";
+import { type UserModuleMode } from "@/lib/user-module";
+import { fetchContractorOptions } from "@/lib/user-dropdowns";
 
 const CONTACT_FIELD_MAX = 30;
-
-async function fetchContractorOptions(search: string): Promise<SearchableSelectOption[]> {
-  const res = await usersService.dropdown({
-    search,
-    userTypeId: USER_TYPE_ID.contractor,
-  });
-  return (res.data ?? []).map((item) => ({
-    value: String(item.id),
-    label: item.name,
-  }));
-}
 
 export function UserFormFields({
   mode,

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ComponentProps } from "react";
+import { useCallback, useEffect, useMemo, useState, type ComponentProps } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AlertCircle, ChevronRight, Loader2, Save } from "lucide-react";
@@ -13,6 +13,7 @@ import {
   TreeSortableProvider,
 } from "@/components/tree-sortable";
 import { useMenuTreeReorder } from "@/hooks/useMenuTreeReorder";
+import type { ApiMenuDefinition } from "@/lib/api/services/menus";
 import {
   Collapsible,
   CollapsibleContent,
@@ -51,6 +52,7 @@ import {
   type PermissionFlag,
   type PermissionTreeNode,
 } from "@/lib/permission-tree";
+import { flattenMenuTreeForReorder } from "@/lib/menu-tree";
 
 export const Route = createFileRoute("/permissions")({
   head: () => ({ meta: [{ title: "Permissions | Schore" }] }),
@@ -64,6 +66,13 @@ function PermissionsPage() {
   const [roleId, setRoleId] = useState<number | null>(null);
   const [draft, setDraft] = useState<PermissionTreeNode[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<number>>(() => new Set());
+  const [confirmSaveOrder, setConfirmSaveOrder] = useState(false);
+
+  const handleMenuTreeChange = useCallback((tree: Parameters<typeof buildPermissionTree>[0]) => {
+    setDraft((prev) =>
+      mergePermissions(buildPermissionTree(tree), flattenTreeForSave(prev)),
+    );
+  }, []);
 
   // Reuse the shared ["roles"] cache from User Management — do not use a different key.
   const rolesQuery = useQuery({
@@ -102,19 +111,6 @@ function PermissionsPage() {
     );
   }, [menusQuery.isSuccess, menusQuery.data, permsQuery.isSuccess, permsQuery.data]);
 
-  useEffect(() => {
-    setDraft([]);
-    setExpandedIds(new Set());
-  }, [roleId]);
-
-  useEffect(() => {
-    if (serverTree.length === 0) return;
-    setDraft(serverTree);
-    setExpandedIds(new Set(collectExpandableMenuIds(serverTree)));
-  }, [serverTree]);
-
-  const isDirty = draft.length > 0 && !samePermissionTree(draft, serverTree);
-
   const saveMutation = useMutation({
     mutationFn: (payload: { roleId: number; permissions: UpsertPermission[] }) =>
       permissionsService.assign(payload),
@@ -141,8 +137,58 @@ function PermissionsPage() {
     onError: (err) => notifyApiError(err, "Failed to save permissions"),
   });
 
-  const canReorderMenus = canModify && !saveMutation.isPending;
-  const { reorderMenus, isReordering } = useMenuTreeReorder({ enabled: canReorderMenus });
+  const {
+    menuTreeDraft,
+    reorderMenus,
+    isOrderDirty,
+    commitBaseline,
+    resetToBaseline,
+  } = useMenuTreeReorder({
+    enabled: canModify && !saveMutation.isPending,
+    menus: menusQuery.data,
+    onTreeChange: handleMenuTreeChange,
+  });
+
+  const saveOrderMutation = useMutation({
+    mutationFn: (tree: ApiMenuDefinition[]) =>
+      menusService.reorder({ items: flattenMenuTreeForReorder(tree) }),
+    onSuccess: async (res, tree) => {
+      toast.success(res.message || "Menu order saved");
+      commitBaseline(tree);
+      setConfirmSaveOrder(false);
+      try {
+        // Apply the saved tree to the sidebar immediately (no page refresh).
+        await refreshPermissions({ background: true, menuTree: tree });
+      } catch (err) {
+        notifyApiError(err, "Menu order saved, but authorization could not be refreshed");
+      }
+      await menusQuery.refetch();
+    },
+    onError: (err) => notifyApiError(err, "Failed to save menu order"),
+  });
+
+  useEffect(() => {
+    resetToBaseline();
+    setDraft([]);
+    setExpandedIds(new Set());
+  }, [roleId, resetToBaseline]);
+
+  useEffect(() => {
+    if (serverTree.length === 0) return;
+    if (!isOrderDirty) {
+      setDraft(serverTree);
+      setExpandedIds(new Set(collectExpandableMenuIds(serverTree)));
+    }
+  }, [serverTree, isOrderDirty]);
+
+  const isDirty = draft.length > 0 && !samePermissionTree(draft, serverTree);
+
+  const canReorderMenus =
+    canModify && !saveMutation.isPending && !saveOrderMutation.isPending;
+
+  const savingPermissions = saveMutation.isPending;
+  const savingOrder = saveOrderMutation.isPending;
+  const saving = savingPermissions || savingOrder;
 
   function toggle(menuId: number, flag: PermissionFlag) {
     setDraft((prev) => {
@@ -158,6 +204,11 @@ function PermissionsPage() {
       roleId,
       permissions: flattenTreeForSave(draft),
     });
+  }
+
+  function handleConfirmSaveOrder() {
+    if (!isOrderDirty || saveOrderMutation.isPending || menuTreeDraft.length === 0) return;
+    saveOrderMutation.mutate(menuTreeDraft);
   }
 
   function toggleExpanded(menuId: number, open: boolean) {
@@ -176,7 +227,6 @@ function PermissionsPage() {
 
   const loadError = menusQuery.isError || permsQuery.isError;
   const showTree = roleId != null && draft.length > 0 && !loadingTree && !loadError;
-  const saving = saveMutation.isPending || isReordering;
 
   return (
     <div className="space-y-6">
@@ -223,14 +273,34 @@ function PermissionsPage() {
           </div>
 
           <Can route={PERMISSIONS_ROUTE} action="modify">
-            <Button
-              size="sm"
-              onClick={handleSave}
-              disabled={!isDirty || saving || roleId == null || draft.length === 0}
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {saving ? "Saving…" : "Save permissions"}
-            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {isOrderDirty ? (
+                <Button
+                  size="sm"
+                  onClick={() => setConfirmSaveOrder(true)}
+                  disabled={savingOrder || savingPermissions}
+                >
+                  {savingOrder ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  {savingOrder ? "Saving…" : "Save Order"}
+                </Button>
+              ) : null}
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={!isDirty || saving || roleId == null || draft.length === 0}
+              >
+                {savingPermissions ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                {savingPermissions ? "Saving…" : "Save permissions"}
+              </Button>
+            </div>
           </Can>
         </div>
       </div>
@@ -307,6 +377,36 @@ function PermissionsPage() {
           </TreeSortableProvider>
         </div>
       )}
+
+      {confirmSaveOrder ? (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+          onClick={() => !savingOrder && setConfirmSaveOrder(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg border bg-card p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="font-display text-lg font-semibold">Save Menu Order?</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              You have changed the menu order. Do you want to save these changes?
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setConfirmSaveOrder(false)}
+                disabled={savingOrder}
+              >
+                Cancel
+              </Button>
+              <Button disabled={savingOrder} onClick={handleConfirmSaveOrder}>
+                {savingOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

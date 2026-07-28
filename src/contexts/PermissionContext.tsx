@@ -26,7 +26,13 @@ interface PermissionContextValue {
   menus: ApiMenu[];
   isLoading: boolean;
   error: unknown;
-  refreshPermissions: () => Promise<void>;
+  refreshPermissions: (options?: {
+    background?: boolean;
+    /** When set, use this tree instead of the cached/fetched Menus/tree. */
+    menuTree?: ApiMenuDefinition[];
+    /** Force a fresh Menus/tree fetch (ignores cache). */
+    forceMenuTree?: boolean;
+  }) => Promise<void>;
 }
 
 export const PERMISSION_UPDATED_STORAGE_KEY = "schore.permissions.updated";
@@ -48,7 +54,11 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
   const lastRefreshAtRef = useRef(0);
   const userId = user?.id ?? null;
 
-  const refreshPermissions = useCallback(async (options?: { background?: boolean }) => {
+  const refreshPermissions = useCallback(async (options?: {
+    background?: boolean;
+    menuTree?: ApiMenuDefinition[];
+    forceMenuTree?: boolean;
+  }) => {
     if (!isAuthenticated || userId == null) {
       setMenus([]);
       setError(null);
@@ -76,9 +86,13 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
               queryFn: async () => (await usersService.get(userId)).data,
               staleTime: 60_000,
             }).then((apiUser) => apiUser.roleIds ?? []),
-        cacheRef.current.menuTree != null
-          ? Promise.resolve(cacheRef.current.menuTree)
-          : menusService.tree().then((response) => response.data ?? []),
+        options?.menuTree != null
+          ? Promise.resolve(options.menuTree)
+          : options?.forceMenuTree
+            ? menusService.tree().then((response) => response.data ?? [])
+            : cacheRef.current.menuTree != null
+              ? Promise.resolve(cacheRef.current.menuTree)
+              : menusService.tree().then((response) => response.data ?? []),
       ]);
 
       cacheRef.current = { userId, roleIds, menuTree };

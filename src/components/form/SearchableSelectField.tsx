@@ -31,6 +31,8 @@ export interface SearchableSelectFieldProps<T extends FieldValues> {
    * (e.g. edit mode with a pre-selected category).
    */
   selectedLabel?: string | null;
+  /** Called when the user picks an option (value + label). */
+  onSelect?: (option: SearchableSelectOption) => void;
 }
 
 export function SearchableSelectField<T extends FieldValues>({
@@ -45,6 +47,7 @@ export function SearchableSelectField<T extends FieldValues>({
   queryKey,
   fetchOptions,
   selectedLabel,
+  onSelect,
 }: SearchableSelectFieldProps<T>) {
   const { control, formState } = useFormContext<T>();
   const submitting = formState.isSubmitting;
@@ -158,6 +161,7 @@ export function SearchableSelectField<T extends FieldValues>({
                             type="button"
                             onClick={() => {
                               field.onChange(option.value);
+                              onSelect?.(option);
                               setOpen(false);
                             }}
                             className={cn(

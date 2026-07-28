@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WagesRouteImport } from './routes/wages'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as UnitsRouteImport } from './routes/units'
+import { Route as TradeGroupsRouteImport } from './routes/trade-groups'
 import { Route as TradeBuilderRouteImport } from './routes/trade-builder'
 import { Route as SystemConfigRouteImport } from './routes/system-config'
 import { Route as StatementsRouteImport } from './routes/statements'
@@ -48,6 +49,7 @@ import { Route as AllocationRouteImport } from './routes/allocation'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WagesIndexRouteImport } from './routes/wages.index'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
+import { Route as TradeGroupsIndexRouteImport } from './routes/trade-groups.index'
 import { Route as TradeBuilderIndexRouteImport } from './routes/trade-builder.index'
 import { Route as SystemConfigIndexRouteImport } from './routes/system-config.index'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
@@ -62,6 +64,8 @@ import { Route as CisManagementIndexRouteImport } from './routes/cis-management.
 import { Route as WagesIdRouteImport } from './routes/wages.$id'
 import { Route as UsersNewRouteImport } from './routes/users.new'
 import { Route as UsersIdRouteImport } from './routes/users.$id'
+import { Route as TradeGroupsNewRouteImport } from './routes/trade-groups.new'
+import { Route as TradeGroupsIdRouteImport } from './routes/trade-groups.$id'
 import { Route as TradeBuilderTasksRouteImport } from './routes/trade-builder.tasks'
 import { Route as TradeBuilderNewRouteImport } from './routes/trade-builder.new'
 import { Route as TradeBuilderGroupsRouteImport } from './routes/trade-builder.groups'
@@ -72,6 +76,7 @@ import { Route as SettingsUserTypesRouteImport } from './routes/settings.user-ty
 import { Route as SettingsRolesRouteImport } from './routes/settings.roles'
 import { Route as SettingsRolePermissionsRouteImport } from './routes/settings.role-permissions'
 import { Route as SettingsEmailSmtpRouteImport } from './routes/settings.email-smtp'
+import { Route as PropertiesNewRouteImport } from './routes/properties.new'
 import { Route as PropertiesIdRouteImport } from './routes/properties.$id'
 import { Route as OperativesNewRouteImport } from './routes/operatives.new'
 import { Route as OperativesIdRouteImport } from './routes/operatives.$id'
@@ -98,6 +103,11 @@ const UsersRoute = UsersRouteImport.update({
 const UnitsRoute = UnitsRouteImport.update({
   id: '/units',
   path: '/units',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TradeGroupsRoute = TradeGroupsRouteImport.update({
+  id: '/trade-groups',
+  path: '/trade-groups',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TradeBuilderRoute = TradeBuilderRouteImport.update({
@@ -280,6 +290,11 @@ const UsersIndexRoute = UsersIndexRouteImport.update({
   path: '/',
   getParentRoute: () => UsersRoute,
 } as any)
+const TradeGroupsIndexRoute = TradeGroupsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TradeGroupsRoute,
+} as any)
 const TradeBuilderIndexRoute = TradeBuilderIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -350,6 +365,16 @@ const UsersIdRoute = UsersIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => UsersRoute,
 } as any)
+const TradeGroupsNewRoute = TradeGroupsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => TradeGroupsRoute,
+} as any)
+const TradeGroupsIdRoute = TradeGroupsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => TradeGroupsRoute,
+} as any)
 const TradeBuilderTasksRoute = TradeBuilderTasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
@@ -399,6 +424,11 @@ const SettingsEmailSmtpRoute = SettingsEmailSmtpRouteImport.update({
   id: '/email-smtp',
   path: '/email-smtp',
   getParentRoute: () => SettingsRoute,
+} as any)
+const PropertiesNewRoute = PropertiesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => PropertiesRoute,
 } as any)
 const PropertiesIdRoute = PropertiesIdRouteImport.update({
   id: '/$id',
@@ -496,6 +526,7 @@ export interface FileRoutesByFullPath {
   '/statements': typeof StatementsRoute
   '/system-config': typeof SystemConfigRouteWithChildren
   '/trade-builder': typeof TradeBuilderRouteWithChildren
+  '/trade-groups': typeof TradeGroupsRouteWithChildren
   '/units': typeof UnitsRoute
   '/users': typeof UsersRouteWithChildren
   '/wages': typeof WagesRouteWithChildren
@@ -510,6 +541,7 @@ export interface FileRoutesByFullPath {
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/properties/new': typeof PropertiesNewRoute
   '/settings/email-smtp': typeof SettingsEmailSmtpRoute
   '/settings/role-permissions': typeof SettingsRolePermissionsRoute
   '/settings/roles': typeof SettingsRolesRoute
@@ -520,6 +552,8 @@ export interface FileRoutesByFullPath {
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
   '/trade-builder/new': typeof TradeBuilderNewRoute
   '/trade-builder/tasks': typeof TradeBuilderTasksRoute
+  '/trade-groups/$id': typeof TradeGroupsIdRoute
+  '/trade-groups/new': typeof TradeGroupsNewRoute
   '/users/$id': typeof UsersIdRoute
   '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
@@ -534,6 +568,7 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof SettingsIndexRoute
   '/system-config/': typeof SystemConfigIndexRoute
   '/trade-builder/': typeof TradeBuilderIndexRoute
+  '/trade-groups/': typeof TradeGroupsIndexRoute
   '/users/': typeof UsersIndexRoute
   '/wages/': typeof WagesIndexRoute
   '/items/$id/edit': typeof ItemsIdEditRoute
@@ -574,6 +609,7 @@ export interface FileRoutesByTo {
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/properties/new': typeof PropertiesNewRoute
   '/settings/email-smtp': typeof SettingsEmailSmtpRoute
   '/settings/role-permissions': typeof SettingsRolePermissionsRoute
   '/settings/roles': typeof SettingsRolesRoute
@@ -584,6 +620,8 @@ export interface FileRoutesByTo {
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
   '/trade-builder/new': typeof TradeBuilderNewRoute
   '/trade-builder/tasks': typeof TradeBuilderTasksRoute
+  '/trade-groups/$id': typeof TradeGroupsIdRoute
+  '/trade-groups/new': typeof TradeGroupsNewRoute
   '/users/$id': typeof UsersIdRoute
   '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
@@ -598,6 +636,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsIndexRoute
   '/system-config': typeof SystemConfigIndexRoute
   '/trade-builder': typeof TradeBuilderIndexRoute
+  '/trade-groups': typeof TradeGroupsIndexRoute
   '/users': typeof UsersIndexRoute
   '/wages': typeof WagesIndexRoute
   '/items/$id/edit': typeof ItemsIdEditRoute
@@ -638,6 +677,7 @@ export interface FileRoutesById {
   '/statements': typeof StatementsRoute
   '/system-config': typeof SystemConfigRouteWithChildren
   '/trade-builder': typeof TradeBuilderRouteWithChildren
+  '/trade-groups': typeof TradeGroupsRouteWithChildren
   '/units': typeof UnitsRoute
   '/users': typeof UsersRouteWithChildren
   '/wages': typeof WagesRouteWithChildren
@@ -652,6 +692,7 @@ export interface FileRoutesById {
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
   '/properties/$id': typeof PropertiesIdRoute
+  '/properties/new': typeof PropertiesNewRoute
   '/settings/email-smtp': typeof SettingsEmailSmtpRoute
   '/settings/role-permissions': typeof SettingsRolePermissionsRoute
   '/settings/roles': typeof SettingsRolesRoute
@@ -662,6 +703,8 @@ export interface FileRoutesById {
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
   '/trade-builder/new': typeof TradeBuilderNewRoute
   '/trade-builder/tasks': typeof TradeBuilderTasksRoute
+  '/trade-groups/$id': typeof TradeGroupsIdRoute
+  '/trade-groups/new': typeof TradeGroupsNewRoute
   '/users/$id': typeof UsersIdRoute
   '/users/new': typeof UsersNewRoute
   '/wages/$id': typeof WagesIdRoute
@@ -676,6 +719,7 @@ export interface FileRoutesById {
   '/settings/': typeof SettingsIndexRoute
   '/system-config/': typeof SystemConfigIndexRoute
   '/trade-builder/': typeof TradeBuilderIndexRoute
+  '/trade-groups/': typeof TradeGroupsIndexRoute
   '/users/': typeof UsersIndexRoute
   '/wages/': typeof WagesIndexRoute
   '/items/$id/edit': typeof ItemsIdEditRoute
@@ -717,6 +761,7 @@ export interface FileRouteTypes {
     | '/statements'
     | '/system-config'
     | '/trade-builder'
+    | '/trade-groups'
     | '/units'
     | '/users'
     | '/wages'
@@ -731,6 +776,7 @@ export interface FileRouteTypes {
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/properties/new'
     | '/settings/email-smtp'
     | '/settings/role-permissions'
     | '/settings/roles'
@@ -741,6 +787,8 @@ export interface FileRouteTypes {
     | '/trade-builder/groups'
     | '/trade-builder/new'
     | '/trade-builder/tasks'
+    | '/trade-groups/$id'
+    | '/trade-groups/new'
     | '/users/$id'
     | '/users/new'
     | '/wages/$id'
@@ -755,6 +803,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/system-config/'
     | '/trade-builder/'
+    | '/trade-groups/'
     | '/users/'
     | '/wages/'
     | '/items/$id/edit'
@@ -795,6 +844,7 @@ export interface FileRouteTypes {
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/properties/new'
     | '/settings/email-smtp'
     | '/settings/role-permissions'
     | '/settings/roles'
@@ -805,6 +855,8 @@ export interface FileRouteTypes {
     | '/trade-builder/groups'
     | '/trade-builder/new'
     | '/trade-builder/tasks'
+    | '/trade-groups/$id'
+    | '/trade-groups/new'
     | '/users/$id'
     | '/users/new'
     | '/wages/$id'
@@ -819,6 +871,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/system-config'
     | '/trade-builder'
+    | '/trade-groups'
     | '/users'
     | '/wages'
     | '/items/$id/edit'
@@ -858,6 +911,7 @@ export interface FileRouteTypes {
     | '/statements'
     | '/system-config'
     | '/trade-builder'
+    | '/trade-groups'
     | '/units'
     | '/users'
     | '/wages'
@@ -872,6 +926,7 @@ export interface FileRouteTypes {
     | '/operatives/$id'
     | '/operatives/new'
     | '/properties/$id'
+    | '/properties/new'
     | '/settings/email-smtp'
     | '/settings/role-permissions'
     | '/settings/roles'
@@ -882,6 +937,8 @@ export interface FileRouteTypes {
     | '/trade-builder/groups'
     | '/trade-builder/new'
     | '/trade-builder/tasks'
+    | '/trade-groups/$id'
+    | '/trade-groups/new'
     | '/users/$id'
     | '/users/new'
     | '/wages/$id'
@@ -896,6 +953,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/system-config/'
     | '/trade-builder/'
+    | '/trade-groups/'
     | '/users/'
     | '/wages/'
     | '/items/$id/edit'
@@ -936,6 +994,7 @@ export interface RootRouteChildren {
   StatementsRoute: typeof StatementsRoute
   SystemConfigRoute: typeof SystemConfigRouteWithChildren
   TradeBuilderRoute: typeof TradeBuilderRouteWithChildren
+  TradeGroupsRoute: typeof TradeGroupsRouteWithChildren
   UnitsRoute: typeof UnitsRoute
   UsersRoute: typeof UsersRouteWithChildren
   WagesRoute: typeof WagesRouteWithChildren
@@ -962,6 +1021,13 @@ declare module '@tanstack/react-router' {
       path: '/units'
       fullPath: '/units'
       preLoaderRoute: typeof UnitsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trade-groups': {
+      id: '/trade-groups'
+      path: '/trade-groups'
+      fullPath: '/trade-groups'
+      preLoaderRoute: typeof TradeGroupsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/trade-builder': {
@@ -1216,6 +1282,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsersIndexRouteImport
       parentRoute: typeof UsersRoute
     }
+    '/trade-groups/': {
+      id: '/trade-groups/'
+      path: '/'
+      fullPath: '/trade-groups/'
+      preLoaderRoute: typeof TradeGroupsIndexRouteImport
+      parentRoute: typeof TradeGroupsRoute
+    }
     '/trade-builder/': {
       id: '/trade-builder/'
       path: '/'
@@ -1314,6 +1387,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsersIdRouteImport
       parentRoute: typeof UsersRoute
     }
+    '/trade-groups/new': {
+      id: '/trade-groups/new'
+      path: '/new'
+      fullPath: '/trade-groups/new'
+      preLoaderRoute: typeof TradeGroupsNewRouteImport
+      parentRoute: typeof TradeGroupsRoute
+    }
+    '/trade-groups/$id': {
+      id: '/trade-groups/$id'
+      path: '/$id'
+      fullPath: '/trade-groups/$id'
+      preLoaderRoute: typeof TradeGroupsIdRouteImport
+      parentRoute: typeof TradeGroupsRoute
+    }
     '/trade-builder/tasks': {
       id: '/trade-builder/tasks'
       path: '/tasks'
@@ -1383,6 +1470,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/email-smtp'
       preLoaderRoute: typeof SettingsEmailSmtpRouteImport
       parentRoute: typeof SettingsRoute
+    }
+    '/properties/new': {
+      id: '/properties/new'
+      path: '/new'
+      fullPath: '/properties/new'
+      preLoaderRoute: typeof PropertiesNewRouteImport
+      parentRoute: typeof PropertiesRoute
     }
     '/properties/$id': {
       id: '/properties/$id'
@@ -1584,11 +1678,13 @@ const ProductManagementRouteWithChildren =
 
 interface PropertiesRouteChildren {
   PropertiesIdRoute: typeof PropertiesIdRoute
+  PropertiesNewRoute: typeof PropertiesNewRoute
   PropertiesIndexRoute: typeof PropertiesIndexRoute
 }
 
 const PropertiesRouteChildren: PropertiesRouteChildren = {
   PropertiesIdRoute: PropertiesIdRoute,
+  PropertiesNewRoute: PropertiesNewRoute,
   PropertiesIndexRoute: PropertiesIndexRoute,
 }
 
@@ -1652,6 +1748,22 @@ const TradeBuilderRouteWithChildren = TradeBuilderRoute._addFileChildren(
   TradeBuilderRouteChildren,
 )
 
+interface TradeGroupsRouteChildren {
+  TradeGroupsIdRoute: typeof TradeGroupsIdRoute
+  TradeGroupsNewRoute: typeof TradeGroupsNewRoute
+  TradeGroupsIndexRoute: typeof TradeGroupsIndexRoute
+}
+
+const TradeGroupsRouteChildren: TradeGroupsRouteChildren = {
+  TradeGroupsIdRoute: TradeGroupsIdRoute,
+  TradeGroupsNewRoute: TradeGroupsNewRoute,
+  TradeGroupsIndexRoute: TradeGroupsIndexRoute,
+}
+
+const TradeGroupsRouteWithChildren = TradeGroupsRoute._addFileChildren(
+  TradeGroupsRouteChildren,
+)
+
 interface UsersRouteChildren {
   UsersIdRoute: typeof UsersIdRoute
   UsersNewRoute: typeof UsersNewRoute
@@ -1713,6 +1825,7 @@ const rootRouteChildren: RootRouteChildren = {
   StatementsRoute: StatementsRoute,
   SystemConfigRoute: SystemConfigRouteWithChildren,
   TradeBuilderRoute: TradeBuilderRouteWithChildren,
+  TradeGroupsRoute: TradeGroupsRouteWithChildren,
   UnitsRoute: UnitsRoute,
   UsersRoute: UsersRouteWithChildren,
   WagesRoute: WagesRouteWithChildren,

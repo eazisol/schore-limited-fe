@@ -30,8 +30,8 @@ export function canReorderSiblings(
 }
 
 /**
- * Reorder siblings visually and set only the dragged item's orderBy to the target's orderBy.
- * Parent relationships are never changed.
+ * Reorder siblings visually and renumber every sibling's orderBy to match
+ * the new list order (1-based). Parent relationships are never changed.
  */
 export function computeSiblingReorder<T extends OrderableTreeNode>(
   siblings: T[],
@@ -44,13 +44,16 @@ export function computeSiblingReorder<T extends OrderableTreeNode>(
   const newIndex = siblings.findIndex((item) => item.id === targetId);
   if (oldIndex === -1 || newIndex === -1) return null;
 
-  const targetOrderBy = siblings[newIndex].orderBy;
   const reordered = arrayMove(siblings, oldIndex, newIndex);
-  const siblingsNext = reordered.map((item) =>
-    item.id === draggedId ? { ...item, orderBy: targetOrderBy } : item,
-  );
+  const siblingsNext = reordered.map((item, index) => ({
+    ...item,
+    orderBy: index + 1,
+  }));
 
-  return { siblings: siblingsNext, orderBy: targetOrderBy };
+  return {
+    siblings: siblingsNext,
+    orderBy: siblingsNext.find((item) => item.id === draggedId)?.orderBy ?? newIndex + 1,
+  };
 }
 
 function replaceSiblingList<T extends OrderableTreeNode>(

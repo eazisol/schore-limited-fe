@@ -1,169 +1,454 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
-import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { fmtGBP } from "@/lib/data";
-import { propertiesStore, useProperties } from "@/lib/properties-store";
-import { Plus, Search, Loader2 } from "lucide-react";
+import { Can, usePermission } from "@/components/Permission";
+import {
+  DataTable,
+  downloadCsv,
+  csvForceText,
+  useDebouncedSearch,
+  type DataTableColumn,
+  type DataTableRowAction,
+} from "@/components/data-table";
+import { Plus, Eye, Pencil, Trash2, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
-import { Modal, Field, inputCls } from "@/components/Modal";
+import {
+  propertiesService,
+  type ApiProperty,
+  type PropertySortBy,
+} from "@/lib/api/services/properties";
+import { usersService } from "@/lib/api/services/users";
+import { notifyApiError, type ApiError } from "@/lib/api/axios";
+import { AppTooltip } from "@/components/AppTooltip";
+import { activeStatusClass, formatDateTime, truncateWithEllipsis } from "@/lib/module-ui";
+import { PROPERTIES_ROUTE } from "@/lib/properties";
+import { USER_TYPE_ID } from "@/lib/user-module";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/properties/")({
   head: () => ({ meta: [{ title: "Properties | Schore" }] }),
   component: PropertiesList,
 });
 
-const TYPES = ["KBWC", "Bathroom", "Kitchen", "Wet Room"] as const;
-const STATUSES = ["In Progress", "Handed Over", "On Hold", "Snag"] as const;
+export const propertiesQueryKey = ["properties"] as const;
+
+/** Backend-supported column SortBy values (createdDate is default only). */
+const COLUMN_SORT_KEYS: Record<string, PropertySortBy> = {
+  reference: "reference",
+  propertyName: "name",
+  contactName: "contactname",
+  customer: "customer",
+  contractor: "contractor",
+};
 
 function PropertiesList() {
-  const all = useProperties();
-  const [q, setQ] = useState("");
-  const [status, setStatus] = useState("All");
-  const [contract, setContract] = useState("All");
-  const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState("");
-  const [form, setForm] = useState({
-    ref: "", address: "", postcode: "", contract: "MS" as "MS" | "John",
-    type: TYPES[0] as (typeof TYPES)[number],
-    status: "In Progress" as (typeof STATUSES)[number],
-    startDate: new Date().toISOString().slice(0, 10),
-    budget: 5600, siteManager: "Claudiu Ceausu", accessNotes: "",
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const canModify = usePermission({ route: PROPERTIES_ROUTE, action: "modify" });
+  const canDelete = usePermission({ route: PROPERTIES_ROUTE, action: "delete" });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortBy, setSortBy] = useState<PropertySortBy>("createdDate");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [customerId, setCustomerId] = useState<number | undefined>(undefined);
+  const [contractorId, setContractorId] = useState<number | undefined>(undefined);
+  const [confirmDel, setConfirmDel] = useState<ApiProperty | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
+    onPageReset: () => setPage(1),
   });
 
-  const rows = useMemo(() => all.filter(p => {
-    if (q && !p.address.toLowerCase().includes(q.toLowerCase()) && !p.postcode.toLowerCase().includes(q.toLowerCase()) && !p.ref.toLowerCase().includes(q.toLowerCase())) return false;
-    if (status !== "All" && p.status !== status) return false;
-    if (contract !== "All" && p.contract !== contract) return false;
-    return true;
-  }), [all, q, status, contract]);
+  const customersQuery = useQuery({
+    queryKey: ["users", "customers", "dropdown", "filter"],
+    queryFn: async () =>
+      (await usersService.dropdown({ search: "", userTypeId: USER_TYPE_ID.customer })).data ?? [],
+    staleTime: 60_000,
+  });
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErr("");
-    if (!form.ref.trim() || !form.address.trim() || !form.postcode.trim()) {
-      setErr("Reference, address and postcode are required."); return;
+  const contractorsQuery = useQuery({
+    queryKey: ["users", "contractors", "dropdown", "filter"],
+    queryFn: async () =>
+      (await usersService.dropdown({ search: "", userTypeId: USER_TYPE_ID.contractor })).data ?? [],
+    staleTime: 60_000,
+  });
+
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+    queryKey: [
+      ...propertiesQueryKey,
+      { page, pageSize, search, sortBy, sortDir, customerId, contractorId },
+    ],
+    queryFn: async () =>
+      (
+        await propertiesService.list({
+          page,
+          pageSize,
+          search,
+          sortBy,
+          sortDir,
+          customerId,
+          contractorId,
+        })
+      ).data,
+    placeholderData: keepPreviousData,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => propertiesService.remove(id),
+    onSuccess: (res) => {
+      toast.success(res.message || "Property deleted");
+      setConfirmDel(null);
+      queryClient.invalidateQueries({ queryKey: propertiesQueryKey });
+    },
+    onError: (err) => notifyApiError(err, "Failed to delete property"),
+  });
+
+  const rows = data?.items ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const totalPages = data?.totalPages ?? 1;
+  const customers = customersQuery.data ?? [];
+  const contractors = contractorsQuery.data ?? [];
+
+  async function handleExportCsv() {
+    if (rows.length === 0) {
+      toast.warning("No properties to export for the current page.");
+      return;
     }
-    if (form.budget <= 0) { setErr("Budget must be greater than zero."); return; }
-    setSaving(true);
-    await new Promise(r => setTimeout(r, 500));
-    propertiesStore.create(form);
-    setSaving(false);
-    setOpen(false);
-    toast.success("Property added", { description: `${form.ref} · ${form.postcode}` });
-  };
+    setExporting(true);
+    try {
+      downloadCsv({
+        filename: `properties-export-${new Date().toISOString().slice(0, 10)}.csv`,
+        headers: [
+          "Reference",
+          "Property Name",
+          "Contact Name",
+          "Customer",
+          "Contractor",
+          "Phone",
+          "Status",
+          "Created Date",
+        ],
+        rows: rows.map((row) => [
+          row.reference,
+          row.propertyName,
+          row.contactName,
+          row.customerName ?? "",
+          row.contractorName ?? "",
+          csvForceText(row.contactPhoneNo ?? ""),
+          row.isActive ? "Active" : "Inactive",
+          formatDateTime(row.createdDate),
+        ]),
+      });
+      toast.success(`Exported ${rows.length} propert${rows.length === 1 ? "y" : "ies"} to CSV`);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  const columns = useMemo<DataTableColumn<ApiProperty>[]>(
+    () => [
+      {
+        id: "reference",
+        header: "Reference",
+        sortable: true,
+        truncate: false,
+        cell: (row) => (
+          <AppTooltip content={row.reference} asChild align="start">
+            <Link
+              to="/properties/$id"
+              params={{ id: String(row.id) }}
+              className="inline-block max-w-full font-medium hover:text-info hover:underline"
+            >
+              {truncateWithEllipsis(row.reference)}
+            </Link>
+          </AppTooltip>
+        ),
+      },
+      {
+        id: "propertyName",
+        header: "Property Name",
+        sortable: true,
+        cell: (row) => (
+          <AppTooltip content={row.propertyName} asChild align="start">
+            <span className="inline-block max-w-full">{truncateWithEllipsis(row.propertyName)}</span>
+          </AppTooltip>
+        ),
+      },
+      {
+        id: "contactName",
+        header: "Contact Name",
+        sortable: true,
+        cell: (row) => truncateWithEllipsis(row.contactName),
+      },
+      {
+        id: "customer",
+        header: "Customer",
+        sortable: true,
+        cell: (row) => row.customerName?.trim() || "—",
+      },
+      {
+        id: "contractor",
+        header: "Contractor",
+        sortable: true,
+        cell: (row) => row.contractorName?.trim() || "—",
+      },
+      {
+        id: "phone",
+        header: "Phone",
+        sortable: false,
+        cell: (row) => row.contactPhoneNo?.trim() || "—",
+      },
+      {
+        id: "status",
+        header: "Status",
+        sortable: false,
+        cell: (row) => (
+          <span
+            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(row.isActive)}`}
+          >
+            {row.isActive ? "Active" : "Inactive"}
+          </span>
+        ),
+      },
+      {
+        id: "createdDate",
+        header: "Created Date",
+        sortable: false,
+        cell: (row) => formatDateTime(row.createdDate),
+      },
+    ],
+    [],
+  );
+
+  const rowActions = useMemo<DataTableRowAction<ApiProperty>[]>(
+    () => [
+      {
+        id: "view",
+        label: "View",
+        icon: <Eye className="h-4 w-4" />,
+        onClick: (row) =>
+          navigate({ to: "/properties/$id", params: { id: String(row.id) } }),
+      },
+      {
+        id: "edit",
+        label: "Edit",
+        icon: <Pencil className="h-4 w-4" />,
+        hidden: () => !canModify,
+        onClick: (row) =>
+          navigate({
+            to: "/properties/$id",
+            params: { id: String(row.id) },
+            search: { mode: "edit" },
+          }),
+      },
+      {
+        id: "delete",
+        label: "Delete",
+        icon: <Trash2 className="h-4 w-4" />,
+        danger: true,
+        hidden: () => !canDelete,
+        onClick: (row) => setConfirmDel(row),
+      },
+    ],
+    [canDelete, canModify, navigate],
+  );
+
+  const activeSortColumn =
+    Object.entries(COLUMN_SORT_KEYS).find(([, apiKey]) => apiKey === sortBy)?.[0] ?? "";
+
+  function handleSortChange(columnId: string, direction: "asc" | "desc") {
+    const apiSortBy = COLUMN_SORT_KEYS[columnId];
+    if (!apiSortBy) return;
+    setSortBy(apiSortBy);
+    setSortDir(direction);
+    setPage(1);
+  }
+
+  function clearFilters() {
+    clearSearch();
+    setCustomerId(undefined);
+    setContractorId(undefined);
+    setPage(1);
+  }
+
+  const hasActiveFilters = Boolean(search || customerId != null || contractorId != null);
 
   return (
     <div>
       <PageHeader
         title="Properties"
-        subtitle={`${rows.length} properties · KPI clock pauses on held days`}
-        actions={<Button size="sm" onClick={() => { setErr(""); setOpen(true); }}><Plus className="h-4 w-4" />Add property</Button>}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleExportCsv()}
+              disabled={exporting || isLoading}
+            >
+              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Export CSV
+            </Button>
+            <Can route={PROPERTIES_ROUTE} action="modify">
+              <Button size="sm" asChild>
+                <Link to="/properties/new">
+                  <Plus className="h-4 w-4" />
+                  Add property
+                </Link>
+              </Button>
+            </Can>
+          </>
+        }
       />
 
-      <div className="card-elevated">
-        <div className="p-4 flex flex-wrap items-center gap-3 border-b">
-          <div className="flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-background w-full sm:w-72">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Address or postcode…" className="bg-transparent text-sm outline-none w-full" />
-          </div>
-          <select value={status} onChange={e=>setStatus(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
-            {["All","In Progress","Handed Over","On Hold","Snag"].map(s=><option key={s}>{s}</option>)}
-          </select>
-          <select value={contract} onChange={e=>setContract(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
-            {["All","MS","John"].map(c=><option key={c}>{c}</option>)}
-          </select>
-        </div>
+      <DataTable
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => row.id}
+        loading={isLoading}
+        fetching={isFetching}
+        loadingText="Loading properties…"
+        error={
+          isError
+            ? {
+                title: "Unable to load properties",
+                message: (error as unknown as ApiError)?.message || "Please try again.",
+                onRetry: () => {
+                  void refetch();
+                },
+              }
+            : null
+        }
+        search={{
+          value: searchInput,
+          onChange: setSearchInput,
+          placeholder: "Search properties…",
+          "aria-label": "Search properties",
+        }}
+        filters={
+          <>
+            <Select
+              value={customerId != null ? String(customerId) : "all"}
+              onValueChange={(value) => {
+                setCustomerId(value === "all" ? undefined : Number(value));
+                setPage(1);
+              }}
+            >
+              <SelectTrigger
+                className="h-9 w-full min-w-[11rem] sm:w-52 [&>span]:whitespace-nowrap"
+                aria-label="Filter by customer"
+              >
+                <SelectValue placeholder="All customers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All customers</SelectItem>
+                {customers.map((customer) => (
+                  <SelectItem key={customer.id} value={String(customer.id)}>
+                    {customer.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={contractorId != null ? String(contractorId) : "all"}
+              onValueChange={(value) => {
+                setContractorId(value === "all" ? undefined : Number(value));
+                setPage(1);
+              }}
+            >
+              <SelectTrigger
+                className="h-9 w-full min-w-[11rem] sm:w-52 [&>span]:whitespace-nowrap"
+                aria-label="Filter by contractor"
+              >
+                <SelectValue placeholder="All contractors" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All contractors</SelectItem>
+                {contractors.map((contractor) => (
+                  <SelectItem key={contractor.id} value={String(contractor.id)}>
+                    {contractor.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </>
+        }
+        sort={{
+          sortBy: activeSortColumn,
+          sortDir,
+          onSortChange: handleSortChange,
+        }}
+        emptyState={{
+          title: "No properties match your filters",
+          description: "Try clearing the search or filters.",
+          action: hasActiveFilters ? (
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          ) : undefined,
+        }}
+        rowActions={rowActions}
+        pagination={{
+          page,
+          pageSize,
+          totalCount,
+          totalPages,
+          onPageChange: setPage,
+          onPageSizeChange: (size) => {
+            setPageSize(size);
+            setPage(1);
+          },
+          itemLabel: "properties",
+          disabled: isFetching,
+          controlsAlign: "center",
+        }}
+      />
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs text-muted-foreground">
-              <tr>
-                <th className="text-left font-medium px-5 py-2.5">Property</th>
-                <th className="text-left font-medium px-3 py-2.5">Contract</th>
-                <th className="text-left font-medium px-3 py-2.5">Type</th>
-                <th className="text-left font-medium px-3 py-2.5">Site Manager</th>
-                <th className="text-right font-medium px-3 py-2.5">Days / Held</th>
-                <th className="text-right font-medium px-3 py-2.5">Budget</th>
-                <th className="text-left font-medium px-5 py-2.5">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {rows.map(p => {
-                const pct = Math.round(p.spent / p.budget * 100);
-                return (
-                  <tr key={p.id} className="hover:bg-muted/30">
-                    <td className="px-5 py-3">
-                      <Link to="/properties/$id" params={{ id: p.id }} className="font-medium hover:text-info hover:underline">{p.ref}</Link>
-                      <div className="text-[11px] text-muted-foreground">{p.address} · {p.postcode}</div>
-                    </td>
-                    <td className="px-3 py-3"><code className="text-xs font-mono">{p.contract}</code></td>
-                    <td className="px-3 py-3">{p.type}</td>
-                    <td className="px-3 py-3 text-muted-foreground">{p.siteManager}</td>
-                    <td className="px-3 py-3 text-right font-mono tabular-nums">{p.daysOnSite}{p.heldDays > 0 && <span className="text-warning-foreground"> ({p.heldDays}h)</span>}</td>
-                    <td className="px-3 py-3 text-right">
-                      <div className="font-mono tabular-nums text-xs">{fmtGBP(p.spent)} / {fmtGBP(p.budget)}</div>
-                      <div className={`text-[10px] ${pct>90?"text-destructive":"text-muted-foreground"}`}>{pct}%</div>
-                    </td>
-                    <td className="px-5 py-3"><StatusBadge status={p.status} /></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {rows.length === 0 && <div className="p-12 text-center text-sm text-muted-foreground">No properties match your filters.</div>}
+      {confirmDel && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+          onClick={() => setConfirmDel(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg border bg-card p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="font-display text-lg font-semibold">
+              Delete {confirmDel.propertyName}?
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This permanently removes the property record.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setConfirmDel(null)}
+                disabled={deleteMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate(confirmDel.id)}
+              >
+                {deleteMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                Delete property
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <Modal open={open} onClose={()=>setOpen(false)} title="Add property" subtitle="Connect to a contract to enable allocation." size="lg">
-        <form onSubmit={submit} className="space-y-4">
-          {err && <div className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2">{err}</div>}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Reference" required hint="Short identifier like '30 Wimbourne'">
-              <input required value={form.ref} onChange={e=>setForm(f=>({...f, ref:e.target.value}))} className={inputCls} />
-            </Field>
-            <Field label="Postcode" required>
-              <input required value={form.postcode} onChange={e=>setForm(f=>({...f, postcode:e.target.value.toUpperCase()}))} className={inputCls} placeholder="SS14 1AA" />
-            </Field>
-            <Field label="Address" required>
-              <input required value={form.address} onChange={e=>setForm(f=>({...f, address:e.target.value}))} className={inputCls} />
-            </Field>
-            <Field label="Contract" required>
-              <select value={form.contract} onChange={e=>setForm(f=>({...f, contract:e.target.value as "MS" | "John"}))} className={inputCls}>
-                <option value="MS">MS</option><option value="John">John</option>
-              </select>
-            </Field>
-            <Field label="Type" required>
-              <select value={form.type} onChange={e=>setForm(f=>({...f, type:e.target.value as (typeof TYPES)[number]}))} className={inputCls}>
-                {TYPES.map(t => <option key={t}>{t}</option>)}
-              </select>
-            </Field>
-            <Field label="Status" required>
-              <select value={form.status} onChange={e=>setForm(f=>({...f, status:e.target.value as (typeof STATUSES)[number]}))} className={inputCls}>
-                {STATUSES.map(s => <option key={s}>{s}</option>)}
-              </select>
-            </Field>
-            <Field label="Start date" required>
-              <input required type="date" value={form.startDate} onChange={e=>setForm(f=>({...f, startDate:e.target.value}))} className={inputCls} />
-            </Field>
-            <Field label="Budget (£)" required>
-              <input required type="number" min={0} step="100" value={form.budget} onChange={e=>setForm(f=>({...f, budget:Number(e.target.value)}))} className={inputCls} />
-            </Field>
-            <Field label="Site Manager" required>
-              <input required value={form.siteManager} onChange={e=>setForm(f=>({...f, siteManager:e.target.value}))} className={inputCls} />
-            </Field>
-            <Field label="Access notes (optional)">
-              <input value={form.accessNotes} onChange={e=>setForm(f=>({...f, accessNotes:e.target.value}))} className={inputCls} placeholder="Key in office, garden access…" />
-            </Field>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={()=>setOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? <><Loader2 className="h-4 w-4 animate-spin" />Saving…</> : "Add property"}</Button>
-          </div>
-        </form>
-      </Modal>
+      )}
     </div>
   );
 }

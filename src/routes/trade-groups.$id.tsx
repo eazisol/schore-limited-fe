@@ -1,0 +1,325 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { PageHeader } from "@/components/AppShell";
+import { AppTooltip } from "@/components/AppTooltip";
+import { DetailField, DetailMetaRow } from "@/components/DetailField";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, ArrowLeft, Loader2, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { Form, SubmitButton } from "@/components/form";
+import { Can, usePermission } from "@/components/Permission";
+import { tradeGroupsService } from "@/lib/api/services/trade-groups";
+import { notifyApiError, type ApiError } from "@/lib/api/axios";
+import { tradeGroupsQueryKey } from "./trade-groups.index";
+import { activeStatusClass, formatDateTime } from "@/lib/module-ui";
+import { TRADE_GROUPS_ROUTE } from "@/lib/trade-groups";
+import {
+  emptyTradeGroupItem,
+  tradeGroupFormSchema,
+  toTradeGroupPayload,
+  type TradeGroupFormValues,
+} from "@/lib/trade-group-form";
+import { TradeGroupFormFields } from "@/components/trade-groups/TradeGroupFormFields";
+
+const detailSearchSchema = z.object({
+  mode: z.enum(["edit", "view"]).optional(),
+});
+
+export const Route = createFileRoute("/trade-groups/$id")({
+  head: ({ params }) => ({ meta: [{ title: `Trade Group #${params.id} | Schore` }] }),
+  validateSearch: detailSearchSchema,
+  component: TradeGroupDetail,
+});
+
+function TradeGroupDetail() {
+  const { id } = Route.useParams();
+  const { mode } = Route.useSearch();
+  const numericId = Number(id);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const canModify = usePermission({ route: TRADE_GROUPS_ROUTE, action: "modify" });
+  const canDelete = usePermission({ route: TRADE_GROUPS_ROUTE, action: "delete" });
+  const [confirmDel, setConfirmDel] = useState(false);
+  const isEditing = mode === "edit" && canModify;
+
+  function openEdit() {
+    navigate({
+      to: "/trade-groups/$id",
+      params: { id },
+      search: { mode: "edit" },
+      replace: true,
+    });
+  }
+
+  const groupQuery = useQuery({
+    queryKey: ["trade-groups", id],
+    queryFn: async () => (await tradeGroupsService.get(id)).data,
+  });
+  const row = groupQuery.data;
+
+  const defaults = useMemo<TradeGroupFormValues>(() => {
+    const items = row?.items ?? [];
+    return {
+      tradeId: row?.tradeId != null ? String(row.tradeId) : "",
+      name: row?.name ?? "",
+      code: row?.code ?? "",
+      description: row?.description ?? "",
+      isActive: row?.isActive ?? true,
+      items:
+        items.length > 0
+          ? items.map((item) => ({
+              id: String(item.id),
+              productId: String(item.productId),
+              productName: item.productName ?? "",
+              quantity: String(item.quantity),
+              notes: item.notes ?? "",
+            }))
+          : [emptyTradeGroupItem()],
+    };
+  }, [row]);
+
+  const form = useForm<TradeGroupFormValues>({
+    resolver: zodResolver(tradeGroupFormSchema),
+    defaultValues: defaults,
+  });
+  useEffect(() => {
+    if (!row) return;
+    form.reset(defaults);
+  }, [row, defaults, form]);
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: ReturnType<typeof toTradeGroupPayload>) =>
+      tradeGroupsService.update(numericId, payload),
+    onSuccess: (res) => {
+      toast.success(res.message || "Trade group updated");
+      queryClient.setQueryData(["trade-groups", id], res.data);
+      queryClient.invalidateQueries({ queryKey: tradeGroupsQueryKey });
+      navigate({ to: "/trade-groups" });
+    },
+    onError: (err) => notifyApiError(err, "Failed to update trade group"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => tradeGroupsService.remove(numericId),
+    onSuccess: (res) => {
+      toast.success(res.message || "Trade group deleted");
+      queryClient.invalidateQueries({ queryKey: tradeGroupsQueryKey });
+      navigate({ to: "/trade-groups" });
+    },
+    onError: (err) => notifyApiError(err, "Failed to delete trade group"),
+  });
+
+  async function save(values: TradeGroupFormValues) {
+    await updateMutation.mutateAsync(toTradeGroupPayload(values, row?.orderBy ?? 0));
+  }
+
+  if (groupQuery.isLoading) {
+    return (
+      <div className="card-elevated grid place-items-center p-12 text-sm text-muted-foreground">
+        <Loader2 className="mb-2 h-5 w-5 animate-spin" />
+        Loading trade group…
+      </div>
+    );
+  }
+
+  if (groupQuery.isError || !row) {
+    return (
+      <div className="card-elevated p-12 text-center">
+        <AlertCircle className="mx-auto mb-2 h-5 w-5 text-destructive" />
+        <h2 className="font-display text-lg font-semibold">Unable to load trade group</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {(groupQuery.error as unknown as ApiError)?.message ||
+            "This trade group may have been deleted."}
+        </p>
+        <Button className="mt-4" asChild>
+          <Link to="/trade-groups">Back to trade groups</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const dirty = form.formState.isDirty;
+  const items = row.items ?? [];
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title={isEditing ? "Edit trade group" : "Trade group details"}
+        subtitle={!isEditing ? row.name : undefined}
+        leading={
+          <AppTooltip content="Back to trade groups" asChild>
+            <Link
+              to="/trade-groups"
+              aria-label="Back to trade groups"
+              className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </AppTooltip>
+        }
+        actions={
+          <>
+            {!isEditing && canModify && (
+              <Button variant="outline" size="sm" onClick={openEdit}>
+                <Pencil className="h-4 w-4" />
+                Edit trade group
+              </Button>
+            )}
+            <Can route={TRADE_GROUPS_ROUTE} action="delete">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-destructive/30 text-destructive hover:bg-destructive/5"
+                onClick={() => setConfirmDel(true)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            </Can>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {isEditing ? (
+          <Form form={form} onSubmit={save} className="space-y-6 lg:col-span-2">
+            <TradeGroupFormFields
+              disabled={updateMutation.isPending}
+              tradeSelectedLabel={row.tradeName}
+            />
+            <div className="flex flex-col-reverse gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2 sm:pt-2">
+              <span className="text-xs text-muted-foreground sm:mr-auto">
+                {dirty ? "Unsaved changes" : "All changes saved"}
+              </span>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={updateMutation.isPending}
+                  onClick={() => navigate({ to: "/trade-groups" })}
+                >
+                  Cancel
+                </Button>
+                <SubmitButton disabled={!dirty} loadingText="Saving…">
+                  Save changes
+                </SubmitButton>
+              </div>
+            </div>
+          </Form>
+        ) : (
+          <div className="space-y-6 lg:col-span-2">
+            <div className="card-elevated space-y-5 p-4 sm:p-6">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <DetailField label="Name" value={row.name} />
+                <DetailField label="Code" value={row.code} />
+              </div>
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <DetailField label="Trade" value={row.tradeName || "—"} />
+                <DetailField
+                  label="Status"
+                  value={
+                    <span
+                      className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(row.isActive)}`}
+                    >
+                      {row.isActive ? "Active" : "Inactive"}
+                    </span>
+                  }
+                />
+              </div>
+              <DetailField label="Description" value={row.description || "—"} />
+            </div>
+
+            <div className="card-elevated overflow-hidden">
+              <div className="border-b px-4 py-3 sm:px-6">
+                <h3 className="font-display font-semibold">Items</h3>
+              </div>
+              {items.length === 0 ? (
+                <div className="p-8 text-center text-sm text-muted-foreground">
+                  No items in this trade group.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 text-xs text-muted-foreground">
+                      <tr>
+                        <th className="px-4 py-2.5 text-left font-medium sm:px-6">Product</th>
+                        <th className="px-3 py-2.5 text-right font-medium">Quantity</th>
+                        <th className="px-4 py-2.5 text-left font-medium sm:px-6">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {items.map((item) => (
+                        <tr key={item.id}>
+                          <td className="px-4 py-3 sm:px-6">
+                            {item.productName?.trim() || `Product #${item.productId}`}
+                          </td>
+                          <td className="px-3 py-3 text-right font-mono tabular-nums">
+                            {item.quantity}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground sm:px-6">
+                            {item.notes?.trim() || "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="card-elevated self-start p-6">
+          <h3 className="mb-4 font-display font-semibold">Record</h3>
+          <dl className="space-y-3">
+            <DetailMetaRow label="Trade group ID">{row.id}</DetailMetaRow>
+            <DetailMetaRow label="Created">{formatDateTime(row.createdDate)}</DetailMetaRow>
+            <DetailMetaRow label="Last edited">{formatDateTime(row.editDate)}</DetailMetaRow>
+          </dl>
+        </div>
+      </div>
+
+      {confirmDel && canDelete && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+          onClick={() => setConfirmDel(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg border bg-card p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-display text-lg font-semibold">Delete {row.name}?</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This permanently removes the trade group and its items.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setConfirmDel(false)}
+                disabled={deleteMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate()}
+              >
+                {deleteMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                Delete trade group
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -13,6 +13,18 @@ export interface ApiMenuDefinition {
   children?: ApiMenuDefinition[] | null;
 }
 
+export type MenuReorderItem = {
+  id: number;
+  orderBy: number;
+  parentMenuId: number | null;
+};
+
+export type MenuReorderPayload = {
+  items: MenuReorderItem[];
+};
+
 export const menusService = {
   tree: () => http.get<ApiEnvelope<ApiMenuDefinition[]>>("Menus/tree"),
+  reorder: (payload: MenuReorderPayload) =>
+    http.put<ApiEnvelope<null>>("Menus/reorder", payload),
 };

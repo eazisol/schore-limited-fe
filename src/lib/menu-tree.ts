@@ -1,5 +1,5 @@
 import type { ApiMenu } from "@/lib/api/services/auth";
-import type { ApiMenuDefinition } from "@/lib/api/services/menus";
+import type { ApiMenuDefinition, MenuReorderItem } from "@/lib/api/services/menus";
 import { reorderTreeSiblings } from "@/lib/tree-order";
 
 function sortByOrder<T extends { orderBy: number }>(items: T[]): T[] {
@@ -130,6 +130,43 @@ export function reorderMenuDefinitionTree(
     tree: applyOrderableTree(result.tree, sourceById),
     orderBy: result.orderBy,
   };
+}
+
+/** Flatten a nested menu tree into reorder API items (parents and children). */
+export function flattenMenuTreeForReorder(tree: ApiMenuDefinition[]): MenuReorderItem[] {
+  const out: MenuReorderItem[] = [];
+
+  const walk = (nodes: ApiMenuDefinition[], parentMenuId: number | null) => {
+    for (const node of nodes) {
+      out.push({
+        id: node.id,
+        orderBy: node.orderBy,
+        parentMenuId,
+      });
+      const children = node.children ?? [];
+      if (children.length > 0) walk(children, node.id);
+    }
+  };
+
+  walk(tree, null);
+  return out;
+}
+
+/** True when every menu id, orderBy, and parentMenuId match between two trees. */
+export function sameMenuTreeOrder(a: ApiMenuDefinition[], b: ApiMenuDefinition[]): boolean {
+  const flatA = flattenMenuTreeForReorder(a);
+  const flatB = flattenMenuTreeForReorder(b);
+  if (flatA.length !== flatB.length) return false;
+
+  const byId = new Map(flatA.map((item) => [item.id, item]));
+  for (const item of flatB) {
+    const other = byId.get(item.id);
+    if (!other) return false;
+    if (other.orderBy !== item.orderBy || other.parentMenuId !== item.parentMenuId) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export function isPathActive(pathname: string, route: string | null | undefined): boolean {

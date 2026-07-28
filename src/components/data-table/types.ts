@@ -114,6 +114,7 @@ export const DEFAULT_COLUMN_WIDTHS: Record<string, string> = {
   groups: "5.5rem",
   tasks: "5.5rem",
   description: "14rem",
+  createdDate: "11rem",
 };
 
 /** Columns that render pills/codes/numbers — keep text on one line. */
@@ -130,6 +131,7 @@ export const NOWRAP_COLUMN_IDS = new Set([
   "cis",
   "image",
   "category",
+  "createdDate",
 ]);
 
 /** @deprecated Prefer NOWRAP_COLUMN_IDS */
