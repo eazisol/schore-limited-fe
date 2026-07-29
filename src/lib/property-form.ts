@@ -1,10 +1,9 @@
 import { z } from "zod";
 import { getPhoneLengthError } from "@/components/form/PhoneNumberField";
-import { descriptionSchema, nameSchema } from "@/lib/field-validation";
+import { ADDRESS_MAX_LENGTH, descriptionSchema, nameSchema } from "@/lib/field-validation";
 import type { PropertyPayload } from "@/lib/api/services/properties";
 
 const CONTACT_FIELD_MAX = 30;
-const REFERENCE_MAX_LENGTH = 100;
 const EMAIL_FORMAT_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function validatePhoneNumber(value: string) {
@@ -60,19 +59,19 @@ function addressFieldsRefine(
   const address = values.address.trim();
   if (!address) {
     ctx.addIssue({ code: "custom", path: ["address"], message: "Address is required" });
-  } else if (address.length > CONTACT_FIELD_MAX) {
+  } else if (address.length > ADDRESS_MAX_LENGTH) {
     ctx.addIssue({
       code: "custom",
       path: ["address"],
-      message: `Address must be ${CONTACT_FIELD_MAX} characters or fewer`,
+      message: `Address must be ${ADDRESS_MAX_LENGTH} characters or fewer`,
     });
   }
 
   const optionalAddressFields = [
-    { key: "zipCode" as const, label: "Zip code", max: 20 },
     { key: "city" as const, label: "City", max: 100 },
     { key: "state" as const, label: "State", max: 100 },
     { key: "country" as const, label: "Country", max: 100 },
+    { key: "zipCode" as const, label: "ZIP Code", max: 20 },
   ];
 
   for (const { key, label, max } of optionalAddressFields) {
@@ -89,11 +88,6 @@ function addressFieldsRefine(
 
 export const propertyFormSchema = z
   .object({
-    reference: z
-      .string()
-      .trim()
-      .min(1, "Reference is required")
-      .max(REFERENCE_MAX_LENGTH, `Reference must be ${REFERENCE_MAX_LENGTH} characters or fewer`),
     propertyName: nameSchema("Property name"),
     contactName: z.string(),
     contactPhoneNo: phoneField,
@@ -110,19 +104,11 @@ export const propertyFormSchema = z
   })
   .superRefine((values, ctx) => {
     addressFieldsRefine(values, ctx);
-
-    if (!values.customerId.trim()) {
-      ctx.addIssue({ code: "custom", path: ["customerId"], message: "Customer is required" });
-    }
-    if (!values.contractorId.trim()) {
-      ctx.addIssue({ code: "custom", path: ["contractorId"], message: "Contractor is required" });
-    }
   });
 
 export type PropertyFormValues = z.infer<typeof propertyFormSchema>;
 
 export const propertyFormDefaults: PropertyFormValues = {
-  reference: "",
   propertyName: "",
   contactName: "",
   contactPhoneNo: "",
@@ -138,9 +124,16 @@ export const propertyFormDefaults: PropertyFormValues = {
   isActive: true,
 };
 
+function optionalId(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function toPropertyPayload(values: PropertyFormValues): PropertyPayload {
   return {
-    reference: values.reference.trim(),
+    reference: null,
     propertyName: values.propertyName.trim(),
     contactName: values.contactName.trim(),
     contactPhoneNo: values.contactPhoneNo.trim() || null,
@@ -151,8 +144,8 @@ export function toPropertyPayload(values: PropertyFormValues): PropertyPayload {
     state: values.state.trim() || null,
     country: values.country.trim() || null,
     accessNotes: values.accessNotes.trim() || null,
-    customerId: Number(values.customerId),
-    contractorId: Number(values.contractorId),
+    customerId: optionalId(values.customerId),
+    contractorId: optionalId(values.contractorId),
     isActive: values.isActive,
   };
 }

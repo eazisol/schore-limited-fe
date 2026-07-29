@@ -141,9 +141,20 @@ export function UsersListPage() {
       const headers = cfg.isOperative
         ? ["Name", "Email", "Phone", "Trade", "CIS", "Daily rate", "Status"]
         : cfg.isContractor
-          ? ["Name", "Email", "Phone", "Contact name", "Address", "City", "Status"]
+          ? ["Name", "Email", "Phone", "Address", "City", "State", "Country", "ZIP Code", "Status"]
           : cfg.isCustomer
-            ? ["Name", "Email", "Phone", "Contact name", "Address", "Contractor", "Status"]
+            ? [
+                "Name",
+                "Email",
+                "Phone",
+                "Address",
+                "City",
+                "State",
+                "Country",
+                "ZIP Code",
+                "Contractor",
+                "Status",
+              ]
             : ["Name", "Email", "Phone", "Date of birth", "Roles", "Status"];
       downloadCsv({
         filename: `${cfg.labels.itemLabel}-export-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -164,9 +175,11 @@ export function UsersListPage() {
                   displayUserName(user),
                   user.email,
                   csvForceText(user.phone ?? ""),
-                  user.contactName ?? "",
                   user.address ?? "",
                   user.city ?? "",
+                  user.state ?? "",
+                  user.country ?? "",
+                  user.zipCode ?? "",
                   user.isActive ? "Active" : "Inactive",
                 ]
               : cfg.isCustomer
@@ -174,8 +187,11 @@ export function UsersListPage() {
                     displayUserName(user),
                     user.email,
                     csvForceText(user.phone ?? ""),
-                    user.contactName ?? "",
                     user.address ?? "",
+                    user.city ?? "",
+                    user.state ?? "",
+                    user.country ?? "",
+                    user.zipCode ?? "",
                     user.contractorName ?? "",
                     user.isActive ? "Active" : "Inactive",
                   ]
@@ -204,12 +220,15 @@ export function UsersListPage() {
         header: "Name",
         sortable: true,
         truncate: false,
+        width: "24rem",
         cell: (user) => {
           const name = displayUserName(user);
           return (
-            <div className="flex min-w-0 items-center gap-3">
-              <UserAvatar name={name} src={resolveProfileImageUrl(user.profileImagePath)} />
-              <div className="min-w-0">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="shrink-0">
+                <UserAvatar name={name} src={resolveProfileImageUrl(user.profileImagePath)} />
+              </div>
+              <div className="min-w-0 flex-1 space-y-1.5">
                 <AppTooltip content={name} asChild align="start">
                   <Link
                     to={cfg.detailPath}
@@ -219,12 +238,10 @@ export function UsersListPage() {
                     {truncateWithEllipsis(name)}
                   </Link>
                 </AppTooltip>
-                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <Mail className="h-3 w-3 shrink-0" />
+                <div className="flex min-w-0 items-start gap-2 text-[11px] leading-snug text-muted-foreground">
+                  <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <AppTooltip content={user.email} asChild align="start">
-                    <span className="inline-block w-fit max-w-full line-clamp-1 min-w-0 break-all">
-                      {user.email}
-                    </span>
+                    <span className="min-w-0 flex-1 break-all line-clamp-2">{user.email}</span>
                   </AppTooltip>
                 </div>
               </div>
@@ -262,31 +279,32 @@ export function UsersListPage() {
     }
 
     if (cfg.isContactModule) {
-      cols.push(
-        {
-          id: "contactName",
-          header: "Contact name",
-          cell: (user) => user.contactName || "—",
-        },
-        {
-          id: "address",
-          header: "Address",
-          cell: (user) => user.address || "—",
-        },
-      );
-
-      if (cfg.isCustomer) {
-        cols.push({
-          id: "contractor",
-          header: "Contractor",
-          cell: (user) => user.contractorName || "—",
-        });
-      } else {
-        cols.push({
-          id: "city",
-          header: "City",
-          cell: (user) => user.city || "—",
-        });
+      if (cfg.isContractor) {
+        cols.push(
+          {
+            id: "address",
+            header: "Address",
+            cell: (user) => user.address || "—",
+          },
+          {
+            id: "city",
+            header: "City",
+            cell: (user) => user.city || "—",
+          },
+        );
+      } else if (cfg.isCustomer) {
+        cols.push(
+          {
+            id: "address",
+            header: "Address",
+            cell: (user) => user.address || "—",
+          },
+          {
+            id: "contractor",
+            header: "Contractor",
+            cell: (user) => user.contractorName || "—",
+          },
+        );
       }
     }
 

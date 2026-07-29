@@ -9,6 +9,9 @@ export const CODE_MAX_LENGTH = 50;
 /** Standard max length for Description fields across modules. */
 export const DESCRIPTION_MAX_LENGTH = 500;
 
+/** Standard max length for Address fields across modules. */
+export const ADDRESS_MAX_LENGTH = 50;
+
 /** Letters, digits, underscore, hyphen — Code fields (validated after uppercase). */
 const CODE_PATTERN = /^[A-Z0-9_-]+$/;
 

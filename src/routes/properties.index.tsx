@@ -42,7 +42,6 @@ export const propertiesQueryKey = ["properties"] as const;
 
 /** Backend-supported column SortBy values (createdDate is default only). */
 const COLUMN_SORT_KEYS: Record<string, PropertySortBy> = {
-  reference: "reference",
   propertyName: "name",
   contactName: "contactname",
   customer: "customer",
@@ -126,7 +125,6 @@ function PropertiesList() {
       downloadCsv({
         filename: `properties-export-${new Date().toISOString().slice(0, 10)}.csv`,
         headers: [
-          "Reference",
           "Property Name",
           "Contact Name",
           "Customer",
@@ -136,7 +134,6 @@ function PropertiesList() {
           "Created Date",
         ],
         rows: rows.map((row) => [
-          row.reference,
           row.propertyName,
           row.contactName,
           row.customerName ?? "",
@@ -155,29 +152,19 @@ function PropertiesList() {
   const columns = useMemo<DataTableColumn<ApiProperty>[]>(
     () => [
       {
-        id: "reference",
-        header: "Reference",
+        id: "propertyName",
+        header: "Property Name",
         sortable: true,
         truncate: false,
         cell: (row) => (
-          <AppTooltip content={row.reference} asChild align="start">
+          <AppTooltip content={row.propertyName} asChild align="start">
             <Link
               to="/properties/$id"
               params={{ id: String(row.id) }}
               className="inline-block max-w-full font-medium hover:text-info hover:underline"
             >
-              {truncateWithEllipsis(row.reference)}
+              {truncateWithEllipsis(row.propertyName)}
             </Link>
-          </AppTooltip>
-        ),
-      },
-      {
-        id: "propertyName",
-        header: "Property Name",
-        sortable: true,
-        cell: (row) => (
-          <AppTooltip content={row.propertyName} asChild align="start">
-            <span className="inline-block max-w-full">{truncateWithEllipsis(row.propertyName)}</span>
           </AppTooltip>
         ),
       },

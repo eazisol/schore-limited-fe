@@ -13,8 +13,7 @@ import { PasswordRequirements } from "@/lib/password";
 import type { UserFormValues } from "@/lib/user-form";
 import { type UserModuleMode } from "@/lib/user-module";
 import { fetchContractorOptions } from "@/lib/user-dropdowns";
-
-const CONTACT_FIELD_MAX = 30;
+import { ADDRESS_MAX_LENGTH } from "@/lib/field-validation";
 
 export function UserFormFields({
   mode,
@@ -47,7 +46,10 @@ export function UserFormFields({
 
   return (
     <fieldset className="space-y-6" disabled={disabled}>
-      <Section title="Personal Information">
+      <Section
+        title="Personal Information"
+        headerAction={<SwitchField<UserFormValues> name="isActive" label="Active" />}
+      >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <TextField<UserFormValues>
             name="firstName"
@@ -91,12 +93,6 @@ export function UserFormFields({
               <TextField<UserFormValues> name="startDate" label="Joining Date" type="date" />
               <TextField<UserFormValues> name="endDate" label="Leaving Date" type="date" />
             </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <SwitchField<UserFormValues>
-                name="isActive"
-                label="Active"
-              />
-            </div>
           </>
         ) : isUser ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -116,17 +112,51 @@ export function UserFormFields({
             </div>
             <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
           </div>
-        ) : (
+        ) : isCustomer ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
-            {isCustomer ? (
-              <SwitchField<UserFormValues>
-                name="isActive"
-                label="Active"
-              />
-            ) : null}
           </div>
-        )}
+        ) : null}
+        {isCustomer ? (
+          <>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <SearchableSelectField<UserFormValues>
+                name="contractorId"
+                label="Contractor"
+                placeholder="Select contractor"
+                searchPlaceholder="Search contractors…"
+                queryKey={["users", "contractors", "dropdown"]}
+                selectedLabel={contractorSelectedLabel}
+                fetchOptions={fetchContractorOptions}
+              />
+              <TextField<UserFormValues>
+                name="address"
+                label="Address"
+                maxLength={ADDRESS_MAX_LENGTH}
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <TextField<UserFormValues> name="city" label="City" maxLength={100} />
+              <TextField<UserFormValues> name="state" label="State" maxLength={100} />
+              <TextField<UserFormValues> name="country" label="Country" maxLength={100} />
+              <TextField<UserFormValues> name="zipCode" label="ZIP Code" maxLength={20} />
+            </div>
+          </>
+        ) : isContractor ? (
+          <>
+            <TextField<UserFormValues>
+              name="address"
+              label="Address"
+              maxLength={ADDRESS_MAX_LENGTH}
+            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <TextField<UserFormValues> name="city" label="City" maxLength={100} />
+              <TextField<UserFormValues> name="state" label="State" maxLength={100} />
+              <TextField<UserFormValues> name="country" label="Country" maxLength={100} />
+              <TextField<UserFormValues> name="zipCode" label="ZIP Code" maxLength={20} />
+            </div>
+          </>
+        ) : null}
       </Section>
 
       {!isOperative && !isContactModule ? (
@@ -139,12 +169,6 @@ export function UserFormFields({
               placeholder={lookupsLoading ? "Loading roles…" : "Select role"}
               disabled={lookupsLoading}
               options={roleOptions}
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <SwitchField<UserFormValues>
-              name="isActive"
-              label="Active"
             />
           </div>
         </Section>
@@ -183,79 +207,6 @@ export function UserFormFields({
           </div>
         </Section>
       ) : null}
-
-      {isContactModule ? (
-        <Section title={isContractor ? "Contractor" : "Customer"}>
-          {isCustomer ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <TextField<UserFormValues>
-                name="contactName"
-                label="Contact name"
-                required
-                maxLength={CONTACT_FIELD_MAX}
-              />
-              <SearchableSelectField<UserFormValues>
-                name="contractorId"
-                label="Contractor"
-                required
-                placeholder="Select contractor"
-                searchPlaceholder="Search contractors…"
-                queryKey={["users", "contractors", "dropdown"]}
-                selectedLabel={contractorSelectedLabel}
-                fetchOptions={fetchContractorOptions}
-              />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <TextField<UserFormValues>
-                name="contactName"
-                label="Contact name"
-                required
-                maxLength={CONTACT_FIELD_MAX}
-              />
-              <TextField<UserFormValues>
-                name="address"
-                label="Address"
-                maxLength={CONTACT_FIELD_MAX}
-              />
-            </div>
-          )}
-          {isCustomer ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-4">
-                <TextField<UserFormValues>
-                  name="address"
-                  label="Address"
-                  maxLength={CONTACT_FIELD_MAX}
-                />
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <TextField<UserFormValues> name="state" label="State" maxLength={100} />
-                  <TextField<UserFormValues> name="country" label="Country" maxLength={100} />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <TextField<UserFormValues> name="zipCode" label="Zip code" maxLength={20} />
-                <TextField<UserFormValues> name="city" label="City" maxLength={100} />
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <TextField<UserFormValues> name="zipCode" label="Zip code" maxLength={20} />
-              <TextField<UserFormValues> name="city" label="City" maxLength={100} />
-              <TextField<UserFormValues> name="state" label="State" maxLength={100} />
-              <TextField<UserFormValues> name="country" label="Country" maxLength={100} />
-            </div>
-          )}
-          {isContractor ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <SwitchField<UserFormValues>
-                name="isActive"
-                label="Active"
-              />
-            </div>
-          ) : null}
-        </Section>
-      ) : null}
     </fieldset>
   );
 }
@@ -263,17 +214,22 @@ export function UserFormFields({
 function Section({
   title,
   hint,
+  headerAction,
   children,
 }: {
   title: string;
   hint?: string;
+  headerAction?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div className="card-elevated space-y-4 p-4 sm:p-6">
-      <div>
-        <h3 className="font-display font-semibold">{title}</h3>
-        {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h3 className="font-display font-semibold">{title}</h3>
+          {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
+        </div>
+        {headerAction}
       </div>
       {children}
     </div>

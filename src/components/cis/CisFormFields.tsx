@@ -10,6 +10,10 @@ import {
 export function CisFormFields({ disabled = false }: { disabled?: boolean }) {
   return (
     <fieldset className="space-y-4" disabled={disabled}>
+      <div className="flex items-center justify-between gap-4">
+        <h3 className="font-display font-semibold">CIS status</h3>
+        <SwitchField<CisFormValues> name="isActive" label="Active" />
+      </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <TextField<CisFormValues>
           name="name"
@@ -34,10 +38,6 @@ export function CisFormFields({ disabled = false }: { disabled?: boolean }) {
           type="number"
           min={0}
           step="0.01"
-        />
-        <SwitchField<CisFormValues>
-          name="isActive"
-          label="Active"
         />
       </div>
       <TextareaField<CisFormValues>

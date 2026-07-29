@@ -5,7 +5,7 @@ import { AppTooltip } from "@/components/AppTooltip";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, SubmitButton } from "@/components/form";
 import { RequirePermission } from "@/components/Permission";
@@ -14,12 +14,15 @@ import { notifyApiError } from "@/lib/api/axios";
 import { tradeGroupsQueryKey } from "./trade-groups.index";
 import { TRADE_GROUPS_ROUTE } from "@/lib/trade-groups";
 import {
+  computeTradeGroupTotalPrice,
   tradeGroupFormDefaults,
   tradeGroupFormSchema,
   toTradeGroupPayload,
   type TradeGroupFormValues,
 } from "@/lib/trade-group-form";
 import { TradeGroupFormFields } from "@/components/trade-groups/TradeGroupFormFields";
+import { TradeGroupItemsEditor } from "@/components/trade-groups/TradeGroupItemsEditor";
+import { TradeGroupRecordPanel } from "@/components/trade-groups/TradeGroupRecordPanel";
 
 export const Route = createFileRoute("/trade-groups/new")({
   head: () => ({ meta: [{ title: "Add Trade Group | Schore" }] }),
@@ -34,6 +37,9 @@ function NewTradeGroup() {
     resolver: zodResolver(tradeGroupFormSchema),
     defaultValues: tradeGroupFormDefaults,
   });
+
+  const watchedItems = useWatch({ control: form.control, name: "items" });
+  const totalPrice = computeTradeGroupTotalPrice(watchedItems);
 
   const createMutation = useMutation({
     mutationFn: (payload: ReturnType<typeof toTradeGroupPayload>) =>
@@ -68,19 +74,29 @@ function NewTradeGroup() {
           }
         />
 
-        <Form form={form} onSubmit={submit} className="max-w-5xl space-y-6">
-          <TradeGroupFormFields disabled={createMutation.isPending} autoFocusName />
+        <Form form={form} onSubmit={submit} className="w-full space-y-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            <div className="lg:col-span-8">
+              <TradeGroupFormFields disabled={createMutation.isPending} autoFocusName />
+            </div>
+            <div className="lg:col-span-4">
+              <TradeGroupRecordPanel totalPrice={totalPrice} />
+            </div>
+          </div>
+
+          <TradeGroupItemsEditor disabled={createMutation.isPending} />
 
           <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
             <Button
               type="button"
               variant="outline"
+              size="sm"
               onClick={() => navigate({ to: "/trade-groups" })}
               disabled={createMutation.isPending}
             >
               Cancel
             </Button>
-            <SubmitButton loadingText="Saving…">Create trade group</SubmitButton>
+            <SubmitButton size="sm" loadingText="Saving…">Create trade group</SubmitButton>
           </div>
         </Form>
       </div>

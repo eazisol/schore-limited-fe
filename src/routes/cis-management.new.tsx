@@ -77,12 +77,15 @@ function NewCisStatus() {
             <Button
               type="button"
               variant="outline"
+              size="sm"
               onClick={() => navigate({ to: "/cis-management" })}
               disabled={createMutation.isPending}
             >
               Cancel
             </Button>
-            <SubmitButton loadingText="Saving…">Create CIS status</SubmitButton>
+            <SubmitButton size="sm" loadingText="Saving…">
+              Create CIS status
+            </SubmitButton>
           </div>
         </Form>
       </div>

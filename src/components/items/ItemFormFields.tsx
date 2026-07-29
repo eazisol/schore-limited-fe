@@ -48,6 +48,11 @@ export function ItemFormFields({
 }) {
   return (
     <>
+      <div className="flex items-center justify-between gap-4">
+        <h3 className="font-display font-semibold">Item</h3>
+        <SwitchField<ItemFormValues> name="isActive" label="Active" />
+      </div>
+
       <ImageUploadField<ItemFormValues>
         name="imageUrl"
         label="Image"
@@ -119,13 +124,6 @@ export function ItemFormFields({
           type="number"
           min={0}
           step="0.01"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <SwitchField<ItemFormValues>
-          name="isActive"
-          label="Active"
         />
       </div>
 

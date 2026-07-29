@@ -4,7 +4,7 @@ import type { PagedResult } from "./users";
 
 export interface ApiProperty {
   id: number;
-  reference: string;
+  reference: string | null;
   propertyName: string;
   contactName: string;
   contactPhoneNo: string | null;
@@ -15,9 +15,9 @@ export interface ApiProperty {
   state: string | null;
   country: string | null;
   accessNotes: string | null;
-  customerId: number;
+  customerId: number | null;
   customerName: string | null;
-  contractorId: number;
+  contractorId: number | null;
   contractorName: string | null;
   isActive: boolean;
   createdBy?: number | null;
@@ -27,7 +27,7 @@ export interface ApiProperty {
 }
 
 export type PropertyPayload = {
-  reference: string;
+  reference: string | null;
   propertyName: string;
   contactName: string;
   contactPhoneNo: string | null;
@@ -38,8 +38,8 @@ export type PropertyPayload = {
   state: string | null;
   country: string | null;
   accessNotes: string | null;
-  customerId: number;
-  contractorId: number;
+  customerId: number | null;
+  contractorId: number | null;
   isActive: boolean;
 };
 

@@ -26,7 +26,7 @@ export function SwitchField<T extends FieldValues>({
       render={({ field }) => (
         <FormItem
           className={cn(
-            "flex h-9 items-center justify-start gap-3 space-y-0 self-end",
+            "flex h-9 items-center justify-start gap-3 space-y-0",
             className,
           )}
         >

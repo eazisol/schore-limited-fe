@@ -13,7 +13,6 @@ import {
   normalizeCodeInput,
 } from "@/lib/field-validation";
 import { fetchTradeOptions } from "@/lib/product-dropdowns";
-import { TradeGroupItemsEditor } from "@/components/trade-groups/TradeGroupItemsEditor";
 
 export function TradeGroupFormFields({
   disabled = false,
@@ -26,8 +25,11 @@ export function TradeGroupFormFields({
 }) {
   return (
     <fieldset className="space-y-6" disabled={disabled}>
-      <Section title="Trade group">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <Section
+        title="Trade group"
+        headerAction={<SwitchField<TradeGroupFormValues> name="isActive" label="Active" />}
+      >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <SearchableSelectField<TradeGroupFormValues>
             name="tradeId"
             label="Trade"
@@ -45,8 +47,6 @@ export function TradeGroupFormFields({
             autoFocus={autoFocusName}
             maxLength={NAME_MAX_LENGTH}
           />
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <TextField<TradeGroupFormValues>
             name="code"
             label="Code"
@@ -54,7 +54,6 @@ export function TradeGroupFormFields({
             maxLength={CODE_MAX_LENGTH}
             transformValue={normalizeCodeInput}
           />
-          <SwitchField<TradeGroupFormValues> name="isActive" label="Active" />
         </div>
         <TextareaField<TradeGroupFormValues>
           name="description"
@@ -63,24 +62,25 @@ export function TradeGroupFormFields({
           maxLength={DESCRIPTION_MAX_LENGTH}
         />
       </Section>
-
-      <Section title="Items">
-        <TradeGroupItemsEditor disabled={disabled} />
-      </Section>
     </fieldset>
   );
 }
 
 function Section({
   title,
+  headerAction,
   children,
 }: {
   title: string;
+  headerAction?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div className="card-elevated space-y-4 p-4 sm:p-6">
-      <h3 className="font-display font-semibold">{title}</h3>
+      <div className="flex items-center justify-between gap-4">
+        <h3 className="font-display font-semibold">{title}</h3>
+        {headerAction}
+      </div>
       {children}
     </div>
   );

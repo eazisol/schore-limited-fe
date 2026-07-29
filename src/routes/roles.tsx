@@ -313,41 +313,46 @@ function RoleFormModal({
     mode.kind === "create" ? "Add role" : mode.kind === "edit" ? "Edit role" : "View role";
 
   return (
-    <Modal open onClose={onClose} title={title} size="md">
-      <Form form={form} onSubmit={submit} className="space-y-4">
-        <fieldset disabled={isView} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <TextField<Values>
-              name="name"
-              label="Name"
-              required
-              autoFocus={!isView}
-              maxLength={50}
+    <Form form={form} onSubmit={submit} className="contents">
+      <Modal
+        open
+        onClose={onClose}
+        title={title}
+        size="md"
+        headerActions={<SwitchField<Values> name="isActive" label="Active" disabled={isView} />}
+      >
+        <div className="space-y-4">
+          <fieldset disabled={isView} className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <TextField<Values>
+                name="name"
+                label="Name"
+                required
+                autoFocus={!isView}
+                maxLength={50}
+              />
+              <TextField<Values> name="code" label="Code" required maxLength={50} />
+            </div>
+            <TextareaField<Values>
+              name="description"
+              label="Description"
+              rows={3}
+              maxLength={500}
             />
-            <TextField<Values> name="code" label="Code" required maxLength={50} />
+          </fieldset>
+          <div className="flex justify-end gap-2 border-t pt-2">
+            <Button type="button" variant="outline" size="sm" onClick={onClose}>
+              {isView ? "Close" : "Cancel"}
+            </Button>
+            {!isView && (
+              <SubmitButton size="sm" loadingText="Saving…">
+                {mutation.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+                {mode.kind === "edit" ? "Update role" : "Create role"}
+              </SubmitButton>
+            )}
           </div>
-          <TextareaField<Values>
-            name="description"
-            label="Description"
-            rows={3}
-            maxLength={500}
-          />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <SwitchField<Values> name="isActive" label="Active" />
-          </div>
-        </fieldset>
-        <div className="flex justify-end gap-2 border-t pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>
-            {isView ? "Close" : "Cancel"}
-          </Button>
-          {!isView && (
-            <SubmitButton loadingText="Saving…">
-              {mutation.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-              {mode.kind === "edit" ? "Update role" : "Create role"}
-            </SubmitButton>
-          )}
         </div>
-      </Form>
-    </Modal>
+      </Modal>
+    </Form>
   );
 }

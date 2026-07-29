@@ -2,28 +2,32 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/AppShell";
 import { AppTooltip } from "@/components/AppTooltip";
-import { DetailField, DetailMetaRow } from "@/components/DetailField";
+import { DetailField } from "@/components/DetailField";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, ArrowLeft, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Form, SubmitButton } from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
 import { tradeGroupsService } from "@/lib/api/services/trade-groups";
+import { productsService } from "@/lib/api/services/products";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { tradeGroupsQueryKey } from "./trade-groups.index";
-import { activeStatusClass, formatDateTime } from "@/lib/module-ui";
+import { activeStatusClass } from "@/lib/module-ui";
+import { fmtGBP } from "@/lib/data";
 import { TRADE_GROUPS_ROUTE } from "@/lib/trade-groups";
 import {
-  emptyTradeGroupItem,
+  computeTradeGroupTotalPrice,
   tradeGroupFormSchema,
   toTradeGroupPayload,
   type TradeGroupFormValues,
 } from "@/lib/trade-group-form";
 import { TradeGroupFormFields } from "@/components/trade-groups/TradeGroupFormFields";
+import { TradeGroupItemsEditor } from "@/components/trade-groups/TradeGroupItemsEditor";
+import { TradeGroupRecordPanel } from "@/components/trade-groups/TradeGroupRecordPanel";
 
 const detailSearchSchema = z.object({
   mode: z.enum(["edit", "view"]).optional(),
@@ -61,26 +65,46 @@ function TradeGroupDetail() {
   });
   const row = groupQuery.data;
 
+  const productPricesQuery = useQuery({
+    queryKey: ["products", "trade-group-prices"],
+    queryFn: async () => {
+      const res = await productsService.list({
+        page: 1,
+        pageSize: 500,
+        sortBy: "name",
+        sortDir: "asc",
+      });
+      const map = new Map<string, number>();
+      for (const product of res.data.items ?? []) {
+        map.set(String(product.id), product.salePrice ?? 0);
+      }
+      return map;
+    },
+    staleTime: 60_000,
+  });
+
   const defaults = useMemo<TradeGroupFormValues>(() => {
-    const items = row?.items ?? [];
+    const items = [...(row?.items ?? [])].sort((a, b) => a.orderBy - b.orderBy);
+    const priceMap = productPricesQuery.data;
     return {
       tradeId: row?.tradeId != null ? String(row.tradeId) : "",
       name: row?.name ?? "",
       code: row?.code ?? "",
       description: row?.description ?? "",
       isActive: row?.isActive ?? true,
-      items:
-        items.length > 0
-          ? items.map((item) => ({
-              id: String(item.id),
-              productId: String(item.productId),
-              productName: item.productName ?? "",
-              quantity: String(item.quantity),
-              notes: item.notes ?? "",
-            }))
-          : [emptyTradeGroupItem()],
+      items: items.map((item) => ({
+        id: String(item.id),
+        productId: String(item.productId),
+        productName: item.productName ?? "",
+        quantity: String(item.quantity),
+        salePrice:
+          priceMap?.get(String(item.productId)) != null
+            ? String(priceMap.get(String(item.productId)))
+            : "0",
+        notes: item.notes ?? "",
+      })),
     };
-  }, [row]);
+  }, [row, productPricesQuery.data]);
 
   const form = useForm<TradeGroupFormValues>({
     resolver: zodResolver(tradeGroupFormSchema),
@@ -117,6 +141,9 @@ function TradeGroupDetail() {
     await updateMutation.mutateAsync(toTradeGroupPayload(values, row?.orderBy ?? 0));
   }
 
+  const watchedItems = useWatch({ control: form.control, name: "items" });
+  const editTotalPrice = computeTradeGroupTotalPrice(watchedItems);
+
   if (groupQuery.isLoading) {
     return (
       <div className="card-elevated grid place-items-center p-12 text-sm text-muted-foreground">
@@ -143,7 +170,14 @@ function TradeGroupDetail() {
   }
 
   const dirty = form.formState.isDirty;
-  const items = row.items ?? [];
+  const items = [...(row.items ?? [])].sort((a, b) => a.orderBy - b.orderBy);
+  const priceMap = productPricesQuery.data;
+  const viewTotalPrice = items.reduce((sum, item) => {
+    const qty = Number(item.quantity);
+    const price = priceMap?.get(String(item.productId)) ?? 0;
+    if (!Number.isFinite(qty) || !Number.isFinite(price)) return sum;
+    return sum + qty * price;
+  }, 0);
 
   return (
     <div className="space-y-6">
@@ -186,12 +220,27 @@ function TradeGroupDetail() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {isEditing ? (
-          <Form form={form} onSubmit={save} className="space-y-6 lg:col-span-2">
-            <TradeGroupFormFields
-              disabled={updateMutation.isPending}
-              tradeSelectedLabel={row.tradeName}
-            />
-            <div className="flex flex-col-reverse gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2 sm:pt-2">
+          <Form form={form} onSubmit={save} className="w-full space-y-6 lg:col-span-3">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+              <div className="lg:col-span-8">
+                <TradeGroupFormFields
+                  disabled={updateMutation.isPending}
+                  tradeSelectedLabel={row.tradeName}
+                />
+              </div>
+              <div className="lg:col-span-4">
+                <TradeGroupRecordPanel
+                  tradeGroupId={row.id}
+                  createdDate={row.createdDate}
+                  editDate={row.editDate}
+                  totalPrice={editTotalPrice}
+                />
+              </div>
+            </div>
+
+            <TradeGroupItemsEditor disabled={updateMutation.isPending} />
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2">
               <span className="text-xs text-muted-foreground sm:mr-auto">
                 {dirty ? "Unsaved changes" : "All changes saved"}
               </span>
@@ -199,12 +248,13 @@ function TradeGroupDetail() {
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
                   disabled={updateMutation.isPending}
                   onClick={() => navigate({ to: "/trade-groups" })}
                 >
                   Cancel
                 </Button>
-                <SubmitButton disabled={!dirty} loadingText="Saving…">
+                <SubmitButton size="sm" disabled={!dirty} loadingText="Saving…">
                   Save changes
                 </SubmitButton>
               </div>
@@ -248,23 +298,30 @@ function TradeGroupDetail() {
                       <tr>
                         <th className="px-4 py-2.5 text-left font-medium sm:px-6">Product</th>
                         <th className="px-3 py-2.5 text-right font-medium">Quantity</th>
+                        <th className="px-3 py-2.5 text-right font-medium">Price</th>
                         <th className="px-4 py-2.5 text-left font-medium sm:px-6">Notes</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {items.map((item) => (
-                        <tr key={item.id}>
-                          <td className="px-4 py-3 sm:px-6">
-                            {item.productName?.trim() || `Product #${item.productId}`}
-                          </td>
-                          <td className="px-3 py-3 text-right font-mono tabular-nums">
-                            {item.quantity}
-                          </td>
-                          <td className="px-4 py-3 text-muted-foreground sm:px-6">
-                            {item.notes?.trim() || "—"}
-                          </td>
-                        </tr>
-                      ))}
+                      {items.map((item) => {
+                        const unitPrice = priceMap?.get(String(item.productId)) ?? 0;
+                        return (
+                          <tr key={item.id}>
+                            <td className="px-4 py-3 sm:px-6">
+                              {item.productName?.trim() || `Product #${item.productId}`}
+                            </td>
+                            <td className="px-3 py-3 text-right font-mono tabular-nums">
+                              {item.quantity}
+                            </td>
+                            <td className="px-3 py-3 text-right font-mono tabular-nums">
+                              {fmtGBP(unitPrice)}
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground sm:px-6">
+                              {item.notes?.trim() || "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -273,14 +330,14 @@ function TradeGroupDetail() {
           </div>
         )}
 
-        <div className="card-elevated self-start p-6">
-          <h3 className="mb-4 font-display font-semibold">Record</h3>
-          <dl className="space-y-3">
-            <DetailMetaRow label="Trade group ID">{row.id}</DetailMetaRow>
-            <DetailMetaRow label="Created">{formatDateTime(row.createdDate)}</DetailMetaRow>
-            <DetailMetaRow label="Last edited">{formatDateTime(row.editDate)}</DetailMetaRow>
-          </dl>
-        </div>
+        {!isEditing ? (
+          <TradeGroupRecordPanel
+            tradeGroupId={row.id}
+            createdDate={row.createdDate}
+            editDate={row.editDate}
+            totalPrice={viewTotalPrice}
+          />
+        ) : null}
       </div>
 
       {confirmDel && canDelete && (

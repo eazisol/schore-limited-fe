@@ -353,44 +353,46 @@ function UnitFormModal({
     mode.kind === "create" ? "Add unit" : mode.kind === "edit" ? "Edit unit" : "View unit";
 
   return (
-    <Modal open onClose={onClose} title={title} size="md">
-      <Form form={form} onSubmit={submit} className="space-y-4">
-        <fieldset disabled={isView} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <TextField<Values>
-              name="name"
-              label="Name"
-              required
-              autoFocus={!isView}
-              maxLength={NAME_MAX_LENGTH}
-            />
-            <TextField<Values>
-              name="code"
-              label="Code"
-              required
-              maxLength={CODE_MAX_LENGTH}
-              transformValue={normalizeCodeInput}
-              inputClassName="uppercase"
-            />
+    <Form form={form} onSubmit={submit} className="contents">
+      <Modal
+        open
+        onClose={onClose}
+        title={title}
+        size="md"
+        headerActions={<SwitchField<Values> name="isActive" label="Active" disabled={isView} />}
+      >
+        <div className="space-y-4">
+          <fieldset disabled={isView} className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <TextField<Values>
+                name="name"
+                label="Name"
+                required
+                autoFocus={!isView}
+                maxLength={NAME_MAX_LENGTH}
+              />
+              <TextField<Values>
+                name="code"
+                label="Code"
+                required
+                maxLength={CODE_MAX_LENGTH}
+                transformValue={normalizeCodeInput}
+                inputClassName="uppercase"
+              />
             </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <SwitchField<Values>
-              name="isActive"
-              label="Active"
-            />
+          </fieldset>
+          <div className="flex justify-end gap-2 border-t pt-2">
+            <Button type="button" variant="outline" size="sm" onClick={onClose}>
+              {isView ? "Close" : "Cancel"}
+            </Button>
+            {!isView && (
+              <SubmitButton size="sm" loadingText="Saving…">
+                {mode.kind === "edit" ? "Update unit" : "Create unit"}
+              </SubmitButton>
+            )}
           </div>
-        </fieldset>
-        <div className="flex justify-end gap-2 border-t pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>
-            {isView ? "Close" : "Cancel"}
-          </Button>
-          {!isView && (
-            <SubmitButton loadingText="Saving…">
-              {mode.kind === "edit" ? "Update unit" : "Create unit"}
-            </SubmitButton>
-          )}
         </div>
-      </Form>
-    </Modal>
+      </Modal>
+    </Form>
   );
 }

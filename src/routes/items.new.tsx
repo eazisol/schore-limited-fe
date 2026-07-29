@@ -87,12 +87,13 @@ function NewItem() {
             <Button
               type="button"
               variant="outline"
+              size="sm"
               onClick={() => navigate({ to: "/items" })}
               disabled={createMutation.isPending}
             >
               Cancel
             </Button>
-            <SubmitButton loadingText="Saving…">
+            <SubmitButton size="sm" loadingText="Saving…">
               {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               Create item
             </SubmitButton>

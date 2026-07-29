@@ -345,10 +345,12 @@ export function UserDetailPage() {
                   <DetailField label="Phone" value={user.phone || "—"} />
                 </div>
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <DetailField
-                    label="Date of birth"
-                    value={toDateInputValue(user.dateOfBirth) || "—"}
-                  />
+                  {!cfg.isContractor ? (
+                    <DetailField
+                      label="Date of birth"
+                      value={toDateInputValue(user.dateOfBirth) || "—"}
+                    />
+                  ) : null}
                   {cfg.isOperative || cfg.isContactModule ? (
                     <DetailField
                       label="Status"
@@ -376,41 +378,28 @@ export function UserDetailPage() {
                     />
                   </div>
                 ) : null}
-                {cfg.isContactModule ? (
+                {cfg.isCustomer ? (
                   <div className="space-y-5">
                     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                      <DetailField label="Contact name" value={user.contactName || "—"} />
-                      {cfg.isCustomer ? (
-                        <DetailField label="Contractor" value={user.contractorName || "—"} />
-                      ) : null}
+                      <DetailField label="Contractor" value={user.contractorName || "—"} />
+                      <DetailField label="Address" value={user.address || "—"} />
                     </div>
-                    {cfg.isCustomer ? (
-                      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                        <div className="space-y-5">
-                          <DetailField label="Address" value={user.address || "—"} />
-                          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                            <DetailField label="State" value={user.state || "—"} />
-                            <DetailField label="Country" value={user.country || "—"} />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                          <DetailField label="Zip code" value={user.zipCode || "—"} />
-                          <DetailField label="City" value={user.city || "—"} />
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <DetailField label="Address" value={user.address || "—"} />
-                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                          <DetailField label="Zip code" value={user.zipCode || "—"} />
-                          <DetailField label="City" value={user.city || "—"} />
-                        </div>
-                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                          <DetailField label="State" value={user.state || "—"} />
-                          <DetailField label="Country" value={user.country || "—"} />
-                        </div>
-                      </>
-                    )}
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                      <DetailField label="City" value={user.city || "—"} />
+                      <DetailField label="State" value={user.state || "—"} />
+                      <DetailField label="Country" value={user.country || "—"} />
+                      <DetailField label="ZIP Code" value={user.zipCode || "—"} />
+                    </div>
+                  </div>
+                ) : cfg.isContractor ? (
+                  <div className="space-y-5">
+                    <DetailField label="Address" value={user.address || "—"} />
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                      <DetailField label="City" value={user.city || "—"} />
+                      <DetailField label="State" value={user.state || "—"} />
+                      <DetailField label="Country" value={user.country || "—"} />
+                      <DetailField label="ZIP Code" value={user.zipCode || "—"} />
+                    </div>
                   </div>
                 ) : null}
                 {mode === "user" ? (

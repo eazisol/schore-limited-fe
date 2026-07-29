@@ -170,7 +170,7 @@ function TradeDetail() {
         {isEditing ? (
           <Form form={form} onSubmit={save} className="card-elevated space-y-4 p-4 sm:p-6 lg:col-span-2">
             <TradeFormFields disabled={updateMutation.isPending} />
-            <div className="flex flex-col-reverse gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2 sm:pt-2">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2">
               <span className="text-xs text-muted-foreground sm:mr-auto">
                 {dirty ? "Unsaved changes" : "All changes saved"}
               </span>
@@ -178,12 +178,13 @@ function TradeDetail() {
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
                   disabled={updateMutation.isPending}
                   onClick={() => navigate({ to: "/trade-builder" })}
                 >
                   Cancel
                 </Button>
-                <SubmitButton disabled={!dirty} loadingText="Saving…">
+                <SubmitButton size="sm" disabled={!dirty} loadingText="Saving…">
                   Save changes
                 </SubmitButton>
               </div>

@@ -62,7 +62,6 @@ function PropertyDetail() {
 
   const defaults = useMemo<PropertyFormValues>(
     () => ({
-      reference: row?.reference ?? "",
       propertyName: row?.propertyName ?? "",
       contactName: row?.contactName ?? "",
       contactPhoneNo: row?.contactPhoneNo ?? "",
@@ -146,7 +145,7 @@ function PropertyDetail() {
     <div className="space-y-6">
       <PageHeader
         title={isEditing ? "Edit property" : "Property details"}
-        subtitle={!isEditing ? row.reference : undefined}
+        subtitle={!isEditing ? row.propertyName || undefined : undefined}
         leading={
           <AppTooltip content="Back to properties" asChild>
             <Link
@@ -189,7 +188,7 @@ function PropertyDetail() {
               customerSelectedLabel={row.customerName}
               contractorSelectedLabel={row.contractorName}
             />
-            <div className="flex flex-col-reverse gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2 sm:pt-2">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2">
               <span className="text-xs text-muted-foreground sm:mr-auto">
                 {dirty ? "Unsaved changes" : "All changes saved"}
               </span>
@@ -197,12 +196,13 @@ function PropertyDetail() {
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
                   disabled={updateMutation.isPending}
                   onClick={() => navigate({ to: "/properties" })}
                 >
                   Cancel
                 </Button>
-                <SubmitButton disabled={!dirty} loadingText="Saving…">
+                <SubmitButton size="sm" disabled={!dirty} loadingText="Saving…">
                   Save changes
                 </SubmitButton>
               </div>
@@ -211,8 +211,11 @@ function PropertyDetail() {
         ) : (
           <div className="card-elevated space-y-5 p-4 sm:p-6 lg:col-span-2">
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <DetailField label="Reference" value={row.reference} />
               <DetailField label="Property name" value={row.propertyName} />
+              <DetailField label="Contractor" value={row.contractorName || "—"} />
+            </div>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <DetailField label="Customer" value={row.customerName || "—"} />
             </div>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <DetailField label="Contact name" value={row.contactName} />
@@ -220,30 +223,24 @@ function PropertyDetail() {
             </div>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <DetailField label="Contact email" value={row.contactEmail || "—"} />
-              <DetailField
-                label="Status"
-                value={
-                  <span
-                    className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(row.isActive)}`}
-                  >
-                    {row.isActive ? "Active" : "Inactive"}
-                  </span>
-                }
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <DetailField label="Customer" value={row.customerName || "—"} />
-              <DetailField label="Contractor" value={row.contractorName || "—"} />
-            </div>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <DetailField label="Address" value={row.address || "—"} />
-              <DetailField label="Zip code" value={row.zipCode || "—"} />
             </div>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               <DetailField label="City" value={row.city || "—"} />
               <DetailField label="State" value={row.state || "—"} />
+              <DetailField label="Country" value={row.country || "—"} />
+              <DetailField label="ZIP Code" value={row.zipCode || "—"} />
             </div>
-            <DetailField label="Country" value={row.country || "—"} />
+            <DetailField
+              label="Status"
+              value={
+                <span
+                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(row.isActive)}`}
+                >
+                  {row.isActive ? "Active" : "Inactive"}
+                </span>
+              }
+            />
             <DetailField label="Access notes" value={row.accessNotes || "—"} />
           </div>
         )}

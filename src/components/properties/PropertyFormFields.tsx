@@ -7,61 +7,55 @@ import {
   SearchableSelectField,
 } from "@/components/form";
 import type { PropertyFormValues } from "@/lib/property-form";
-import { DESCRIPTION_MAX_LENGTH, NAME_MAX_LENGTH } from "@/lib/field-validation";
+import { ADDRESS_MAX_LENGTH, DESCRIPTION_MAX_LENGTH, NAME_MAX_LENGTH } from "@/lib/field-validation";
 import { fetchContractorOptions, fetchCustomerOptions } from "@/lib/user-dropdowns";
 
 const CONTACT_FIELD_MAX = 30;
-const REFERENCE_MAX_LENGTH = 100;
 
 export function PropertyFormFields({
   disabled = false,
   customerSelectedLabel,
   contractorSelectedLabel,
-  autoFocusReference = false,
+  autoFocusPropertyName = false,
 }: {
   disabled?: boolean;
   customerSelectedLabel?: string | null;
   contractorSelectedLabel?: string | null;
-  autoFocusReference?: boolean;
+  autoFocusPropertyName?: boolean;
 }) {
   return (
     <fieldset className="space-y-6" disabled={disabled}>
-      <Section title="Property">
+      <Section
+        title="Property"
+        headerAction={<SwitchField<PropertyFormValues> name="isActive" label="Active" />}
+      >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <TextField<PropertyFormValues>
-            name="reference"
-            label="Reference"
-            required
-            autoFocus={autoFocusReference}
-            maxLength={REFERENCE_MAX_LENGTH}
-          />
           <TextField<PropertyFormValues>
             name="propertyName"
             label="Property name"
             required
+            autoFocus={autoFocusPropertyName}
             maxLength={NAME_MAX_LENGTH}
+          />
+          <SearchableSelectField<PropertyFormValues>
+            name="contractorId"
+            label="Contractor"
+            placeholder="Select contractor"
+            searchPlaceholder="Search contractors…"
+            queryKey={["users", "contractors", "dropdown"]}
+            selectedLabel={contractorSelectedLabel}
+            fetchOptions={fetchContractorOptions}
           />
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <SearchableSelectField<PropertyFormValues>
             name="customerId"
             label="Customer"
-            required
             placeholder="Select customer"
             searchPlaceholder="Search customers…"
             queryKey={["users", "customers", "dropdown"]}
             selectedLabel={customerSelectedLabel}
             fetchOptions={fetchCustomerOptions}
-          />
-          <SearchableSelectField<PropertyFormValues>
-            name="contractorId"
-            label="Contractor"
-            required
-            placeholder="Select contractor"
-            searchPlaceholder="Search contractors…"
-            queryKey={["users", "contractors", "dropdown"]}
-            selectedLabel={contractorSelectedLabel}
-            fetchOptions={fetchContractorOptions}
           />
         </div>
         <TextareaField<PropertyFormValues>
@@ -70,9 +64,6 @@ export function PropertyFormFields({
           rows={3}
           maxLength={DESCRIPTION_MAX_LENGTH}
         />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <SwitchField<PropertyFormValues> name="isActive" label="Active" />
-        </div>
       </Section>
 
       <Section title="Contact & address">
@@ -100,14 +91,14 @@ export function PropertyFormFields({
             name="address"
             label="Address"
             required
-            maxLength={CONTACT_FIELD_MAX}
+            maxLength={ADDRESS_MAX_LENGTH}
           />
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <TextField<PropertyFormValues> name="zipCode" label="Zip code" maxLength={20} />
           <TextField<PropertyFormValues> name="city" label="City" maxLength={100} />
           <TextField<PropertyFormValues> name="state" label="State" maxLength={100} />
           <TextField<PropertyFormValues> name="country" label="Country" maxLength={100} />
+          <TextField<PropertyFormValues> name="zipCode" label="ZIP Code" maxLength={20} />
         </div>
       </Section>
     </fieldset>
@@ -116,14 +107,19 @@ export function PropertyFormFields({
 
 function Section({
   title,
+  headerAction,
   children,
 }: {
   title: string;
+  headerAction?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div className="card-elevated space-y-4 p-4 sm:p-6">
-      <h3 className="font-display font-semibold">{title}</h3>
+      <div className="flex items-center justify-between gap-4">
+        <h3 className="font-display font-semibold">{title}</h3>
+        {headerAction}
+      </div>
       {children}
     </div>
   );

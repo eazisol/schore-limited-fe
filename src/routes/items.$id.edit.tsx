@@ -170,7 +170,7 @@ function EditItem() {
               imageDisabled={removingImage}
             />
           </fieldset>
-          <div className="flex flex-col-reverse gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2 sm:pt-2">
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2">
             <span className="text-xs text-muted-foreground sm:mr-auto">
               {dirty ? "Unsaved changes" : "All changes saved"}
             </span>
@@ -178,12 +178,13 @@ function EditItem() {
               <Button
                 type="button"
                 variant="outline"
+                size="sm"
                 disabled={updateMutation.isPending || removingImage}
                 onClick={() => navigate({ to: "/items" })}
               >
                 Cancel
               </Button>
-              <SubmitButton disabled={!dirty || removingImage} loadingText="Saving…">
+              <SubmitButton size="sm" disabled={!dirty || removingImage} loadingText="Saving…">
                 Save changes
               </SubmitButton>
             </div>

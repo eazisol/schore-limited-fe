@@ -76,12 +76,13 @@ function NewTrade() {
             <Button
               type="button"
               variant="outline"
+              size="sm"
               onClick={() => navigate({ to: "/trade-builder" })}
               disabled={createMutation.isPending}
             >
               Cancel
             </Button>
-            <SubmitButton loadingText="Saving…">Create trade</SubmitButton>
+            <SubmitButton size="sm" loadingText="Saving…">Create trade</SubmitButton>
           </div>
         </Form>
       </div>

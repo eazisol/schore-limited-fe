@@ -13,11 +13,17 @@ const quantitySchema = z.coerce
   .gt(0, "Quantity must be greater than 0")
   .refine((value) => Number.isFinite(value), "Quantity must be a valid number");
 
+const priceSchema = z.coerce
+  .number({ invalid_type_error: "Price must be a number" })
+  .gte(0, "Price must be 0 or greater")
+  .refine((value) => Number.isFinite(value), "Price must be a valid number");
+
 export const tradeGroupItemFormSchema = z.object({
   id: z.string(),
   productId: z.string().min(1, "Product is required"),
   productName: z.string(),
   quantity: z.string().min(1, "Quantity is required"),
+  salePrice: z.string().min(1, "Price is required"),
   notes: z
     .string()
     .trim()
@@ -53,6 +59,13 @@ export const tradeGroupFormSchema = z
           ctx.addIssue({ ...issue, path: ["items", index, "quantity"] });
         }
       }
+
+      const price = priceSchema.safeParse(item.salePrice);
+      if (!price.success) {
+        for (const issue of price.error.issues) {
+          ctx.addIssue({ ...issue, path: ["items", index, "salePrice"] });
+        }
+      }
     });
   });
 
@@ -65,6 +78,7 @@ export function emptyTradeGroupItem(): TradeGroupItemFormValues {
     productId: "",
     productName: "",
     quantity: "1",
+    salePrice: "0",
     notes: "",
   };
 }
@@ -75,7 +89,7 @@ export const tradeGroupFormDefaults: TradeGroupFormValues = {
   code: "",
   description: "",
   isActive: true,
-  items: [emptyTradeGroupItem()],
+  items: [],
 };
 
 export function toTradeGroupPayload(
@@ -89,12 +103,25 @@ export function toTradeGroupPayload(
     description: values.description.trim(),
     orderBy,
     isActive: values.isActive,
-    items: values.items.map((item, index) => ({
-      id: item.id.trim() ? Number(item.id) : null,
-      productId: Number(item.productId),
-      quantity: Number(item.quantity),
-      orderBy: index,
-      notes: item.notes.trim() || null,
-    })),
+    items: values.items
+      .filter((item) => item.productId.trim())
+      .map((item, index) => ({
+        id: item.id.trim() ? Number(item.id) : null,
+        productId: Number(item.productId),
+        quantity: Number(item.quantity),
+        orderBy: index,
+        notes: item.notes.trim() || null,
+      })),
   };
+}
+
+export function computeTradeGroupTotalPrice(
+  items: TradeGroupItemFormValues[] | undefined,
+): number {
+  return (items ?? []).reduce((sum, item) => {
+    const qty = Number(item.quantity);
+    const price = Number(item.salePrice);
+    if (!Number.isFinite(qty) || !Number.isFinite(price)) return sum;
+    return sum + qty * price;
+  }, 0);
 }

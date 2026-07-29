@@ -68,18 +68,21 @@ function NewProperty() {
         />
 
         <Form form={form} onSubmit={submit} className="max-w-4xl space-y-6">
-          <PropertyFormFields disabled={createMutation.isPending} autoFocusReference />
+          <PropertyFormFields disabled={createMutation.isPending} autoFocusPropertyName />
 
           <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
             <Button
               type="button"
               variant="outline"
+              size="sm"
               onClick={() => navigate({ to: "/properties" })}
               disabled={createMutation.isPending}
             >
               Cancel
             </Button>
-            <SubmitButton loadingText="Saving…">Create property</SubmitButton>
+            <SubmitButton size="sm" loadingText="Saving…">
+              Create property
+            </SubmitButton>
           </div>
         </Form>
       </div>

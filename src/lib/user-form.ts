@@ -2,6 +2,7 @@ import { z } from "zod";
 import { getPhoneLengthError } from "@/components/form/PhoneNumberField";
 import { newPasswordSchema } from "@/lib/password";
 import { emailSchema, userNameSchema } from "@/lib/user-validation";
+import { ADDRESS_MAX_LENGTH } from "@/lib/field-validation";
 import type { CreateUserPayload, UpdateUserPayload } from "@/lib/api/services/users";
 import type { UserModuleMode } from "@/lib/user-module";
 import { USER_TYPE_ID } from "@/lib/user-module";
@@ -129,32 +130,13 @@ function operativeExtrasRefine(values: UserFormValues, ctx: z.RefinementCtx) {
   }
 }
 
-const CONTACT_FIELD_MAX = 30;
-
-function contactModuleExtrasRefine(values: UserFormValues, ctx: z.RefinementCtx) {
-  const contactName = values.contactName.trim();
-  if (!contactName) {
-    ctx.addIssue({ code: "custom", path: ["contactName"], message: "Contact name is required" });
-  } else if (contactName.length < 2) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["contactName"],
-      message: "Contact name must be at least 2 characters",
-    });
-  } else if (contactName.length > CONTACT_FIELD_MAX) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["contactName"],
-      message: `Contact name must be ${CONTACT_FIELD_MAX} characters or fewer`,
-    });
-  }
-
+function contactModuleExtrasRefine(_mode: UserModuleMode, values: UserFormValues, ctx: z.RefinementCtx) {
   const optionalAddressFields = [
-    { key: "address" as const, label: "Address", max: CONTACT_FIELD_MAX },
-    { key: "zipCode" as const, label: "Zip code", max: 20 },
+    { key: "address" as const, label: "Address", max: ADDRESS_MAX_LENGTH },
     { key: "city" as const, label: "City", max: 100 },
     { key: "state" as const, label: "State", max: 100 },
     { key: "country" as const, label: "Country", max: 100 },
+    { key: "zipCode" as const, label: "ZIP Code", max: 20 },
   ];
 
   for (const { key, label, max } of optionalAddressFields) {
@@ -166,12 +148,6 @@ function contactModuleExtrasRefine(values: UserFormValues, ctx: z.RefinementCtx)
         message: `${label} must be ${max} characters or fewer`,
       });
     }
-  }
-}
-
-function customerExtrasRefine(values: UserFormValues, ctx: z.RefinementCtx) {
-  if (!values.contractorId.trim()) {
-    ctx.addIssue({ code: "custom", path: ["contractorId"], message: "Contractor is required" });
   }
 }
 
@@ -237,8 +213,7 @@ function applyModeRefinements<T extends z.ZodTypeAny>(mode: UserModuleMode, sche
 
   if (mode === "contractor" || mode === "customer") {
     return schema.superRefine((values: UserFormValues, ctx) => {
-      contactModuleExtrasRefine(values, ctx);
-      if (mode === "customer") customerExtrasRefine(values, ctx);
+      contactModuleExtrasRefine(mode, values, ctx);
     });
   }
 
@@ -289,8 +264,12 @@ function parseDailyRate(value: string): number {
 function applyContactPayload(
   payload: CreateUserPayload | UpdateUserPayload,
   values: UserFormValues,
+  mode: UserModuleMode,
 ) {
-  payload.contactName = values.contactName.trim();
+  const isCustomer = mode === "customer";
+  const isContractor = mode === "contractor";
+  payload.contactName =
+    isCustomer || isContractor ? values.contactName.trim() || null : values.contactName.trim();
   payload.address = values.address.trim() || null;
   payload.zipCode = values.zipCode.trim() || null;
   payload.city = values.city.trim() || null;
@@ -329,11 +308,12 @@ export function toCreateUserPayload(
   }
 
   if (isContactModule) {
-    applyContactPayload(payload, values);
+    applyContactPayload(payload, values, mode);
   }
 
   if (isCustomer) {
-    payload.contractorId = Number(values.contractorId);
+    const contractorId = values.contractorId.trim();
+    payload.contractorId = contractorId ? Number(contractorId) : null;
   }
 
   return payload;
@@ -370,11 +350,12 @@ export function toUpdateUserPayload(
   }
 
   if (isContactModule) {
-    applyContactPayload(payload, values);
+    applyContactPayload(payload, values, mode);
   }
 
   if (isCustomer) {
-    payload.contractorId = Number(values.contractorId);
+    const contractorId = values.contractorId.trim();
+    payload.contractorId = contractorId ? Number(contractorId) : null;
   }
 
   return payload;
