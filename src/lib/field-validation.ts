@@ -12,8 +12,8 @@ export const DESCRIPTION_MAX_LENGTH = 500;
 /** Standard max length for Address fields across modules. */
 export const ADDRESS_MAX_LENGTH = 50;
 
-/** Letters, digits, underscore, hyphen — Code fields (validated after uppercase). */
-const CODE_PATTERN = /^[A-Z0-9_-]+$/;
+/** Letters, digits, underscore, hyphen, and spaces — Code fields (validated after uppercase). */
+const CODE_PATTERN = /^[A-Z0-9_ -]+$/;
 
 /**
  * Shared Name field schema — use for every entity Name field.
@@ -34,7 +34,7 @@ export function nameSchema(label = "Name", maxLength = NAME_MAX_LENGTH) {
 }
 
 /**
- * Shared Code field schema — required, max 50, A-Z / 0-9 / _ / -, no spaces.
+ * Shared Code field schema — required, max 50, A-Z / 0-9 / _ / - / spaces.
  * Pair with `normalizeCodeInput` on the field so values stay uppercase in the UI.
  */
 export function codeSchema(label = "Code", maxLength = CODE_MAX_LENGTH) {
@@ -43,10 +43,9 @@ export function codeSchema(label = "Code", maxLength = CODE_MAX_LENGTH) {
     .trim()
     .min(1, `${label} is required`)
     .max(maxLength, `${label} must be ${maxLength} characters or fewer`)
-    .refine((v) => !/\s/.test(v), `${label} cannot contain spaces`)
     .refine(
       (v) => CODE_PATTERN.test(v.toUpperCase()),
-      `${label} can only contain letters, numbers, underscores and hyphens`,
+      `${label} can only contain letters, numbers, spaces, underscores and hyphens`,
     );
 }
 
@@ -84,7 +83,7 @@ export function rateSchema(label = "Rate") {
     );
 }
 
-/** Normalize code input while typing (uppercase, strip spaces). */
+/** Normalize code input while typing (uppercase; spaces are allowed). */
 export function normalizeCodeInput(value: string): string {
-  return value.replace(/\s+/g, "").toUpperCase();
+  return value.toUpperCase();
 }

@@ -19,31 +19,34 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { Calculator, GripVertical, Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { TextField } from "@/components/form";
+import { TextField, SelectField, type SelectOption } from "@/components/form";
 import { useDebouncedSearch } from "@/components/data-table";
 import { AppTooltip } from "@/components/AppTooltip";
 import { productsService, type ApiProduct } from "@/lib/api/services/products";
+import { productLookupsService } from "@/lib/api/services/product-lookups";
 import {
+  computeTradeGroupTotalPrice,
   emptyTradeGroupItem,
   type TradeGroupFormValues,
   type TradeGroupItemFormValues,
 } from "@/lib/trade-group-form";
 import { DESCRIPTION_MAX_LENGTH } from "@/lib/field-validation";
-import { fmtGBPp } from "@/lib/data";
+import { fmtGBP, fmtGBPp } from "@/lib/data";
 import { truncateWithEllipsis } from "@/lib/module-ui";
 import { cn } from "@/lib/utils";
 
 const NOTES_MAX_LENGTH = DESCRIPTION_MAX_LENGTH;
 const SELECTED_PANEL_ID = "selected-panel";
 const AVAILABLE_PAGE_SIZE = 50;
-const PRODUCT_LABEL_MAX = 30;
+const PRODUCT_LABEL_MAX = 15;
+const SKU_LABEL_MAX = 10;
 const SELECTED_ITEMS_ROW_GRID =
-  "grid grid-cols-[2rem_minmax(0,1fr)_4.5rem_5.5rem_6.5rem_minmax(0,1fr)_2rem] items-center gap-x-2 overflow-hidden";
+  "grid grid-cols-[2rem_minmax(0,2.2fr)_7.5rem_4.5rem_5.5rem_6.5rem_minmax(0,1fr)_2rem] items-center gap-x-2 overflow-hidden";
 
 function SelectedItemsRowHeader() {
   return (
@@ -56,6 +59,7 @@ function SelectedItemsRowHeader() {
     >
       <span />
       <span className="min-w-0 truncate">Product</span>
+      <span className="min-w-0">Unit</span>
       <span className="min-w-0">Qty</span>
       <span className="min-w-0">Price</span>
       <span className="min-w-0">Total</span>
@@ -71,12 +75,25 @@ type AvailableDragData = {
   productName: string;
   sku: string;
   salePrice: number;
+  unitId: string;
+  unitName: string;
+  categoryName: string;
 };
 
 type SelectedDragData = {
   type: "selected";
   fieldId: string;
   index: number;
+};
+
+type ProductPickInput = {
+  productId: string;
+  productName: string;
+  salePrice: number;
+  productSku: string;
+  categoryName: string;
+  unitId: string;
+  unitName: string;
 };
 
 function availableId(productId: string | number) {
@@ -91,18 +108,30 @@ function parseSelectedId(id: string) {
   return id.startsWith("selected-") ? id.slice("selected-".length) : null;
 }
 
-function productToItem(product: {
-  productId: string;
-  productName: string;
-  salePrice: number;
-}): TradeGroupItemFormValues {
+function productToItem(product: ProductPickInput): TradeGroupItemFormValues {
   return {
     ...emptyTradeGroupItem(),
     productId: product.productId,
     productName: product.productName,
+    productSku: product.productSku,
+    categoryName: product.categoryName,
+    unitId: product.unitId,
+    unitName: product.unitName,
     quantity: "1",
     salePrice: String(product.salePrice),
     notes: "",
+  };
+}
+
+function mapApiProductToPick(product: ApiProduct): ProductPickInput {
+  return {
+    productId: String(product.id),
+    productName: product.name?.trim() || product.sku || `Product ${product.id}`,
+    salePrice: product.salePrice ?? 0,
+    productSku: product.sku?.trim() || "",
+    categoryName: product.categoryName?.trim() || "",
+    unitId: product.unitId != null ? String(product.unitId) : "",
+    unitName: product.unitName?.trim() || "",
   };
 }
 
@@ -110,28 +139,35 @@ function TruncatedLabel({
   value,
   className,
   empty = "—",
+  maxChars = PRODUCT_LABEL_MAX,
+  prefix = "",
 }: {
   value: string;
   className?: string;
   empty?: string;
+  maxChars?: number;
+  prefix?: string;
 }) {
   const text = value.trim();
   if (!text) {
     return <span className={className}>{empty}</span>;
   }
 
-  const truncated = truncateWithEllipsis(text, PRODUCT_LABEL_MAX);
-  const needsTooltip = text.length > PRODUCT_LABEL_MAX;
+  const truncated = truncateWithEllipsis(text, maxChars);
+  const needsTooltip = text.length > maxChars;
 
   const label = (
-    <span className={cn("block max-w-full truncate", className)}>{truncated}</span>
+    <span className={cn("block min-w-0 max-w-full truncate", className)}>
+      {prefix}
+      {truncated}
+    </span>
   );
 
   if (!needsTooltip) return label;
 
   return (
     <AppTooltip content={text} asChild align="start">
-      <span className="block max-w-full cursor-default">{label}</span>
+      <span className="block min-w-0 max-w-full cursor-default">{label}</span>
     </AppTooltip>
   );
 }
@@ -156,7 +192,13 @@ export function TradeGroupItemsEditor({ disabled = false }: { disabled?: boolean
   const { searchInput, setSearchInput, search } = useDebouncedSearch();
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [activeDrag, setActiveDrag] = useState<
-    | { kind: "available"; productId: string; productName: string; sku: string; salePrice: number }
+    | {
+        kind: "available";
+        productId: string;
+        productName: string;
+        sku: string;
+        salePrice: number;
+      }
     | { kind: "selected"; productName: string; quantity: string }
     | null
   >(null);
@@ -176,6 +218,24 @@ export function TradeGroupItemsEditor({ disabled = false }: { disabled?: boolean
     staleTime: 30_000,
   });
 
+  const unitsQuery = useQuery({
+    queryKey: ["units", "trade-group-item-options"],
+    queryFn: async () => {
+      const res = await productLookupsService.units({ page: 1, pageSize: 100, search: "" });
+      return (res.data.items ?? []).filter((unit) => unit.isActive !== false);
+    },
+    staleTime: 60_000,
+  });
+
+  const unitOptions = useMemo<SelectOption[]>(
+    () =>
+      (unitsQuery.data ?? []).map((unit) => ({
+        value: String(unit.id),
+        label: unit.name?.trim() || `Unit ${unit.id}`,
+      })),
+    [unitsQuery.data],
+  );
+
   const availableProducts = useMemo(() => {
     const items = productsQuery.data?.items ?? [];
     return items.filter(
@@ -191,7 +251,7 @@ export function TradeGroupItemsEditor({ disabled = false }: { disabled?: boolean
   );
 
   const addProducts = useCallback(
-    (products: Array<{ productId: string; productName: string; salePrice: number }>) => {
+    (products: ProductPickInput[]) => {
       if (disabled || products.length === 0) return;
       const currentIds = new Set(
         (getValues("items") ?? []).map((item) => item.productId).filter(Boolean),
@@ -220,11 +280,7 @@ export function TradeGroupItemsEditor({ disabled = false }: { disabled?: boolean
   const addChecked = useCallback(() => {
     const products = availableProducts
       .filter((product) => checkedIds.has(String(product.id)))
-      .map((product) => ({
-        productId: String(product.id),
-        productName: product.name?.trim() || product.sku || `Product ${product.id}`,
-        salePrice: product.salePrice ?? 0,
-      }));
+      .map(mapApiProductToPick);
     addProducts(products);
   }, [addProducts, availableProducts, checkedIds]);
 
@@ -276,21 +332,23 @@ export function TradeGroupItemsEditor({ disabled = false }: { disabled?: boolean
         if (shouldAddChecked) {
           const products = availableProducts
             .filter((product) => checkedIds.has(String(product.id)))
-            .map((product) => ({
-              productId: String(product.id),
-              productName: product.name?.trim() || product.sku || `Product ${product.id}`,
-              salePrice: product.salePrice ?? 0,
-            }));
+            .map(mapApiProductToPick);
           addProducts(products);
           return;
         }
 
         addProducts([
-          {
-            productId: activeData.productId,
-            productName: activeData.productName,
-            salePrice: draggedProduct?.salePrice ?? activeData.salePrice ?? 0,
-          },
+          draggedProduct
+            ? mapApiProductToPick(draggedProduct)
+            : {
+                productId: activeData.productId,
+                productName: activeData.productName,
+                salePrice: activeData.salePrice ?? 0,
+                productSku: activeData.sku,
+                categoryName: activeData.categoryName,
+                unitId: activeData.unitId,
+                unitName: activeData.unitName,
+              },
         ]);
         return;
       }
@@ -352,6 +410,7 @@ export function TradeGroupItemsEditor({ disabled = false }: { disabled?: boolean
               disabled={disabled}
               fields={fields}
               selectedFieldIds={selectedFieldIds}
+              unitOptions={unitOptions}
               onRemove={remove}
             />
           </div>
@@ -495,6 +554,9 @@ function AvailableProductsPanel({
                   name={name}
                   sku={sku}
                   salePrice={product.salePrice ?? 0}
+                  unitName={product.unitName?.trim() || ""}
+                  categoryName={product.categoryName?.trim() || ""}
+                  unitId={product.unitId != null ? String(product.unitId) : ""}
                   disabled={disabled}
                   checked={checkedIds.has(productId)}
                   onCheckedChange={(checked) => onToggleChecked(productId, checked)}
@@ -513,6 +575,9 @@ function AvailableProductRow({
   name,
   sku,
   salePrice,
+  unitName,
+  categoryName,
+  unitId,
   disabled,
   checked,
   onCheckedChange,
@@ -521,6 +586,9 @@ function AvailableProductRow({
   name: string;
   sku: string;
   salePrice: number;
+  unitName: string;
+  categoryName: string;
+  unitId: string;
   disabled: boolean;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
@@ -534,6 +602,9 @@ function AvailableProductRow({
       productName: name,
       sku,
       salePrice,
+      unitId,
+      unitName,
+      categoryName,
     } satisfies AvailableDragData,
   });
 
@@ -575,10 +646,33 @@ function AvailableProductRow({
       />
 
       <div className="min-w-0 flex-1 overflow-hidden">
-        <TruncatedLabel value={name} className="text-sm font-medium" />
+        <div className="flex min-w-0 items-center gap-2">
+          <TruncatedLabel value={name} className="min-w-0 text-sm font-medium" />
+          {unitName ? (
+            <span className="inline-flex shrink-0 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              {unitName}
+            </span>
+          ) : null}
+        </div>
         {sku ? (
-          <TruncatedLabel value={`SKU: ${sku}`} className="text-xs text-muted-foreground" />
+          <TruncatedLabel
+            value={sku}
+            prefix="SKU: "
+            maxChars={SKU_LABEL_MAX}
+            className="text-xs text-muted-foreground"
+          />
         ) : null}
+      </div>
+
+      <div className="flex shrink-0 flex-col items-end gap-0.5">
+        {categoryName ? (
+          <span className="inline-flex max-w-[6.5rem] truncate rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            {categoryName}
+          </span>
+        ) : null}
+        <span className="font-mono text-xs tabular-nums text-foreground">
+          {fmtGBP(salePrice)}
+        </span>
       </div>
     </div>
   );
@@ -588,17 +682,22 @@ function SelectedItemsPanel({
   disabled,
   fields,
   selectedFieldIds,
+  unitOptions,
   onRemove,
 }: {
   disabled: boolean;
   fields: Array<{ id: string }>;
   selectedFieldIds: string[];
+  unitOptions: SelectOption[];
   onRemove: (index: number) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: SELECTED_PANEL_ID,
     disabled,
   });
+  const { watch } = useFormContext<TradeGroupFormValues>();
+  const items = watch("items") ?? [];
+  const grandTotal = computeTradeGroupTotalPrice(items);
 
   return (
     <PanelShell
@@ -626,6 +725,7 @@ function SelectedItemsPanel({
                   fieldId={field.id}
                   index={index}
                   disabled={disabled}
+                  unitOptions={unitOptions}
                   onRemove={() => onRemove(index)}
                 />
               ))
@@ -633,6 +733,26 @@ function SelectedItemsPanel({
           </div>
         </SortableContext>
       </ScrollArea>
+      {fields.length > 0 ? (
+        <div className="flex items-center justify-between gap-4 border-t bg-muted/50 px-3 py-3 sm:px-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
+              <Calculator className="h-3.5 w-3.5" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-foreground">Total</div>
+              <div className="text-xs text-muted-foreground">
+                {fields.length} item{fields.length === 1 ? "" : "s"}
+              </div>
+            </div>
+          </div>
+          <AppTooltip content={fmtGBP(grandTotal)} asChild align="end">
+            <div className="shrink-0 font-display text-base font-semibold tabular-nums tracking-tight text-foreground sm:text-lg">
+              {fmtGBP(grandTotal)}
+            </div>
+          </AppTooltip>
+        </div>
+      ) : null}
     </PanelShell>
   );
 }
@@ -641,23 +761,45 @@ function SelectedItemRow({
   fieldId,
   index,
   disabled,
+  unitOptions,
   onRemove,
 }: {
   fieldId: string;
   index: number;
   disabled: boolean;
+  unitOptions: SelectOption[];
   onRemove: () => void;
 }) {
   const { watch } = useFormContext<TradeGroupFormValues>();
   const productName = watch(`items.${index}.productName`);
+  const productSku = watch(`items.${index}.productSku`);
+  const categoryName = watch(`items.${index}.categoryName`);
+  const unitId = watch(`items.${index}.unitId`);
+  const unitName = watch(`items.${index}.unitName`);
   const quantity = watch(`items.${index}.quantity`);
   const salePrice = watch(`items.${index}.salePrice`);
+  const notes = watch(`items.${index}.notes`);
+  const [qtyAutofillLock, setQtyAutofillLock] = useState(true);
+  const [priceAutofillLock, setPriceAutofillLock] = useState(true);
   const lineTotal = (() => {
     const qty = Number(quantity);
     const price = Number(salePrice);
     if (!Number.isFinite(qty) || !Number.isFinite(price)) return 0;
     return qty * price;
   })();
+
+  const rowUnitOptions = useMemo(() => {
+    if (!unitId?.trim()) return unitOptions;
+    if (unitOptions.some((option) => option.value === unitId)) return unitOptions;
+    return [
+      ...unitOptions,
+      {
+        value: unitId,
+        label: unitName?.trim() || `Unit ${unitId}`,
+      },
+    ];
+  }, [unitId, unitName, unitOptions]);
+
   const {
     attributes,
     listeners,
@@ -682,6 +824,7 @@ function SelectedItemRow({
   };
 
   const displayName = productName?.trim() || `Product #${index + 1}`;
+  const metaParts = [categoryName?.trim(), productSku?.trim()].filter(Boolean);
 
   return (
     <div
@@ -711,6 +854,35 @@ function SelectedItemRow({
 
         <div className="min-w-0 overflow-hidden">
           <TruncatedLabel value={displayName} className="text-sm font-medium" />
+          {metaParts.length > 0 ? (
+            <div className="mt-0.5 flex min-w-0 items-center gap-1.5 overflow-hidden">
+              {categoryName?.trim() ? (
+                <span className="inline-flex h-5 shrink-0 items-center rounded-full border border-border bg-muted/60 px-1.5 text-[10px] font-medium leading-none text-muted-foreground">
+                  {categoryName.trim()}
+                </span>
+              ) : null}
+              {productSku?.trim() ? (
+                <TruncatedLabel
+                  value={productSku.trim()}
+                  prefix="SKU: "
+                  maxChars={SKU_LABEL_MAX}
+                  className="min-w-0 text-[11px] leading-none text-muted-foreground"
+                />
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="min-w-0 overflow-hidden">
+          <SelectField<TradeGroupFormValues>
+            name={`items.${index}.unitId` as Path<TradeGroupFormValues>}
+            required
+            placeholder="Unit"
+            options={rowUnitOptions}
+            disabled={disabled}
+            className="min-w-0 w-full space-y-0"
+            triggerClassName="h-9 shadow-none focus:ring-0"
+          />
         </div>
 
         <div className="min-w-0 overflow-hidden">
@@ -721,9 +893,14 @@ function SelectedItemRow({
             min={0.01}
             step="any"
             disabled={disabled}
+            readOnly={qtyAutofillLock}
+            onFocus={() => setQtyAutofillLock(false)}
+            autoComplete="off"
+            data-1p-ignore="true"
+            data-lpignore="true"
             aria-label="Quantity"
             className="min-w-0 w-full space-y-0"
-            inputClassName="min-w-0 truncate text-center"
+            inputClassName="min-w-0 truncate bg-card text-center shadow-none focus-visible:ring-0"
           />
         </div>
 
@@ -735,9 +912,14 @@ function SelectedItemRow({
             min={0}
             step="0.01"
             disabled={disabled}
+            readOnly={priceAutofillLock}
+            onFocus={() => setPriceAutofillLock(false)}
+            autoComplete="off"
+            data-1p-ignore="true"
+            data-lpignore="true"
             aria-label="Price"
             className="min-w-0 w-full space-y-0"
-            inputClassName="min-w-0 truncate text-right"
+            inputClassName="min-w-0 truncate bg-card text-right shadow-none focus-visible:ring-0"
           />
         </div>
 
@@ -751,15 +933,20 @@ function SelectedItemRow({
         </AppTooltip>
 
         <div className="min-w-0 overflow-hidden">
-          <TextField<TradeGroupFormValues>
-            name={`items.${index}.notes` as Path<TradeGroupFormValues>}
-            maxLength={NOTES_MAX_LENGTH}
-            disabled={disabled}
-            aria-label="Notes"
-            placeholder="Notes"
-            className="min-w-0 w-full space-y-0"
-            inputClassName="min-w-0 truncate"
-          />
+          <AppTooltip content={notes?.trim() || ""} asChild align="start">
+            <div className="min-w-0">
+              <TextField<TradeGroupFormValues>
+                name={`items.${index}.notes` as Path<TradeGroupFormValues>}
+                maxLength={NOTES_MAX_LENGTH}
+                disabled={disabled}
+                autoComplete="off"
+                aria-label="Notes"
+                placeholder="Notes"
+                className="min-w-0 w-full space-y-0"
+                inputClassName="min-w-0 truncate bg-card shadow-none focus-visible:ring-0"
+              />
+            </div>
+          </AppTooltip>
         </div>
 
         <AppTooltip content="Remove item" asChild>
@@ -800,7 +987,12 @@ function ProductRowPreview({
       <div className="min-w-0 overflow-hidden">
         <TruncatedLabel value={name} className="text-sm font-medium" />
         {sku ? (
-          <TruncatedLabel value={`SKU: ${sku}`} className="text-xs text-muted-foreground" />
+          <TruncatedLabel
+            value={sku}
+            prefix="SKU: "
+            maxChars={SKU_LABEL_MAX}
+            className="text-xs text-muted-foreground"
+          />
         ) : null}
       </div>
     </div>

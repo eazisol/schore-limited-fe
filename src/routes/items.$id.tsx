@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
 import { AppTooltip } from "@/components/AppTooltip";
-import { DetailField, DetailMetaRow } from "@/components/DetailField";
+import { DetailField, DetailMetaRow, DetailSectionHeading } from "@/components/DetailField";
 import { Button } from "@/components/ui/button";
 import {
   AlertCircle,
@@ -137,6 +137,7 @@ function ItemDetail() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="card-elevated space-y-5 p-4 sm:p-6 lg:col-span-2">
+          <DetailSectionHeading>Item details</DetailSectionHeading>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <DetailField icon={Package} label="Name" value={item.name} />
             <DetailField icon={Tag} label="SKU" value={item.sku} />
@@ -184,10 +185,9 @@ function ItemDetail() {
 
         <div className="space-y-6">
           <div className="card-elevated self-start p-4 sm:p-6">
-            <h3 className="mb-4 flex items-center gap-2 font-display font-semibold">
-              <FileText className="h-4 w-4 text-muted-foreground" aria-hidden />
+            <DetailSectionHeading className="mb-4" icon={FileText}>
               Record
-            </h3>
+            </DetailSectionHeading>
             <dl className="space-y-3">
               <DetailMetaRow label="Item ID">{item.id}</DetailMetaRow>
               <DetailMetaRow label="Created">{formatDateTime(item.createdDate)}</DetailMetaRow>
@@ -197,10 +197,9 @@ function ItemDetail() {
 
           {imageSrc ? (
             <div className="card-elevated flex flex-col p-4 sm:p-6">
-              <h3 className="mb-4 flex items-center gap-2 font-display font-semibold">
-                <ImageIcon className="h-4 w-4 text-muted-foreground" aria-hidden />
+              <DetailSectionHeading className="mb-4" icon={ImageIcon}>
                 Product image
-              </h3>
+              </DetailSectionHeading>
               <div className="flex items-center justify-center rounded-lg bg-muted/40 p-6">
                 <TableImagePreview
                   src={imageSrc}

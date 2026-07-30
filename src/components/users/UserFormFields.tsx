@@ -50,84 +50,37 @@ export function UserFormFields({
         title="Personal Information"
         headerAction={<SwitchField<UserFormValues> name="isActive" label="Active" />}
       >
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <TextField<UserFormValues>
-            name="firstName"
-            label="First name"
-            required
-            autoFocus={autoFocusFirstName}
-            maxLength={50}
-          />
-          <TextField<UserFormValues> name="lastName" label="Last name" required maxLength={50} />
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <TextField<UserFormValues>
-            name="email"
-            label="Email"
-            required
-            type="email"
-            placeholder="name@schore.co.uk"
-          />
-          <PhoneNumberField<UserFormValues> name="phone" label="Phone" placeholder="07700 900000" />
-        </div>
-        {isOperative ? (
+        {isContractor ? (
           <>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-3">
-                <PasswordField<UserFormValues>
-                  name="password"
-                  label="Password"
-                  required={variant === "create"}
-                  autoComplete="new-password"
-                  placeholder={
-                    variant === "edit" ? "Leave blank to keep current password" : undefined
-                  }
-                />
-                {(variant === "create" || password) && (
-                  <PasswordRequirements password={password} />
-                )}
-              </div>
-              <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <TextField<UserFormValues> name="startDate" label="Joining Date" type="date" />
-              <TextField<UserFormValues> name="endDate" label="Leaving Date" type="date" />
-            </div>
-          </>
-        ) : isUser ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-3">
-              <PasswordField<UserFormValues>
-                name="password"
-                label="Password"
-                required={variant === "create"}
-                autoComplete="new-password"
-                placeholder={
-                  variant === "edit" ? "Leave blank to keep current password" : undefined
-                }
+              <TextField<UserFormValues>
+                name="companyName"
+                label="Company name"
+                autoFocus={autoFocusFirstName}
+                maxLength={100}
               />
-              {(variant === "create" || password) && (
-                <PasswordRequirements password={password} />
-              )}
+              <TextField<UserFormValues>
+                name="firstName"
+                label="First name"
+                required
+                maxLength={50}
+              />
             </div>
-            <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
-          </div>
-        ) : isCustomer ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
-          </div>
-        ) : null}
-        {isCustomer ? (
-          <>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <SearchableSelectField<UserFormValues>
-                name="contractorId"
-                label="Contractor"
-                placeholder="Select contractor"
-                searchPlaceholder="Search contractors…"
-                queryKey={["users", "contractors", "dropdown"]}
-                selectedLabel={contractorSelectedLabel}
-                fetchOptions={fetchContractorOptions}
+              <TextField<UserFormValues> name="lastName" label="Last name" required maxLength={50} />
+              <TextField<UserFormValues>
+                name="email"
+                label="Email"
+                required
+                type="email"
+                placeholder="name@schore.co.uk"
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <PhoneNumberField<UserFormValues>
+                name="phone"
+                label="Phone"
+                placeholder="07700 900000"
               />
               <TextField<UserFormValues>
                 name="address"
@@ -142,21 +95,107 @@ export function UserFormFields({
               <TextField<UserFormValues> name="zipCode" label="ZIP Code" maxLength={20} />
             </div>
           </>
-        ) : isContractor ? (
+        ) : (
           <>
-            <TextField<UserFormValues>
-              name="address"
-              label="Address"
-              maxLength={ADDRESS_MAX_LENGTH}
-            />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <TextField<UserFormValues> name="city" label="City" maxLength={100} />
-              <TextField<UserFormValues> name="state" label="State" maxLength={100} />
-              <TextField<UserFormValues> name="country" label="Country" maxLength={100} />
-              <TextField<UserFormValues> name="zipCode" label="ZIP Code" maxLength={20} />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <TextField<UserFormValues>
+                name="firstName"
+                label="First name"
+                required
+                autoFocus={autoFocusFirstName}
+                maxLength={50}
+              />
+              <TextField<UserFormValues> name="lastName" label="Last name" required maxLength={50} />
             </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <TextField<UserFormValues>
+                name="email"
+                label="Email"
+                required
+                type="email"
+                placeholder="name@schore.co.uk"
+              />
+              <PhoneNumberField<UserFormValues>
+                name="phone"
+                label="Phone"
+                placeholder="07700 900000"
+              />
+            </div>
+            {isOperative ? (
+              <>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-3">
+                    <PasswordField<UserFormValues>
+                      name="password"
+                      label="Password"
+                      required={variant === "create"}
+                      autoComplete="new-password"
+                      placeholder={
+                        variant === "edit" ? "Leave blank to keep current password" : undefined
+                      }
+                    />
+                    {(variant === "create" || password) && (
+                      <PasswordRequirements password={password} />
+                    )}
+                  </div>
+                  <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <TextField<UserFormValues> name="startDate" label="Joining Date" type="date" />
+                  <TextField<UserFormValues> name="endDate" label="Leaving Date" type="date" />
+                </div>
+              </>
+            ) : isUser ? (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-3">
+                  <PasswordField<UserFormValues>
+                    name="password"
+                    label="Password"
+                    required={variant === "create"}
+                    autoComplete="new-password"
+                    placeholder={
+                      variant === "edit" ? "Leave blank to keep current password" : undefined
+                    }
+                  />
+                  {(variant === "create" || password) && (
+                    <PasswordRequirements password={password} />
+                  )}
+                </div>
+                <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
+              </div>
+            ) : isCustomer ? (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
+              </div>
+            ) : null}
+            {isCustomer ? (
+              <>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <SearchableSelectField<UserFormValues>
+                    name="contractorId"
+                    label="Contractor"
+                    placeholder="Select contractor"
+                    searchPlaceholder="Search contractors…"
+                    queryKey={["users", "contractors", "dropdown"]}
+                    selectedLabel={contractorSelectedLabel}
+                    fetchOptions={fetchContractorOptions}
+                  />
+                  <TextField<UserFormValues>
+                    name="address"
+                    label="Address"
+                    maxLength={ADDRESS_MAX_LENGTH}
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <TextField<UserFormValues> name="city" label="City" maxLength={100} />
+                  <TextField<UserFormValues> name="state" label="State" maxLength={100} />
+                  <TextField<UserFormValues> name="country" label="Country" maxLength={100} />
+                  <TextField<UserFormValues> name="zipCode" label="ZIP Code" maxLength={20} />
+                </div>
+              </>
+            ) : null}
           </>
-        ) : null}
+        )}
       </Section>
 
       {!isOperative && !isContactModule ? (

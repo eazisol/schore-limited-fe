@@ -6,9 +6,9 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/AppShell";
 import { AppTooltip } from "@/components/AppTooltip";
-import { DetailField } from "@/components/DetailField";
+import { DetailField, DetailSectionHeading } from "@/components/DetailField";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ArrowLeft, Loader2, Pencil, Trash2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, Calculator, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Form, SubmitButton } from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
@@ -16,7 +16,7 @@ import { tradeGroupsService } from "@/lib/api/services/trade-groups";
 import { productsService } from "@/lib/api/services/products";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { tradeGroupsQueryKey } from "./trade-groups.index";
-import { activeStatusClass } from "@/lib/module-ui";
+import { activeStatusClass, truncateWithEllipsis } from "@/lib/module-ui";
 import { fmtGBP } from "@/lib/data";
 import { TRADE_GROUPS_ROUTE } from "@/lib/trade-groups";
 import {
@@ -103,6 +103,10 @@ function TradeGroupDetail() {
           id: String(item.id),
           productId: String(item.productId),
           productName: item.productName ?? "",
+          productSku: item.productSku ?? "",
+          categoryName: item.categoryName ?? "",
+          unitId: item.unitId != null ? String(item.unitId) : "",
+          unitName: item.unitName ?? "",
           quantity: String(item.quantity),
           salePrice: String(salePrice),
           notes: item.notes ?? "",
@@ -273,6 +277,7 @@ function TradeGroupDetail() {
         ) : (
           <div className="space-y-6 lg:col-span-2">
             <div className="card-elevated space-y-5 p-4 sm:p-6">
+              <DetailSectionHeading>Trade group details</DetailSectionHeading>
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <DetailField label="Name" value={row.name} />
                 <DetailField label="Code" value={row.code} />
@@ -295,7 +300,7 @@ function TradeGroupDetail() {
 
             <div className="card-elevated overflow-hidden">
               <div className="border-b px-4 py-3 sm:px-6">
-                <h3 className="font-display font-semibold">Items</h3>
+                <DetailSectionHeading className="border-b-0 pb-0">Items</DetailSectionHeading>
               </div>
               {items.length === 0 ? (
                 <div className="p-8 text-center text-sm text-muted-foreground">
@@ -306,7 +311,10 @@ function TradeGroupDetail() {
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50 text-xs text-muted-foreground">
                       <tr>
-                        <th className="px-4 py-2.5 text-left font-medium sm:px-6">Product</th>
+                        <th className="w-[22rem] max-w-[22rem] px-4 py-2.5 text-left font-medium sm:px-6">
+                          Product
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-medium">Unit</th>
                         <th className="px-3 py-2.5 text-right font-medium">Quantity</th>
                         <th className="px-3 py-2.5 text-right font-medium">Price</th>
                         <th className="px-4 py-2.5 text-left font-medium sm:px-6">Notes</th>
@@ -320,10 +328,50 @@ function TradeGroupDetail() {
                           storedPrice != null && Number.isFinite(Number(storedPrice))
                             ? Number(storedPrice)
                             : (catalogPrice ?? 0);
+                        const name =
+                          item.productName?.trim() || `Product #${item.productId}`;
+                        const truncatedName = truncateWithEllipsis(name, 15);
+                        const nameNeedsTooltip = name.length > 15;
+                        const sku = item.productSku?.trim() || "";
+                        const truncatedSku = sku ? truncateWithEllipsis(sku, 10) : "";
+                        const skuNeedsTooltip = sku.length > 10;
                         return (
                           <tr key={item.id}>
-                            <td className="px-4 py-3 sm:px-6">
-                              {item.productName?.trim() || `Product #${item.productId}`}
+                            <td className="w-[22rem] max-w-[22rem] px-4 py-3 sm:px-6">
+                              <div className="min-w-0 max-w-[22rem]">
+                                {nameNeedsTooltip ? (
+                                  <AppTooltip content={name} asChild align="start">
+                                    <div className="cursor-default truncate font-medium">
+                                      {truncatedName}
+                                    </div>
+                                  </AppTooltip>
+                                ) : (
+                                  <div className="truncate font-medium">{truncatedName}</div>
+                                )}
+                                <div className="mt-0.5 flex min-w-0 items-center gap-1.5 overflow-hidden text-xs text-muted-foreground">
+                                  {item.categoryName?.trim() ? (
+                                    <span className="inline-flex h-5 shrink-0 items-center rounded-full border border-border bg-muted/60 px-1.5 text-[10px] font-medium leading-none">
+                                      {item.categoryName.trim()}
+                                    </span>
+                                  ) : null}
+                                  {sku ? (
+                                    skuNeedsTooltip ? (
+                                      <AppTooltip content={sku} asChild align="start">
+                                        <span className="min-w-0 cursor-default truncate leading-none">
+                                          SKU: {truncatedSku}
+                                        </span>
+                                      </AppTooltip>
+                                    ) : (
+                                      <span className="min-w-0 truncate leading-none">
+                                        SKU: {truncatedSku}
+                                      </span>
+                                    )
+                                  ) : null}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 text-sm">
+                              {item.unitName?.trim() || "—"}
                             </td>
                             <td className="px-3 py-3 text-right font-mono tabular-nums">
                               {item.quantity}
@@ -341,6 +389,26 @@ function TradeGroupDetail() {
                   </table>
                 </div>
               )}
+              {items.length > 0 ? (
+                <div className="flex items-center justify-between gap-4 border-t bg-muted/50 px-4 py-3 sm:px-6">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
+                      <Calculator className="h-3.5 w-3.5" aria-hidden />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-foreground">Total</div>
+                      <div className="text-xs text-muted-foreground">
+                        {items.length} item{items.length === 1 ? "" : "s"}
+                      </div>
+                    </div>
+                  </div>
+                  <AppTooltip content={fmtGBP(viewTotalPrice)} asChild align="end">
+                    <div className="shrink-0 font-display text-base font-semibold tabular-nums tracking-tight text-foreground sm:text-lg">
+                      {fmtGBP(viewTotalPrice)}
+                    </div>
+                  </AppTooltip>
+                </div>
+              ) : null}
             </div>
           </div>
         )}

@@ -1,4 +1,4 @@
-import { DetailMetaRow } from "@/components/DetailField";
+import { DetailMetaRow, DetailSectionHeading } from "@/components/DetailField";
 import { fmtGBP } from "@/lib/data";
 import { formatDateTime } from "@/lib/module-ui";
 
@@ -15,7 +15,7 @@ export function TradeGroupRecordPanel({
 }) {
   return (
     <div className="card-elevated self-start p-4 sm:p-6">
-      <h3 className="mb-4 font-display font-semibold">Record</h3>
+      <DetailSectionHeading className="mb-4">Record</DetailSectionHeading>
       <dl className="space-y-3">
         <DetailMetaRow label="Trade group ID">
           {tradeGroupId != null ? tradeGroupId : "—"}

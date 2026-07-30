@@ -22,6 +22,10 @@ export const tradeGroupItemFormSchema = z.object({
   id: z.string(),
   productId: z.string().min(1, "Product is required"),
   productName: z.string(),
+  productSku: z.string(),
+  categoryName: z.string(),
+  unitId: z.string(),
+  unitName: z.string(),
   quantity: z.string().min(1, "Quantity is required"),
   salePrice: z.string().min(1, "Price is required"),
   notes: z
@@ -53,6 +57,14 @@ export const tradeGroupFormSchema = z
         });
       }
 
+      if (!item.unitId.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["items", index, "unitId"],
+          message: "Unit is required",
+        });
+      }
+
       const qty = quantitySchema.safeParse(item.quantity);
       if (!qty.success) {
         for (const issue of qty.error.issues) {
@@ -77,6 +89,10 @@ export function emptyTradeGroupItem(): TradeGroupItemFormValues {
     id: "",
     productId: "",
     productName: "",
+    productSku: "",
+    categoryName: "",
+    unitId: "",
+    unitName: "",
     quantity: "1",
     salePrice: "0",
     notes: "",
@@ -108,6 +124,7 @@ export function toTradeGroupPayload(
       .map((item, index) => ({
         id: item.id.trim() ? Number(item.id) : null,
         productId: Number(item.productId),
+        unitId: item.unitId.trim() ? Number(item.unitId) : null,
         quantity: Number(item.quantity),
         salePrice: Number(item.salePrice),
         orderBy: index,

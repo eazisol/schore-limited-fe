@@ -18,18 +18,12 @@ import {
   type ApiTradeGroup,
   type TradeGroupSortBy,
 } from "@/lib/api/services/trade-groups";
-import { tradesService } from "@/lib/api/services/trades";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { AppTooltip } from "@/components/AppTooltip";
 import { activeStatusClass, formatDateTime, truncateWithEllipsis } from "@/lib/module-ui";
 import { TRADE_GROUPS_ROUTE } from "@/lib/trade-groups";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/form";
+import { fetchTradeOptions } from "@/lib/product-dropdowns";
 
 export const Route = createFileRoute("/trade-groups/")({
   head: () => ({ meta: [{ title: "Trade Groups | Schore" }] }),
@@ -56,16 +50,11 @@ function TradeGroupsList() {
   const [sortBy, setSortBy] = useState<TradeGroupSortBy>("createdDate");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [tradeId, setTradeId] = useState<number | undefined>(undefined);
+  const [tradeLabel, setTradeLabel] = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState<ApiTradeGroup | null>(null);
   const [exporting, setExporting] = useState(false);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
     onPageReset: () => setPage(1),
-  });
-
-  const tradesQuery = useQuery({
-    queryKey: ["trades", "options", "filter"],
-    queryFn: async () => (await tradesService.options()).data ?? [],
-    staleTime: 60_000,
   });
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
@@ -97,8 +86,6 @@ function TradeGroupsList() {
   const rows = data?.items ?? [];
   const totalCount = data?.totalCount ?? 0;
   const totalPages = data?.totalPages ?? 1;
-  const trades = tradesQuery.data ?? [];
-
   function handleExportCsv() {
     if (rows.length === 0) {
       toast.warning("No trade groups to export for the current page.");
@@ -233,6 +220,7 @@ function TradeGroupsList() {
   function clearFilters() {
     clearSearch();
     setTradeId(undefined);
+    setTradeLabel(null);
     setPage(1);
   }
 
@@ -290,28 +278,26 @@ function TradeGroupsList() {
           "aria-label": "Search trade groups",
         }}
         filters={
-          <Select
-            value={tradeId != null ? String(tradeId) : "all"}
+          <SearchableSelect
+            value={tradeId != null ? String(tradeId) : ""}
             onValueChange={(value) => {
-              setTradeId(value === "all" ? undefined : Number(value));
+              setTradeId(value ? Number(value) : undefined);
+              if (!value) setTradeLabel(null);
               setPage(1);
             }}
-          >
-            <SelectTrigger
-              className="h-9 w-full min-w-[11rem] sm:w-52 [&>span]:whitespace-nowrap"
-              aria-label="Filter by trade"
-            >
-              <SelectValue placeholder="All trades" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All trades</SelectItem>
-              {trades.map((trade) => (
-                <SelectItem key={trade.id} value={String(trade.id)}>
-                  {trade.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onSelect={(option) => {
+              setTradeLabel(option.value ? option.label : null);
+            }}
+            placeholder="All trades"
+            searchPlaceholder="Search trades…"
+            aria-label="Filter by trade"
+            queryKey={["trades", "dropdown"]}
+            fetchOptions={fetchTradeOptions}
+            selectedLabel={tradeLabel}
+            emptyOption={{ value: "", label: "All trades" }}
+            className="w-full min-w-[11rem] sm:w-52"
+            triggerClassName="h-9 [&>span]:whitespace-nowrap"
+          />
         }
         sort={{
           sortBy: activeSortColumn,

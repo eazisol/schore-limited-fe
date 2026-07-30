@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/AppShell";
 import { AppTooltip } from "@/components/AppTooltip";
-import { DetailField, DetailMetaRow } from "@/components/DetailField";
+import { DetailField, DetailMetaRow, DetailSectionHeading } from "@/components/DetailField";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, ArrowLeft, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -163,6 +163,7 @@ export function UserDetailPage() {
           ? String(user.dailyRate)
           : "",
       contactName: user?.contactName ?? "",
+      companyName: user?.companyName ?? "",
       address: user?.address ?? "",
       zipCode: user?.zipCode ?? "",
       city: user?.city ?? "",
@@ -334,94 +335,119 @@ export function UserDetailPage() {
         ) : (
           <div className="space-y-6 lg:col-span-2">
             <div className="card-elevated space-y-5 p-4 sm:p-6">
-              <h3 className="font-display font-semibold">Personal details</h3>
+              <DetailSectionHeading>Personal details</DetailSectionHeading>
               <div className="space-y-5">
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <DetailField label="First name" value={user.firstName || "—"} />
-                  <DetailField label="Last name" value={user.lastName || "—"} />
-                </div>
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <DetailField label="Email" value={user.email || "—"} />
-                  <DetailField label="Phone" value={user.phone || "—"} />
-                </div>
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  {!cfg.isContractor ? (
-                    <DetailField
-                      label="Date of birth"
-                      value={toDateInputValue(user.dateOfBirth) || "—"}
-                    />
-                  ) : null}
-                  {cfg.isOperative || cfg.isContactModule ? (
-                    <DetailField
-                      label="Status"
-                      value={
-                        <span
-                          className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(user.isActive)}`}
-                        >
-                          {user.isActive ? "Active" : "Inactive"}
-                        </span>
-                      }
-                    />
-                  ) : (
-                    <DetailField label="Role" value={roleLabel} />
-                  )}
-                </div>
-                {cfg.isOperative ? (
-                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                    <DetailField
-                      label="Joining Date"
-                      value={toDateInputValue(user.startDate) || "—"}
-                    />
-                    <DetailField
-                      label="Leaving Date"
-                      value={toDateInputValue(user.endDate) || "—"}
-                    />
-                  </div>
-                ) : null}
-                {cfg.isCustomer ? (
-                  <div className="space-y-5">
+                {cfg.isContractor ? (
+                  <>
                     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                      <DetailField label="Contractor" value={user.contractorName || "—"} />
+                      <DetailField label="Company name" value={user.companyName || "—"} />
+                      <DetailField label="First name" value={user.firstName || "—"} />
+                    </div>
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                      <DetailField label="Last name" value={user.lastName || "—"} />
+                      <DetailField label="Email" value={user.email || "—"} />
+                    </div>
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                      <DetailField label="Phone" value={user.phone || "—"} />
                       <DetailField label="Address" value={user.address || "—"} />
                     </div>
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                      <DetailField
+                        label="Status"
+                        value={
+                          <span
+                            className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(user.isActive)}`}
+                          >
+                            {user.isActive ? "Active" : "Inactive"}
+                          </span>
+                        }
+                      />
+                    </div>
                     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
                       <DetailField label="City" value={user.city || "—"} />
                       <DetailField label="State" value={user.state || "—"} />
                       <DetailField label="Country" value={user.country || "—"} />
                       <DetailField label="ZIP Code" value={user.zipCode || "—"} />
                     </div>
-                  </div>
-                ) : cfg.isContractor ? (
-                  <div className="space-y-5">
-                    <DetailField label="Address" value={user.address || "—"} />
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                      <DetailField label="City" value={user.city || "—"} />
-                      <DetailField label="State" value={user.state || "—"} />
-                      <DetailField label="Country" value={user.country || "—"} />
-                      <DetailField label="ZIP Code" value={user.zipCode || "—"} />
+                  </>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                      <DetailField label="First name" value={user.firstName || "—"} />
+                      <DetailField label="Last name" value={user.lastName || "—"} />
                     </div>
-                  </div>
-                ) : null}
-                {mode === "user" ? (
-                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                    <DetailField
-                      label="Status"
-                      value={
-                        <span
-                          className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(user.isActive)}`}
-                        >
-                          {user.isActive ? "Active" : "Inactive"}
-                        </span>
-                      }
-                    />
-                  </div>
-                ) : null}
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                      <DetailField label="Email" value={user.email || "—"} />
+                      <DetailField label="Phone" value={user.phone || "—"} />
+                    </div>
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                      <DetailField
+                        label="Date of birth"
+                        value={toDateInputValue(user.dateOfBirth) || "—"}
+                      />
+                      {cfg.isOperative || cfg.isContactModule ? (
+                        <DetailField
+                          label="Status"
+                          value={
+                            <span
+                              className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(user.isActive)}`}
+                            >
+                              {user.isActive ? "Active" : "Inactive"}
+                            </span>
+                          }
+                        />
+                      ) : (
+                        <DetailField label="Role" value={roleLabel} />
+                      )}
+                    </div>
+                    {cfg.isOperative ? (
+                      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <DetailField
+                          label="Joining Date"
+                          value={toDateInputValue(user.startDate) || "—"}
+                        />
+                        <DetailField
+                          label="Leaving Date"
+                          value={toDateInputValue(user.endDate) || "—"}
+                        />
+                      </div>
+                    ) : null}
+                    {cfg.isCustomer ? (
+                      <div className="space-y-5">
+                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                          <DetailField label="Contractor" value={user.contractorName || "—"} />
+                          <DetailField label="Address" value={user.address || "—"} />
+                        </div>
+                        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                          <DetailField label="City" value={user.city || "—"} />
+                          <DetailField label="State" value={user.state || "—"} />
+                          <DetailField label="Country" value={user.country || "—"} />
+                          <DetailField label="ZIP Code" value={user.zipCode || "—"} />
+                        </div>
+                      </div>
+                    ) : null}
+                    {mode === "user" ? (
+                      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <DetailField
+                          label="Status"
+                          value={
+                            <span
+                              className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(user.isActive)}`}
+                            >
+                              {user.isActive ? "Active" : "Inactive"}
+                            </span>
+                          }
+                        />
+                      </div>
+                    ) : null}
+                  </>
+                )}
               </div>
             </div>
 
             {cfg.isOperative ? (
               <div className="card-elevated space-y-5 p-4 sm:p-6">
-                <h3 className="font-display font-semibold">Workforce</h3>
+                <DetailSectionHeading>Workforce</DetailSectionHeading>
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                   <DetailField label="Trade" value={user.tradeName || "—"} />
                   <DetailField label="CIS" value={user.cisName || "—"} />
@@ -435,7 +461,7 @@ export function UserDetailPage() {
         )}
 
         <div className="card-elevated self-start p-6">
-          <h3 className="mb-4 font-display font-semibold">Account</h3>
+          <DetailSectionHeading className="mb-4">Account</DetailSectionHeading>
           <dl className="space-y-3">
             <DetailMetaRow label={`${cfg.labels.entityTitle} ID`}>{user.id}</DetailMetaRow>
             <DetailMetaRow label="Created">{formatDateTime(user.createdDate)}</DetailMetaRow>

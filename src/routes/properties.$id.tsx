@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/AppShell";
 import { AppTooltip } from "@/components/AppTooltip";
-import { DetailField, DetailMetaRow } from "@/components/DetailField";
+import { DetailField, DetailMetaRow, DetailSectionHeading } from "@/components/DetailField";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, ArrowLeft, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -210,6 +210,7 @@ function PropertyDetail() {
           </Form>
         ) : (
           <div className="card-elevated space-y-5 p-4 sm:p-6 lg:col-span-2">
+            <DetailSectionHeading>Property details</DetailSectionHeading>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <DetailField label="Property name" value={row.propertyName} />
               <DetailField label="Contractor" value={row.contractorName || "—"} />
@@ -246,7 +247,7 @@ function PropertyDetail() {
         )}
 
         <div className="card-elevated self-start p-6">
-          <h3 className="mb-4 font-display font-semibold">Record</h3>
+          <DetailSectionHeading className="mb-4">Record</DetailSectionHeading>
           <dl className="space-y-3">
             <DetailMetaRow label="Property ID">{row.id}</DetailMetaRow>
             <DetailMetaRow label="Created">{formatDateTime(row.createdDate)}</DetailMetaRow>

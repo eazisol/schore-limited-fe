@@ -6,8 +6,15 @@ export interface ApiTradeGroupItem {
   id: number;
   productId: number;
   productName?: string | null;
+  productSku?: string | null;
+  unitId?: number | null;
+  unitName?: string | null;
+  categoryId?: number | null;
+  categoryName?: string | null;
   quantity: number;
   salePrice?: number | null;
+  unitPrice?: number | null;
+  lineTotal?: number | null;
   orderBy: number;
   notes: string | null;
 }
@@ -31,6 +38,7 @@ export interface ApiTradeGroup {
 export type TradeGroupItemPayload = {
   id: number | null;
   productId: number;
+  unitId: number | null;
   quantity: number;
   salePrice: number;
   orderBy: number;

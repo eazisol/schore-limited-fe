@@ -19,19 +19,12 @@ import {
   type ApiProperty,
   type PropertySortBy,
 } from "@/lib/api/services/properties";
-import { usersService } from "@/lib/api/services/users";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { AppTooltip } from "@/components/AppTooltip";
 import { activeStatusClass, formatDateTime, truncateWithEllipsis } from "@/lib/module-ui";
 import { PROPERTIES_ROUTE } from "@/lib/properties";
-import { USER_TYPE_ID } from "@/lib/user-module";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/form";
+import { fetchCustomerOptions, fetchContractorOptions } from "@/lib/user-dropdowns";
 
 export const Route = createFileRoute("/properties/")({
   head: () => ({ meta: [{ title: "Properties | Schore" }] }),
@@ -45,7 +38,6 @@ const COLUMN_SORT_KEYS: Record<string, PropertySortBy> = {
   propertyName: "name",
   contactName: "contactname",
   customer: "customer",
-  contractor: "contractor",
 };
 
 function PropertiesList() {
@@ -59,24 +51,12 @@ function PropertiesList() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [customerId, setCustomerId] = useState<number | undefined>(undefined);
   const [contractorId, setContractorId] = useState<number | undefined>(undefined);
+  const [customerLabel, setCustomerLabel] = useState<string | null>(null);
+  const [contractorLabel, setContractorLabel] = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState<ApiProperty | null>(null);
   const [exporting, setExporting] = useState(false);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
     onPageReset: () => setPage(1),
-  });
-
-  const customersQuery = useQuery({
-    queryKey: ["users", "customers", "dropdown", "filter"],
-    queryFn: async () =>
-      (await usersService.dropdown({ search: "", userTypeId: USER_TYPE_ID.customer })).data ?? [],
-    staleTime: 60_000,
-  });
-
-  const contractorsQuery = useQuery({
-    queryKey: ["users", "contractors", "dropdown", "filter"],
-    queryFn: async () =>
-      (await usersService.dropdown({ search: "", userTypeId: USER_TYPE_ID.contractor })).data ?? [],
-    staleTime: 60_000,
   });
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
@@ -112,8 +92,6 @@ function PropertiesList() {
   const rows = data?.items ?? [];
   const totalCount = data?.totalCount ?? 0;
   const totalPages = data?.totalPages ?? 1;
-  const customers = customersQuery.data ?? [];
-  const contractors = contractorsQuery.data ?? [];
 
   async function handleExportCsv() {
     if (rows.length === 0) {
@@ -128,7 +106,6 @@ function PropertiesList() {
           "Property Name",
           "Contact Name",
           "Customer",
-          "Contractor",
           "Phone",
           "Status",
           "Created Date",
@@ -137,7 +114,6 @@ function PropertiesList() {
           row.propertyName,
           row.contactName,
           row.customerName ?? "",
-          row.contractorName ?? "",
           csvForceText(row.contactPhoneNo ?? ""),
           row.isActive ? "Active" : "Inactive",
           formatDateTime(row.createdDate),
@@ -179,12 +155,6 @@ function PropertiesList() {
         header: "Customer",
         sortable: true,
         cell: (row) => row.customerName?.trim() || "—",
-      },
-      {
-        id: "contractor",
-        header: "Contractor",
-        sortable: true,
-        cell: (row) => row.contractorName?.trim() || "—",
       },
       {
         id: "phone",
@@ -262,6 +232,8 @@ function PropertiesList() {
     clearSearch();
     setCustomerId(undefined);
     setContractorId(undefined);
+    setCustomerLabel(null);
+    setContractorLabel(null);
     setPage(1);
   }
 
@@ -320,50 +292,46 @@ function PropertiesList() {
         }}
         filters={
           <>
-            <Select
-              value={customerId != null ? String(customerId) : "all"}
+            <SearchableSelect
+              value={customerId != null ? String(customerId) : ""}
               onValueChange={(value) => {
-                setCustomerId(value === "all" ? undefined : Number(value));
+                setCustomerId(value ? Number(value) : undefined);
+                if (!value) setCustomerLabel(null);
                 setPage(1);
               }}
-            >
-              <SelectTrigger
-                className="h-9 w-full min-w-[11rem] sm:w-52 [&>span]:whitespace-nowrap"
-                aria-label="Filter by customer"
-              >
-                <SelectValue placeholder="All customers" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All customers</SelectItem>
-                {customers.map((customer) => (
-                  <SelectItem key={customer.id} value={String(customer.id)}>
-                    {customer.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={contractorId != null ? String(contractorId) : "all"}
+              onSelect={(option) => {
+                setCustomerLabel(option.value ? option.label : null);
+              }}
+              placeholder="All customers"
+              searchPlaceholder="Search customers…"
+              aria-label="Filter by customer"
+              queryKey={["users", "customers", "dropdown"]}
+              fetchOptions={fetchCustomerOptions}
+              selectedLabel={customerLabel}
+              emptyOption={{ value: "", label: "All customers" }}
+              className="w-full min-w-[11rem] sm:w-52"
+              triggerClassName="h-9 [&>span]:whitespace-nowrap"
+            />
+            <SearchableSelect
+              value={contractorId != null ? String(contractorId) : ""}
               onValueChange={(value) => {
-                setContractorId(value === "all" ? undefined : Number(value));
+                setContractorId(value ? Number(value) : undefined);
+                if (!value) setContractorLabel(null);
                 setPage(1);
               }}
-            >
-              <SelectTrigger
-                className="h-9 w-full min-w-[11rem] sm:w-52 [&>span]:whitespace-nowrap"
-                aria-label="Filter by contractor"
-              >
-                <SelectValue placeholder="All contractors" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All contractors</SelectItem>
-                {contractors.map((contractor) => (
-                  <SelectItem key={contractor.id} value={String(contractor.id)}>
-                    {contractor.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onSelect={(option) => {
+                setContractorLabel(option.value ? option.label : null);
+              }}
+              placeholder="All contractors"
+              searchPlaceholder="Search contractors…"
+              aria-label="Filter by contractor"
+              queryKey={["users", "contractors", "dropdown"]}
+              fetchOptions={fetchContractorOptions}
+              selectedLabel={contractorLabel}
+              emptyOption={{ value: "", label: "All contractors" }}
+              className="w-full min-w-[11rem] sm:w-52"
+              triggerClassName="h-9 [&>span]:whitespace-nowrap"
+            />
           </>
         }
         sort={{

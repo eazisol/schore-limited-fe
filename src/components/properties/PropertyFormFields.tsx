@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import {
   TextField,
-  TextareaField,
   SwitchField,
   PhoneNumberField,
   SearchableSelectField,
@@ -57,13 +56,12 @@ export function PropertyFormFields({
             selectedLabel={customerSelectedLabel}
             fetchOptions={fetchCustomerOptions}
           />
+          <TextField<PropertyFormValues>
+            name="accessNotes"
+            label="Access notes"
+            maxLength={DESCRIPTION_MAX_LENGTH}
+          />
         </div>
-        <TextareaField<PropertyFormValues>
-          name="accessNotes"
-          label="Access notes"
-          rows={3}
-          maxLength={DESCRIPTION_MAX_LENGTH}
-        />
       </Section>
 
       <Section title="Contact & address">

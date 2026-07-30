@@ -82,6 +82,7 @@ export type UserFormValues = {
   cisId: string;
   dailyRate: string;
   contactName: string;
+  companyName: string;
   address: string;
   zipCode: string;
   city: string;
@@ -105,6 +106,7 @@ export const emptyUserFormValues: UserFormValues = {
   cisId: "",
   dailyRate: "",
   contactName: "",
+  companyName: "",
   address: "",
   zipCode: "",
   city: "",
@@ -130,7 +132,7 @@ function operativeExtrasRefine(values: UserFormValues, ctx: z.RefinementCtx) {
   }
 }
 
-function contactModuleExtrasRefine(_mode: UserModuleMode, values: UserFormValues, ctx: z.RefinementCtx) {
+function contactModuleExtrasRefine(mode: UserModuleMode, values: UserFormValues, ctx: z.RefinementCtx) {
   const optionalAddressFields = [
     { key: "address" as const, label: "Address", max: ADDRESS_MAX_LENGTH },
     { key: "city" as const, label: "City", max: 100 },
@@ -138,6 +140,17 @@ function contactModuleExtrasRefine(_mode: UserModuleMode, values: UserFormValues
     { key: "country" as const, label: "Country", max: 100 },
     { key: "zipCode" as const, label: "ZIP Code", max: 20 },
   ];
+
+  if (mode === "contractor") {
+    const companyName = values.companyName.trim();
+    if (companyName && companyName.length > 100) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["companyName"],
+        message: "Company name must be 100 characters or fewer",
+      });
+    }
+  }
 
   for (const { key, label, max } of optionalAddressFields) {
     const value = values[key].trim();
@@ -193,6 +206,7 @@ const sharedFormFields = {
   cisId: z.string(),
   dailyRate: z.string(),
   contactName: z.string(),
+  companyName: z.string(),
   address: z.string(),
   zipCode: z.string(),
   city: z.string(),
@@ -270,6 +284,9 @@ function applyContactPayload(
   const isContractor = mode === "contractor";
   payload.contactName =
     isCustomer || isContractor ? values.contactName.trim() || null : values.contactName.trim();
+  if (isContractor) {
+    payload.companyName = values.companyName.trim() || null;
+  }
   payload.address = values.address.trim() || null;
   payload.zipCode = values.zipCode.trim() || null;
   payload.city = values.city.trim() || null;
