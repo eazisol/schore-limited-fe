@@ -109,6 +109,7 @@ export function toTradeGroupPayload(
         id: item.id.trim() ? Number(item.id) : null,
         productId: Number(item.productId),
         quantity: Number(item.quantity),
+        salePrice: Number(item.salePrice),
         orderBy: index,
         notes: item.notes.trim() || null,
       })),

@@ -37,6 +37,8 @@ function EditItem() {
   const queryClient = useQueryClient();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [confirmImageRemoval, setConfirmImageRemoval] = useState(false);
+  const [pendingSalePriceUpdate, setPendingSalePriceUpdate] =
+    useState<ItemFormValues | null>(null);
 
   const itemQuery = useQuery({
     queryKey: ["items", id],
@@ -104,11 +106,34 @@ function EditItem() {
     onError: (err) => notifyApiError(err, "Failed to remove image"),
   });
 
-  async function save(values: ItemFormValues) {
+  async function submitUpdate(
+    values: ItemFormValues,
+    updateTradeGroupItemPrices: boolean,
+  ) {
     await updateMutation.mutateAsync({
-      payload: toProductPayload(values),
+      payload: toProductPayload(values, { updateTradeGroupItemPrices }),
       file: imageFile,
     });
+  }
+
+  async function save(values: ItemFormValues) {
+    const originalSalePrice = Number(item?.salePrice ?? 0);
+    const nextSalePrice = Number(values.salePrice);
+    if (originalSalePrice !== nextSalePrice) {
+      setPendingSalePriceUpdate(values);
+      return;
+    }
+    await submitUpdate(values, false);
+  }
+
+  async function confirmSalePriceUpdate(updateTradeGroupItemPrices: boolean) {
+    if (!pendingSalePriceUpdate || updateMutation.isPending) return;
+    try {
+      await submitUpdate(pendingSalePriceUpdate, updateTradeGroupItemPrices);
+      setPendingSalePriceUpdate(null);
+    } catch {
+      // Error toast is handled by the mutation; keep the dialog open so the user can retry or cancel.
+    }
   }
 
   if (itemQuery.isLoading) {
@@ -230,6 +255,62 @@ function EditItem() {
                     <Trash2 className="h-4 w-4" />
                   )}
                   Remove image
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {pendingSalePriceUpdate && (
+          <div
+            className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+            onClick={() =>
+              !updateMutation.isPending && setPendingSalePriceUpdate(null)
+            }
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="update-trade-group-prices-title"
+              className="w-full max-w-md rounded-lg border bg-card p-6 shadow-lg"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h2
+                id="update-trade-group-prices-title"
+                className="font-display text-lg font-semibold"
+              >
+                Update Trade Group Prices?
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                This product is used in one or more Trade Groups. Do you also want
+                to update its Sale Price in all Trade Groups where it is used?
+              </p>
+              <div className="mt-6 flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={updateMutation.isPending}
+                  onClick={() => setPendingSalePriceUpdate(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={updateMutation.isPending}
+                  onClick={() => void confirmSalePriceUpdate(false)}
+                >
+                  No
+                </Button>
+                <Button
+                  type="button"
+                  disabled={updateMutation.isPending}
+                  onClick={() => void confirmSalePriceUpdate(true)}
+                >
+                  {updateMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : null}
+                  Yes
                 </Button>
               </div>
             </div>

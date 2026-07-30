@@ -65,7 +65,10 @@ export const itemFormDefaults: ItemFormValues = {
   isActive: true,
 };
 
-export function toProductPayload(values: ItemFormValues): ProductPayload {
+export function toProductPayload(
+  values: ItemFormValues,
+  options?: { updateTradeGroupItemPrices?: boolean },
+): ProductPayload {
   return {
     name: values.name.trim(),
     description: values.description.trim() || null,
@@ -77,5 +80,6 @@ export function toProductPayload(values: ItemFormValues): ProductPayload {
     costPrice: values.costPrice,
     quantity: 1,
     isActive: values.isActive,
+    updateTradeGroupItemPrices: options?.updateTradeGroupItemPrices ?? false,
   };
 }

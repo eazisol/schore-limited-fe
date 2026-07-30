@@ -38,6 +38,8 @@ export type ProductPayload = {
   costPrice: number;
   quantity: number;
   isActive: boolean;
+  /** When true on update, also update this product's sale price in trade groups that use it. Defaults to false. */
+  updateTradeGroupItemPrices: boolean;
 };
 
 export type ProductsSortBy =

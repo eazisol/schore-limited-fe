@@ -92,17 +92,22 @@ function TradeGroupDetail() {
       code: row?.code ?? "",
       description: row?.description ?? "",
       isActive: row?.isActive ?? true,
-      items: items.map((item) => ({
-        id: String(item.id),
-        productId: String(item.productId),
-        productName: item.productName ?? "",
-        quantity: String(item.quantity),
-        salePrice:
-          priceMap?.get(String(item.productId)) != null
-            ? String(priceMap.get(String(item.productId)))
-            : "0",
-        notes: item.notes ?? "",
-      })),
+      items: items.map((item) => {
+        const storedPrice = item.salePrice;
+        const catalogPrice = priceMap?.get(String(item.productId));
+        const salePrice =
+          storedPrice != null && Number.isFinite(Number(storedPrice))
+            ? storedPrice
+            : (catalogPrice ?? 0);
+        return {
+          id: String(item.id),
+          productId: String(item.productId),
+          productName: item.productName ?? "",
+          quantity: String(item.quantity),
+          salePrice: String(salePrice),
+          notes: item.notes ?? "",
+        };
+      }),
     };
   }, [row, productPricesQuery.data]);
 
@@ -174,7 +179,12 @@ function TradeGroupDetail() {
   const priceMap = productPricesQuery.data;
   const viewTotalPrice = items.reduce((sum, item) => {
     const qty = Number(item.quantity);
-    const price = priceMap?.get(String(item.productId)) ?? 0;
+    const storedPrice = item.salePrice;
+    const catalogPrice = priceMap?.get(String(item.productId));
+    const price =
+      storedPrice != null && Number.isFinite(Number(storedPrice))
+        ? Number(storedPrice)
+        : (catalogPrice ?? 0);
     if (!Number.isFinite(qty) || !Number.isFinite(price)) return sum;
     return sum + qty * price;
   }, 0);
@@ -304,7 +314,12 @@ function TradeGroupDetail() {
                     </thead>
                     <tbody className="divide-y">
                       {items.map((item) => {
-                        const unitPrice = priceMap?.get(String(item.productId)) ?? 0;
+                        const storedPrice = item.salePrice;
+                        const catalogPrice = priceMap?.get(String(item.productId));
+                        const unitPrice =
+                          storedPrice != null && Number.isFinite(Number(storedPrice))
+                            ? Number(storedPrice)
+                            : (catalogPrice ?? 0);
                         return (
                           <tr key={item.id}>
                             <td className="px-4 py-3 sm:px-6">
