@@ -95,13 +95,29 @@ function TradeGroupsList() {
     try {
       downloadCsv({
         filename: `trade-groups-export-${new Date().toISOString().slice(0, 10)}.csv`,
-        headers: ["Name", "Code", "Trade", "Status", "Created Date"],
+        headers: [
+          "ID",
+          "Name",
+          "Code",
+          "Description",
+          "Trade",
+          "Status",
+          "Order By",
+          "Items Count",
+          "Created Date",
+          "Last Edited",
+        ],
         rows: rows.map((row) => [
+          String(row.id),
           row.name,
           row.code,
+          row.description ?? "",
           row.tradeName ?? "",
           row.isActive ? "Active" : "Inactive",
+          String(row.orderBy ?? ""),
+          String(row.items?.length ?? 0),
           formatDateTime(row.createdDate),
+          row.editDate ? formatDateTime(row.editDate) : "",
         ]),
       });
       toast.success(`Exported ${rows.length} trade group${rows.length === 1 ? "" : "s"} to CSV`);

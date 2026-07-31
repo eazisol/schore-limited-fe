@@ -380,6 +380,7 @@ function CategoryFormModal({
         onClose={onClose}
         title={title}
         size="md"
+        showCloseButton={false}
         headerActions={<SwitchField<Values> name="isActive" label="Active" disabled={isView} />}
       >
         <div className="space-y-4">

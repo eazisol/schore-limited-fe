@@ -9,6 +9,7 @@ export function Modal({
   headerActions,
   children,
   size = "md",
+  showCloseButton = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -17,6 +18,8 @@ export function Modal({
   headerActions?: ReactNode;
   children: ReactNode;
   size?: "sm" | "md" | "lg";
+  /** When false, hides the header X button (Cancel still closes). Default true. */
+  showCloseButton?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -44,14 +47,16 @@ export function Modal({
             </div>
             <div className="flex shrink-0 items-center gap-3">
               {headerActions}
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close"
-                className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              {showCloseButton ? (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label="Close"
+                  className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
             </div>
           </div>
           <div className="p-5">{children}</div>

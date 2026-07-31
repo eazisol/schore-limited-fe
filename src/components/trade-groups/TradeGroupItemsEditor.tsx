@@ -46,7 +46,7 @@ const SELECTED_PANEL_ID = "selected-panel";
 const PRODUCT_LABEL_MAX = 20;
 const SKU_LABEL_MAX = 10;
 const SELECTED_ITEMS_ROW_GRID =
-  "grid grid-cols-[2rem_minmax(0,1.8fr)_6.5rem_7.75rem_7rem_7.5rem_minmax(0,1.7fr)_2rem] items-center gap-x-2 overflow-hidden";
+  "grid grid-cols-[2rem_minmax(0,1.8fr)_minmax(0,1.7fr)_6.5rem_7.75rem_7rem_7.5rem_2rem] items-center gap-x-2 overflow-hidden";
 
 function SelectedItemsRowHeader() {
   return (
@@ -59,11 +59,11 @@ function SelectedItemsRowHeader() {
     >
       <span />
       <span className="min-w-0 truncate">Product</span>
+      <span className="min-w-0 truncate">Notes</span>
       <span className="min-w-0">Unit</span>
       <span className="min-w-0">Qty</span>
       <span className="min-w-0">Price</span>
       <span className="min-w-0">Total</span>
-      <span className="min-w-0 truncate">Notes</span>
       <span />
     </div>
   );
@@ -739,6 +739,23 @@ function SelectedItemRow({
         </div>
 
         <div className="min-w-0 overflow-hidden">
+          <AppTooltip content={notesTooltip} asChild align="start">
+            <div className="min-w-0">
+              <TextField<TradeGroupFormValues>
+                name={`items.${index}.notes` as Path<TradeGroupFormValues>}
+                maxLength={TRADE_GROUP_ITEM_NOTES_MAX_LENGTH}
+                disabled={disabled || !hasProduct}
+                autoComplete="off"
+                aria-label="Notes"
+                placeholder="Notes"
+                className="min-w-0 w-full space-y-0"
+                inputClassName="min-w-0 truncate bg-card shadow-none focus-visible:ring-0"
+              />
+            </div>
+          </AppTooltip>
+        </div>
+
+        <div className="min-w-0 overflow-hidden">
           <SelectField<TradeGroupFormValues>
             name={`items.${index}.unitId` as Path<TradeGroupFormValues>}
             required
@@ -790,23 +807,6 @@ function SelectedItemRow({
             <span className="truncate">{fmtGBPp(lineTotal)}</span>
           </div>
         </AppTooltip>
-
-        <div className="min-w-0 overflow-hidden">
-          <AppTooltip content={notesTooltip} asChild align="start">
-            <div className="min-w-0">
-              <TextField<TradeGroupFormValues>
-                name={`items.${index}.notes` as Path<TradeGroupFormValues>}
-                maxLength={TRADE_GROUP_ITEM_NOTES_MAX_LENGTH}
-                disabled={disabled || !hasProduct}
-                autoComplete="off"
-                aria-label="Notes"
-                placeholder="Notes"
-                className="min-w-0 w-full space-y-0"
-                inputClassName="min-w-0 truncate bg-card shadow-none focus-visible:ring-0"
-              />
-            </div>
-          </AppTooltip>
-        </div>
 
         <AppTooltip content="Remove item" asChild>
           <Button

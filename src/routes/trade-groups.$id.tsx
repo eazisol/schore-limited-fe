@@ -231,9 +231,9 @@ function TradeGroupDetail() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="space-y-6">
         {isEditing ? (
-          <Form form={form} onSubmit={save} className="w-full space-y-6 lg:col-span-3">
+          <Form form={form} onSubmit={save} className="w-full space-y-6">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
               <div className="lg:col-span-8">
                 <TradeGroupFormFields
@@ -274,27 +274,39 @@ function TradeGroupDetail() {
             </div>
           </Form>
         ) : (
-          <div className="space-y-6 lg:col-span-2">
-            <div className="card-elevated space-y-5 p-4 sm:p-6">
-              <DetailSectionHeading>Trade group details</DetailSectionHeading>
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <DetailField label="Name" value={row.name} />
-                <DetailField label="Code" value={row.code} />
+          <>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+              <div className="lg:col-span-8">
+                <div className="card-elevated space-y-5 p-4 sm:p-6">
+                  <DetailSectionHeading>Trade group details</DetailSectionHeading>
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    <DetailField label="Name" value={row.name} />
+                    <DetailField label="Code" value={row.code} />
+                  </div>
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    <DetailField label="Trade" value={row.tradeName || "—"} />
+                    <DetailField
+                      label="Status"
+                      value={
+                        <span
+                          className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(row.isActive)}`}
+                        >
+                          {row.isActive ? "Active" : "Inactive"}
+                        </span>
+                      }
+                    />
+                  </div>
+                  <DetailField label="Description" value={row.description || "—"} />
+                </div>
               </div>
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <DetailField label="Trade" value={row.tradeName || "—"} />
-                <DetailField
-                  label="Status"
-                  value={
-                    <span
-                      className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(row.isActive)}`}
-                    >
-                      {row.isActive ? "Active" : "Inactive"}
-                    </span>
-                  }
+              <div className="lg:col-span-4">
+                <TradeGroupRecordPanel
+                  tradeGroupId={row.id}
+                  createdDate={row.createdDate}
+                  editDate={row.editDate}
+                  totalPrice={viewTotalPrice}
                 />
               </div>
-              <DetailField label="Description" value={row.description || "—"} />
             </div>
 
             <div className="card-elevated overflow-hidden">
@@ -310,13 +322,13 @@ function TradeGroupDetail() {
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50 text-xs text-muted-foreground">
                       <tr>
-                        <th className="w-[22rem] max-w-[22rem] px-4 py-2.5 text-left font-medium sm:px-6">
+                        <th className="w-[28%] min-w-[12rem] px-4 py-2.5 text-left font-medium sm:px-6">
                           Product
                         </th>
+                        <th className="w-[32%] min-w-[10rem] px-3 py-2.5 text-left font-medium">Notes</th>
                         <th className="px-3 py-2.5 text-left font-medium">Unit</th>
                         <th className="px-3 py-2.5 text-right font-medium">Quantity</th>
                         <th className="px-3 py-2.5 text-right font-medium">Price</th>
-                        <th className="px-4 py-2.5 text-left font-medium sm:px-6">Notes</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -329,25 +341,18 @@ function TradeGroupDetail() {
                             : (catalogPrice ?? 0);
                         const name =
                           item.productName?.trim() || `Product #${item.productId}`;
-                        const truncatedName = truncateWithEllipsis(name, 20);
-                        const nameNeedsTooltip = name.length > 20;
                         const sku = item.productSku?.trim() || "";
                         const truncatedSku = sku ? truncateWithEllipsis(sku, 10) : "";
                         const skuNeedsTooltip = sku.length > 10;
+                        const notesText = item.notes?.trim() || "";
                         return (
                           <tr key={item.id}>
-                            <td className="w-[22rem] max-w-[22rem] px-4 py-3 sm:px-6">
-                              <div className="min-w-0 max-w-[22rem]">
-                                {nameNeedsTooltip ? (
-                                  <AppTooltip content={name} asChild align="start">
-                                    <div className="cursor-default truncate font-medium">
-                                      {truncatedName}
-                                    </div>
-                                  </AppTooltip>
-                                ) : (
-                                  <div className="truncate font-medium">{truncatedName}</div>
-                                )}
-                                <div className="mt-0.5 flex min-w-0 items-center gap-1.5 overflow-hidden text-xs text-muted-foreground">
+                            <td className="w-[28%] min-w-[12rem] px-4 py-3 align-top sm:px-6">
+                              <div className="min-w-0">
+                                <div className="break-words whitespace-normal font-medium leading-snug">
+                                  {name}
+                                </div>
+                                <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                                   {item.categoryName?.trim() ? (
                                     <span className="inline-flex h-5 shrink-0 items-center rounded-full border border-border bg-muted/60 px-1.5 text-[10px] font-medium leading-none">
                                       {item.categoryName.trim()}
@@ -369,6 +374,15 @@ function TradeGroupDetail() {
                                 </div>
                               </div>
                             </td>
+                            <td className="w-[32%] min-w-[10rem] px-3 py-3 align-top text-muted-foreground">
+                              {notesText ? (
+                                <span className="block break-words whitespace-normal leading-snug">
+                                  {notesText}
+                                </span>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
                             <td className="px-3 py-3 text-sm">
                               {item.unitName?.trim() || "—"}
                             </td>
@@ -378,48 +392,40 @@ function TradeGroupDetail() {
                             <td className="px-3 py-3 text-right font-mono tabular-nums">
                               {fmtGBP(unitPrice)}
                             </td>
-                            <td className="px-4 py-3 text-muted-foreground sm:px-6">
-                              {item.notes?.trim() || "—"}
-                            </td>
                           </tr>
                         );
                       })}
                     </tbody>
+                    <tfoot>
+                      <tr className="border-t bg-muted/50">
+                        <td colSpan={4} className="px-4 py-3 sm:px-6">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
+                              <Calculator className="h-3.5 w-3.5" aria-hidden />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-foreground">Total</div>
+                              <div className="text-xs text-muted-foreground">
+                                {items.length} item{items.length === 1 ? "" : "s"}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          <AppTooltip content={fmtGBP(viewTotalPrice)} asChild align="end">
+                            <div className="font-display text-base font-semibold tabular-nums tracking-tight text-foreground sm:text-lg">
+                              {fmtGBP(viewTotalPrice)}
+                            </div>
+                          </AppTooltip>
+                        </td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               )}
-              {items.length > 0 ? (
-                <div className="flex items-center justify-between gap-4 border-t bg-muted/50 px-4 py-3 sm:px-6">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
-                      <Calculator className="h-3.5 w-3.5" aria-hidden />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-foreground">Total</div>
-                      <div className="text-xs text-muted-foreground">
-                        {items.length} item{items.length === 1 ? "" : "s"}
-                      </div>
-                    </div>
-                  </div>
-                  <AppTooltip content={fmtGBP(viewTotalPrice)} asChild align="end">
-                    <div className="shrink-0 font-display text-base font-semibold tabular-nums tracking-tight text-foreground sm:text-lg">
-                      {fmtGBP(viewTotalPrice)}
-                    </div>
-                  </AppTooltip>
-                </div>
-              ) : null}
             </div>
-          </div>
+          </>
         )}
-
-        {!isEditing ? (
-          <TradeGroupRecordPanel
-            tradeGroupId={row.id}
-            createdDate={row.createdDate}
-            editDate={row.editDate}
-            totalPrice={viewTotalPrice}
-          />
-        ) : null}
       </div>
 
       {confirmDel && canDelete && (

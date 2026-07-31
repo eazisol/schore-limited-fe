@@ -37,7 +37,7 @@ export const propertiesQueryKey = ["properties"] as const;
 const COLUMN_SORT_KEYS: Record<string, PropertySortBy> = {
   propertyName: "name",
   contactName: "contactname",
-  customer: "customer",
+  contractor: "contractor",
 };
 
 function PropertiesList() {
@@ -105,7 +105,7 @@ function PropertiesList() {
         headers: [
           "Property Name",
           "Contact Name",
-          "Customer",
+          "Contractor",
           "Phone",
           "Status",
           "Created Date",
@@ -113,7 +113,7 @@ function PropertiesList() {
         rows: rows.map((row) => [
           row.propertyName,
           row.contactName,
-          row.customerName ?? "",
+          row.contractorName ?? "",
           csvForceText(row.contactPhoneNo ?? ""),
           row.isActive ? "Active" : "Inactive",
           formatDateTime(row.createdDate),
@@ -151,10 +151,10 @@ function PropertiesList() {
         cell: (row) => truncateWithEllipsis(row.contactName),
       },
       {
-        id: "customer",
-        header: "Customer",
+        id: "contractor",
+        header: "Contractor",
         sortable: true,
-        cell: (row) => row.customerName?.trim() || "—",
+        cell: (row) => row.contractorName?.trim() || "—",
       },
       {
         id: "phone",
