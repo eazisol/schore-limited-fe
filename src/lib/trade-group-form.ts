@@ -6,7 +6,7 @@ import {
 } from "@/lib/field-validation";
 import type { TradeGroupPayload } from "@/lib/api/services/trade-groups";
 
-const NOTES_MAX_LENGTH = 500;
+export const TRADE_GROUP_ITEM_NOTES_MAX_LENGTH = 50;
 
 const quantitySchema = z.coerce
   .number({ invalid_type_error: "Quantity must be a number" })
@@ -31,7 +31,10 @@ export const tradeGroupItemFormSchema = z.object({
   notes: z
     .string()
     .trim()
-    .max(NOTES_MAX_LENGTH, `Notes must be ${NOTES_MAX_LENGTH} characters or fewer`),
+    .max(
+      TRADE_GROUP_ITEM_NOTES_MAX_LENGTH,
+      `Notes must be ${TRADE_GROUP_ITEM_NOTES_MAX_LENGTH} characters or fewer`,
+    ),
 });
 
 export const tradeGroupFormSchema = z

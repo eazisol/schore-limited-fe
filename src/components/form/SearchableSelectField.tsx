@@ -17,6 +17,7 @@ export interface SearchableSelectFieldProps<T extends FieldValues> {
   searchPlaceholder?: string;
   disabled?: boolean;
   className?: string;
+  triggerClassName?: string;
   /** React Query key prefix for this dropdown. */
   queryKey: readonly unknown[];
   /** Fetch options for the current search term (server-side). */
@@ -39,6 +40,7 @@ export function SearchableSelectField<T extends FieldValues>({
   searchPlaceholder = "Search…",
   disabled,
   className,
+  triggerClassName,
   queryKey,
   fetchOptions,
   selectedLabel,
@@ -74,6 +76,7 @@ export function SearchableSelectField<T extends FieldValues>({
                 selectedLabel={selectedLabel}
                 onSelect={onSelect}
                 invalid={!!fieldState.error}
+                triggerClassName={triggerClassName}
                 aria-label={typeof label === "string" ? label : undefined}
               />
             </FormControl>

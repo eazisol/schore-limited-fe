@@ -197,7 +197,6 @@ function TradeGroupDetail() {
     <div className="space-y-6">
       <PageHeader
         title={isEditing ? "Edit trade group" : "Trade group details"}
-        subtitle={!isEditing ? row.name : undefined}
         leading={
           <AppTooltip content="Back to trade groups" asChild>
             <Link
@@ -330,8 +329,8 @@ function TradeGroupDetail() {
                             : (catalogPrice ?? 0);
                         const name =
                           item.productName?.trim() || `Product #${item.productId}`;
-                        const truncatedName = truncateWithEllipsis(name, 15);
-                        const nameNeedsTooltip = name.length > 15;
+                        const truncatedName = truncateWithEllipsis(name, 20);
+                        const nameNeedsTooltip = name.length > 20;
                         const sku = item.productSku?.trim() || "";
                         const truncatedSku = sku ? truncateWithEllipsis(sku, 10) : "";
                         const skuNeedsTooltip = sku.length > 10;
