@@ -80,7 +80,7 @@ function NewTask() {
           }
         />
 
-        <Form form={form} onSubmit={submit} className="max-w-5xl space-y-6">
+        <Form form={form} onSubmit={submit} className="w-full space-y-6">
           <TaskFormFields disabled={createMutation.isPending} />
 
           <div className="flex flex-wrap items-center justify-end gap-2 pt-2">

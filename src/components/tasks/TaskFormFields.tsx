@@ -1,4 +1,4 @@
-import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
+import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   TextField,
@@ -7,8 +7,13 @@ import {
 } from "@/components/form";
 import { SearchableSelect } from "@/components/form/SearchableSelect";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Modal } from "@/components/Modal";
-import { Plus, Trash2 } from "lucide-react";
+import { AppTooltip } from "@/components/AppTooltip";
+import { Calculator, Plus, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { fmtGBP } from "@/lib/data";
+import { truncateWithEllipsis } from "@/lib/module-ui";
 import { emptyTaskItem, type TaskFormValues, type TaskItemFormValues } from "@/lib/task-form";
 import {
   fetchJobTypeOptions,
@@ -327,95 +332,131 @@ export function TaskFormFields({
 
   function renderAddControls(
     operativeId: string,
-    options?: { addButtonLabel?: string; querySuffix?: string },
+    options?: {
+      addButtonLabel?: string;
+      querySuffix?: string;
+      includeOperative?: boolean;
+      className?: string;
+    },
   ) {
     const addState = getAddState(operativeId);
     const addButtonLabel = options?.addButtonLabel ?? "Add for this operative";
     const querySuffix = options?.querySuffix ?? operativeId;
+    const includeOperative = options?.includeOperative ?? false;
     const canAdd =
       Boolean(operativeId) &&
       (addState.itemKind === "tradeGroup" ? Boolean(addState.tradeGroupId) : Boolean(addState.productId));
 
     return (
-      <div className="flex flex-wrap items-end gap-2">
-        <div className="min-w-[180px]">
-          <label className="mb-1 block text-xs text-muted-foreground">Add as</label>
-          <SearchableSelect
-            value={addState.itemKind}
-            onValueChange={(value) => {
-              const kind = (value || "tradeGroup") as "tradeGroup" | "product";
-              patchAddState(operativeId, {
-                itemKind: kind,
-                tradeGroupId: "",
-                tradeGroupLabel: "",
-                productId: "",
-                productLabel: "",
-              });
-            }}
-            onSelect={(opt) => {
-              const kind = (opt.value || "tradeGroup") as "tradeGroup" | "product";
-              patchAddState(operativeId, {
-                itemKind: kind,
-                tradeGroupId: "",
-                tradeGroupLabel: "",
-                productId: "",
-                productLabel: "",
-              });
-            }}
-            placeholder="Select type"
-            searchPlaceholder="Search add type…"
-            queryKey={["lookups", "add-as", querySuffix]}
-            fetchOptions={fetchAddAsOptions}
-            selectedLabel={addAsLabel(addState.itemKind)}
-            disabled={!operativeId || addControlsDisabled}
-          />
-        </div>
-        <div className="min-w-[220px]">
-          <label className="mb-1 block text-xs text-muted-foreground">Package / Add-on</label>
-          {addState.itemKind === "tradeGroup" ? (
+      <div
+        className={cn(
+          "flex w-full flex-wrap items-end justify-between gap-3",
+          options?.className,
+        )}
+      >
+        <div className="flex flex-wrap items-end gap-2">
+          {includeOperative ? (
+            <div className="w-[180px]">
+              <label className="mb-1 block text-xs text-muted-foreground">Active operative</label>
+              <SearchableSelect
+                value={activeOperativeId}
+                onValueChange={setActiveOperativeId}
+                onSelect={(opt) => {
+                  setActiveOperativeLabel(opt.label);
+                  if (opt.value) {
+                    setOperativeLabels((prev) => ({ ...prev, [opt.value]: opt.label }));
+                    void ensureOperativeMeta(opt.value, opt.label);
+                  }
+                }}
+                placeholder="Select operative"
+                searchPlaceholder="Search operatives…"
+                queryKey={["lookups", "operatives", "active"]}
+                fetchOptions={fetchOperativeOptions}
+                selectedLabel={activeOperativeLabel || null}
+                disabled={addControlsDisabled}
+              />
+            </div>
+          ) : null}
+          <div className="w-[180px]">
+            <label className="mb-1 block text-xs text-muted-foreground">Add as</label>
             <SearchableSelect
-              value={addState.tradeGroupId}
-              onValueChange={(value) => patchAddState(operativeId, { tradeGroupId: value })}
-              onSelect={(opt) =>
+              value={addState.itemKind}
+              onValueChange={(value) => {
+                const kind = (value || "tradeGroup") as "tradeGroup" | "product";
                 patchAddState(operativeId, {
-                  tradeGroupId: opt.value,
-                  tradeGroupLabel: opt.label,
-                })
-              }
-              placeholder="Select package"
-              searchPlaceholder="Search packages…"
-              queryKey={["lookups", "packages", "catalogue", querySuffix]}
-              fetchOptions={fetchPackageOptions}
-              selectedLabel={addState.tradeGroupLabel || null}
+                  itemKind: kind,
+                  tradeGroupId: "",
+                  tradeGroupLabel: "",
+                  productId: "",
+                  productLabel: "",
+                });
+              }}
+              onSelect={(opt) => {
+                const kind = (opt.value || "tradeGroup") as "tradeGroup" | "product";
+                patchAddState(operativeId, {
+                  itemKind: kind,
+                  tradeGroupId: "",
+                  tradeGroupLabel: "",
+                  productId: "",
+                  productLabel: "",
+                });
+              }}
+              placeholder="Select type"
+              searchPlaceholder="Search add type…"
+              queryKey={["lookups", "add-as", querySuffix]}
+              fetchOptions={fetchAddAsOptions}
+              selectedLabel={addAsLabel(addState.itemKind)}
               disabled={!operativeId || addControlsDisabled}
             />
-          ) : (
-            <SearchableSelect
-              value={addState.productId}
-              onValueChange={(value) => patchAddState(operativeId, { productId: value })}
-              onSelect={(opt) =>
-                patchAddState(operativeId, {
-                  productId: opt.value,
-                  productLabel: opt.label,
-                })
-              }
-              placeholder="Select add-on"
-              searchPlaceholder="Search add-ons…"
-              queryKey={["lookups", "active-products", querySuffix]}
-              fetchOptions={fetchProductOptions}
-              selectedLabel={addState.productLabel || null}
-              disabled={!operativeId || addControlsDisabled}
-            />
-          )}
+          </div>
+          <div className="w-[180px]">
+            <label className="mb-1 block text-xs text-muted-foreground">Package / Add-on</label>
+            {addState.itemKind === "tradeGroup" ? (
+              <SearchableSelect
+                value={addState.tradeGroupId}
+                onValueChange={(value) => patchAddState(operativeId, { tradeGroupId: value })}
+                onSelect={(opt) =>
+                  patchAddState(operativeId, {
+                    tradeGroupId: opt.value,
+                    tradeGroupLabel: opt.label,
+                  })
+                }
+                placeholder="Select package"
+                searchPlaceholder="Search packages…"
+                queryKey={["lookups", "packages", "catalogue", querySuffix]}
+                fetchOptions={fetchPackageOptions}
+                selectedLabel={addState.tradeGroupLabel || null}
+                disabled={!operativeId || addControlsDisabled}
+              />
+            ) : (
+              <SearchableSelect
+                value={addState.productId}
+                onValueChange={(value) => patchAddState(operativeId, { productId: value })}
+                onSelect={(opt) =>
+                  patchAddState(operativeId, {
+                    productId: opt.value,
+                    productLabel: opt.label,
+                  })
+                }
+                placeholder="Select add-on"
+                searchPlaceholder="Search add-ons…"
+                queryKey={["lookups", "active-products", querySuffix]}
+                fetchOptions={fetchProductOptions}
+                selectedLabel={addState.productLabel || null}
+                disabled={!operativeId || addControlsDisabled}
+              />
+            )}
+          </div>
         </div>
         <Button
           type="button"
           size="sm"
+          className="shrink-0"
           variant={options?.addButtonLabel ? "default" : "outline"}
           onClick={() => void (options?.addButtonLabel ? addFromTop() : addForOperative(operativeId))}
           disabled={!canAdd || addControlsDisabled}
         >
-          <Plus className="mr-1 h-4 w-4" />
+          <Plus className="h-4 w-4" />
           {addButtonLabel}
         </Button>
       </div>
@@ -445,7 +486,39 @@ export function TaskFormFields({
         addOns.push(index);
       }
     }
-    return { packages: Array.from(packages.entries()), addOns };
+
+    const workDateValue = (index: number) => {
+      const raw = items[index]?.workDate?.trim() ?? "";
+      if (!raw) return 0;
+      const time = new Date(`${raw.slice(0, 10)}T12:00:00`).getTime();
+      return Number.isFinite(time) ? time : 0;
+    };
+
+    const sortIndexesByLatestDate = (list: number[]) =>
+      [...list].sort((a, b) => {
+        const dateDiff = workDateValue(b) - workDateValue(a);
+        return dateDiff !== 0 ? dateDiff : b - a;
+      });
+
+    const sortedPackages = Array.from(packages.entries())
+      .map(([id, pkg]) => {
+        const sortedIndexes = sortIndexesByLatestDate(pkg.indexes);
+        const latestDate = sortedIndexes.reduce(
+          (max, index) => Math.max(max, workDateValue(index)),
+          0,
+        );
+        return [id, { ...pkg, indexes: sortedIndexes, latestDate }] as const;
+      })
+      .sort((a, b) => {
+        const dateDiff = b[1].latestDate - a[1].latestDate;
+        return dateDiff !== 0 ? dateDiff : Number(b[0]) - Number(a[0]);
+      })
+      .map(([id, pkg]) => [id, { name: pkg.name, indexes: pkg.indexes }] as const);
+
+    return {
+      packages: sortedPackages,
+      addOns: sortIndexesByLatestDate(addOns),
+    };
   }
 
   function resolveRatePrompt(permanent: boolean) {
@@ -467,7 +540,7 @@ export function TaskFormFields({
     <fieldset disabled={disabled} className="space-y-6">
       <div className="card-elevated space-y-4 p-4 sm:p-6">
         <h3 className="font-display font-semibold">Task details</h3>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <SearchableSelectField<TaskFormValues>
             name="propertyId"
             label="Property"
@@ -488,8 +561,19 @@ export function TaskFormFields({
             selectedLabel={selectedLabels?.jobType}
             fetchOptions={fetchJobTypeOptions}
           />
-          <TextField<TaskFormValues> name="startDate" label="Start date" type="date" required />
-          <TextField<TaskFormValues> name="handOverDate" label="Hand over date" type="date" />
+          <TextField<TaskFormValues>
+            name="startDate"
+            label="Start date"
+            type="date"
+            required
+            inputClassName="h-10"
+          />
+          <TextField<TaskFormValues>
+            name="handOverDate"
+            label="Hand over date"
+            type="date"
+            inputClassName="h-10"
+          />
           <TextField<TaskFormValues>
             name="budget"
             label="Budget"
@@ -497,6 +581,7 @@ export function TaskFormFields({
             min={0}
             step="0.01"
             placeholder="0.00"
+            inputClassName="h-10"
           />
           <SearchableSelectField<TaskFormValues>
             name="statusId"
@@ -524,7 +609,7 @@ export function TaskFormFields({
       </div>
 
       <div className="space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="space-y-3">
           <div>
             <h3 className="font-display font-semibold">Task items by operative</h3>
             {itemsLocked ? (
@@ -533,32 +618,11 @@ export function TaskFormFields({
               </p>
             ) : null}
           </div>
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="min-w-[220px]">
-              <label className="mb-1 block text-xs text-muted-foreground">Active operative</label>
-              <SearchableSelect
-                value={activeOperativeId}
-                onValueChange={setActiveOperativeId}
-                onSelect={(opt) => {
-                  setActiveOperativeLabel(opt.label);
-                  if (opt.value) {
-                    setOperativeLabels((prev) => ({ ...prev, [opt.value]: opt.label }));
-                    void ensureOperativeMeta(opt.value, opt.label);
-                  }
-                }}
-                placeholder="Select operative"
-                searchPlaceholder="Search operatives…"
-                queryKey={["lookups", "operatives", "active"]}
-                fetchOptions={fetchOperativeOptions}
-                selectedLabel={activeOperativeLabel || null}
-                disabled={addControlsDisabled}
-              />
-            </div>
-            {renderAddControls(activeOperativeId, {
-              addButtonLabel: "Add item",
-              querySuffix: "top",
-            })}
-          </div>
+          {renderAddControls(activeOperativeId, {
+            addButtonLabel: "Add item",
+            querySuffix: "top",
+            includeOperative: true,
+          })}
         </div>
 
         {operativeCards.length === 0 ? (
@@ -574,10 +638,16 @@ export function TaskFormFields({
             operativeLabels[operativeId] ||
             (operativeId === activeOperativeId ? activeOperativeLabel : `Operative #${operativeId}`);
           const { packages, addOns } = packageGroupsForOperative(indexes);
+          const operativeTotal = indexes.reduce((sum, index) => {
+            const qty = Number(items[index]?.quantity || 0);
+            const rate = Number(items[index]?.rate || 0);
+            const line = qty * rate;
+            return sum + (Number.isFinite(line) ? line : 0);
+          }, 0);
 
           return (
             <div key={operativeId} className="card-elevated space-y-4 p-4 sm:p-6">
-              <div className="flex flex-wrap items-end justify-between gap-3">
+              <div className="space-y-3">
                 <h4 className="font-medium">{name}</h4>
                 {renderAddControls(operativeId)}
               </div>
@@ -590,7 +660,11 @@ export function TaskFormFields({
 
               {packages.map(([packageId, pkg]) => (
                 <div key={`${operativeId}-pkg-${packageId}`} className="space-y-2">
-                  <p className="text-sm font-medium">Package: {pkg.name}</p>
+                  <span className="inline-flex max-w-full items-center rounded-full border border-border bg-secondary px-2.5 py-0.5 text-[11px] font-medium text-secondary-foreground">
+                    <AppTooltip content={`Package: ${pkg.name}`} asChild align="start">
+                      <span className="truncate">Package: {pkg.name}</span>
+                    </AppTooltip>
+                  </span>
                   <ProductLinesTable
                     indexes={pkg.indexes}
                     fields={fields}
@@ -609,7 +683,9 @@ export function TaskFormFields({
 
               {addOns.length > 0 ? (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">Add-ons</p>
+                  <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                    Add-ons
+                  </span>
                   <ProductLinesTable
                     indexes={addOns}
                     fields={fields}
@@ -623,6 +699,27 @@ export function TaskFormFields({
                     }}
                     getValues={getValues}
                   />
+                </div>
+              ) : null}
+
+              {indexes.length > 0 ? (
+                <div className="flex items-center justify-between gap-4 rounded-md border border-border/60 bg-muted/50 px-3 py-3 sm:px-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
+                      <Calculator className="h-3.5 w-3.5" aria-hidden />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-foreground">Total</div>
+                      <div className="text-xs text-muted-foreground">
+                        {indexes.length} item{indexes.length === 1 ? "" : "s"}
+                      </div>
+                    </div>
+                  </div>
+                  <AppTooltip content={fmtGBP(operativeTotal)} asChild align="end">
+                    <div className="shrink-0 font-display text-base font-semibold tabular-nums tracking-tight text-foreground sm:text-lg">
+                      {fmtGBP(operativeTotal)}
+                    </div>
+                  </AppTooltip>
                 </div>
               ) : null}
             </div>
@@ -756,6 +853,7 @@ function ProductLineRow({
 }) {
   const quantity = Number(useWatch({ control, name: `items.${index}.quantity` }) || 0);
   const rate = Number(useWatch({ control, name: `items.${index}.rate` }) || 0);
+  const notes = String(useWatch({ control, name: `items.${index}.notes` }) ?? "");
   const amount = Number.isFinite(quantity * rate) ? quantity * rate : 0;
   const rateBeforeEdit = useRef(item?.rate ?? "0");
 
@@ -772,7 +870,9 @@ function ProductLineRow({
 
   return (
     <tr className="align-top border-b border-border/50">
-      <td className="px-3 py-2 font-medium">{productLabel}</td>
+      <td className="px-3 py-2 font-medium">
+        <TruncatedTooltip text={productLabel} maxChars={28} />
+      </td>
       <td className="px-3 py-2">
         <input
           type="date"
@@ -823,23 +923,65 @@ function ProductLineRow({
           }}
         />
       </td>
-      <td className="px-3 py-2 font-medium">£{amount.toFixed(2)}</td>
-      <td className="px-3 py-2">
-        <input type="checkbox" className="h-4 w-4" {...register(`items.${index}.isTicked`)} />
+      <td className="px-3 py-2 font-medium">
+        <AppTooltip content={fmtGBP(amount)} asChild align="end">
+          <span className="inline-block tabular-nums">{fmtGBP(amount)}</span>
+        </AppTooltip>
       </td>
       <td className="px-3 py-2">
-        <input
-          type="text"
-          className="h-9 w-[200px] rounded-md border border-input bg-background px-3 text-sm"
-          placeholder="Notes"
-          {...register(`items.${index}.notes`)}
-        />
+        <AppTooltip content="Tick to confirm this line for the daily programme" asChild>
+          <span className="inline-flex">
+            <Controller
+              control={control}
+              name={`items.${index}.isTicked`}
+              render={({ field }) => (
+                <Checkbox
+                  checked={!!field.value}
+                  onCheckedChange={(checked) => field.onChange(checked === true)}
+                  aria-label="Ticked"
+                />
+              )}
+            />
+          </span>
+        </AppTooltip>
       </td>
       <td className="px-3 py-2">
-        <Button type="button" size="icon" variant="ghost" onClick={onRemove} aria-label="Remove item">
-          <Trash2 className="h-4 w-4 text-destructive" />
-        </Button>
+        <AppTooltip content={notes.trim() || undefined} disabled={!notes.trim()} asChild align="start">
+          <div className="min-w-0">
+            <input
+              type="text"
+              className="h-9 w-[200px] truncate rounded-md border border-input bg-background px-3 text-sm"
+              placeholder="Notes"
+              {...register(`items.${index}.notes`)}
+            />
+          </div>
+        </AppTooltip>
+      </td>
+      <td className="px-3 py-2">
+        <AppTooltip content="Remove item" asChild>
+          <Button type="button" size="icon" variant="ghost" onClick={onRemove} aria-label="Remove item">
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </AppTooltip>
       </td>
     </tr>
+  );
+}
+
+function TruncatedTooltip({
+  text,
+  maxChars = 24,
+}: {
+  text: string;
+  maxChars?: number;
+}) {
+  const value = text.trim();
+  if (!value) return <span>—</span>;
+  const truncated = truncateWithEllipsis(value, maxChars);
+  const label = <span className="block min-w-0 max-w-[12rem] truncate">{truncated}</span>;
+  return (
+    <AppTooltip content={value} asChild align="start">
+      <span className="block min-w-0 max-w-[12rem] cursor-default">{label}</span>
+    </AppTooltip>
   );
 }

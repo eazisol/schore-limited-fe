@@ -29,7 +29,6 @@ import { DAY_SUGGESTIONS_ROUTE } from "@/lib/day-suggestions";
 import {
   DESCRIPTION_MAX_LENGTH,
   descriptionSchema,
-  orderBySchema,
 } from "@/lib/field-validation";
 
 export const Route = createFileRoute("/day-suggestions")({
@@ -38,6 +37,13 @@ export const Route = createFileRoute("/day-suggestions")({
 });
 
 export const daySuggestionsQueryKey = ["day-suggestions"] as const;
+
+function splitSuggestedCodes(codes: string): string[] {
+  return codes
+    .split(/[,/]/)
+    .map((code) => code.trim())
+    .filter(Boolean);
+}
 
 const schema = z.object({
   dayNumber: z.coerce
@@ -50,7 +56,6 @@ const schema = z.object({
     .min(1, "Codes are required")
     .max(200, "Codes must be 200 characters or fewer"),
   description: descriptionSchema(),
-  orderBy: orderBySchema(),
   isActive: z.boolean(),
 });
 type Values = z.infer<typeof schema>;
@@ -103,12 +108,11 @@ function DaySuggestionsPage() {
     try {
       downloadCsv({
         filename: `day-suggestions-export-${new Date().toISOString().slice(0, 10)}.csv`,
-        headers: ["Day", "Codes", "Description", "Order", "Status"],
+        headers: ["Day", "Codes", "Description", "Status"],
         rows: rows.map((item) => [
           String(item.dayNumber),
           item.codes,
           item.description ?? "",
-          String(item.orderBy),
           item.isActive ? "Active" : "Inactive",
         ]),
       });
@@ -125,24 +129,36 @@ function DaySuggestionsPage() {
       {
         id: "dayNumber",
         header: "Day",
-        cell: (item) => <span className="font-medium">Day {item.dayNumber}</span>,
+        accessor: (item) => `Day ${item.dayNumber}`,
+        cell: (item) => (
+          <button
+            type="button"
+            className="font-medium text-left hover:text-info hover:underline"
+            onClick={() => setMode({ kind: "view", item })}
+          >
+            Day {item.dayNumber}
+          </button>
+        ),
       },
       {
         id: "codes",
         header: "Suggested codes",
-        cell: (item) => <span className="font-medium">{item.codes}</span>,
-      },
-      {
-        id: "description",
-        header: "Description",
-        cellClassName: "text-muted-foreground",
-        cell: (item) => item.description || "—",
-      },
-      {
-        id: "orderBy",
-        header: "Order",
-        cellClassName: "text-muted-foreground",
-        cell: (item) => String(item.orderBy),
+        cell: (item) => {
+          const codes = splitSuggestedCodes(item.codes);
+          if (codes.length === 0) return "—";
+          return (
+            <div className="flex flex-wrap gap-1">
+              {codes.map((code) => (
+                <code
+                  key={code}
+                  className="rounded bg-secondary px-1.5 py-0.5 text-xs font-mono"
+                >
+                  {code}
+                </code>
+              ))}
+            </div>
+          );
+        },
       },
       {
         id: "status",
@@ -328,7 +344,6 @@ function DaySuggestionFormModal({
       dayNumber: existing?.dayNumber ?? 1,
       codes: existing?.codes ?? "",
       description: existing?.description ?? "",
-      orderBy: existing?.orderBy ?? existing?.dayNumber ?? 1,
       isActive: existing?.isActive ?? true,
     },
   });
@@ -352,7 +367,8 @@ function DaySuggestionFormModal({
       dayNumber: values.dayNumber,
       codes: values.codes.trim(),
       description: values.description.trim() || null,
-      orderBy: values.orderBy,
+      // Backend defaults OrderBy to DayNumber when 0; keep field out of the UI.
+      orderBy: 0,
       isActive: values.isActive,
     });
   }
@@ -376,23 +392,24 @@ function DaySuggestionFormModal({
       >
         <div className="space-y-4">
           <fieldset disabled={isView} className="space-y-4">
-            <TextField<Values>
-              name="dayNumber"
-              label="Day number"
-              type="number"
-              min={1}
-              step={1}
-              required
-              autoFocus={!isView}
-            />
-            <TextField<Values>
-              name="codes"
-              label="Suggested codes"
-              placeholder="e.g. L, Pl or ASB/Pl/E"
-              required
-              maxLength={200}
-            />
-            <TextField<Values> name="orderBy" label="Order" type="number" min={0} step={1} required />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <TextField<Values>
+                name="dayNumber"
+                label="Day number"
+                type="number"
+                min={1}
+                step={1}
+                required
+                autoFocus={!isView}
+              />
+              <TextField<Values>
+                name="codes"
+                label="Suggested codes"
+                placeholder="e.g. L, Pl or ASB/Pl/E"
+                required
+                maxLength={200}
+              />
+            </div>
             <TextareaField<Values>
               name="description"
               label="Description"

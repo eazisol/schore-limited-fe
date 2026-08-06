@@ -29,7 +29,7 @@ import { HOLD_REASONS_ROUTE } from "@/lib/hold-reasons";
 import {
   DESCRIPTION_MAX_LENGTH,
   descriptionSchema,
-  orderBySchema,
+  nameSchema,
 } from "@/lib/field-validation";
 
 export const Route = createFileRoute("/hold-reasons")({
@@ -41,9 +41,8 @@ export const holdReasonsQueryKey = ["hold-reasons"] as const;
 const lookupsKey = ["lookups", "hold-reasons"] as const;
 
 const schema = z.object({
-  name: z.string().trim().min(1, "Name is required").max(200),
+  name: nameSchema("Name", 200),
   description: descriptionSchema(),
-  orderBy: orderBySchema(),
   isActive: z.boolean(),
 });
 type Values = z.infer<typeof schema>;
@@ -97,11 +96,10 @@ function HoldReasonsPage() {
     try {
       downloadCsv({
         filename: `hold-reasons-export-${new Date().toISOString().slice(0, 10)}.csv`,
-        headers: ["Name", "Description", "Order", "Status"],
+        headers: ["Name", "Description", "Status"],
         rows: rows.map((item) => [
           item.name,
           item.description ?? "",
-          String(item.orderBy),
           item.isActive ? "Active" : "Inactive",
         ]),
       });
@@ -118,19 +116,16 @@ function HoldReasonsPage() {
       {
         id: "name",
         header: "Name",
-        cell: (item) => <span className="font-medium">{item.name}</span>,
-      },
-      {
-        id: "description",
-        header: "Description",
-        cellClassName: "text-muted-foreground",
-        cell: (item) => item.description || "—",
-      },
-      {
-        id: "orderBy",
-        header: "Order",
-        cellClassName: "text-muted-foreground",
-        cell: (item) => String(item.orderBy),
+        accessor: (item) => item.name,
+        cell: (item) => (
+          <button
+            type="button"
+            className="font-medium text-left hover:text-info hover:underline"
+            onClick={() => setMode({ kind: "view", item })}
+          >
+            {item.name}
+          </button>
+        ),
       },
       {
         id: "status",
@@ -313,7 +308,6 @@ function HoldReasonFormModal({
     defaultValues: {
       name: existing?.name ?? "",
       description: existing?.description ?? "",
-      orderBy: existing?.orderBy ?? 0,
       isActive: existing?.isActive ?? true,
     },
   });
@@ -336,7 +330,7 @@ function HoldReasonFormModal({
     await mutation.mutateAsync({
       name: values.name.trim(),
       description: values.description.trim() || null,
-      orderBy: values.orderBy,
+      orderBy: existing?.orderBy ?? 0,
       isActive: values.isActive,
     });
   }
@@ -361,7 +355,6 @@ function HoldReasonFormModal({
         <div className="space-y-4">
           <fieldset disabled={isView} className="space-y-4">
             <TextField<Values> name="name" label="Name" required autoFocus={!isView} maxLength={200} />
-            <TextField<Values> name="orderBy" label="Order" type="number" min={0} step={1} required />
             <TextareaField<Values>
               name="description"
               label="Description"

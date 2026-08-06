@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -26,6 +26,13 @@ import {
   type DataTableRowAction,
 } from "@/components/data-table";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   statusesService,
   type ApiStatus,
   type StatusPayload,
@@ -35,14 +42,11 @@ import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { activeStatusClass } from "@/lib/module-ui";
 import { STATUSES_ROUTE } from "@/lib/statuses";
 import {
-  CODE_MAX_LENGTH,
   DESCRIPTION_MAX_LENGTH,
-  NAME_MAX_LENGTH,
   codeSchema,
   descriptionSchema,
   nameSchema,
   normalizeCodeInput,
-  orderBySchema,
 } from "@/lib/field-validation";
 
 export const Route = createFileRoute("/statuses")({
@@ -53,12 +57,15 @@ export const Route = createFileRoute("/statuses")({
 export const statusesQueryKey = ["statuses"] as const;
 const lookupsKey = ["lookups", "statuses"] as const;
 
+/** Status-module-specific field limits (stricter than shared defaults). */
+const STATUS_NAME_MAX_LENGTH = 50;
+const STATUS_CODE_MAX_LENGTH = 20;
+
 const schema = z.object({
-  name: nameSchema(),
-  code: codeSchema(),
+  name: nameSchema("Name", STATUS_NAME_MAX_LENGTH),
+  code: codeSchema("Code", STATUS_CODE_MAX_LENGTH),
   documentTypeId: z.string().trim().min(1, "Document type is required"),
   description: descriptionSchema(),
-  orderBy: orderBySchema(),
   isActive: z.boolean(),
 });
 type Values = z.infer<typeof schema>;
@@ -103,6 +110,13 @@ function StatusesPage() {
   const totalCount = query.data?.totalCount ?? 0;
   const totalPages = query.data?.totalPages ?? 1;
 
+  // If the current page is past the last page (e.g. deleted the only row on page 2), go back.
+  useEffect(() => {
+    if (!query.isFetching && page > totalPages) {
+      setPage(Math.max(1, totalPages));
+    }
+  }, [query.isFetching, page, totalPages]);
+
   const deleteMutation = useMutation({
     mutationFn: (id: number) => statusesService.remove(id),
     onSuccess: (res) => {
@@ -123,12 +137,12 @@ function StatusesPage() {
     try {
       downloadCsv({
         filename: `statuses-export-${new Date().toISOString().slice(0, 10)}.csv`,
-        headers: ["Name", "Code", "Document Type", "Order", "Status"],
+        headers: ["Name", "Code", "Document Type", "Description", "Status"],
         rows: rows.map((item) => [
           item.name,
           item.code,
           item.documentTypeName ?? "",
-          String(item.orderBy),
+          item.description ?? "",
           item.isActive ? "Active" : "Inactive",
         ]),
       });
@@ -144,7 +158,15 @@ function StatusesPage() {
         id: "name",
         header: "Name",
         accessor: (item) => item.name,
-        cell: (item) => <span className="font-medium">{item.name}</span>,
+        cell: (item) => (
+          <button
+            type="button"
+            className="font-medium text-left hover:text-info hover:underline"
+            onClick={() => setMode({ kind: "view", item })}
+          >
+            {item.name}
+          </button>
+        ),
       },
       {
         id: "code",
@@ -156,14 +178,9 @@ function StatusesPage() {
       {
         id: "documentType",
         header: "Document type",
+        width: "9rem",
         accessor: (item) => item.documentTypeName || "—",
         cell: (item) => item.documentTypeName || "—",
-      },
-      {
-        id: "orderBy",
-        header: "Order",
-        accessor: (item) => String(item.orderBy),
-        cellClassName: "text-muted-foreground",
       },
       {
         id: "status",
@@ -213,13 +230,6 @@ function StatusesPage() {
         title="Statuses"
         actions={
           <>
-            <DocumentTypeFilter
-              value={documentTypeFilter}
-              onChange={(value) => {
-                setDocumentTypeFilter(value);
-                setPage(1);
-              }}
-            />
             <Button
               variant="outline"
               size="sm"
@@ -267,6 +277,15 @@ function StatusesPage() {
           placeholder: "Search by name or code…",
           "aria-label": "Search statuses",
         }}
+        filters={
+          <DocumentTypeFilter
+            value={documentTypeFilter}
+            onChange={(value) => {
+              setDocumentTypeFilter(value);
+              setPage(1);
+            }}
+          />
+        }
         emptyState={{
           title: "No statuses found.",
           description: search || documentTypeFilter ? "Try clearing filters." : undefined,
@@ -364,26 +383,33 @@ function DocumentTypeFilter({
 }) {
   const query = useQuery({
     queryKey: ["lookups", "document-types", "filter"],
-    queryFn: async () => (await fetchDocumentTypeOptions("")).map((opt) => ({
-      value: opt.value,
-      label: opt.label,
-    })),
+    queryFn: async () =>
+      (await fetchDocumentTypeOptions("")).map((opt) => ({
+        value: opt.value,
+        label: opt.label,
+      })),
   });
 
   return (
-    <select
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-      aria-label="Filter by document type"
+    <Select
+      value={value || "all"}
+      onValueChange={(next) => onChange(next === "all" ? "" : next)}
     >
-      <option value="">All document types</option>
-      {(query.data ?? []).map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger
+        className="h-9 w-full min-w-[11rem] sm:w-60 [&>span]:whitespace-nowrap"
+        aria-label="Filter by document type"
+      >
+        <SelectValue placeholder="All document types" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All document types</SelectItem>
+        {(query.data ?? []).map((opt) => (
+          <SelectItem key={opt.value} value={opt.value}>
+            {opt.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -408,7 +434,6 @@ function StatusFormModal({
       code: existing?.code ?? "",
       documentTypeId: existing?.documentTypeId ? String(existing.documentTypeId) : "",
       description: existing?.description ?? "",
-      orderBy: existing?.orderBy ?? 0,
       isActive: existing?.isActive ?? true,
     },
   });
@@ -431,7 +456,7 @@ function StatusFormModal({
       code: values.code.trim().toUpperCase(),
       documentTypeId: Number(values.documentTypeId),
       description: values.description.trim() || null,
-      orderBy: values.orderBy,
+      orderBy: existing?.orderBy ?? 0,
       isActive: values.isActive,
     });
   }
@@ -471,25 +496,15 @@ function StatusFormModal({
                 label="Name"
                 required
                 autoFocus={!isView}
-                maxLength={NAME_MAX_LENGTH}
+                maxLength={STATUS_NAME_MAX_LENGTH}
               />
               <TextField<Values>
                 name="code"
                 label="Code"
                 required
-                maxLength={CODE_MAX_LENGTH}
+                maxLength={STATUS_CODE_MAX_LENGTH}
                 transformValue={normalizeCodeInput}
                 inputClassName="uppercase"
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <TextField<Values>
-                name="orderBy"
-                label="Order"
-                type="number"
-                min={0}
-                step={1}
-                required
               />
             </div>
             <TextareaField<Values>

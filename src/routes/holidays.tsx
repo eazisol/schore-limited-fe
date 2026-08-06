@@ -14,6 +14,7 @@ import { Can, usePermission } from "@/components/Permission";
 import {
   DataTable,
   downloadCsv,
+  csvForceText,
   useDebouncedSearch,
   type DataTableColumn,
   type DataTableRowAction,
@@ -99,7 +100,7 @@ function HolidaysPage() {
         headers: ["Name", "Date", "Description", "Status"],
         rows: rows.map((item) => [
           item.name,
-          item.date?.slice(0, 10) ?? "",
+          csvForceText(item.date?.slice(0, 10) ?? ""),
           item.description ?? "",
           item.isActive ? "Active" : "Inactive",
         ]),
@@ -115,18 +116,22 @@ function HolidaysPage() {
       {
         id: "name",
         header: "Name",
-        cell: (item) => <span className="font-medium">{item.name}</span>,
+        accessor: (item) => item.name,
+        cell: (item) => (
+          <button
+            type="button"
+            className="font-medium text-left hover:text-info hover:underline"
+            onClick={() => setMode({ kind: "view", item })}
+          >
+            {item.name}
+          </button>
+        ),
       },
       {
         id: "date",
         header: "Date",
+        width: "9rem",
         cell: (item) => item.date?.slice(0, 10) || "—",
-      },
-      {
-        id: "description",
-        header: "Description",
-        cellClassName: "text-muted-foreground",
-        cell: (item) => item.description || "—",
       },
       {
         id: "status",
@@ -349,8 +354,10 @@ function HolidayFormModal({
       >
         <div className="space-y-4">
           <fieldset disabled={isView} className="space-y-4">
-            <TextField<Values> name="name" label="Name" required autoFocus={!isView} maxLength={NAME_MAX_LENGTH} />
-            <TextField<Values> name="date" label="Date" type="date" required />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <TextField<Values> name="name" label="Name" required autoFocus={!isView} maxLength={NAME_MAX_LENGTH} />
+              <TextField<Values> name="date" label="Date" type="date" required />
+            </div>
             <TextareaField<Values>
               name="description"
               label="Description"

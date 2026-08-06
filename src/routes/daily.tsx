@@ -1,9 +1,27 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useCallback, useMemo, useState } from "react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Lock, ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AppTooltip } from "@/components/AppTooltip";
+import {
+  DataTable,
+  downloadCsv,
+  useDebouncedSearch,
+  type DataTableColumn,
+  type DataTableRowAction,
+} from "@/components/data-table";
+import {
+  Lock,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Plus,
+  Eye,
+  Pencil,
+  Download,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   dailyProgrammeService,
@@ -12,13 +30,14 @@ import {
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { Can, usePermission } from "@/components/Permission";
 import { DAILY_ROUTE } from "@/lib/daily";
+import { truncateWithEllipsis } from "@/lib/module-ui";
 
 export const Route = createFileRoute("/daily")({
   head: () => ({ meta: [{ title: "Daily Programme | Schore" }] }),
   component: Daily,
 });
 
-const dailyQueryKey = ["daily-programme"] as const;
+export const dailyQueryKey = ["daily-programme"] as const;
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -39,6 +58,29 @@ function formatLongDate(iso: string) {
   });
 }
 
+function matchesSearch(row: ApiDailyRow, search: string) {
+  if (!search) return true;
+  const q = search.toLowerCase();
+  const haystack = [
+    row.taskNumber,
+    row.propertyName,
+    row.propertyAddress,
+    row.contract,
+    row.postCode,
+    row.type,
+    row.statusName,
+    row.statusCode,
+    row.tradeOrStatus,
+    row.nameDisplay,
+    row.notesDisplay,
+    row.nextDay,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(q);
+}
+
 function Daily() {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -46,18 +88,31 @@ function Daily() {
   const [date, setDate] = useState(todayIso);
   const [showHO, setShowHO] = useState(false);
   const [confirmRoll, setConfirmRoll] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [exporting, setExporting] = useState(false);
+  const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
+    onPageReset: () => setPage(1),
+  });
 
-  function openTaskEdit(taskId: number) {
-    navigate({
-      to: "/tasks/$id",
-      params: { id: String(taskId) },
-      search: { mode: canModifyDaily ? "edit" : "view", from: "daily" },
-    });
-  }
+  const openTask = useCallback(
+    (taskId: number, mode: "view" | "edit") => {
+      navigate({
+        to: "/tasks/$id",
+        params: { id: String(taskId) },
+        search: {
+          mode: mode === "edit" && canModifyDaily ? "edit" : "view",
+          from: "daily",
+        },
+      });
+    },
+    [canModifyDaily, navigate],
+  );
 
   const query = useQuery({
     queryKey: [...dailyQueryKey, date, showHO],
     queryFn: async () => (await dailyProgrammeService.get(date, showHO)).data,
+    placeholderData: keepPreviousData,
   });
 
   const rollMutation = useMutation({
@@ -67,76 +122,339 @@ function Daily() {
       setConfirmRoll(false);
       const next = res.data?.nextDate?.slice(0, 10);
       if (next) setDate(next);
+      setPage(1);
       void qc.invalidateQueries({ queryKey: dailyQueryKey });
     },
     onError: (err) => notifyApiError(err, "Unable to roll forward"),
   });
 
   const data = query.data;
-  const rows = data?.rows ?? [];
+  const allRows = data?.rows ?? [];
+
+  const filteredRows = useMemo(
+    () => allRows.filter((row) => matchesSearch(row, search)),
+    [allRows, search],
+  );
+
+  const totalCount = filteredRows.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const pageSafe = Math.min(page, totalPages);
+  const rows = useMemo(() => {
+    const start = (pageSafe - 1) * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [filteredRows, pageSafe, pageSize]);
 
   const kpis = useMemo(
     () => [
       { label: "In Progress", value: data?.inProgressCount ?? 0, tone: "info" as const },
       { label: "On Hold", value: data?.onHoldCount ?? 0, tone: "warn" as const },
-      { label: "On roll", value: rows.length, tone: "ok" as const },
+      { label: "On roll", value: allRows.length, tone: "ok" as const },
       {
         label: "Operatives on Site",
         value: data?.operativesOnSiteCount ?? 0,
         tone: "ok" as const,
       },
     ],
-    [data, rows.length],
+    [data, allRows.length],
+  );
+
+  function handleExportCsv() {
+    if (rows.length === 0) {
+      toast.warning("No rows to export for the current page.");
+      return;
+    }
+    setExporting(true);
+    try {
+      downloadCsv({
+        filename: `daily-programme-${date}.csv`,
+        headers: [
+          "No.",
+          "Task #",
+          "Property",
+          "Address",
+          "Contract",
+          "Post Code",
+          "Type",
+          "Starting Date",
+          "HO",
+          "DAY",
+          "Held Days",
+          "Trade / Status",
+          "Name",
+          "Notes",
+          "Time",
+          "Next Day",
+          "Locked",
+        ],
+        rows: rows.map((row) => [
+          row.no,
+          row.taskNumber,
+          row.propertyName,
+          row.propertyAddress ?? "",
+          row.contract ?? "",
+          row.postCode ?? "",
+          row.type ?? "",
+          row.startingDate?.slice(0, 10) ?? "",
+          row.handOverDate?.slice(0, 10) ?? "",
+          row.daysCount,
+          row.heldDaysCount,
+          row.tradeOrStatus || "",
+          row.nameDisplay ?? "",
+          row.notesDisplay ?? "",
+          row.timeDisplay ?? "",
+          row.nextDay ?? "",
+          row.isLocked ? "Yes" : "No",
+        ]),
+      });
+      toast.success(`Exported ${rows.length} row${rows.length === 1 ? "" : "s"} to CSV`);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function clearFilters() {
+    clearSearch();
+    setShowHO(false);
+    setPage(1);
+  }
+
+  const hasActiveFilters = Boolean(search || showHO);
+
+  const columns = useMemo<DataTableColumn<ApiDailyRow>[]>(
+    () => [
+      {
+        id: "no",
+        header: "No.",
+        width: "3.5rem",
+        accessor: (row) => row.no,
+        cell: (row) => (
+          <span className="tabular-nums text-muted-foreground">{row.no}</span>
+        ),
+      },
+      {
+        id: "property",
+        header: "Property",
+        width: "14rem",
+        truncate: false,
+        accessor: (row) =>
+          [row.propertyName, row.propertyAddress, row.accessNotes].filter(Boolean).join(" · "),
+        cell: (row) => {
+          const propertyLine = [row.propertyAddress, row.accessNotes].filter(Boolean).join(" · ");
+          const propertyTooltip = [row.propertyName, row.propertyAddress, row.accessNotes]
+            .filter(Boolean)
+            .join(" · ");
+          return (
+            <div className="flex items-start gap-1.5">
+              {row.isLocked ? (
+                <Lock
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning-foreground"
+                  aria-label="Locked"
+                />
+              ) : null}
+              <div className="min-w-0">
+                <AppTooltip content={propertyTooltip} asChild align="start">
+                  <Link
+                    to="/tasks/$id"
+                    params={{ id: String(row.taskId) }}
+                    search={{
+                      mode: canModifyDaily ? "edit" : "view",
+                      from: "daily",
+                    }}
+                    className="inline-block max-w-full font-medium hover:text-info hover:underline"
+                  >
+                    {truncateWithEllipsis(row.propertyName, 40)}
+                  </Link>
+                </AppTooltip>
+                {propertyLine ? (
+                  <AppTooltip content={propertyLine} asChild align="start">
+                    <div className="mt-0.5 max-w-full cursor-default truncate text-[11px] text-muted-foreground">
+                      {propertyLine}
+                    </div>
+                  </AppTooltip>
+                ) : null}
+                {row.previousDayName ? (
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    Yesterday: {row.previousDayName}
+                  </div>
+                ) : null}
+                {row.isLocked ? (
+                  <div className="mt-1 text-[11px] font-medium text-warning-foreground">
+                    Locked — no tick on previous day
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        id: "contract",
+        header: "Contract",
+        width: "7rem",
+        accessor: (row) => row.contract || "—",
+        cell: (row) => <code className="font-mono text-xs">{row.contract || "—"}</code>,
+      },
+      {
+        id: "postCode",
+        header: "Post Code",
+        width: "6rem",
+        accessor: (row) => row.postCode || "—",
+      },
+      {
+        id: "type",
+        header: "Type",
+        width: "6rem",
+        accessor: (row) => row.type || "—",
+      },
+      {
+        id: "startingDate",
+        header: "Starting Date",
+        width: "7rem",
+        accessor: (row) => row.startingDate?.slice(0, 10) || "—",
+        cell: (row) => (
+          <span className="tabular-nums">{row.startingDate?.slice(0, 10) || "—"}</span>
+        ),
+      },
+      {
+        id: "ho",
+        header: "HO",
+        width: "6.5rem",
+        accessor: (row) => row.handOverDate?.slice(0, 10) || "—",
+        cell: (row) => (
+          <span className="tabular-nums">{row.handOverDate?.slice(0, 10) || "—"}</span>
+        ),
+      },
+      {
+        id: "day",
+        header: "DAY",
+        width: "5rem",
+        accessor: (row) =>
+          row.heldDaysCount > 0 ? `${row.daysCount} (-${row.heldDaysCount})` : String(row.daysCount),
+        cell: (row) => (
+          <span className="font-mono tabular-nums">
+            {row.daysCount}
+            {row.heldDaysCount > 0 ? (
+              <span className="ml-1 text-[11px] text-muted-foreground">(-{row.heldDaysCount})</span>
+            ) : null}
+          </span>
+        ),
+      },
+      {
+        id: "tradeOrStatus",
+        header: "Trade / Status",
+        width: "8rem",
+        accessor: (row) => row.tradeOrStatus || "—",
+        cell: (row) => (
+          <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">
+            {row.tradeOrStatus || "—"}
+          </code>
+        ),
+      },
+      {
+        id: "name",
+        header: "Name",
+        width: "10rem",
+        truncate: false,
+        accessor: (row) =>
+          [row.nameDisplay, row.notesDisplay].filter(Boolean).join(" · ") || "No allocation",
+        cell: (row) =>
+          !row.nameDisplay ? (
+            <span className="italic text-muted-foreground">No allocation</span>
+          ) : (
+            <div>
+              <div className="font-medium">{row.nameDisplay}</div>
+              {row.notesDisplay ? (
+                <div className="mt-0.5 text-[11px] text-muted-foreground">{row.notesDisplay}</div>
+              ) : null}
+            </div>
+          ),
+      },
+      {
+        id: "time",
+        header: "Time",
+        width: "6rem",
+        accessor: (row) => row.timeDisplay || "—",
+      },
+      {
+        id: "nextDay",
+        header: (
+          <AppTooltip content="Suggested codes for this working day — never auto-applied">
+            <span>Next Day</span>
+          </AppTooltip>
+        ),
+        width: "6rem",
+        accessor: (row) => row.nextDay || "—",
+        cell: (row) =>
+          row.nextDay ? (
+            <AppTooltip content="Suggestion only — confirm work, then choose next step">
+              <span>{row.nextDay}</span>
+            </AppTooltip>
+          ) : (
+            "—"
+          ),
+      },
+    ],
+    [canModifyDaily],
+  );
+
+  const rowActions = useMemo<DataTableRowAction<ApiDailyRow>[]>(
+    () => [
+      {
+        id: "view",
+        label: "View",
+        icon: <Eye className="h-4 w-4" />,
+        onClick: (row) => openTask(row.taskId, "view"),
+      },
+      {
+        id: "edit",
+        label: "Edit",
+        icon: <Pencil className="h-4 w-4" />,
+        hidden: () => !canModifyDaily,
+        onClick: (row) => openTask(row.taskId, "edit"),
+      },
+    ],
+    [canModifyDaily, openTask],
   );
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Daily Programme"
-        subtitle="Auto-generated from the Master · carry-forward replaces copy-tab"
+        subtitle={`Roll for ${formatLongDate(date)}`}
         actions={
           <>
-            <div className="flex items-center gap-1 rounded-md border border-input bg-card">
-              <button
-                type="button"
-                className="grid h-9 w-9 place-items-center hover:bg-accent/10"
-                onClick={() => setDate((d) => shiftDate(d, -1))}
-                aria-label="Previous day"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="h-9 border-x border-input bg-transparent px-2 text-sm outline-none"
-              />
-              <button
-                type="button"
-                className="grid h-9 w-9 place-items-center hover:bg-accent/10"
-                onClick={() => setDate((d) => shiftDate(d, 1))}
-                aria-label="Next day"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCsv}
+              disabled={exporting || query.isLoading}
+            >
+              {exporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Export CSV
+            </Button>
             <Can route={DAILY_ROUTE} action="modify">
               <Button
                 size="sm"
-                variant="outline"
                 onClick={() => navigate({ to: "/tasks/new", search: { from: "daily" } })}
               >
                 <Plus className="h-4 w-4" />
-                New task
+                Add task
               </Button>
             </Can>
             <Can route={DAILY_ROUTE} action="modify">
               <Button
                 size="sm"
+                variant="outline"
                 onClick={() => setConfirmRoll(true)}
                 disabled={!data?.canRollForward || rollMutation.isPending}
               >
-                {data?.canRollForward ? "Roll forward to next day" : "Tick at least one to roll forward"}
+                {data?.canRollForward
+                  ? "Roll forward to next day"
+                  : "Tick at least one to roll forward"}
               </Button>
             </Can>
           </>
@@ -162,82 +480,109 @@ function Daily() {
         ))}
       </div>
 
-      <div className="card-elevated">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4">
-          <div>
-            <h2 className="font-display font-semibold">Roll for {formatLongDate(date)}</h2>
-            <p className="text-xs text-muted-foreground">
-              {rows.length} properties on roll ·{" "}
-              {rows.reduce((n, r) => n + (r.allocations?.length ?? 0), 0)} allocations
-              <span className="ml-2 text-muted-foreground/80">· Double-click a row to edit</span>
-            </p>
-          </div>
-          <label className="inline-flex items-center gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={showHO}
-              onChange={(e) => setShowHO(e.target.checked)}
-              className="rounded"
-            />
-            Show handed-over
-          </label>
-        </div>
-
-        {query.isLoading ? (
-          <div className="flex items-center gap-2 p-8 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading daily programme…
-          </div>
-        ) : query.isError ? (
-          <div className="space-y-2 p-8">
-            <p className="text-sm text-destructive">
-              {(query.error as unknown as ApiError)?.message || "Failed to load daily programme."}
-            </p>
-            <Button size="sm" variant="outline" onClick={() => void query.refetch()}>
-              Retry
+      <DataTable
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => row.taskId}
+        loading={query.isLoading}
+        fetching={query.isFetching}
+        loadingText="Loading daily programme…"
+        error={
+          query.isError
+            ? {
+                title: "Unable to load daily programme",
+                message:
+                  (query.error as unknown as ApiError)?.message || "Please try again.",
+                onRetry: () => {
+                  void query.refetch();
+                },
+              }
+            : null
+        }
+        search={{
+          value: searchInput,
+          onChange: setSearchInput,
+          placeholder: "Search property, contract, trade…",
+          "aria-label": "Search daily programme",
+        }}
+        filters={
+          <>
+            <div className="flex items-center gap-1 rounded-md border border-input bg-background">
+              <button
+                type="button"
+                className="grid h-9 w-9 place-items-center hover:bg-accent/10"
+                onClick={() => {
+                  setDate((d) => shiftDate(d, -1));
+                  setPage(1);
+                }}
+                aria-label="Previous day"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  setPage(1);
+                }}
+                className="h-9 border-x border-input bg-transparent px-2 text-sm outline-none"
+                aria-label="Programme date"
+              />
+              <button
+                type="button"
+                className="grid h-9 w-9 place-items-center hover:bg-accent/10"
+                onClick={() => {
+                  setDate((d) => shiftDate(d, 1));
+                  setPage(1);
+                }}
+                aria-label="Next day"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+            <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-xs">
+              <Checkbox
+                checked={showHO}
+                onCheckedChange={(checked) => {
+                  setShowHO(checked === true);
+                  setPage(1);
+                }}
+                aria-label="Show handed-over"
+              />
+              Show handed-over
+            </label>
+          </>
+        }
+        emptyState={{
+          title: hasActiveFilters
+            ? "No rows match your filters"
+            : "No properties on today's roll",
+          description: hasActiveFilters
+            ? "Try clearing the search or filters."
+            : undefined,
+          action: hasActiveFilters ? (
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              Clear filters
             </Button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-sm">
-              <thead className="bg-muted/50 text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2.5 text-left font-medium">No.</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Property</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Contract</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Post Code</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Type</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Starting Date</th>
-                  <th className="px-3 py-2.5 text-left font-medium">HO</th>
-                  <th className="px-3 py-2.5 text-left font-medium">DAY</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Trade / Status</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Name</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Time</th>
-                  <th
-                    className="px-3 py-2.5 text-left font-medium"
-                    title="Suggested codes for this working day — never auto-applied"
-                  >
-                    Next Day
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {rows.map((row) => (
-                  <DailyRow
-                    key={row.taskId}
-                    row={row}
-                    onOpen={() => openTaskEdit(row.taskId)}
-                  />
-                ))}
-              </tbody>
-            </table>
-            {rows.length === 0 ? (
-              <div className="p-12 text-center text-sm text-muted-foreground">
-                No properties on today&apos;s roll.
-              </div>
-            ) : null}
-          </div>
-        )}
-      </div>
+          ) : undefined,
+        }}
+        rowActions={rowActions}
+        pagination={{
+          page: pageSafe,
+          pageSize,
+          totalCount,
+          totalPages,
+          onPageChange: setPage,
+          onPageSizeChange: (size) => {
+            setPageSize(size);
+            setPage(1);
+          },
+          itemLabel: "rows",
+          disabled: query.isFetching,
+          controlsAlign: "center",
+        }}
+      />
 
       {confirmRoll ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
@@ -258,13 +603,15 @@ function Daily() {
               </div>
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setConfirmRoll(false)} disabled={rollMutation.isPending}>
+              <Button
+                variant="outline"
+                onClick={() => setConfirmRoll(false)}
+                disabled={rollMutation.isPending}
+              >
                 Cancel
               </Button>
               <Button onClick={() => rollMutation.mutate()} disabled={rollMutation.isPending}>
-                {rollMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : null}
+                {rollMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Confirm roll
               </Button>
             </div>
@@ -272,86 +619,6 @@ function Daily() {
         </div>
       ) : null}
     </div>
-  );
-}
-
-function DailyRow({
-  row,
-  onOpen,
-}: {
-  row: ApiDailyRow;
-  onOpen: () => void;
-}) {
-  const propertyLine = [row.propertyAddress || row.propertyName, row.accessNotes]
-    .filter(Boolean)
-    .join(" · ");
-
-  return (
-    <tr
-      className={`cursor-pointer align-top hover:bg-muted/30 ${row.isLocked ? "bg-warning/5" : ""}`}
-      onDoubleClick={onOpen}
-      title={row.isLocked ? "Locked — tick previous day before adding today's items" : "Double-click to edit task"}
-    >
-      <td className="px-4 py-3 tabular-nums text-muted-foreground">{row.no}</td>
-      <td className="px-3 py-3">
-        <div className="flex items-start gap-1.5">
-          {row.isLocked ? (
-            <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning-foreground" aria-label="Locked" />
-          ) : null}
-          <div>
-            <div className="font-medium">{row.propertyName}</div>
-            <div className="text-[11px] text-muted-foreground">{propertyLine}</div>
-            {row.previousDayName ? (
-              <div className="mt-1 text-[11px] text-muted-foreground">
-                Yesterday: {row.previousDayName}
-              </div>
-            ) : null}
-            {row.isLocked ? (
-              <div className="mt-1 text-[11px] font-medium text-warning-foreground">
-                Locked — no tick on previous day
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </td>
-      <td className="px-3 py-3">
-        <code className="font-mono text-xs">{row.contract || "—"}</code>
-      </td>
-      <td className="px-3 py-3 text-muted-foreground">{row.postCode || "—"}</td>
-      <td className="px-3 py-3 text-muted-foreground">{row.type || "—"}</td>
-      <td className="px-3 py-3 tabular-nums">{row.startingDate?.slice(0, 10) || "—"}</td>
-      <td className="px-3 py-3 tabular-nums">{row.handOverDate?.slice(0, 10) || "—"}</td>
-      <td className="px-3 py-3 font-mono tabular-nums">
-        {row.daysCount}
-        {row.heldDaysCount > 0 ? (
-          <span className="ml-1 text-[11px] text-muted-foreground">(-{row.heldDaysCount})</span>
-        ) : null}
-      </td>
-      <td className="px-3 py-3">
-        <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">
-          {row.tradeOrStatus || "—"}
-        </code>
-      </td>
-      <td className="px-3 py-3">
-        {!row.nameDisplay ? (
-          <span className="italic text-muted-foreground">No allocation</span>
-        ) : (
-          <div>
-            <div className="font-medium">{row.nameDisplay}</div>
-            {row.notesDisplay ? (
-              <div className="mt-0.5 text-[11px] text-muted-foreground">{row.notesDisplay}</div>
-            ) : null}
-          </div>
-        )}
-      </td>
-      <td className="px-3 py-3 text-muted-foreground">{row.timeDisplay || "—"}</td>
-      <td
-        className="px-3 py-3 text-muted-foreground"
-        title={row.nextDay ? "Suggestion only — confirm work, then choose next step" : undefined}
-      >
-        {row.nextDay || "—"}
-      </td>
-    </tr>
   );
 }
 
@@ -375,7 +642,9 @@ function Counter({
   return (
     <div className="card-elevated p-4">
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`mt-1 font-display text-2xl font-semibold tabular-nums ${toneCls}`}>{value}</div>
+      <div className={`mt-1 font-display text-2xl font-semibold tabular-nums ${toneCls}`}>
+        {value}
+      </div>
     </div>
   );
 }

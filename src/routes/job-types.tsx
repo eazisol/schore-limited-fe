@@ -27,14 +27,11 @@ import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { activeStatusClass } from "@/lib/module-ui";
 import { JOB_TYPES_ROUTE } from "@/lib/job-types";
 import {
-  CODE_MAX_LENGTH,
   DESCRIPTION_MAX_LENGTH,
-  NAME_MAX_LENGTH,
   codeSchema,
   descriptionSchema,
   nameSchema,
   normalizeCodeInput,
-  orderBySchema,
 } from "@/lib/field-validation";
 
 export const Route = createFileRoute("/job-types")({
@@ -45,11 +42,14 @@ export const Route = createFileRoute("/job-types")({
 export const jobTypesQueryKey = ["job-types"] as const;
 const lookupsKey = ["lookups", "job-types"] as const;
 
+/** Job-types-module-specific field limits (stricter than shared defaults). */
+const JOB_TYPE_NAME_MAX_LENGTH = 50;
+const JOB_TYPE_CODE_MAX_LENGTH = 20;
+
 const schema = z.object({
-  name: nameSchema(),
-  code: codeSchema(),
+  name: nameSchema("Name", JOB_TYPE_NAME_MAX_LENGTH),
+  code: codeSchema("Code", JOB_TYPE_CODE_MAX_LENGTH),
   description: descriptionSchema(),
-  orderBy: orderBySchema(),
   isActive: z.boolean(),
 });
 type Values = z.infer<typeof schema>;
@@ -109,12 +109,11 @@ function JobTypesPage() {
     try {
       downloadCsv({
         filename: `job-types-export-${new Date().toISOString().slice(0, 10)}.csv`,
-        headers: ["Name", "Code", "Description", "Order", "Status"],
+        headers: ["Name", "Code", "Description", "Status"],
         rows: rows.map((item) => [
           item.name,
           item.code,
           item.description ?? "",
-          String(item.orderBy),
           item.isActive ? "Active" : "Inactive",
         ]),
       });
@@ -132,7 +131,15 @@ function JobTypesPage() {
         id: "name",
         header: "Name",
         accessor: (item) => item.name,
-        cell: (item) => <span className="font-medium">{item.name}</span>,
+        cell: (item) => (
+          <button
+            type="button"
+            className="font-medium text-left hover:text-info hover:underline"
+            onClick={() => setMode({ kind: "view", item })}
+          >
+            {item.name}
+          </button>
+        ),
       },
       {
         id: "code",
@@ -140,19 +147,6 @@ function JobTypesPage() {
         cell: (item) => (
           <code className="rounded bg-secondary px-1.5 py-0.5 text-xs font-mono">{item.code}</code>
         ),
-      },
-      {
-        id: "description",
-        header: "Description",
-        accessor: (item) => item.description || "—",
-        cellClassName: "text-muted-foreground",
-        cell: (item) => item.description || "—",
-      },
-      {
-        id: "orderBy",
-        header: "Order",
-        accessor: (item) => String(item.orderBy),
-        cellClassName: "text-muted-foreground",
       },
       {
         id: "status",
@@ -348,7 +342,6 @@ function JobTypeFormModal({
       name: existing?.name ?? "",
       code: existing?.code ?? "",
       description: existing?.description ?? "",
-      orderBy: existing?.orderBy ?? 0,
       isActive: existing?.isActive ?? true,
     },
   });
@@ -372,7 +365,7 @@ function JobTypeFormModal({
       name: values.name.trim(),
       code: values.code.trim().toUpperCase(),
       description: values.description.trim() || null,
-      orderBy: values.orderBy,
+      orderBy: existing?.orderBy ?? 0,
       isActive: values.isActive,
     });
   }
@@ -402,25 +395,17 @@ function JobTypeFormModal({
                 label="Name"
                 required
                 autoFocus={!isView}
-                maxLength={NAME_MAX_LENGTH}
+                maxLength={JOB_TYPE_NAME_MAX_LENGTH}
               />
               <TextField<Values>
                 name="code"
                 label="Code"
                 required
-                maxLength={CODE_MAX_LENGTH}
+                maxLength={JOB_TYPE_CODE_MAX_LENGTH}
                 transformValue={normalizeCodeInput}
                 inputClassName="uppercase"
               />
             </div>
-            <TextField<Values>
-              name="orderBy"
-              label="Order"
-              type="number"
-              min={0}
-              step={1}
-              required
-            />
             <TextareaField<Values>
               name="description"
               label="Description"
