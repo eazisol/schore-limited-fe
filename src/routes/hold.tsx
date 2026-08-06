@@ -1,113 +1,332 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2, OctagonPause } from "lucide-react";
+import { Plus, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { properties, holdReasons } from "@/lib/data";
-import { useSession } from "@/lib/session-store";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, TextField, TextareaField, SubmitButton } from "@/components/form";
+import { Can, usePermission } from "@/components/Permission";
+import {
+  DataTable,
+  useDebouncedSearch,
+  type DataTableColumn,
+  type DataTableRowAction,
+} from "@/components/data-table";
+import { taskHoldsService, type ApiTaskHold } from "@/lib/api/services/task-holds";
+import { holdReasonsService } from "@/lib/api/services/hold-reasons";
+import { tasksService } from "@/lib/api/services/tasks";
+import { notifyApiError, type ApiError } from "@/lib/api/axios";
+import { HOLD_ROUTE } from "@/lib/hold";
+import { formatDateTime } from "@/lib/module-ui";
 
 export const Route = createFileRoute("/hold")({
   head: () => ({ meta: [{ title: "Hold Management | Schore" }] }),
   component: Hold,
 });
 
-interface HoldEntry { id: string; propertyId: string; date: string; reason: string; notes: string; addedBy: string }
+export const taskHoldsQueryKey = ["task-holds"] as const;
 
-const initial: HoldEntry[] = [
-  { id: "h-1", propertyId: "p-104", date: "2026-01-21", reason: "Wet walls — drying", notes: "Dryers in place", addedBy: "Florin Vasile" },
-  { id: "h-2", propertyId: "p-107", date: "2026-01-18", reason: "Asbestos not removed in time", notes: "Awaiting contractor", addedBy: "Florin Vasile" },
-];
+const schema = z.object({
+  taskId: z.string().min(1, "Task is required"),
+  holdDate: z.string().min(1, "Date is required"),
+  holdReasonId: z.string().min(1, "Reason is required"),
+  notes: z.string(),
+});
+type Values = z.infer<typeof schema>;
 
 function Hold() {
-  const session = useSession();
-  const [entries, setEntries] = useState(initial);
+  const qc = useQueryClient();
+  const canModify = usePermission({ route: HOLD_ROUTE, action: "modify" });
+  const canDelete = usePermission({ route: HOLD_ROUTE, action: "delete" });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ propertyId: properties[0].id, date: new Date().toISOString().slice(0,10), reason: holdReasons[0], notes: "" });
-  const [saving, setSaving] = useState(false);
+  const [confirmDel, setConfirmDel] = useState<ApiTaskHold | null>(null);
+  const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
+    onPageReset: () => setPage(1),
+  });
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    await new Promise(r => setTimeout(r, 600));
-    setEntries(es => [{ id: crypto.randomUUID(), ...form, addedBy: session.name }, ...es]);
-    setSaving(false);
-    setOpen(false);
-    toast.success("Hold added", { description: "KPI clock paused for this property." });
-  };
+  const query = useQuery({
+    queryKey: [...taskHoldsQueryKey, { page, pageSize, search }],
+    queryFn: async () =>
+      (await taskHoldsService.list({ page, pageSize, search })).data,
+    placeholderData: keepPreviousData,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => taskHoldsService.remove(id),
+    onSuccess: (res) => {
+      toast.success(res.message || "Hold removed");
+      setConfirmDel(null);
+      qc.invalidateQueries({ queryKey: taskHoldsQueryKey });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+    },
+    onError: (err) => notifyApiError(err, "Failed to remove hold"),
+  });
+
+  const rows = query.data?.items ?? [];
+  const totalCount = query.data?.totalCount ?? 0;
+  const totalPages = query.data?.totalPages ?? 1;
+
+  const columns: DataTableColumn<ApiTaskHold>[] = [
+    {
+      id: "task",
+      header: "Task",
+      cell: (h) => (
+        <div>
+          <div className="font-medium">{h.taskNumber || `Task #${h.taskId}`}</div>
+          <div className="text-xs text-muted-foreground">{h.propertyName || "—"}</div>
+        </div>
+      ),
+    },
+    {
+      id: "date",
+      header: "Hold date",
+      cell: (h) => h.holdDate?.slice(0, 10) || "—",
+    },
+    {
+      id: "reason",
+      header: "Reason",
+      cell: (h) => h.holdReasonName || "—",
+    },
+    {
+      id: "notes",
+      header: "Notes",
+      cellClassName: "text-muted-foreground",
+      cell: (h) => h.notes || "—",
+    },
+    {
+      id: "created",
+      header: "Recorded",
+      cell: (h) => formatDateTime(h.createdDate),
+    },
+  ];
+
+  const rowActions: DataTableRowAction<ApiTaskHold>[] = [
+    {
+      id: "delete",
+      label: "Remove",
+      icon: <Trash2 className="h-4 w-4" />,
+      danger: true,
+      hidden: () => !canDelete,
+      onClick: (h) => setConfirmDel(h),
+    },
+  ];
 
   return (
     <div>
       <PageHeader
         title="Hold / No Count Management"
-        subtitle="Pause the KPI clock when work can't progress."
-        actions={<Button size="sm" onClick={() => setOpen(o => !o)}><Plus className="h-4 w-4" />New hold</Button>}
+        subtitle="Per-day holds are excluded from DAYS and KPI. Weekends and holidays are also excluded."
+        actions={
+          <Can route={HOLD_ROUTE} action="modify">
+            <Button size="sm" onClick={() => setOpen((o) => !o)}>
+              <Plus className="h-4 w-4" />
+              New hold
+            </Button>
+          </Can>
+        }
       />
 
-      {open && (
-        <form onSubmit={submit} className="card-elevated p-6 mb-6 space-y-4">
-          <h2 className="font-semibold">Add hold</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Property <span className="text-destructive">*</span></span>
-              <select required value={form.propertyId} onChange={e=>setForm(f=>({...f, propertyId:e.target.value}))} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-                {properties.map(p => <option key={p.id} value={p.id}>{p.ref}</option>)}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Date <span className="text-destructive">*</span></span>
-              <input required type="date" value={form.date} onChange={e=>setForm(f=>({...f, date:e.target.value}))} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm" />
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Hold reason <span className="text-destructive">*</span></span>
-              <select required value={form.reason} onChange={e=>setForm(f=>({...f, reason:e.target.value}))} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-                {holdReasons.map(r => <option key={r}>{r}</option>)}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Notes</span>
-              <input value={form.notes} onChange={e=>setForm(f=>({...f, notes:e.target.value}))} placeholder="Optional context" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm" />
-            </label>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={()=>setOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? <><Loader2 className="h-4 w-4 animate-spin" />Saving…</> : "Add hold"}</Button>
-          </div>
-        </form>
+      {open && canModify && (
+        <AddHoldForm
+          onClose={() => setOpen(false)}
+          onSaved={() => {
+            setOpen(false);
+            qc.invalidateQueries({ queryKey: taskHoldsQueryKey });
+            qc.invalidateQueries({ queryKey: ["tasks"] });
+          }}
+        />
       )}
 
-      <div className="card-elevated overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/30 text-xs text-muted-foreground uppercase tracking-wide">
-            <tr><th className="px-5 py-3 text-left">Property</th><th className="px-3 py-3 text-left">Date</th><th className="px-3 py-3 text-left">Reason</th><th className="px-3 py-3 text-left">Notes</th><th className="px-3 py-3 text-left">Added by</th><th className="px-5 py-3"></th></tr>
-          </thead>
-          <tbody className="divide-y">
-            {entries.map(e => {
-              const p = properties.find(x => x.id === e.propertyId);
-              return (
-                <tr key={e.id} className="hover:bg-muted/30">
-                  <td className="px-5 py-3 font-medium flex items-center gap-2"><OctagonPause className="h-4 w-4 text-warning" />{p?.ref}</td>
-                  <td className="px-3 py-3 text-muted-foreground">{e.date}</td>
-                  <td className="px-3 py-3">{e.reason}</td>
-                  <td className="px-3 py-3 text-muted-foreground">{e.notes || "—"}</td>
-                  <td className="px-3 py-3 text-muted-foreground">{e.addedBy}</td>
-                  <td className="px-5 py-3 text-right">
-                    <button onClick={()=>{ setEntries(es=>es.filter(x=>x.id!==e.id)); toast("Hold released"); }} className="text-xs text-info hover:underline">Release</button>
-                  </td>
-                </tr>
-              );
-            })}
-            {entries.length === 0 && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-muted-foreground">No holds — every property is progressing.</td></tr>}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        columns={columns}
+        rows={rows}
+        getRowId={(h) => h.id}
+        loading={query.isLoading}
+        fetching={query.isFetching}
+        loadingText="Loading holds…"
+        error={
+          query.isError
+            ? {
+                title: "Unable to load holds",
+                message: (query.error as unknown as ApiError)?.message || "Please try again.",
+                onRetry: () => {
+                  void query.refetch();
+                },
+              }
+            : null
+        }
+        search={{
+          value: searchInput,
+          onChange: setSearchInput,
+          placeholder: "Search holds…",
+          "aria-label": "Search holds",
+        }}
+        emptyState={{
+          title: "No hold days recorded.",
+          description: search ? "Try clearing the search." : "Add a hold or set a task status to Hold.",
+          action: search ? (
+            <Button variant="outline" size="sm" onClick={clearSearch}>
+              Clear search
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" asChild>
+              <Link to="/hold-reasons">Manage reasons</Link>
+            </Button>
+          ),
+        }}
+        rowActions={rowActions}
+        pagination={{
+          page,
+          pageSize,
+          totalCount,
+          totalPages,
+          onPageChange: setPage,
+          onPageSizeChange: (size) => {
+            setPageSize(size);
+            setPage(1);
+          },
+          itemLabel: "holds",
+          disabled: query.isFetching,
+          controlsAlign: "center",
+        }}
+      />
 
-      <div className="mt-6 card-elevated p-5">
-        <h3 className="font-semibold mb-2">Hold reasons</h3>
-        <div className="flex flex-wrap gap-2">
-          {holdReasons.map(r => <span key={r} className="text-xs px-2.5 py-1 rounded-full bg-secondary">{r}</span>)}
+      {confirmDel && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+          onClick={() => setConfirmDel(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg border bg-card p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-display text-lg font-semibold">Remove this hold day?</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {confirmDel.taskNumber} · {confirmDel.holdDate?.slice(0, 10)} will count again in DAYS/KPI.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setConfirmDel(null)} disabled={deleteMutation.isPending}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate(confirmDel.id)}
+              >
+                {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                Remove
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
+  );
+}
+
+function AddHoldForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const form = useForm<Values>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      taskId: "",
+      holdDate: new Date().toISOString().slice(0, 10),
+      holdReasonId: "",
+      notes: "",
+    },
+  });
+
+  const tasksQuery = useQuery({
+    queryKey: ["lookups", "tasks-for-hold"],
+    queryFn: async () =>
+      (await tasksService.list({ page: 1, pageSize: 100, sortBy: "createdDate", sortDir: "desc" }))
+        .data.items,
+  });
+
+  const reasonsQuery = useQuery({
+    queryKey: ["lookups", "hold-reasons"],
+    queryFn: async () => (await holdReasonsService.list({ page: 1, pageSize: 100 })).data.items,
+  });
+
+  const mutation = useMutation({
+    mutationFn: (values: Values) =>
+      taskHoldsService.create({
+        taskId: Number(values.taskId),
+        holdDate: values.holdDate,
+        holdReasonId: Number(values.holdReasonId),
+        notes: values.notes.trim() || null,
+      }),
+    onSuccess: (res) => {
+      toast.success(res.message || "Hold added");
+      onSaved();
+    },
+    onError: (err) => notifyApiError(err, "Failed to add hold"),
+  });
+
+  return (
+    <Form
+      form={form}
+      onSubmit={async (values) => {
+        await mutation.mutateAsync(values);
+      }}
+      className="card-elevated mb-6 space-y-4 p-6"
+    >
+      <h2 className="font-semibold">Add hold day</h2>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">
+            Task <span className="text-destructive">*</span>
+          </label>
+          <select
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+            value={form.watch("taskId")}
+            onChange={(e) => form.setValue("taskId", e.target.value, { shouldValidate: true })}
+          >
+            <option value="">Select task…</option>
+            {(tasksQuery.data ?? []).map((t) => (
+              <option key={t.id} value={String(t.id)}>
+                {t.taskNumber} · {t.propertyName}
+              </option>
+            ))}
+          </select>
+        </div>
+        <TextField<Values> name="holdDate" label="Date" type="date" required />
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">
+            Hold reason <span className="text-destructive">*</span>
+          </label>
+          <select
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+            value={form.watch("holdReasonId")}
+            onChange={(e) =>
+              form.setValue("holdReasonId", e.target.value, { shouldValidate: true })
+            }
+          >
+            <option value="">Select reason…</option>
+            {(reasonsQuery.data ?? [])
+              .filter((r) => r.isActive)
+              .map((r) => (
+                <option key={r.id} value={String(r.id)}>
+                  {r.name}
+                </option>
+              ))}
+          </select>
+        </div>
+        <TextareaField<Values> name="notes" label="Notes" rows={2} />
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onClose} disabled={mutation.isPending}>
+          Cancel
+        </Button>
+        <SubmitButton loading={mutation.isPending} loadingText="Saving…">
+          Add hold
+        </SubmitButton>
+      </div>
+    </Form>
   );
 }

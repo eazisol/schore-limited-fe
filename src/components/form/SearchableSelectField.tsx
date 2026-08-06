@@ -27,6 +27,11 @@ export interface SearchableSelectFieldProps<T extends FieldValues> {
    * (e.g. edit mode with a pre-selected category).
    */
   selectedLabel?: string | null;
+  /**
+   * Always-visible top option (e.g. "None" for optional fields).
+   * Use an empty string value for the clear state.
+   */
+  emptyOption?: SearchableSelectOption;
   /** Called when the user picks an option (value + label). */
   onSelect?: (option: SearchableSelectOption) => void;
 }
@@ -44,6 +49,7 @@ export function SearchableSelectField<T extends FieldValues>({
   queryKey,
   fetchOptions,
   selectedLabel,
+  emptyOption,
   onSelect,
 }: SearchableSelectFieldProps<T>) {
   const { control, formState } = useFormContext<T>();
@@ -74,6 +80,7 @@ export function SearchableSelectField<T extends FieldValues>({
                 queryKey={queryKey}
                 fetchOptions={fetchOptions}
                 selectedLabel={selectedLabel}
+                emptyOption={emptyOption}
                 onSelect={onSelect}
                 invalid={!!fieldState.error}
                 triggerClassName={triggerClassName}

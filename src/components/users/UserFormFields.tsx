@@ -5,6 +5,7 @@ import {
   PasswordField,
   SelectField,
   SwitchField,
+  CheckboxField,
   PhoneNumberField,
   SearchableSelectField,
   type SelectOption,
@@ -243,6 +244,12 @@ export function UserFormFields({
               step="0.01"
               placeholder="0.00"
             />
+            <div className="flex items-end pb-1">
+              <CheckboxField<UserFormValues>
+                name="isDailyRate"
+                label="Use daily rate for pay (MAX price vs daily)"
+              />
+            </div>
           </div>
         </Section>
       ) : null}

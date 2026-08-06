@@ -9,6 +9,8 @@ import { useDebouncedSearch } from "@/components/data-table";
 export interface SearchableSelectOption {
   value: string;
   label: string;
+  /** Optional lookup code (e.g. status HOLD). */
+  code?: string;
 }
 
 export interface SearchableSelectProps {

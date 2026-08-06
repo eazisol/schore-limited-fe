@@ -20,6 +20,7 @@ export interface ApiUser {
   cisId?: number | null;
   cisName?: string | null;
   dailyRate?: number | null;
+  isDailyRate?: boolean;
   contactName?: string | null;
   companyName?: string | null;
   address?: string | null;
@@ -74,6 +75,7 @@ export interface CreateUserPayload {
   tradeId?: number | null;
   cisId?: number | null;
   dailyRate?: number | null;
+  isDailyRate?: boolean;
   contactName?: string | null;
   companyName?: string | null;
   address?: string | null;
@@ -99,6 +101,7 @@ export interface UpdateUserPayload {
   tradeId?: number | null;
   cisId?: number | null;
   dailyRate?: number | null;
+  isDailyRate?: boolean;
   contactName?: string | null;
   companyName?: string | null;
   address?: string | null;

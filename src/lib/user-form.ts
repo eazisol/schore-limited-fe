@@ -81,6 +81,7 @@ export type UserFormValues = {
   tradeId: string;
   cisId: string;
   dailyRate: string;
+  isDailyRate: boolean;
   contactName: string;
   companyName: string;
   address: string;
@@ -105,6 +106,7 @@ export const emptyUserFormValues: UserFormValues = {
   tradeId: "",
   cisId: "",
   dailyRate: "",
+  isDailyRate: false,
   contactName: "",
   companyName: "",
   address: "",
@@ -205,6 +207,7 @@ const sharedFormFields = {
   tradeId: z.string(),
   cisId: z.string(),
   dailyRate: z.string(),
+  isDailyRate: z.boolean(),
   contactName: z.string(),
   companyName: z.string(),
   address: z.string(),
@@ -322,6 +325,7 @@ export function toCreateUserPayload(
     payload.tradeId = Number(values.tradeId);
     payload.cisId = Number(values.cisId);
     payload.dailyRate = parseDailyRate(values.dailyRate);
+    payload.isDailyRate = values.isDailyRate;
   }
 
   if (isContactModule) {
@@ -364,6 +368,7 @@ export function toUpdateUserPayload(
     payload.tradeId = Number(values.tradeId);
     payload.cisId = Number(values.cisId);
     payload.dailyRate = parseDailyRate(values.dailyRate);
+    payload.isDailyRate = values.isDailyRate;
   }
 
   if (isContactModule) {

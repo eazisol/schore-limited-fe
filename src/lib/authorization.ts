@@ -247,8 +247,19 @@ export function getMenuPermission(
   else if (opts.pathname) menu = resolveMenuForAppPath(menus, opts.pathname);
   else if (opts.route) menu = resolveMenuForAppPath(menus, opts.route);
 
+  // Tasks menu may be inactive (hidden from sidebar); allow via Daily Programme.
+  if (!menu && isTasksAppPath(opts.pathname ?? opts.route)) {
+    menu = findMenuByCode(menus, "DAILY") ?? resolveMenuForAppPath(menus, "/daily");
+  }
+
   if (!menu) return false;
   return Boolean(menu[action]);
+}
+
+function isTasksAppPath(path: string | null | undefined): boolean {
+  if (!path) return false;
+  const normalized = toAppPath(path);
+  return normalized === "/tasks" || normalized.startsWith("/tasks/");
 }
 
 /**
@@ -272,6 +283,14 @@ export function canAccessPath(menus: ApiMenu[], pathname: string): boolean {
     path === "/product-management/"
   ) {
     return hasProductAccess(menus);
+  }
+
+  // Tasks list/create/edit: when Tasks menu is inactive, Daily Programme grants access.
+  if (isTasksAppPath(path)) {
+    const tasksMenu = resolveMenuForAppPath(menus, "/tasks") ?? findMenuByCode(menus, "TASKS");
+    if (tasksMenu) return Boolean(tasksMenu.read);
+    const dailyMenu = resolveMenuForAppPath(menus, "/daily") ?? findMenuByCode(menus, "DAILY");
+    return Boolean(dailyMenu?.read);
   }
 
   const menu = resolveMenuForAppPath(menus, path);

@@ -162,6 +162,7 @@ export function UserDetailPage() {
         user?.dailyRate != null && !Number.isNaN(Number(user.dailyRate))
           ? String(user.dailyRate)
           : "",
+      isDailyRate: user?.isDailyRate ?? false,
       contactName: user?.contactName ?? "",
       companyName: user?.companyName ?? "",
       address: user?.address ?? "",
@@ -454,6 +455,7 @@ export function UserDetailPage() {
                 </div>
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                   <DetailField label="Daily rate" value={formatDailyRate(user.dailyRate)} />
+                  <DetailField label="Is daily rate" value={user.isDailyRate ? "Yes" : "No"} />
                 </div>
               </div>
             ) : null}

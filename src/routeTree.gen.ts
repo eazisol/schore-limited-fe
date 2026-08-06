@@ -14,7 +14,9 @@ import { Route as UsersRouteImport } from './routes/users'
 import { Route as UnitsRouteImport } from './routes/units'
 import { Route as TradeGroupsRouteImport } from './routes/trade-groups'
 import { Route as TradeBuilderRouteImport } from './routes/trade-builder'
+import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SystemConfigRouteImport } from './routes/system-config'
+import { Route as StatusesRouteImport } from './routes/statuses'
 import { Route as StatementsRouteImport } from './routes/statements'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -32,11 +34,15 @@ import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as OperativesRouteImport } from './routes/operatives'
 import { Route as LegendCodesRouteImport } from './routes/legend-codes'
 import { Route as KpiRouteImport } from './routes/kpi'
+import { Route as JobTypesRouteImport } from './routes/job-types'
 import { Route as ItemsRouteImport } from './routes/items'
+import { Route as HolidaysRouteImport } from './routes/holidays'
+import { Route as HoldReasonsRouteImport } from './routes/hold-reasons'
 import { Route as HoldRouteImport } from './routes/hold'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ForbiddenRouteImport } from './routes/forbidden'
 import { Route as EmailSmtpRouteImport } from './routes/email-smtp'
+import { Route as DaySuggestionsRouteImport } from './routes/day-suggestions'
 import { Route as DailyRouteImport } from './routes/daily'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as CostBudgetRouteImport } from './routes/cost-budget'
@@ -51,6 +57,7 @@ import { Route as WagesIndexRouteImport } from './routes/wages.index'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
 import { Route as TradeGroupsIndexRouteImport } from './routes/trade-groups.index'
 import { Route as TradeBuilderIndexRouteImport } from './routes/trade-builder.index'
+import { Route as TasksIndexRouteImport } from './routes/tasks.index'
 import { Route as SystemConfigIndexRouteImport } from './routes/system-config.index'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
@@ -70,6 +77,8 @@ import { Route as TradeBuilderTasksRouteImport } from './routes/trade-builder.ta
 import { Route as TradeBuilderNewRouteImport } from './routes/trade-builder.new'
 import { Route as TradeBuilderGroupsRouteImport } from './routes/trade-builder.groups'
 import { Route as TradeBuilderIdRouteImport } from './routes/trade-builder.$id'
+import { Route as TasksNewRouteImport } from './routes/tasks.new'
+import { Route as TasksIdRouteImport } from './routes/tasks.$id'
 import { Route as SystemConfigUserTypesRouteImport } from './routes/system-config.user-types'
 import { Route as SystemConfigRolesRouteImport } from './routes/system-config.roles'
 import { Route as SettingsUserTypesRouteImport } from './routes/settings.user-types'
@@ -115,9 +124,19 @@ const TradeBuilderRoute = TradeBuilderRouteImport.update({
   path: '/trade-builder',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SystemConfigRoute = SystemConfigRouteImport.update({
   id: '/system-config',
   path: '/system-config',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatusesRoute = StatusesRouteImport.update({
+  id: '/statuses',
+  path: '/statuses',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StatementsRoute = StatementsRouteImport.update({
@@ -205,9 +224,24 @@ const KpiRoute = KpiRouteImport.update({
   path: '/kpi',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JobTypesRoute = JobTypesRouteImport.update({
+  id: '/job-types',
+  path: '/job-types',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ItemsRoute = ItemsRouteImport.update({
   id: '/items',
   path: '/items',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HolidaysRoute = HolidaysRouteImport.update({
+  id: '/holidays',
+  path: '/holidays',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HoldReasonsRoute = HoldReasonsRouteImport.update({
+  id: '/hold-reasons',
+  path: '/hold-reasons',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HoldRoute = HoldRouteImport.update({
@@ -228,6 +262,11 @@ const ForbiddenRoute = ForbiddenRouteImport.update({
 const EmailSmtpRoute = EmailSmtpRouteImport.update({
   id: '/email-smtp',
   path: '/email-smtp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DaySuggestionsRoute = DaySuggestionsRouteImport.update({
+  id: '/day-suggestions',
+  path: '/day-suggestions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DailyRoute = DailyRouteImport.update({
@@ -299,6 +338,11 @@ const TradeBuilderIndexRoute = TradeBuilderIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => TradeBuilderRoute,
+} as any)
+const TasksIndexRoute = TasksIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TasksRoute,
 } as any)
 const SystemConfigIndexRoute = SystemConfigIndexRouteImport.update({
   id: '/',
@@ -394,6 +438,16 @@ const TradeBuilderIdRoute = TradeBuilderIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => TradeBuilderRoute,
+} as any)
+const TasksNewRoute = TasksNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => TasksRoute,
+} as any)
+const TasksIdRoute = TasksIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => TasksRoute,
 } as any)
 const SystemConfigUserTypesRoute = SystemConfigUserTypesRouteImport.update({
   id: '/user-types',
@@ -502,11 +556,15 @@ export interface FileRoutesByFullPath {
   '/cost-budget': typeof CostBudgetRoute
   '/customers': typeof CustomersRouteWithChildren
   '/daily': typeof DailyRoute
+  '/day-suggestions': typeof DaySuggestionsRoute
   '/email-smtp': typeof EmailSmtpRoute
   '/forbidden': typeof ForbiddenRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/hold': typeof HoldRoute
+  '/hold-reasons': typeof HoldReasonsRoute
+  '/holidays': typeof HolidaysRoute
   '/items': typeof ItemsRouteWithChildren
+  '/job-types': typeof JobTypesRoute
   '/kpi': typeof KpiRoute
   '/legend-codes': typeof LegendCodesRoute
   '/operatives': typeof OperativesRouteWithChildren
@@ -524,7 +582,9 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRouteWithChildren
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
+  '/statuses': typeof StatusesRoute
   '/system-config': typeof SystemConfigRouteWithChildren
+  '/tasks': typeof TasksRouteWithChildren
   '/trade-builder': typeof TradeBuilderRouteWithChildren
   '/trade-groups': typeof TradeGroupsRouteWithChildren
   '/units': typeof UnitsRoute
@@ -548,6 +608,8 @@ export interface FileRoutesByFullPath {
   '/settings/user-types': typeof SettingsUserTypesRoute
   '/system-config/roles': typeof SystemConfigRolesRoute
   '/system-config/user-types': typeof SystemConfigUserTypesRoute
+  '/tasks/$id': typeof TasksIdRoute
+  '/tasks/new': typeof TasksNewRoute
   '/trade-builder/$id': typeof TradeBuilderIdRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
   '/trade-builder/new': typeof TradeBuilderNewRoute
@@ -567,6 +629,7 @@ export interface FileRoutesByFullPath {
   '/properties/': typeof PropertiesIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/system-config/': typeof SystemConfigIndexRoute
+  '/tasks/': typeof TasksIndexRoute
   '/trade-builder/': typeof TradeBuilderIndexRoute
   '/trade-groups/': typeof TradeGroupsIndexRoute
   '/users/': typeof UsersIndexRoute
@@ -581,10 +644,14 @@ export interface FileRoutesByTo {
   '/contracts': typeof ContractsRoute
   '/cost-budget': typeof CostBudgetRoute
   '/daily': typeof DailyRoute
+  '/day-suggestions': typeof DaySuggestionsRoute
   '/email-smtp': typeof EmailSmtpRoute
   '/forbidden': typeof ForbiddenRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/hold': typeof HoldRoute
+  '/hold-reasons': typeof HoldReasonsRoute
+  '/holidays': typeof HolidaysRoute
+  '/job-types': typeof JobTypesRoute
   '/kpi': typeof KpiRoute
   '/legend-codes': typeof LegendCodesRoute
   '/payroll': typeof PayrollRoute
@@ -597,6 +664,7 @@ export interface FileRoutesByTo {
   '/roles': typeof RolesRoute
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
+  '/statuses': typeof StatusesRoute
   '/units': typeof UnitsRoute
   '/cis-management/$id': typeof CisManagementIdRoute
   '/cis-management/new': typeof CisManagementNewRoute
@@ -616,6 +684,8 @@ export interface FileRoutesByTo {
   '/settings/user-types': typeof SettingsUserTypesRoute
   '/system-config/roles': typeof SystemConfigRolesRoute
   '/system-config/user-types': typeof SystemConfigUserTypesRoute
+  '/tasks/$id': typeof TasksIdRoute
+  '/tasks/new': typeof TasksNewRoute
   '/trade-builder/$id': typeof TradeBuilderIdRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
   '/trade-builder/new': typeof TradeBuilderNewRoute
@@ -635,6 +705,7 @@ export interface FileRoutesByTo {
   '/properties': typeof PropertiesIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/system-config': typeof SystemConfigIndexRoute
+  '/tasks': typeof TasksIndexRoute
   '/trade-builder': typeof TradeBuilderIndexRoute
   '/trade-groups': typeof TradeGroupsIndexRoute
   '/users': typeof UsersIndexRoute
@@ -653,11 +724,15 @@ export interface FileRoutesById {
   '/cost-budget': typeof CostBudgetRoute
   '/customers': typeof CustomersRouteWithChildren
   '/daily': typeof DailyRoute
+  '/day-suggestions': typeof DaySuggestionsRoute
   '/email-smtp': typeof EmailSmtpRoute
   '/forbidden': typeof ForbiddenRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/hold': typeof HoldRoute
+  '/hold-reasons': typeof HoldReasonsRoute
+  '/holidays': typeof HolidaysRoute
   '/items': typeof ItemsRouteWithChildren
+  '/job-types': typeof JobTypesRoute
   '/kpi': typeof KpiRoute
   '/legend-codes': typeof LegendCodesRoute
   '/operatives': typeof OperativesRouteWithChildren
@@ -675,7 +750,9 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRouteWithChildren
   '/signin': typeof SigninRoute
   '/statements': typeof StatementsRoute
+  '/statuses': typeof StatusesRoute
   '/system-config': typeof SystemConfigRouteWithChildren
+  '/tasks': typeof TasksRouteWithChildren
   '/trade-builder': typeof TradeBuilderRouteWithChildren
   '/trade-groups': typeof TradeGroupsRouteWithChildren
   '/units': typeof UnitsRoute
@@ -699,6 +776,8 @@ export interface FileRoutesById {
   '/settings/user-types': typeof SettingsUserTypesRoute
   '/system-config/roles': typeof SystemConfigRolesRoute
   '/system-config/user-types': typeof SystemConfigUserTypesRoute
+  '/tasks/$id': typeof TasksIdRoute
+  '/tasks/new': typeof TasksNewRoute
   '/trade-builder/$id': typeof TradeBuilderIdRoute
   '/trade-builder/groups': typeof TradeBuilderGroupsRoute
   '/trade-builder/new': typeof TradeBuilderNewRoute
@@ -718,6 +797,7 @@ export interface FileRoutesById {
   '/properties/': typeof PropertiesIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/system-config/': typeof SystemConfigIndexRoute
+  '/tasks/': typeof TasksIndexRoute
   '/trade-builder/': typeof TradeBuilderIndexRoute
   '/trade-groups/': typeof TradeGroupsIndexRoute
   '/users/': typeof UsersIndexRoute
@@ -737,11 +817,15 @@ export interface FileRouteTypes {
     | '/cost-budget'
     | '/customers'
     | '/daily'
+    | '/day-suggestions'
     | '/email-smtp'
     | '/forbidden'
     | '/forgot-password'
     | '/hold'
+    | '/hold-reasons'
+    | '/holidays'
     | '/items'
+    | '/job-types'
     | '/kpi'
     | '/legend-codes'
     | '/operatives'
@@ -759,7 +843,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signin'
     | '/statements'
+    | '/statuses'
     | '/system-config'
+    | '/tasks'
     | '/trade-builder'
     | '/trade-groups'
     | '/units'
@@ -783,6 +869,8 @@ export interface FileRouteTypes {
     | '/settings/user-types'
     | '/system-config/roles'
     | '/system-config/user-types'
+    | '/tasks/$id'
+    | '/tasks/new'
     | '/trade-builder/$id'
     | '/trade-builder/groups'
     | '/trade-builder/new'
@@ -802,6 +890,7 @@ export interface FileRouteTypes {
     | '/properties/'
     | '/settings/'
     | '/system-config/'
+    | '/tasks/'
     | '/trade-builder/'
     | '/trade-groups/'
     | '/users/'
@@ -816,10 +905,14 @@ export interface FileRouteTypes {
     | '/contracts'
     | '/cost-budget'
     | '/daily'
+    | '/day-suggestions'
     | '/email-smtp'
     | '/forbidden'
     | '/forgot-password'
     | '/hold'
+    | '/hold-reasons'
+    | '/holidays'
+    | '/job-types'
     | '/kpi'
     | '/legend-codes'
     | '/payroll'
@@ -832,6 +925,7 @@ export interface FileRouteTypes {
     | '/roles'
     | '/signin'
     | '/statements'
+    | '/statuses'
     | '/units'
     | '/cis-management/$id'
     | '/cis-management/new'
@@ -851,6 +945,8 @@ export interface FileRouteTypes {
     | '/settings/user-types'
     | '/system-config/roles'
     | '/system-config/user-types'
+    | '/tasks/$id'
+    | '/tasks/new'
     | '/trade-builder/$id'
     | '/trade-builder/groups'
     | '/trade-builder/new'
@@ -870,6 +966,7 @@ export interface FileRouteTypes {
     | '/properties'
     | '/settings'
     | '/system-config'
+    | '/tasks'
     | '/trade-builder'
     | '/trade-groups'
     | '/users'
@@ -887,11 +984,15 @@ export interface FileRouteTypes {
     | '/cost-budget'
     | '/customers'
     | '/daily'
+    | '/day-suggestions'
     | '/email-smtp'
     | '/forbidden'
     | '/forgot-password'
     | '/hold'
+    | '/hold-reasons'
+    | '/holidays'
     | '/items'
+    | '/job-types'
     | '/kpi'
     | '/legend-codes'
     | '/operatives'
@@ -909,7 +1010,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signin'
     | '/statements'
+    | '/statuses'
     | '/system-config'
+    | '/tasks'
     | '/trade-builder'
     | '/trade-groups'
     | '/units'
@@ -933,6 +1036,8 @@ export interface FileRouteTypes {
     | '/settings/user-types'
     | '/system-config/roles'
     | '/system-config/user-types'
+    | '/tasks/$id'
+    | '/tasks/new'
     | '/trade-builder/$id'
     | '/trade-builder/groups'
     | '/trade-builder/new'
@@ -952,6 +1057,7 @@ export interface FileRouteTypes {
     | '/properties/'
     | '/settings/'
     | '/system-config/'
+    | '/tasks/'
     | '/trade-builder/'
     | '/trade-groups/'
     | '/users/'
@@ -970,11 +1076,15 @@ export interface RootRouteChildren {
   CostBudgetRoute: typeof CostBudgetRoute
   CustomersRoute: typeof CustomersRouteWithChildren
   DailyRoute: typeof DailyRoute
+  DaySuggestionsRoute: typeof DaySuggestionsRoute
   EmailSmtpRoute: typeof EmailSmtpRoute
   ForbiddenRoute: typeof ForbiddenRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   HoldRoute: typeof HoldRoute
+  HoldReasonsRoute: typeof HoldReasonsRoute
+  HolidaysRoute: typeof HolidaysRoute
   ItemsRoute: typeof ItemsRouteWithChildren
+  JobTypesRoute: typeof JobTypesRoute
   KpiRoute: typeof KpiRoute
   LegendCodesRoute: typeof LegendCodesRoute
   OperativesRoute: typeof OperativesRouteWithChildren
@@ -992,7 +1102,9 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRouteWithChildren
   SigninRoute: typeof SigninRoute
   StatementsRoute: typeof StatementsRoute
+  StatusesRoute: typeof StatusesRoute
   SystemConfigRoute: typeof SystemConfigRouteWithChildren
+  TasksRoute: typeof TasksRouteWithChildren
   TradeBuilderRoute: typeof TradeBuilderRouteWithChildren
   TradeGroupsRoute: typeof TradeGroupsRouteWithChildren
   UnitsRoute: typeof UnitsRoute
@@ -1037,11 +1149,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TradeBuilderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/system-config': {
       id: '/system-config'
       path: '/system-config'
       fullPath: '/system-config'
       preLoaderRoute: typeof SystemConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/statuses': {
+      id: '/statuses'
+      path: '/statuses'
+      fullPath: '/statuses'
+      preLoaderRoute: typeof StatusesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/statements': {
@@ -1163,11 +1289,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KpiRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/job-types': {
+      id: '/job-types'
+      path: '/job-types'
+      fullPath: '/job-types'
+      preLoaderRoute: typeof JobTypesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/items': {
       id: '/items'
       path: '/items'
       fullPath: '/items'
       preLoaderRoute: typeof ItemsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/holidays': {
+      id: '/holidays'
+      path: '/holidays'
+      fullPath: '/holidays'
+      preLoaderRoute: typeof HolidaysRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hold-reasons': {
+      id: '/hold-reasons'
+      path: '/hold-reasons'
+      fullPath: '/hold-reasons'
+      preLoaderRoute: typeof HoldReasonsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/hold': {
@@ -1196,6 +1343,13 @@ declare module '@tanstack/react-router' {
       path: '/email-smtp'
       fullPath: '/email-smtp'
       preLoaderRoute: typeof EmailSmtpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/day-suggestions': {
+      id: '/day-suggestions'
+      path: '/day-suggestions'
+      fullPath: '/day-suggestions'
+      preLoaderRoute: typeof DaySuggestionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/daily': {
@@ -1295,6 +1449,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/trade-builder/'
       preLoaderRoute: typeof TradeBuilderIndexRouteImport
       parentRoute: typeof TradeBuilderRoute
+    }
+    '/tasks/': {
+      id: '/tasks/'
+      path: '/'
+      fullPath: '/tasks/'
+      preLoaderRoute: typeof TasksIndexRouteImport
+      parentRoute: typeof TasksRoute
     }
     '/system-config/': {
       id: '/system-config/'
@@ -1428,6 +1589,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/trade-builder/$id'
       preLoaderRoute: typeof TradeBuilderIdRouteImport
       parentRoute: typeof TradeBuilderRoute
+    }
+    '/tasks/new': {
+      id: '/tasks/new'
+      path: '/new'
+      fullPath: '/tasks/new'
+      preLoaderRoute: typeof TasksNewRouteImport
+      parentRoute: typeof TasksRoute
+    }
+    '/tasks/$id': {
+      id: '/tasks/$id'
+      path: '/$id'
+      fullPath: '/tasks/$id'
+      preLoaderRoute: typeof TasksIdRouteImport
+      parentRoute: typeof TasksRoute
     }
     '/system-config/user-types': {
       id: '/system-config/user-types'
@@ -1728,6 +1903,20 @@ const SystemConfigRouteWithChildren = SystemConfigRoute._addFileChildren(
   SystemConfigRouteChildren,
 )
 
+interface TasksRouteChildren {
+  TasksIdRoute: typeof TasksIdRoute
+  TasksNewRoute: typeof TasksNewRoute
+  TasksIndexRoute: typeof TasksIndexRoute
+}
+
+const TasksRouteChildren: TasksRouteChildren = {
+  TasksIdRoute: TasksIdRoute,
+  TasksNewRoute: TasksNewRoute,
+  TasksIndexRoute: TasksIndexRoute,
+}
+
+const TasksRouteWithChildren = TasksRoute._addFileChildren(TasksRouteChildren)
+
 interface TradeBuilderRouteChildren {
   TradeBuilderIdRoute: typeof TradeBuilderIdRoute
   TradeBuilderGroupsRoute: typeof TradeBuilderGroupsRoute
@@ -1801,11 +1990,15 @@ const rootRouteChildren: RootRouteChildren = {
   CostBudgetRoute: CostBudgetRoute,
   CustomersRoute: CustomersRouteWithChildren,
   DailyRoute: DailyRoute,
+  DaySuggestionsRoute: DaySuggestionsRoute,
   EmailSmtpRoute: EmailSmtpRoute,
   ForbiddenRoute: ForbiddenRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   HoldRoute: HoldRoute,
+  HoldReasonsRoute: HoldReasonsRoute,
+  HolidaysRoute: HolidaysRoute,
   ItemsRoute: ItemsRouteWithChildren,
+  JobTypesRoute: JobTypesRoute,
   KpiRoute: KpiRoute,
   LegendCodesRoute: LegendCodesRoute,
   OperativesRoute: OperativesRouteWithChildren,
@@ -1823,7 +2016,9 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRouteWithChildren,
   SigninRoute: SigninRoute,
   StatementsRoute: StatementsRoute,
+  StatusesRoute: StatusesRoute,
   SystemConfigRoute: SystemConfigRouteWithChildren,
+  TasksRoute: TasksRouteWithChildren,
   TradeBuilderRoute: TradeBuilderRouteWithChildren,
   TradeGroupsRoute: TradeGroupsRouteWithChildren,
   UnitsRoute: UnitsRoute,
