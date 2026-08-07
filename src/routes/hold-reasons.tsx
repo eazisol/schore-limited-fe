@@ -41,7 +41,7 @@ export const holdReasonsQueryKey = ["hold-reasons"] as const;
 const lookupsKey = ["lookups", "hold-reasons"] as const;
 
 const schema = z.object({
-  name: nameSchema("Name", 200),
+  name: nameSchema("Name", 50),
   description: descriptionSchema(),
   isActive: z.boolean(),
 });
@@ -354,7 +354,7 @@ function HoldReasonFormModal({
       >
         <div className="space-y-4">
           <fieldset disabled={isView} className="space-y-4">
-            <TextField<Values> name="name" label="Name" required autoFocus={!isView} maxLength={200} />
+            <TextField<Values> name="name" label="Name" required autoFocus={!isView} maxLength={50} />
             <TextareaField<Values>
               name="description"
               label="Description"

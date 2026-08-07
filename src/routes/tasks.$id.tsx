@@ -11,10 +11,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, SubmitButton } from "@/components/form";
 import { Can, RequirePermission, usePermission } from "@/components/Permission";
 import { tasksService } from "@/lib/api/services/tasks";
+import { propertiesService } from "@/lib/api/services/properties";
 import { notifyApiError } from "@/lib/api/axios";
 import { tasksQueryKey } from "./tasks.index";
 import { TASKS_ROUTE } from "@/lib/tasks";
+import { dailyQueryKey } from "./daily";
+import type { ApiDailyProgramme } from "@/lib/api/services/daily-programme";
 import {
+  formatPriceDisplay,
   taskFormSchema,
   taskToFormValues,
   toTaskPayload,
@@ -45,13 +49,57 @@ function TaskDetail() {
   const isEdit = mode === "edit" && canModify;
   const fromDaily = from === "daily";
   const backTo = fromDaily ? "/daily" : "/tasks";
-  const backLabel = fromDaily ? "Back to daily programme" : "Back to tasks";
+  const backLabel = fromDaily ? "Back to daily programmer" : "Back to tasks";
   const dailySearch = fromDaily ? { from: "daily" as const } : undefined;
 
-  const { data: task, isLoading, isError, error, refetch } = useQuery({
+  const {
+    data: task,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: [...tasksQueryKey, id],
     queryFn: async () => (await tasksService.get(id)).data,
   });
+
+  const propertyQuery = useQuery({
+    queryKey: ["properties", task?.propertyId],
+    enabled: Boolean(task?.propertyId),
+    queryFn: async () => (await propertiesService.get(task!.propertyId)).data,
+    staleTime: 60_000,
+  });
+
+  /** Prefer task API fields; fall back to property (and daily cache) so list values always show. */
+  const contractorDisplay = (() => {
+    const fromTask = task?.contract?.trim();
+    if (fromTask) return fromTask;
+    const fromProperty = propertyQuery.data?.contractorName?.trim();
+    if (fromProperty) return fromProperty;
+    if (task && fromDaily) {
+      const caches = queryClient.getQueriesData<ApiDailyProgramme>({ queryKey: dailyQueryKey });
+      for (const [, programme] of caches) {
+        const row = programme?.rows?.find((r) => String(r.taskId) === String(task.id));
+        if (row?.contract?.trim()) return row.contract.trim();
+      }
+    }
+    return "—";
+  })();
+
+  const postCodeDisplay = (() => {
+    const fromTask = task?.postCode?.trim();
+    if (fromTask) return fromTask;
+    const fromProperty = propertyQuery.data?.zipCode?.trim();
+    if (fromProperty) return fromProperty;
+    if (task && fromDaily) {
+      const caches = queryClient.getQueriesData<ApiDailyProgramme>({ queryKey: dailyQueryKey });
+      for (const [, programme] of caches) {
+        const row = programme?.rows?.find((r) => String(r.taskId) === String(task.id));
+        if (row?.postCode?.trim()) return row.postCode.trim();
+      }
+    }
+    return "—";
+  })();
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
@@ -98,9 +146,13 @@ function TaskDetail() {
 
   return (
     <RequirePermission route={TASKS_ROUTE} action="read">
-      <div>
+      <div className="min-w-0 w-full max-w-full">
         <PageHeader
-          title={isEdit ? `Edit task ${task.taskNumber || ""}`.trim() : task.taskNumber || task.propertyName}
+          title={
+            isEdit
+              ? `Edit task ${task.taskNumber || ""}`.trim()
+              : task.taskNumber || task.propertyName
+          }
           leading={
             <AppTooltip content={backLabel} asChild>
               <Link
@@ -135,7 +187,7 @@ function TaskDetail() {
         />
 
         {isEdit ? (
-          <Form form={form} onSubmit={submit} className="w-full space-y-6">
+          <Form form={form} onSubmit={submit} className="min-w-0 w-full max-w-full space-y-6">
             <TaskFormFields
               disabled={updateMutation.isPending}
               itemsLocked={Boolean(task.isLocked)}
@@ -178,34 +230,33 @@ function TaskDetail() {
             </div>
           </Form>
         ) : (
-          <div className="w-full space-y-6">
-            <div className="card-elevated grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4 sm:p-6">
+          <div className="min-w-0 w-full max-w-full space-y-6">
+            <div className="card-elevated grid grid-cols-1 gap-4 overflow-hidden p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-4 [&>*]:min-w-0">
               <Detail label="Task number" value={task.taskNumber || "—"} />
               <Detail label="Property" value={task.propertyName} />
               <Detail label="Job type" value={task.jobTypeName} />
+              <Detail label="Contractor" value={contractorDisplay} />
+              <Detail label="Post Code" value={postCodeDisplay} />
               <Detail label="Start date" value={task.startDate?.slice(0, 10) || "—"} />
-              <Detail label="Hand over" value={task.handOverDate?.slice(0, 10) || "—"} />
+              <Detail label="HO" value={task.handOverDate?.slice(0, 10) || "—"} />
               <Detail
-                label="Days"
+                label="Day"
                 value={
                   task.heldDaysCount > 0
                     ? `${task.daysCount ?? 0} (−${task.heldDaysCount} held)`
                     : String(task.daysCount ?? 0)
                 }
               />
-              <Detail
-                label="Budget"
-                value={task.budget != null ? `£${Number(task.budget).toFixed(2)}` : "—"}
-              />
+              <Detail label="Price" value={formatPriceDisplay(task.budget)} />
               <Detail label="Status" value={task.statusName} />
               <Detail label="Site manager" value={task.siteManagerName || "—"} />
               <Detail label="Created" value={formatDateTime(task.createdDate)} />
-              <div className="sm:col-span-2 lg:col-span-4">
+              <div className="min-w-0 sm:col-span-2 xl:col-span-4">
                 <Detail label="Description" value={task.description || "—"} />
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="min-w-0 space-y-4">
               <h3 className="font-display font-semibold">Items by operative</h3>
               {(task.itemsByOperative ?? []).length === 0 ? (
                 <div className="card-elevated p-6 text-sm text-muted-foreground">No items.</div>
@@ -216,75 +267,83 @@ function TaskDetail() {
                     0,
                   );
                   return (
-                  <div key={group.operativeId} className="card-elevated space-y-3 p-4 sm:p-6">
-                    <h4 className="font-medium">{group.operativeName}</h4>
-                    <div className="overflow-x-auto rounded-md border border-border/60">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b bg-muted/20 text-left text-muted-foreground">
-                            <th className="px-3 py-2 font-medium">Date</th>
-                            <th className="px-3 py-2 font-medium">Package / Product</th>
-                            <th className="px-3 py-2 font-medium">Qty</th>
-                            <th className="px-3 py-2 font-medium">Rate</th>
-                            <th className="px-3 py-2 font-medium">Amount</th>
-                            <th className="px-3 py-2 font-medium">Ticked</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {group.items.map((item) => {
-                            const productLabel =
-                              item.tradeGroupName || item.productName || "—";
-                            const truncated = truncateWithEllipsis(productLabel, 28);
-                            const needsTooltip = productLabel.length > 28;
-                            return (
-                            <tr key={item.id} className="border-b border-border/50">
-                              <td className="px-3 py-2">{item.workDate?.slice(0, 10)}</td>
-                              <td className="px-3 py-2">
-                                {needsTooltip ? (
-                                  <AppTooltip content={productLabel} asChild align="start">
-                                    <span className="block max-w-[12rem] cursor-default truncate">
-                                      {truncated}
-                                    </span>
-                                  </AppTooltip>
-                                ) : (
-                                  truncated
-                                )}
-                              </td>
-                              <td className="px-3 py-2">{item.quantity}</td>
-                              <td className="px-3 py-2">{fmtGBP(Number(item.rate))}</td>
-                              <td className="px-3 py-2">
-                                <AppTooltip content={fmtGBP(Number(item.amount))} asChild align="end">
-                                  <span className="tabular-nums">{fmtGBP(Number(item.amount))}</span>
-                                </AppTooltip>
-                              </td>
-                              <td className="px-3 py-2">{item.isTicked ? "Yes" : "No"}</td>
+                    <div
+                      key={group.operativeId}
+                      className="card-elevated min-w-0 space-y-3 overflow-hidden p-4 sm:p-6"
+                    >
+                      <h4 className="font-medium">{group.operativeName}</h4>
+                      <div className="min-w-0 max-w-full overflow-x-auto rounded-md border border-border/60">
+                        <table className="w-full min-w-[480px] text-sm">
+                          <thead>
+                            <tr className="border-b bg-muted/20 text-left text-muted-foreground">
+                              <th className="px-3 py-2 font-medium">Date</th>
+                              <th className="px-3 py-2 font-medium">Package / Product</th>
+                              <th className="px-3 py-2 font-medium">Qty</th>
+                              <th className="px-3 py-2 font-medium">Rate</th>
+                              <th className="px-3 py-2 font-medium">Amount</th>
+                              <th className="px-3 py-2 font-medium">Ticked</th>
                             </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                    {group.items.length > 0 ? (
-                      <div className="flex items-center justify-between gap-4 rounded-md border border-border/60 bg-muted/50 px-3 py-3 sm:px-4">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
-                            <Calculator className="h-3.5 w-3.5" aria-hidden />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-semibold text-foreground">Total</div>
-                            <div className="text-xs text-muted-foreground">
-                              {group.items.length} item{group.items.length === 1 ? "" : "s"}
+                          </thead>
+                          <tbody>
+                            {group.items.map((item) => {
+                              const productLabel = item.tradeGroupName || item.productName || "—";
+                              const truncated = truncateWithEllipsis(productLabel, 28);
+                              const needsTooltip = productLabel.length > 28;
+                              return (
+                                <tr key={item.id} className="border-b border-border/50">
+                                  <td className="px-3 py-2">{item.workDate?.slice(0, 10)}</td>
+                                  <td className="min-w-0 px-3 py-2">
+                                    {needsTooltip ? (
+                                      <AppTooltip content={productLabel} asChild align="start">
+                                        <span className="block max-w-[12rem] cursor-default truncate">
+                                          {truncated}
+                                        </span>
+                                      </AppTooltip>
+                                    ) : (
+                                      truncated
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2">{item.quantity}</td>
+                                  <td className="px-3 py-2">{fmtGBP(Number(item.rate))}</td>
+                                  <td className="px-3 py-2">
+                                    <AppTooltip
+                                      content={fmtGBP(Number(item.amount))}
+                                      asChild
+                                      align="end"
+                                    >
+                                      <span className="tabular-nums">
+                                        {fmtGBP(Number(item.amount))}
+                                      </span>
+                                    </AppTooltip>
+                                  </td>
+                                  <td className="px-3 py-2">{item.isTicked ? "Yes" : "No"}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      {group.items.length > 0 ? (
+                        <div className="flex items-center justify-between gap-4 rounded-md border border-border/60 bg-muted/50 px-3 py-3 sm:px-4">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
+                              <Calculator className="h-3.5 w-3.5" aria-hidden />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-foreground">Total</div>
+                              <div className="text-xs text-muted-foreground">
+                                {group.items.length} item{group.items.length === 1 ? "" : "s"}
+                              </div>
                             </div>
                           </div>
+                          <AppTooltip content={fmtGBP(groupTotal)} asChild align="end">
+                            <div className="shrink-0 font-display text-base font-semibold tabular-nums tracking-tight text-foreground sm:text-lg">
+                              {fmtGBP(groupTotal)}
+                            </div>
+                          </AppTooltip>
                         </div>
-                        <AppTooltip content={fmtGBP(groupTotal)} asChild align="end">
-                          <div className="shrink-0 font-display text-base font-semibold tabular-nums tracking-tight text-foreground sm:text-lg">
-                            {fmtGBP(groupTotal)}
-                          </div>
-                        </AppTooltip>
-                      </div>
-                    ) : null}
-                  </div>
+                      ) : null}
+                    </div>
                   );
                 })
               )}
@@ -298,9 +357,9 @@ function TaskDetail() {
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-0.5 text-sm font-medium">{value}</div>
+      <div className="mt-0.5 break-words text-sm font-medium">{value}</div>
     </div>
   );
 }

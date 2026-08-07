@@ -26,10 +26,7 @@ import {
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { activeStatusClass } from "@/lib/module-ui";
 import { DAY_SUGGESTIONS_ROUTE } from "@/lib/day-suggestions";
-import {
-  DESCRIPTION_MAX_LENGTH,
-  descriptionSchema,
-} from "@/lib/field-validation";
+import { DESCRIPTION_MAX_LENGTH, descriptionSchema } from "@/lib/field-validation";
 
 export const Route = createFileRoute("/day-suggestions")({
   head: () => ({ meta: [{ title: "Day Suggestions | Schore" }] }),
@@ -80,8 +77,7 @@ function DaySuggestionsPage() {
 
   const query = useQuery({
     queryKey: [...daySuggestionsQueryKey, { page, pageSize, search }],
-    queryFn: async () =>
-      (await daySuggestionsService.list({ page, pageSize, search })).data,
+    queryFn: async () => (await daySuggestionsService.list({ page, pageSize, search })).data,
     placeholderData: keepPreviousData,
   });
 
@@ -116,9 +112,7 @@ function DaySuggestionsPage() {
           item.isActive ? "Active" : "Inactive",
         ]),
       });
-      toast.success(
-        `Exported ${rows.length} day suggestion${rows.length === 1 ? "" : "s"} to CSV`,
-      );
+      toast.success(`Exported ${rows.length} day suggestion${rows.length === 1 ? "" : "s"} to CSV`);
     } finally {
       setExporting(false);
     }
@@ -149,10 +143,7 @@ function DaySuggestionsPage() {
           return (
             <div className="flex flex-wrap gap-1">
               {codes.map((code) => (
-                <code
-                  key={code}
-                  className="rounded bg-secondary px-1.5 py-0.5 text-xs font-mono"
-                >
+                <code key={code} className="rounded bg-secondary px-1.5 py-0.5 text-xs font-mono">
                   {code}
                 </code>
               ))}
@@ -206,7 +197,7 @@ function DaySuggestionsPage() {
     <div>
       <PageHeader
         title="Day suggestions"
-        subtitle="Editable per-day trade codes shown as suggestions in the Daily Programme Next Day column. Suggestions never auto-allocate work."
+        subtitle="Editable per-day trade codes shown as suggestions in the Daily Programmer Next Day column. Suggestions never auto-allocate work."
         actions={
           <>
             <Button
@@ -215,7 +206,11 @@ function DaySuggestionsPage() {
               onClick={handleExportCsv}
               disabled={exporting || query.isLoading}
             >
-              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {exporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
               Export CSV
             </Button>
             <Can route={DAY_SUGGESTIONS_ROUTE} action="modify">
@@ -306,7 +301,11 @@ function DaySuggestionsPage() {
               undone.
             </p>
             <div className="mt-6 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setConfirmDel(null)} disabled={deleteMutation.isPending}>
+              <Button
+                variant="outline"
+                onClick={() => setConfirmDel(null)}
+                disabled={deleteMutation.isPending}
+              >
                 Cancel
               </Button>
               <Button
@@ -314,7 +313,11 @@ function DaySuggestionsPage() {
                 disabled={deleteMutation.isPending}
                 onClick={() => deleteMutation.mutate(confirmDel.id)}
               >
-                {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {deleteMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
                 Delete
               </Button>
             </div>

@@ -332,7 +332,7 @@ function AppShellChrome({
 
         <div
           ref={contentRef}
-          className="flex-1 overflow-y-auto scrollbar-elegant px-4 pb-4 pt-2 lg:px-6 min-w-0"
+          className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-elegant px-4 pb-4 pt-2 lg:px-6 min-w-0"
         >
           <RoutePermissionGuard pathname={pathname}>
             <Outlet />

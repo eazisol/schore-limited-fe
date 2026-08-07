@@ -21,19 +21,17 @@ import {
   Eye,
   Pencil,
   Download,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  dailyProgrammeService,
-  type ApiDailyRow,
-} from "@/lib/api/services/daily-programme";
+import { dailyProgrammeService, type ApiDailyRow } from "@/lib/api/services/daily-programme";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { Can, usePermission } from "@/components/Permission";
 import { DAILY_ROUTE } from "@/lib/daily";
 import { truncateWithEllipsis } from "@/lib/module-ui";
 
 export const Route = createFileRoute("/daily")({
-  head: () => ({ meta: [{ title: "Daily Programme | Schore" }] }),
+  head: () => ({ meta: [{ title: "Daily Programmer | Schore" }] }),
   component: Daily,
 });
 
@@ -166,13 +164,13 @@ function Daily() {
     setExporting(true);
     try {
       downloadCsv({
-        filename: `daily-programme-${date}.csv`,
+        filename: `daily-programmer-${date}.csv`,
         headers: [
           "No.",
           "Task #",
           "Property",
           "Address",
-          "Contract",
+          "Contractor",
           "Post Code",
           "Type",
           "Starting Date",
@@ -215,10 +213,12 @@ function Daily() {
   function clearFilters() {
     clearSearch();
     setShowHO(false);
+    setDate(todayIso());
     setPage(1);
   }
 
-  const hasActiveFilters = Boolean(search || showHO);
+  const isDateFiltered = date !== todayIso();
+  const hasActiveFilters = Boolean(search || showHO || isDateFiltered);
 
   const columns = useMemo<DataTableColumn<ApiDailyRow>[]>(
     () => [
@@ -227,9 +227,7 @@ function Daily() {
         header: "No.",
         width: "3.5rem",
         accessor: (row) => row.no,
-        cell: (row) => (
-          <span className="tabular-nums text-muted-foreground">{row.no}</span>
-        ),
+        cell: (row) => <span className="tabular-nums text-muted-foreground">{row.no}</span>,
       },
       {
         id: "property",
@@ -289,7 +287,7 @@ function Daily() {
       },
       {
         id: "contract",
-        header: "Contract",
+        header: "Contractor",
         width: "7rem",
         accessor: (row) => row.contract || "—",
         cell: (row) => <code className="font-mono text-xs">{row.contract || "—"}</code>,
@@ -329,7 +327,9 @@ function Daily() {
         header: "DAY",
         width: "5rem",
         accessor: (row) =>
-          row.heldDaysCount > 0 ? `${row.daysCount} (-${row.heldDaysCount})` : String(row.daysCount),
+          row.heldDaysCount > 0
+            ? `${row.daysCount} (-${row.heldDaysCount})`
+            : String(row.daysCount),
         cell: (row) => (
           <span className="font-mono tabular-nums">
             {row.daysCount}
@@ -419,7 +419,7 @@ function Daily() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Daily Programme"
+        title="Daily Programmer"
         subtitle={`Roll for ${formatLongDate(date)}`}
         actions={
           <>
@@ -486,13 +486,12 @@ function Daily() {
         getRowId={(row) => row.taskId}
         loading={query.isLoading}
         fetching={query.isFetching}
-        loadingText="Loading daily programme…"
+        loadingText="Loading daily programmer…"
         error={
           query.isError
             ? {
-                title: "Unable to load daily programme",
-                message:
-                  (query.error as unknown as ApiError)?.message || "Please try again.",
+                title: "Unable to load daily programmer",
+                message: (query.error as unknown as ApiError)?.message || "Please try again.",
                 onRetry: () => {
                   void query.refetch();
                 },
@@ -502,8 +501,8 @@ function Daily() {
         search={{
           value: searchInput,
           onChange: setSearchInput,
-          placeholder: "Search property, contract, trade…",
-          "aria-label": "Search daily programme",
+          placeholder: "Search property, contractor, trade…",
+          "aria-label": "Search daily programmer",
         }}
         filters={
           <>
@@ -540,6 +539,20 @@ function Daily() {
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
+              <AppTooltip content="Clear date (reset to today)" asChild>
+                <button
+                  type="button"
+                  className="grid h-9 w-9 place-items-center border-l border-input text-muted-foreground hover:bg-accent/10 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                  onClick={() => {
+                    setDate(todayIso());
+                    setPage(1);
+                  }}
+                  disabled={!isDateFiltered}
+                  aria-label="Clear date filter"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </AppTooltip>
             </div>
             <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-xs">
               <Checkbox
@@ -555,12 +568,8 @@ function Daily() {
           </>
         }
         emptyState={{
-          title: hasActiveFilters
-            ? "No rows match your filters"
-            : "No properties on today's roll",
-          description: hasActiveFilters
-            ? "Try clearing the search or filters."
-            : undefined,
+          title: hasActiveFilters ? "No rows match your filters" : "No properties on today's roll",
+          description: hasActiveFilters ? "Try clearing the search or filters." : undefined,
           action: hasActiveFilters ? (
             <Button variant="outline" size="sm" onClick={clearFilters}>
               Clear filters

@@ -40,6 +40,10 @@ export interface ApiTask {
   propertyId: number;
   propertyName: string;
   propertyAddress: string | null;
+  /** Property contractor — same source as Daily Programmer "Contractor". */
+  contract: string | null;
+  /** Property post code — same source as Daily Programmer "Post Code". */
+  postCode: string | null;
   startDate: string;
   handOverDate: string | null;
   budget: number | null;

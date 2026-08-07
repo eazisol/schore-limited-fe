@@ -1,10 +1,6 @@
 import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  TextField,
-  TextareaField,
-  SearchableSelectField,
-} from "@/components/form";
+import { TextField, TextareaField, SearchableSelectField } from "@/components/form";
 import { SearchableSelect } from "@/components/form/SearchableSelect";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,7 +10,12 @@ import { Calculator, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtGBP } from "@/lib/data";
 import { truncateWithEllipsis } from "@/lib/module-ui";
-import { emptyTaskItem, type TaskFormValues, type TaskItemFormValues } from "@/lib/task-form";
+import {
+  emptyTaskItem,
+  DESCRIPTION_MAX_LENGTH,
+  type TaskFormValues,
+  type TaskItemFormValues,
+} from "@/lib/task-form";
 import {
   fetchJobTypeOptions,
   fetchOperativeOptions,
@@ -345,18 +346,20 @@ export function TaskFormFields({
     const includeOperative = options?.includeOperative ?? false;
     const canAdd =
       Boolean(operativeId) &&
-      (addState.itemKind === "tradeGroup" ? Boolean(addState.tradeGroupId) : Boolean(addState.productId));
+      (addState.itemKind === "tradeGroup"
+        ? Boolean(addState.tradeGroupId)
+        : Boolean(addState.productId));
 
     return (
       <div
         className={cn(
-          "flex w-full flex-wrap items-end justify-between gap-3",
+          "flex w-full min-w-0 flex-wrap items-end justify-between gap-3",
           options?.className,
         )}
       >
-        <div className="flex flex-wrap items-end gap-2">
+        <div className="flex min-w-0 flex-wrap items-end gap-2">
           {includeOperative ? (
-            <div className="w-[180px]">
+            <div className="w-[180px] shrink-0">
               <label className="mb-1 block text-xs text-muted-foreground">Active operative</label>
               <SearchableSelect
                 value={activeOperativeId}
@@ -377,7 +380,7 @@ export function TaskFormFields({
               />
             </div>
           ) : null}
-          <div className="w-[180px]">
+          <div className="w-[180px] shrink-0">
             <label className="mb-1 block text-xs text-muted-foreground">Add as</label>
             <SearchableSelect
               value={addState.itemKind}
@@ -409,7 +412,7 @@ export function TaskFormFields({
               disabled={!operativeId || addControlsDisabled}
             />
           </div>
-          <div className="w-[180px]">
+          <div className="w-[180px] shrink-0">
             <label className="mb-1 block text-xs text-muted-foreground">Package / Add-on</label>
             {addState.itemKind === "tradeGroup" ? (
               <SearchableSelect
@@ -453,7 +456,9 @@ export function TaskFormFields({
           size="sm"
           className="shrink-0"
           variant={options?.addButtonLabel ? "default" : "outline"}
-          onClick={() => void (options?.addButtonLabel ? addFromTop() : addForOperative(operativeId))}
+          onClick={() =>
+            void (options?.addButtonLabel ? addFromTop() : addForOperative(operativeId))
+          }
           disabled={!canAdd || addControlsDisabled}
         >
           <Plus className="h-4 w-4" />
@@ -537,231 +542,257 @@ export function TaskFormFields({
 
   return (
     <>
-    <fieldset disabled={disabled} className="space-y-6">
-      <div className="card-elevated space-y-4 p-4 sm:p-6">
-        <h3 className="font-display font-semibold">Task details</h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <SearchableSelectField<TaskFormValues>
-            name="propertyId"
-            label="Property"
-            required
-            placeholder="Select property"
-            searchPlaceholder="Search properties…"
-            queryKey={["lookups", "properties"]}
-            selectedLabel={selectedLabels?.property}
-            fetchOptions={fetchPropertyOptions}
-          />
-          <SearchableSelectField<TaskFormValues>
-            name="jobTypeId"
-            label="Job type"
-            required
-            placeholder="Select job type"
-            searchPlaceholder="Search job types…"
-            queryKey={["lookups", "job-types"]}
-            selectedLabel={selectedLabels?.jobType}
-            fetchOptions={fetchJobTypeOptions}
-          />
-          <TextField<TaskFormValues>
-            name="startDate"
-            label="Start date"
-            type="date"
-            required
-            inputClassName="h-10"
-          />
-          <TextField<TaskFormValues>
-            name="handOverDate"
-            label="Hand over date"
-            type="date"
-            inputClassName="h-10"
-          />
-          <TextField<TaskFormValues>
-            name="budget"
-            label="Budget"
-            type="number"
-            min={0}
-            step="0.01"
-            placeholder="0.00"
-            inputClassName="h-10"
-          />
-          <SearchableSelectField<TaskFormValues>
-            name="statusId"
-            label="Status"
-            required
-            placeholder="Select status"
-            searchPlaceholder="Search statuses…"
-            queryKey={["lookups", "statuses", "TASK"]}
-            selectedLabel={selectedLabels?.status}
-            fetchOptions={fetchTaskStatusOptions}
-            onSelect={handleStatusSelect}
-          />
-          <SearchableSelectField<TaskFormValues>
-            name="siteManagerId"
-            label="Site manager"
-            placeholder="Select site manager"
-            searchPlaceholder="Search site managers…"
-            queryKey={["lookups", "site-managers"]}
-            selectedLabel={selectedLabels?.siteManager}
-            fetchOptions={fetchSiteManagerOptions}
-            emptyOption={{ value: "", label: "None" }}
+      <fieldset disabled={disabled} className="min-w-0 w-full max-w-full space-y-6">
+        <div className="card-elevated min-w-0 space-y-4 overflow-hidden p-4 sm:p-6">
+          <h3 className="font-display font-semibold">Task details</h3>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
+            <SearchableSelectField<TaskFormValues>
+              name="propertyId"
+              label="Property"
+              required
+              placeholder="Select property"
+              searchPlaceholder="Search properties…"
+              queryKey={["lookups", "properties"]}
+              selectedLabel={selectedLabels?.property}
+              fetchOptions={fetchPropertyOptions}
+            />
+            <SearchableSelectField<TaskFormValues>
+              name="jobTypeId"
+              label="Job type"
+              required
+              placeholder="Select job type"
+              searchPlaceholder="Search job types…"
+              queryKey={["lookups", "job-types"]}
+              selectedLabel={selectedLabels?.jobType}
+              fetchOptions={fetchJobTypeOptions}
+            />
+            <TextField<TaskFormValues>
+              name="startDate"
+              label="Start date"
+              type="date"
+              required
+              className="min-w-0"
+              inputClassName="h-10 min-w-0"
+            />
+            <TextField<TaskFormValues>
+              name="handOverDate"
+              label="Hand over date"
+              type="date"
+              className="min-w-0"
+              inputClassName="h-10 min-w-0"
+            />
+            <TextField<TaskFormValues>
+              name="budget"
+              label="Price"
+              placeholder="1000 or 1000-2000"
+              description="Single amount or range, with optional £"
+              className="min-w-0"
+              inputClassName="h-10 min-w-0"
+              leftIcon={({ className }) => (
+                <span className={cn(className, "text-sm font-semibold leading-none")}>£</span>
+              )}
+            />
+            <SearchableSelectField<TaskFormValues>
+              name="statusId"
+              label="Status"
+              required
+              placeholder="Select status"
+              searchPlaceholder="Search statuses…"
+              queryKey={["lookups", "statuses", "TASK"]}
+              selectedLabel={selectedLabels?.status}
+              fetchOptions={fetchTaskStatusOptions}
+              onSelect={handleStatusSelect}
+            />
+            <SearchableSelectField<TaskFormValues>
+              name="siteManagerId"
+              label="Contractor"
+              placeholder="Select contractor"
+              searchPlaceholder="Search contractors…"
+              queryKey={["lookups", "site-managers"]}
+              selectedLabel={selectedLabels?.siteManager}
+              fetchOptions={fetchSiteManagerOptions}
+              emptyOption={{ value: "", label: "None" }}
+            />
+          </div>
+          <TextareaField<TaskFormValues>
+            name="description"
+            label="Description"
+            rows={3}
+            maxLength={DESCRIPTION_MAX_LENGTH}
           />
         </div>
-        <TextareaField<TaskFormValues> name="description" label="Description" rows={3} />
-      </div>
 
-      <div className="space-y-4">
-        <div className="space-y-3">
-          <div>
-            <h3 className="font-display font-semibold">Task items by operative</h3>
-            {itemsLocked ? (
-              <p className="mt-1 text-xs font-medium text-warning-foreground">
-                Locked — tick at least one item on the previous working day before adding new items.
-              </p>
-            ) : null}
+        <div className="min-w-0 space-y-4">
+          <div className="min-w-0 space-y-3">
+            <div>
+              <h3 className="font-display font-semibold">Task items by operative</h3>
+              {itemsLocked ? (
+                <p className="mt-1 text-xs font-medium text-warning-foreground">
+                  Locked — tick at least one item on the previous working day before adding new
+                  items.
+                </p>
+              ) : null}
+            </div>
+            {renderAddControls(activeOperativeId, {
+              addButtonLabel: "Add item",
+              querySuffix: "top",
+              includeOperative: true,
+            })}
           </div>
-          {renderAddControls(activeOperativeId, {
-            addButtonLabel: "Add item",
-            querySuffix: "top",
-            includeOperative: true,
+
+          {operativeCards.length === 0 ? (
+            <div className="card-elevated p-6 text-sm text-muted-foreground">
+              No task items yet. Choose an operative, then add a package or add-on from the top bar.
+            </div>
+          ) : null}
+
+          {operativeCards.map((operativeId) => {
+            const groupEntry = grouped.find(([key]) => key === operativeId);
+            const indexes = groupEntry?.[1].indexes ?? [];
+            const name =
+              operativeLabels[operativeId] ||
+              (operativeId === activeOperativeId
+                ? activeOperativeLabel
+                : `Operative #${operativeId}`);
+            const { packages, addOns } = packageGroupsForOperative(indexes);
+            const operativeTotal = indexes.reduce((sum, index) => {
+              const qty = Number(items[index]?.quantity || 0);
+              const rate = Number(items[index]?.rate || 0);
+              const line = qty * rate;
+              return sum + (Number.isFinite(line) ? line : 0);
+            }, 0);
+
+            return (
+              <div
+                key={operativeId}
+                className="card-elevated min-w-0 space-y-4 overflow-hidden p-4 sm:p-6"
+              >
+                <div className="min-w-0 space-y-3">
+                  <h4 className="font-medium">{name}</h4>
+                  {renderAddControls(operativeId)}
+                </div>
+
+                {indexes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No lines yet. Select Package or Add-on, then click Add for this operative.
+                  </p>
+                ) : null}
+
+                {packages.map(([packageId, pkg]) => (
+                  <div key={`${operativeId}-pkg-${packageId}`} className="min-w-0 space-y-2">
+                    <div className="flex min-w-0 items-center">
+                      <span className="inline-flex max-w-full items-center rounded-full border border-border bg-secondary px-2.5 py-0.5 text-[11px] font-medium leading-none text-secondary-foreground">
+                        <AppTooltip content={`Package: ${pkg.name}`} asChild align="start">
+                          <span className="truncate">Package: {pkg.name}</span>
+                        </AppTooltip>
+                      </span>
+                    </div>
+                    <ProductLinesTable
+                      indexes={pkg.indexes}
+                      fields={fields}
+                      items={items}
+                      productLabels={productLabels}
+                      onRemove={remove}
+                      onRateCommit={(index, previousRate, nextRate) => {
+                        if (previousRate === nextRate) return;
+                        setValue(`items.${index}.rate`, nextRate);
+                        setRatePrompt({ index, previousRate, nextRate });
+                      }}
+                      getValues={getValues}
+                    />
+                  </div>
+                ))}
+
+                {addOns.length > 0 ? (
+                  <div className="min-w-0 space-y-2">
+                    <div className="flex min-w-0 items-center">
+                      <span className="inline-flex max-w-full items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[11px] font-medium leading-none text-muted-foreground">
+                        Add-ons
+                      </span>
+                    </div>
+                    <ProductLinesTable
+                      indexes={addOns}
+                      fields={fields}
+                      items={items}
+                      productLabels={productLabels}
+                      onRemove={remove}
+                      onRateCommit={(index, previousRate, nextRate) => {
+                        if (previousRate === nextRate) return;
+                        setValue(`items.${index}.rate`, nextRate);
+                        setRatePrompt({ index, previousRate, nextRate });
+                      }}
+                      getValues={getValues}
+                    />
+                  </div>
+                ) : null}
+
+                {indexes.length > 0 ? (
+                  <div className="flex items-center justify-between gap-4 rounded-md border border-border/60 bg-muted/50 px-3 py-3 sm:px-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
+                        <Calculator className="h-3.5 w-3.5" aria-hidden />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-foreground">Total</div>
+                        <div className="text-xs text-muted-foreground">
+                          {indexes.length} item{indexes.length === 1 ? "" : "s"}
+                        </div>
+                      </div>
+                    </div>
+                    <AppTooltip content={fmtGBP(operativeTotal)} asChild align="end">
+                      <div className="shrink-0 font-display text-base font-semibold tabular-nums tracking-tight text-foreground sm:text-lg">
+                        {fmtGBP(operativeTotal)}
+                      </div>
+                    </AppTooltip>
+                  </div>
+                ) : null}
+              </div>
+            );
           })}
         </div>
 
-        {operativeCards.length === 0 ? (
-          <div className="card-elevated p-6 text-sm text-muted-foreground">
-            No task items yet. Choose an operative, then add a package or add-on from the top bar.
-          </div>
-        ) : null}
-
-        {operativeCards.map((operativeId) => {
-          const groupEntry = grouped.find(([key]) => key === operativeId);
-          const indexes = groupEntry?.[1].indexes ?? [];
-          const name =
-            operativeLabels[operativeId] ||
-            (operativeId === activeOperativeId ? activeOperativeLabel : `Operative #${operativeId}`);
-          const { packages, addOns } = packageGroupsForOperative(indexes);
-          const operativeTotal = indexes.reduce((sum, index) => {
-            const qty = Number(items[index]?.quantity || 0);
-            const rate = Number(items[index]?.rate || 0);
-            const line = qty * rate;
-            return sum + (Number.isFinite(line) ? line : 0);
-          }, 0);
-
-          return (
-            <div key={operativeId} className="card-elevated space-y-4 p-4 sm:p-6">
-              <div className="space-y-3">
-                <h4 className="font-medium">{name}</h4>
-                {renderAddControls(operativeId)}
+        {ratePrompt ? (
+          <Modal
+            open
+            onClose={cancelRatePrompt}
+            title="Apply rate change?"
+            subtitle="Choose whether this rate update is one-off or permanent for the product catalogue."
+            size="sm"
+            showCloseButton={false}
+          >
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                New rate: £{Number(ratePrompt.nextRate || 0).toFixed(2)}
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => resolveRatePrompt(false)}
+                >
+                  Apply this time only
+                </Button>
+                <Button type="button" size="sm" onClick={() => resolveRatePrompt(true)}>
+                  Save as permanent product rate
+                </Button>
               </div>
-
-              {indexes.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No lines yet. Select Package or Add-on, then click Add for this operative.
-                </p>
-              ) : null}
-
-              {packages.map(([packageId, pkg]) => (
-                <div key={`${operativeId}-pkg-${packageId}`} className="space-y-2">
-                  <span className="inline-flex max-w-full items-center rounded-full border border-border bg-secondary px-2.5 py-0.5 text-[11px] font-medium text-secondary-foreground">
-                    <AppTooltip content={`Package: ${pkg.name}`} asChild align="start">
-                      <span className="truncate">Package: {pkg.name}</span>
-                    </AppTooltip>
-                  </span>
-                  <ProductLinesTable
-                    indexes={pkg.indexes}
-                    fields={fields}
-                    items={items}
-                    productLabels={productLabels}
-                    onRemove={remove}
-                    onRateCommit={(index, previousRate, nextRate) => {
-                      if (previousRate === nextRate) return;
-                      setValue(`items.${index}.rate`, nextRate);
-                      setRatePrompt({ index, previousRate, nextRate });
-                    }}
-                    getValues={getValues}
-                  />
-                </div>
-              ))}
-
-              {addOns.length > 0 ? (
-                <div className="space-y-2">
-                  <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                    Add-ons
-                  </span>
-                  <ProductLinesTable
-                    indexes={addOns}
-                    fields={fields}
-                    items={items}
-                    productLabels={productLabels}
-                    onRemove={remove}
-                    onRateCommit={(index, previousRate, nextRate) => {
-                      if (previousRate === nextRate) return;
-                      setValue(`items.${index}.rate`, nextRate);
-                      setRatePrompt({ index, previousRate, nextRate });
-                    }}
-                    getValues={getValues}
-                  />
-                </div>
-              ) : null}
-
-              {indexes.length > 0 ? (
-                <div className="flex items-center justify-between gap-4 rounded-md border border-border/60 bg-muted/50 px-3 py-3 sm:px-4">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
-                      <Calculator className="h-3.5 w-3.5" aria-hidden />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-foreground">Total</div>
-                      <div className="text-xs text-muted-foreground">
-                        {indexes.length} item{indexes.length === 1 ? "" : "s"}
-                      </div>
-                    </div>
-                  </div>
-                  <AppTooltip content={fmtGBP(operativeTotal)} asChild align="end">
-                    <div className="shrink-0 font-display text-base font-semibold tabular-nums tracking-tight text-foreground sm:text-lg">
-                      {fmtGBP(operativeTotal)}
-                    </div>
-                  </AppTooltip>
-                </div>
-              ) : null}
             </div>
-          );
-        })}
-      </div>
+          </Modal>
+        ) : null}
+      </fieldset>
 
-      {ratePrompt ? (
-        <Modal
-          open
-          onClose={cancelRatePrompt}
-          title="Apply rate change?"
-          subtitle="Choose whether this rate update is one-off or permanent for the product catalogue."
-          size="sm"
-          showCloseButton={false}
-        >
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              New rate: £{Number(ratePrompt.nextRate || 0).toFixed(2)}
-            </p>
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <Button type="button" variant="outline" size="sm" onClick={() => resolveRatePrompt(false)}>
-                Apply this time only
-              </Button>
-              <Button type="button" size="sm" onClick={() => resolveRatePrompt(true)}>
-                Save as permanent product rate
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
-    </fieldset>
-
-    <HoldDetailsModal
-      open={holdOpen}
-      onClose={handleHoldCancel}
-      onConfirm={handleHoldConfirm}
-      defaultDate={startDate || new Date().toISOString().slice(0, 10)}
-    />
+      <HoldDetailsModal
+        open={holdOpen}
+        onClose={handleHoldCancel}
+        onConfirm={handleHoldConfirm}
+        defaultDate={startDate || new Date().toISOString().slice(0, 10)}
+      />
     </>
   );
 }
+
+const PRODUCT_LINE_TABLE_MIN_WIDTH = "1068px";
 
 function ProductLinesTable({
   indexes,
@@ -787,8 +818,22 @@ function ProductLinesTable({
   });
 
   return (
-    <div className="overflow-x-auto rounded-md border border-border/60">
-      <table className="w-full min-w-[920px] text-sm">
+    <div className="min-w-0 max-w-full overflow-x-auto rounded-md border border-border/60">
+      <table
+        className="w-full table-fixed text-sm"
+        style={{ minWidth: PRODUCT_LINE_TABLE_MIN_WIDTH }}
+      >
+        <colgroup>
+          <col style={{ width: "168px" }} />
+          <col style={{ width: "158px" }} />
+          <col style={{ width: "118px" }} />
+          <col style={{ width: "98px" }} />
+          <col style={{ width: "118px" }} />
+          <col style={{ width: "88px" }} />
+          <col style={{ width: "64px" }} />
+          <col style={{ width: "208px" }} />
+          <col style={{ width: "48px" }} />
+        </colgroup>
         <thead>
           <tr className="border-b bg-muted/20 text-left text-muted-foreground">
             <th className="px-3 py-2 font-medium">Product</th>
@@ -869,20 +914,20 @@ function ProductLineRow({
   }, [getValues, index, setValue, timeSlots]);
 
   return (
-    <tr className="align-top border-b border-border/50">
-      <td className="px-3 py-2 font-medium">
+    <tr className="align-middle border-b border-border/50">
+      <td className="min-w-0 px-3 py-2 font-medium">
         <TruncatedTooltip text={productLabel} maxChars={28} />
       </td>
       <td className="px-3 py-2">
         <input
           type="date"
-          className="h-9 w-[150px] rounded-md border border-input bg-background px-3 text-sm"
+          className="h-9 w-[150px] max-w-full rounded-md border border-input bg-background px-3 text-sm"
           {...register(`items.${index}.workDate`)}
         />
       </td>
       <td className="px-3 py-2">
         <select
-          className="h-9 w-[110px] rounded-md border border-input bg-background px-2 text-sm"
+          className="h-9 w-[110px] max-w-full rounded-md border border-input bg-background px-2 text-sm"
           {...register(`items.${index}.timeSlotId`)}
         >
           <option value="">Select…</option>
@@ -898,7 +943,7 @@ function ProductLineRow({
           type="number"
           min={0.01}
           step={0.01}
-          className="h-9 w-[90px] rounded-md border border-input bg-background px-3 text-sm"
+          className="h-9 w-[90px] max-w-full rounded-md border border-input bg-background px-3 text-sm"
           {...register(`items.${index}.quantity`)}
         />
       </td>
@@ -907,7 +952,7 @@ function ProductLineRow({
           type="number"
           min={0}
           step={0.01}
-          className="h-9 w-[110px] rounded-md border border-input bg-background px-3 text-sm"
+          className="h-9 w-[110px] max-w-full rounded-md border border-input bg-background px-3 text-sm"
           {...register(`items.${index}.rate`)}
           onFocus={() => {
             rateBeforeEdit.current = getValues(`items.${index}.rate`) || "0";
@@ -929,7 +974,7 @@ function ProductLineRow({
         </AppTooltip>
       </td>
       <td className="px-3 py-2">
-        <AppTooltip content="Tick to confirm this line for the daily programme" asChild>
+        <AppTooltip content="Tick to confirm this line for the daily programmer" asChild>
           <span className="inline-flex">
             <Controller
               control={control}
@@ -945,12 +990,17 @@ function ProductLineRow({
           </span>
         </AppTooltip>
       </td>
-      <td className="px-3 py-2">
-        <AppTooltip content={notes.trim() || undefined} disabled={!notes.trim()} asChild align="start">
+      <td className="min-w-0 px-3 py-2">
+        <AppTooltip
+          content={notes.trim() || undefined}
+          disabled={!notes.trim()}
+          asChild
+          align="start"
+        >
           <div className="min-w-0">
             <input
               type="text"
-              className="h-9 w-[200px] truncate rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 w-[200px] max-w-full truncate rounded-md border border-input bg-background px-3 text-sm"
               placeholder="Notes"
               {...register(`items.${index}.notes`)}
             />
@@ -959,7 +1009,13 @@ function ProductLineRow({
       </td>
       <td className="px-3 py-2">
         <AppTooltip content="Remove item" asChild>
-          <Button type="button" size="icon" variant="ghost" onClick={onRemove} aria-label="Remove item">
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={onRemove}
+            aria-label="Remove item"
+          >
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </AppTooltip>
@@ -968,13 +1024,7 @@ function ProductLineRow({
   );
 }
 
-function TruncatedTooltip({
-  text,
-  maxChars = 24,
-}: {
-  text: string;
-  maxChars?: number;
-}) {
+function TruncatedTooltip({ text, maxChars = 24 }: { text: string; maxChars?: number }) {
   const value = text.trim();
   if (!value) return <span>—</span>;
   const truncated = truncateWithEllipsis(value, maxChars);

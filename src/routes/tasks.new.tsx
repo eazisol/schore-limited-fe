@@ -38,7 +38,7 @@ function NewTask() {
   const queryClient = useQueryClient();
   const fromDaily = from === "daily";
   const backTo = fromDaily ? "/daily" : "/tasks";
-  const backLabel = fromDaily ? "Back to daily programme" : "Back to tasks";
+  const backLabel = fromDaily ? "Back to daily programmer" : "Back to tasks";
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
@@ -64,7 +64,7 @@ function NewTask() {
 
   return (
     <RequirePermission route={TASKS_ROUTE} action="modify">
-      <div>
+      <div className="min-w-0 w-full max-w-full">
         <PageHeader
           title="Add task"
           leading={
@@ -80,7 +80,7 @@ function NewTask() {
           }
         />
 
-        <Form form={form} onSubmit={submit} className="w-full space-y-6">
+        <Form form={form} onSubmit={submit} className="min-w-0 w-full max-w-full space-y-6">
           <TaskFormFields disabled={createMutation.isPending} />
 
           <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
