@@ -101,12 +101,7 @@ function TasksList() {
       id: "days",
       header: "Days",
       cell: (task) => (
-        <span className="font-mono tabular-nums">
-          {task.daysCount ?? 0}
-          {task.heldDaysCount > 0 ? (
-            <span className="ml-1 text-xs text-muted-foreground">(-{task.heldDaysCount} held)</span>
-          ) : null}
-        </span>
+        <span className="font-mono tabular-nums">{task.daysCount ?? 0}</span>
       ),
     },
     {

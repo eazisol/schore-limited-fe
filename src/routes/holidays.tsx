@@ -442,7 +442,9 @@ function HolidaysPage() {
                       "flex h-8 items-center justify-center rounded-md bg-muted/50 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground",
                     weeks: "grid min-h-0 flex-1 grid-rows-6 gap-1.5",
                     week: "grid min-h-0 grid-cols-7 gap-1.5",
-                    day: "min-h-0 min-w-0",
+                    day: "min-h-0 min-w-0 bg-transparent",
+                    // Do not fill the cell — HolidayDayCell owns today/holiday/selected chrome.
+                    today: "bg-transparent text-foreground rounded-lg",
                     day_button: "!aspect-auto !h-full !min-h-0 !min-w-0 !w-full rounded-lg p-0",
                     outside: "opacity-55",
                   }}
@@ -495,7 +497,7 @@ function HolidaysPage() {
                     }: HTMLAttributes<HTMLDivElement> & { day?: unknown; modifiers?: unknown }) => (
                       <div
                         role="gridcell"
-                        className={cn("min-h-0 min-w-0", className)}
+                        className={cn(className, "min-h-0 min-w-0 bg-transparent")}
                         {...props}
                       />
                     ),
@@ -633,14 +635,15 @@ function HolidayDayCell({
       data-day={day.date.toLocaleDateString()}
       data-selected={isSelected || undefined}
       className={cn(
-        "flex h-full min-h-0 w-full flex-col items-stretch gap-1 overflow-hidden rounded-lg border p-1.5 text-left transition-colors sm:p-2",
+        // Incoming Calendar/DayPicker classes first so cell chrome below wins (twMerge).
+        className,
+        "flex h-full min-h-0 w-full flex-col items-stretch gap-1 overflow-hidden rounded-lg border p-1.5 text-left text-foreground transition-colors sm:p-2",
         isOutside && "bg-muted/20 text-muted-foreground",
         !isOutside && !hasHoliday && !isOffDay && "bg-background hover:bg-muted/40",
         isOffDay && !hasHoliday && "border-border bg-muted/45",
         hasHoliday && "border-accent/35 bg-accent/5 hover:bg-accent/10",
         isToday && !isSelected && "ring-1 ring-accent/50",
-        isSelected && "border-accent ring-2 ring-accent/40",
-        className,
+        isSelected && "border-accent bg-background ring-2 ring-accent/40",
       )}
       {...props}
     >

@@ -272,17 +272,9 @@ function Daily() {
         id: "day",
         header: "DAY",
         width: "5rem",
-        accessor: (row) =>
-          row.heldDaysCount > 0
-            ? `${row.daysCount} (-${row.heldDaysCount})`
-            : String(row.daysCount),
+        accessor: (row) => String(row.daysCount),
         cell: (row) => (
-          <span className="font-mono tabular-nums">
-            {row.daysCount}
-            {row.heldDaysCount > 0 ? (
-              <span className="ml-1 text-[11px] text-muted-foreground">(-{row.heldDaysCount})</span>
-            ) : null}
-          </span>
+          <span className="font-mono tabular-nums">{row.daysCount}</span>
         ),
       },
       {

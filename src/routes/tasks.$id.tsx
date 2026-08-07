@@ -243,14 +243,7 @@ function TaskDetail() {
               <Detail label="Post Code" value={postCodeDisplay} />
               <Detail label="Start date" value={task.startDate?.slice(0, 10) || "—"} />
               <Detail label="HO" value={task.handOverDate?.slice(0, 10) || "—"} />
-              <Detail
-                label="Day"
-                value={
-                  task.heldDaysCount > 0
-                    ? `${task.daysCount ?? 0} (−${task.heldDaysCount} held)`
-                    : String(task.daysCount ?? 0)
-                }
-              />
+              <Detail label="Day" value={String(task.daysCount ?? 0)} />
               <Detail label="Price" value={formatPriceDisplay(task.budget)} />
               <Detail label="Status" value={task.statusName} />
               <Detail label="Site manager" value={task.siteManagerName || "—"} />
