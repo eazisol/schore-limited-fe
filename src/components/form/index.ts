@@ -4,6 +4,8 @@ export { PasswordField } from "./PasswordField";
 export { SelectField, type SelectOption } from "./SelectField";
 export { SearchableSelect, type SearchableSelectOption } from "./SearchableSelect";
 export { SearchableSelectField } from "./SearchableSelectField";
+export { SearchableMultiSelect } from "./SearchableMultiSelect";
+export { SearchableMultiSelectField } from "./SearchableMultiSelectField";
 export { TextareaField } from "./TextareaField";
 export { CheckboxField } from "./CheckboxField";
 export { RadioGroupField, type RadioOption } from "./RadioGroupField";

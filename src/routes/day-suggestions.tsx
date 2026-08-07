@@ -9,7 +9,14 @@ import { Download, Eye, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
-import { Form, TextField, TextareaField, SwitchField, SubmitButton } from "@/components/form";
+import {
+  Form,
+  TextField,
+  TextareaField,
+  SwitchField,
+  SubmitButton,
+  SearchableMultiSelectField,
+} from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
 import {
   DataTable,
@@ -23,6 +30,7 @@ import {
   type ApiDaySuggestion,
   type DaySuggestionPayload,
 } from "@/lib/api/services/day-suggestions";
+import { tradesService } from "@/lib/api/services/trades";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { activeStatusClass } from "@/lib/module-ui";
 import { DAY_SUGGESTIONS_ROUTE } from "@/lib/day-suggestions";
@@ -34,12 +42,23 @@ export const Route = createFileRoute("/day-suggestions")({
 });
 
 export const daySuggestionsQueryKey = ["day-suggestions"] as const;
+const tradeOptionsQueryKey = ["lookups", "trades", "day-suggestions"] as const;
 
-function splitSuggestedCodes(codes: string): string[] {
-  return codes
-    .split(/[,/]/)
-    .map((code) => code.trim())
-    .filter(Boolean);
+async function fetchTradeOptions(search: string) {
+  const res = await tradesService.list({
+    page: 1,
+    pageSize: 50,
+    search: search.trim() || undefined,
+    sortBy: "name",
+    sortDir: "asc",
+  });
+  return (res.data?.items ?? [])
+    .filter((trade) => trade.isActive)
+    .map((trade) => ({
+      value: String(trade.id),
+      label: `${trade.code} — ${trade.name}`,
+      code: trade.code,
+    }));
 }
 
 const schema = z.object({
@@ -47,11 +66,9 @@ const schema = z.object({
     .number({ invalid_type_error: "Day number must be a number" })
     .int("Day number must be a whole number")
     .min(1, "Day number must be 1 or greater"),
-  codes: z
-    .string()
-    .trim()
-    .min(1, "Codes are required")
-    .max(200, "Codes must be 200 characters or fewer"),
+  tradeIds: z
+    .array(z.string().min(1))
+    .min(1, "Select at least one trade"),
   description: descriptionSchema(),
   isActive: z.boolean(),
 });
@@ -104,10 +121,10 @@ function DaySuggestionsPage() {
     try {
       downloadCsv({
         filename: `day-suggestions-export-${new Date().toISOString().slice(0, 10)}.csv`,
-        headers: ["Day", "Codes", "Description", "Status"],
+        headers: ["Day", "Trades", "Description", "Status"],
         rows: rows.map((item) => [
           String(item.dayNumber),
-          item.codes,
+          item.codes || (item.tradeCodes ?? []).join(", "),
           item.description ?? "",
           item.isActive ? "Active" : "Inactive",
         ]),
@@ -136,9 +153,14 @@ function DaySuggestionsPage() {
       },
       {
         id: "codes",
-        header: "Suggested codes",
+        header: "Suggested trades",
         cell: (item) => {
-          const codes = splitSuggestedCodes(item.codes);
+          const codes = item.tradeCodes?.length
+            ? item.tradeCodes
+            : (item.codes || "")
+                .split(/[,/]/)
+                .map((code) => code.trim())
+                .filter(Boolean);
           if (codes.length === 0) return "—";
           return (
             <div className="flex flex-wrap gap-1">
@@ -197,7 +219,7 @@ function DaySuggestionsPage() {
     <div>
       <PageHeader
         title="Day suggestions"
-        subtitle="Editable per-day trade codes shown as suggestions in the Daily Programmer Next Day column. Suggestions never auto-allocate work."
+        subtitle="Editable per-day trades shown as suggestions in the Daily Programme Next Day column. Suggestions never auto-allocate work."
         actions={
           <>
             <Button
@@ -244,7 +266,7 @@ function DaySuggestionsPage() {
         search={{
           value: searchInput,
           onChange: setSearchInput,
-          placeholder: "Search by day or codes…",
+          placeholder: "Search by day or trade…",
           "aria-label": "Search day suggestions",
         }}
         emptyState={{
@@ -297,8 +319,8 @@ function DaySuggestionsPage() {
               Delete Day {confirmDel.dayNumber} suggestion?
             </h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Codes “{confirmDel.codes}” will no longer appear in Next Day. This action cannot be
-              undone.
+              Trades “{confirmDel.codes || (confirmDel.tradeCodes ?? []).join(", ") || "—"}” will no
+              longer appear in Next Day. This action cannot be undone.
             </p>
             <div className="mt-6 flex justify-end gap-2">
               <Button
@@ -340,12 +362,26 @@ function DaySuggestionFormModal({
   const isView = mode.kind === "view";
   const existing = mode.kind === "create" ? null : mode.item;
 
+  const selectedLabels = useMemo(() => {
+    if (!existing) return undefined;
+    const labels: Record<string, string> = {};
+    const ids = existing.tradeIds ?? [];
+    const codes = existing.tradeCodes ?? [];
+    const names = existing.tradeNames ?? [];
+    ids.forEach((id, index) => {
+      const code = codes[index] ?? "";
+      const name = names[index] ?? "";
+      labels[String(id)] = code && name ? `${code} — ${name}` : code || name || String(id);
+    });
+    return labels;
+  }, [existing]);
+
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     mode: "onBlur",
     defaultValues: {
       dayNumber: existing?.dayNumber ?? 1,
-      codes: existing?.codes ?? "",
+      tradeIds: (existing?.tradeIds ?? []).map(String),
       description: existing?.description ?? "",
       isActive: existing?.isActive ?? true,
     },
@@ -368,9 +404,8 @@ function DaySuggestionFormModal({
   async function submit(values: Values) {
     await mutation.mutateAsync({
       dayNumber: values.dayNumber,
-      codes: values.codes.trim(),
+      tradeIds: values.tradeIds.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0),
       description: values.description.trim() || null,
-      // Backend defaults OrderBy to DayNumber when 0; keep field out of the UI.
       orderBy: 0,
       isActive: values.isActive,
     });
@@ -395,24 +430,25 @@ function DaySuggestionFormModal({
       >
         <div className="space-y-4">
           <fieldset disabled={isView} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <TextField<Values>
-                name="dayNumber"
-                label="Day number"
-                type="number"
-                min={1}
-                step={1}
-                required
-                autoFocus={!isView}
-              />
-              <TextField<Values>
-                name="codes"
-                label="Suggested codes"
-                placeholder="e.g. L, Pl or ASB/Pl/E"
-                required
-                maxLength={200}
-              />
-            </div>
+            <TextField<Values>
+              name="dayNumber"
+              label="Day number"
+              type="number"
+              min={1}
+              step={1}
+              required
+              autoFocus={!isView}
+            />
+            <SearchableMultiSelectField<Values>
+              name="tradeIds"
+              label="Suggested trades"
+              required
+              placeholder="Select trades…"
+              searchPlaceholder="Search trades…"
+              queryKey={tradeOptionsQueryKey}
+              fetchOptions={fetchTradeOptions}
+              selectedLabels={selectedLabels}
+            />
             <TextareaField<Values>
               name="description"
               label="Description"

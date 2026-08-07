@@ -217,7 +217,9 @@ function Daily() {
     setPage(1);
   }
 
-  const isDateFiltered = date !== todayIso();
+  const today = todayIso();
+  const isDateFiltered = date !== today;
+  const isAtOrPastToday = date >= today;
   const hasActiveFilters = Boolean(search || showHO || isDateFiltered);
 
   const columns = useMemo<DataTableColumn<ApiDailyRow>[]>(
@@ -445,6 +447,7 @@ function Daily() {
                 Add task
               </Button>
             </Can>
+            {/* Hidden: auto roll-forward runs at midnight UTC
             <Can route={DAILY_ROUTE} action="modify">
               <Button
                 size="sm"
@@ -457,6 +460,7 @@ function Daily() {
                   : "Tick at least one to roll forward"}
               </Button>
             </Can>
+            */}
           </>
         }
       />
@@ -521,8 +525,11 @@ function Daily() {
               <input
                 type="date"
                 value={date}
+                max={today}
                 onChange={(e) => {
-                  setDate(e.target.value);
+                  const next = e.target.value;
+                  if (!next) return;
+                  setDate(next > today ? today : next);
                   setPage(1);
                 }}
                 className="h-9 border-x border-input bg-transparent px-2 text-sm outline-none"
@@ -530,9 +537,13 @@ function Daily() {
               />
               <button
                 type="button"
-                className="grid h-9 w-9 place-items-center hover:bg-accent/10"
+                className="grid h-9 w-9 place-items-center hover:bg-accent/10 disabled:pointer-events-none disabled:opacity-40"
+                disabled={isAtOrPastToday}
                 onClick={() => {
-                  setDate((d) => shiftDate(d, 1));
+                  setDate((d) => {
+                    const next = shiftDate(d, 1);
+                    return next > today ? today : next;
+                  });
                   setPage(1);
                 }}
                 aria-label="Next day"

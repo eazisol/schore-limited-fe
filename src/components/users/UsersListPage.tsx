@@ -141,7 +141,7 @@ export function UsersListPage() {
       const headers = cfg.isOperative
         ? ["Name", "Email", "Phone", "Trade", "CIS", "Daily rate", "Status"]
         : cfg.isContractor
-          ? ["Name", "Email", "Phone", "Address", "City", "State", "Country", "ZIP Code", "Status"]
+          ? ["Name", "Company name", "Email", "Phone", "Address", "City", "State", "Country", "ZIP Code", "Status"]
           : cfg.isCustomer
             ? [
                 "Name",
@@ -173,6 +173,7 @@ export function UsersListPage() {
             : cfg.isContractor
               ? [
                   displayUserName(user),
+                  user.companyName ?? "",
                   user.email,
                   csvForceText(user.phone ?? ""),
                   user.address ?? "",
@@ -281,6 +282,11 @@ export function UsersListPage() {
     if (cfg.isContactModule) {
       if (cfg.isContractor) {
         cols.push(
+          {
+            id: "companyName",
+            header: "Company name",
+            cell: (user) => user.companyName || "—",
+          },
           {
             id: "address",
             header: "Address",

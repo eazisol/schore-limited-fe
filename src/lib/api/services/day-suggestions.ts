@@ -5,7 +5,11 @@ import type { PagedResult } from "./users";
 export interface ApiDaySuggestion {
   id: number;
   dayNumber: number;
+  /** Derived from linked trade codes for display / Next Day. */
   codes: string;
+  tradeIds: number[];
+  tradeCodes: string[];
+  tradeNames: string[];
   description: string | null;
   orderBy: number;
   isActive: boolean;
@@ -17,7 +21,7 @@ export interface ApiDaySuggestion {
 
 export interface DaySuggestionPayload {
   dayNumber: number;
-  codes: string;
+  tradeIds: number[];
   description?: string | null;
   orderBy: number;
   isActive: boolean;
