@@ -1,12 +1,15 @@
-import { useForm } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
+import { toast } from "sonner";
 import { Modal } from "@/components/Modal";
-import { Form, TextField, TextareaField, SubmitButton } from "@/components/form";
+import { TextField, TextareaField } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { holdReasonsService } from "@/lib/api/services/hold-reasons";
+import { Loader2 } from "lucide-react";
 
 const schema = z.object({
   holdDate: z.string().min(1, "Hold date is required"),
@@ -22,6 +25,15 @@ export type HoldDetails = {
   holdNotes?: string | null;
 };
 
+/** Local calendar date (YYYY-MM-DD) — avoids UTC off-by-one from toISOString(). */
+function todayLocalYmd() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function HoldDetailsModal({
   open,
   onClose,
@@ -31,12 +43,15 @@ export function HoldDetailsModal({
   open: boolean;
   onClose: () => void;
   onConfirm: (details: HoldDetails) => void | Promise<void>;
+  /** Defaults to today's local date when omitted. */
   defaultDate?: string;
 }) {
+  const holdDateDefault = defaultDate?.trim() || todayLocalYmd();
+
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: {
-      holdDate: defaultDate || new Date().toISOString().slice(0, 10),
+      holdDate: holdDateDefault,
       holdReasonId: "",
       holdNotes: "",
     },
@@ -45,7 +60,7 @@ export function HoldDetailsModal({
   useEffect(() => {
     if (open) {
       form.reset({
-        holdDate: defaultDate || new Date().toISOString().slice(0, 10),
+        holdDate: defaultDate?.trim() || todayLocalYmd(),
         holdReasonId: "",
         holdNotes: "",
       });
@@ -66,19 +81,42 @@ export function HoldDetailsModal({
     });
   }
 
-  if (!open) return null;
+  function handleContinue() {
+    void form.handleSubmit(submit, (errors) => {
+      const first =
+        errors.holdDate?.message ||
+        errors.holdReasonId?.message ||
+        errors.holdNotes?.message ||
+        "Please fill all required fields.";
+      toast.error(first, { id: "form-validation" });
+    })();
+  }
 
-  return (
-    <Form form={form} onSubmit={submit} className="contents">
-      <Modal
-        open={open}
-        onClose={onClose}
-        title="Hold details"
-        subtitle="This day will be excluded from DAYS and KPI counts."
-        size="md"
-        showCloseButton={false}
-      >
-        <div className="space-y-4">
+  if (!open || typeof document === "undefined") return null;
+
+  const isSubmitting = form.formState.isSubmitting;
+
+  // Portal outside the parent task <form> so Continue / Enter cannot submit it.
+  return createPortal(
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Hold details"
+      subtitle="This day will be excluded from DAYS and KPI counts."
+      size="md"
+      showCloseButton={false}
+    >
+      <FormProvider {...form}>
+        <div
+          className="space-y-4"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA") {
+              e.preventDefault();
+              e.stopPropagation();
+              handleContinue();
+            }
+          }}
+        >
           <TextField<Values> name="holdDate" label="Hold date" type="date" required autoFocus />
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
@@ -111,13 +149,17 @@ export function HoldDetailsModal({
           </div>
           <TextareaField<Values> name="holdNotes" label="Notes" rows={3} />
           <div className="flex justify-end gap-2 border-t pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={onClose}>
+            <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            <SubmitButton size="sm">Continue</SubmitButton>
+            <Button type="button" size="sm" onClick={handleContinue} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Continue
+            </Button>
           </div>
         </div>
-      </Modal>
-    </Form>
+      </FormProvider>
+    </Modal>,
+    document.body,
   );
 }

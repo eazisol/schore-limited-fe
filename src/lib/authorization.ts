@@ -142,24 +142,7 @@ function rebuildSidebarTree(flat: ApiMenu[]): ApiMenu[] {
 
 /** Main sidebar menus: `read` only, nested via Menu API `parentMenuId`. */
 export function buildNavMenus(menus: ApiMenu[]): ApiMenu[] {
-  return applyMenuDisplayNames(rebuildSidebarTree(flattenMenus(menus)));
-}
-
-/** UI display names that differ from seeded / API menu names. */
-function menuDisplayName(menu: ApiMenu): string {
-  const code = normalizeCode(menu.code);
-  const route = toAppPath(menu.route);
-  if (code === "DAILY" || route === "/daily") return "Daily Programmer";
-  if (/^daily programme$/i.test(menu.name.trim())) return "Daily Programmer";
-  return menu.name;
-}
-
-function applyMenuDisplayNames(menus: ApiMenu[]): ApiMenu[] {
-  return menus.map((menu) => ({
-    ...menu,
-    name: menuDisplayName(menu),
-    children: menu.children?.length ? applyMenuDisplayNames(menu.children) : menu.children,
-  }));
+  return rebuildSidebarTree(flattenMenus(menus));
 }
 
 /** Readable child menus of a parent (by code), for container redirects. */

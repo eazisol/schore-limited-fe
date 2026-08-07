@@ -115,7 +115,6 @@ export function TaskFormFields({
   const statusBeforeHoldRef = useRef(getValues("statusId") || "");
 
   const items = useWatch({ control, name: "items" }) ?? [];
-  const startDate = useWatch({ control, name: "startDate" });
 
   useEffect(() => {
     const current = getValues("statusId") || "";
@@ -786,7 +785,6 @@ export function TaskFormFields({
         open={holdOpen}
         onClose={handleHoldCancel}
         onConfirm={handleHoldConfirm}
-        defaultDate={startDate || new Date().toISOString().slice(0, 10)}
       />
     </>
   );

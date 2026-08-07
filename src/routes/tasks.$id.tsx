@@ -119,7 +119,11 @@ function TaskDetail() {
         navigate({ to: "/daily" });
         return;
       }
-      navigate({ to: "/tasks/$id", params: { id }, search: { mode: "view" } });
+      navigate({
+        to: "/tasks/$id",
+        params: { id },
+        search: { mode: "view", ...dailySearch },
+      });
     },
     onError: (err) => notifyApiError(err, "Failed to update task"),
   });
@@ -256,7 +260,7 @@ function TaskDetail() {
               </div>
             </div>
 
-            <div className="min-w-0 space-y-4">
+            <div className="min-w-0 space-y-3">
               <h3 className="font-display font-semibold">Items by operative</h3>
               {(task.itemsByOperative ?? []).length === 0 ? (
                 <div className="card-elevated p-6 text-sm text-muted-foreground">No items.</div>
@@ -269,19 +273,23 @@ function TaskDetail() {
                   return (
                     <div
                       key={group.operativeId}
-                      className="card-elevated min-w-0 space-y-3 overflow-hidden p-4 sm:p-6"
+                      className="card-elevated min-w-0 space-y-2 overflow-hidden p-3 sm:p-4"
                     >
-                      <h4 className="font-medium">{group.operativeName}</h4>
+                      <AppTooltip content={group.operativeName} asChild align="start">
+                        <h4 className="max-w-full truncate font-medium">{group.operativeName}</h4>
+                      </AppTooltip>
                       <div className="min-w-0 max-w-full overflow-x-auto rounded-md border border-border/60">
-                        <table className="w-full min-w-[480px] text-sm">
+                        <table className="w-full min-w-[640px] text-sm">
                           <thead>
                             <tr className="border-b bg-muted/20 text-left text-muted-foreground">
-                              <th className="px-3 py-2 font-medium">Date</th>
-                              <th className="px-3 py-2 font-medium">Package / Product</th>
-                              <th className="px-3 py-2 font-medium">Qty</th>
-                              <th className="px-3 py-2 font-medium">Rate</th>
-                              <th className="px-3 py-2 font-medium">Amount</th>
-                              <th className="px-3 py-2 font-medium">Ticked</th>
+                              <th className="px-3 py-1.5 font-medium">Date</th>
+                              <th className="px-3 py-1.5 font-medium">Package / Product</th>
+                              <th className="px-3 py-1.5 font-medium">Time</th>
+                              <th className="px-3 py-1.5 font-medium">Qty</th>
+                              <th className="px-3 py-1.5 font-medium">Rate</th>
+                              <th className="px-3 py-1.5 font-medium">Amount</th>
+                              <th className="px-3 py-1.5 font-medium">Ticked</th>
+                              <th className="px-3 py-1.5 font-medium">Notes</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -289,10 +297,15 @@ function TaskDetail() {
                               const productLabel = item.tradeGroupName || item.productName || "—";
                               const truncated = truncateWithEllipsis(productLabel, 28);
                               const needsTooltip = productLabel.length > 28;
+                              const timeLabel =
+                                item.timeSlotName?.trim() || item.timeSlotCode?.trim() || "—";
+                              const notesLabel = item.notes?.trim() || "—";
+                              const notesTruncated = truncateWithEllipsis(notesLabel, 24);
+                              const notesNeedTooltip = notesLabel !== "—" && notesLabel.length > 24;
                               return (
                                 <tr key={item.id} className="border-b border-border/50">
-                                  <td className="px-3 py-2">{item.workDate?.slice(0, 10)}</td>
-                                  <td className="min-w-0 px-3 py-2">
+                                  <td className="px-3 py-1.5">{item.workDate?.slice(0, 10)}</td>
+                                  <td className="min-w-0 px-3 py-1.5">
                                     {needsTooltip ? (
                                       <AppTooltip content={productLabel} asChild align="start">
                                         <span className="block max-w-[12rem] cursor-default truncate">
@@ -303,9 +316,10 @@ function TaskDetail() {
                                       truncated
                                     )}
                                   </td>
-                                  <td className="px-3 py-2">{item.quantity}</td>
-                                  <td className="px-3 py-2">{fmtGBP(Number(item.rate))}</td>
-                                  <td className="px-3 py-2">
+                                  <td className="px-3 py-1.5 whitespace-nowrap">{timeLabel}</td>
+                                  <td className="px-3 py-1.5">{item.quantity}</td>
+                                  <td className="px-3 py-1.5">{fmtGBP(Number(item.rate))}</td>
+                                  <td className="px-3 py-1.5">
                                     <AppTooltip
                                       content={fmtGBP(Number(item.amount))}
                                       asChild
@@ -316,7 +330,26 @@ function TaskDetail() {
                                       </span>
                                     </AppTooltip>
                                   </td>
-                                  <td className="px-3 py-2">{item.isTicked ? "Yes" : "No"}</td>
+                                  <td className="px-3 py-1.5">
+                                    {item.isTicked ? (
+                                      <span className="inline-flex items-center rounded-full border border-success/20 bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
+                                        Completed
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted-foreground">No</span>
+                                    )}
+                                  </td>
+                                  <td className="min-w-0 px-3 py-1.5">
+                                    {notesNeedTooltip ? (
+                                      <AppTooltip content={notesLabel} asChild align="start">
+                                        <span className="block max-w-[10rem] cursor-default truncate">
+                                          {notesTruncated}
+                                        </span>
+                                      </AppTooltip>
+                                    ) : (
+                                      notesTruncated
+                                    )}
+                                  </td>
                                 </tr>
                               );
                             })}

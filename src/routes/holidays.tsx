@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Download, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { DayButton } from "react-day-picker";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -21,11 +21,11 @@ import {
 import { Modal } from "@/components/Modal";
 import { Form, TextField, TextareaField, SwitchField, SubmitButton } from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
-import { downloadCsv, csvForceText } from "@/components/data-table";
+import { AppTooltip } from "@/components/AppTooltip";
 import { holidaysService, type ApiHoliday, type HolidayPayload } from "@/lib/api/services/holidays";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { activeStatusClass } from "@/lib/module-ui";
-import { HOLIDAYS_ROUTE } from "@/lib/holidays";
+import { HOLIDAYS_LABEL, HOLIDAYS_ROUTE } from "@/lib/holidays";
 import {
   DESCRIPTION_MAX_LENGTH,
   NAME_MAX_LENGTH,
@@ -35,7 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/holidays")({
-  head: () => ({ meta: [{ title: "Holidays | Schore" }] }),
+  head: () => ({ meta: [{ title: `${HOLIDAYS_LABEL} | Schore` }] }),
   component: HolidaysPage,
 });
 
@@ -114,7 +114,6 @@ function HolidaysPage() {
   const [offWeekdays, setOffWeekdays] = useState<Set<number>>(() => new Set(DEFAULT_OFF_WEEKDAYS));
   const [mode, setMode] = useState<Mode | null>(null);
   const [confirmDel, setConfirmDel] = useState<ApiHoliday | null>(null);
-  const [exporting, setExporting] = useState(false);
 
   const { dateFrom, dateTo } = useMemo(() => monthBounds(month), [month]);
 
@@ -178,29 +177,6 @@ function HolidaysPage() {
     },
     onError: (err) => notifyApiError(err, "Failed to delete holiday"),
   });
-
-  function handleExportCsv() {
-    if (rows.length === 0) {
-      toast.warning("No holidays to export for this month.");
-      return;
-    }
-    setExporting(true);
-    try {
-      downloadCsv({
-        filename: `holidays-export-${dateFrom}-${dateTo}.csv`,
-        headers: ["Name", "Date", "Description", "Status"],
-        rows: rows.map((item) => [
-          item.name,
-          csvForceText(item.date?.slice(0, 10) ?? ""),
-          item.description ?? "",
-          item.isActive ? "Active" : "Inactive",
-        ]),
-      });
-      toast.success(`Exported ${rows.length} holiday${rows.length === 1 ? "" : "s"} to CSV`);
-    } finally {
-      setExporting(false);
-    }
-  }
 
   function toggleOffWeekday(day: number, checked: boolean) {
     setOffWeekdays((prev) => {
@@ -266,33 +242,18 @@ function HolidaysPage() {
   return (
     <div className="flex h-[calc(100svh-5.5rem)] min-h-0 flex-col gap-3 overflow-hidden">
       <PageHeader
-        title="Holiday calendar"
+        title={HOLIDAYS_LABEL}
         subtitle="Excluded automatically from DAYS and KPI working-day counts."
         actions={
-          <>
+          <Can route={HOLIDAYS_ROUTE} action="modify">
             <Button
-              variant="outline"
               size="sm"
-              onClick={handleExportCsv}
-              disabled={exporting || query.isLoading}
+              onClick={() => setMode({ kind: "create", date: selectedYmd ?? toYmd(new Date()) })}
             >
-              {exporting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              Export CSV
+              <Plus className="h-4 w-4" />
+              Add holiday
             </Button>
-            <Can route={HOLIDAYS_ROUTE} action="modify">
-              <Button
-                size="sm"
-                onClick={() => setMode({ kind: "create", date: selectedYmd ?? toYmd(new Date()) })}
-              >
-                <Plus className="h-4 w-4" />
-                Add holiday
-              </Button>
-            </Can>
-          </>
+          </Can>
         }
       />
 
@@ -300,14 +261,14 @@ function HolidaysPage() {
         {/* Working days — 4/12 */}
         <section className="order-2 flex min-h-0 lg:order-1 lg:col-span-4">
           <div className="card-elevated flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-xl border bg-card">
-            <div className="shrink-0 border-b px-4 py-3">
+            <div className="shrink-0 border-b px-4 py-2.5">
               <h2 className="font-display text-base font-semibold tracking-tight">This month</h2>
               <p className="text-xs text-muted-foreground">
                 Working days · {checkedCount} off day{checkedCount === 1 ? "" : "s"} checked
               </p>
             </div>
 
-            <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
+            <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2">
               {WEEKDAY_OPTIONS.map((opt) => {
                 const checked = offWeekdays.has(opt.day);
                 const id = `weekday-off-${opt.day}`;
@@ -316,7 +277,7 @@ function HolidaysPage() {
                     <label
                       htmlFor={id}
                       className={cn(
-                        "flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors",
+                        "flex cursor-pointer items-center gap-2.5 rounded-md border px-2.5 py-1.5 transition-colors",
                         checked
                           ? "border-accent/30 bg-secondary/50"
                           : "border-transparent hover:bg-muted/50",
@@ -330,8 +291,8 @@ function HolidaysPage() {
                         onCheckedChange={(value) => toggleOffWeekday(opt.day, value === true)}
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium">{opt.label}</span>
-                        <span className="block text-xs text-muted-foreground">
+                        <span className="block text-sm font-medium leading-tight">{opt.label}</span>
+                        <span className="block text-[11px] leading-tight text-muted-foreground">
                           {checked ? "Off day (non-working)" : "Working day"}
                         </span>
                       </span>
@@ -341,7 +302,7 @@ function HolidaysPage() {
               })}
             </ul>
 
-            <div className="shrink-0 border-t px-4 py-3 text-xs text-muted-foreground">
+            <div className="shrink-0 border-t px-4 py-2.5 text-xs text-muted-foreground">
               {monthTitle}: {daysInMonth} days · {monthHolidayCount} holiday
               {monthHolidayCount === 1 ? "" : "s"}
             </div>
@@ -695,17 +656,25 @@ function HolidayDayCell({
       {hasHoliday ? (
         <span className="mt-auto flex min-h-0 flex-1 flex-col justify-end gap-0.5 overflow-hidden">
           {holidays.slice(0, 2).map((item) => (
-            <span
-              key={item.id}
-              className="line-clamp-1 rounded bg-accent/15 px-1 py-0.5 text-[10px] font-medium leading-tight text-accent"
-            >
-              {item.name}
-            </span>
+            <AppTooltip key={item.id} content={item.name} asChild align="start">
+              <span className="line-clamp-1 cursor-default rounded bg-accent/15 px-1 py-0.5 text-[10px] font-medium leading-tight text-accent">
+                {item.name}
+              </span>
+            </AppTooltip>
           ))}
           {holidays.length > 2 ? (
-            <span className="text-[10px] font-medium text-muted-foreground">
-              +{holidays.length - 2} more
-            </span>
+            <AppTooltip
+              content={holidays
+                .slice(2)
+                .map((item) => item.name)
+                .join(", ")}
+              asChild
+              align="start"
+            >
+              <span className="cursor-default text-[10px] font-medium text-muted-foreground">
+                +{holidays.length - 2} more
+              </span>
+            </AppTooltip>
           ) : null}
         </span>
       ) : isOffDay && !isOutside ? (

@@ -7,7 +7,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { AppTooltip } from "@/components/AppTooltip";
 import {
   DataTable,
-  downloadCsv,
   useDebouncedSearch,
   type DataTableColumn,
   type DataTableRowAction,
@@ -20,8 +19,11 @@ import {
   Plus,
   Eye,
   Pencil,
-  Download,
   X,
+  ClipboardList,
+  Clock,
+  Users,
+  HardHat,
 } from "lucide-react";
 import { toast } from "sonner";
 import { dailyProgrammeService, type ApiDailyRow } from "@/lib/api/services/daily-programme";
@@ -29,6 +31,8 @@ import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { Can, usePermission } from "@/components/Permission";
 import { DAILY_ROUTE } from "@/lib/daily";
 import { truncateWithEllipsis } from "@/lib/module-ui";
+import { cn } from "@/lib/utils";
+import type { LucideIcon } from "lucide-react";
 
 export const Route = createFileRoute("/daily")({
   head: () => ({ meta: [{ title: "Daily Programmer | Schore" }] }),
@@ -88,7 +92,6 @@ function Daily() {
   const [confirmRoll, setConfirmRoll] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [exporting, setExporting] = useState(false);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
     onPageReset: () => setPage(1),
   });
@@ -144,71 +147,33 @@ function Daily() {
 
   const kpis = useMemo(
     () => [
-      { label: "In Progress", value: data?.inProgressCount ?? 0, tone: "info" as const },
-      { label: "On Hold", value: data?.onHoldCount ?? 0, tone: "warn" as const },
-      { label: "On roll", value: allRows.length, tone: "ok" as const },
+      {
+        label: "In Progress",
+        value: data?.inProgressCount ?? 0,
+        tone: "info" as const,
+        icon: ClipboardList,
+      },
+      {
+        label: "On Hold",
+        value: data?.onHoldCount ?? 0,
+        tone: "warn" as const,
+        icon: Clock,
+      },
+      {
+        label: "On roll",
+        value: allRows.length,
+        tone: "ok" as const,
+        icon: Users,
+      },
       {
         label: "Operatives on Site",
         value: data?.operativesOnSiteCount ?? 0,
-        tone: "ok" as const,
+        tone: "site" as const,
+        icon: HardHat,
       },
     ],
     [data, allRows.length],
   );
-
-  function handleExportCsv() {
-    if (rows.length === 0) {
-      toast.warning("No rows to export for the current page.");
-      return;
-    }
-    setExporting(true);
-    try {
-      downloadCsv({
-        filename: `daily-programmer-${date}.csv`,
-        headers: [
-          "No.",
-          "Task #",
-          "Property",
-          "Address",
-          "Contractor",
-          "Post Code",
-          "Type",
-          "Starting Date",
-          "HO",
-          "DAY",
-          "Held Days",
-          "Trade / Status",
-          "Name",
-          "Notes",
-          "Time",
-          "Next Day",
-          "Locked",
-        ],
-        rows: rows.map((row) => [
-          row.no,
-          row.taskNumber,
-          row.propertyName,
-          row.propertyAddress ?? "",
-          row.contract ?? "",
-          row.postCode ?? "",
-          row.type ?? "",
-          row.startingDate?.slice(0, 10) ?? "",
-          row.handOverDate?.slice(0, 10) ?? "",
-          row.daysCount,
-          row.heldDaysCount,
-          row.tradeOrStatus || "",
-          row.nameDisplay ?? "",
-          row.notesDisplay ?? "",
-          row.timeDisplay ?? "",
-          row.nextDay ?? "",
-          row.isLocked ? "Yes" : "No",
-        ]),
-      });
-      toast.success(`Exported ${rows.length} row${rows.length === 1 ? "" : "s"} to CSV`);
-    } finally {
-      setExporting(false);
-    }
-  }
 
   function clearFilters() {
     clearSearch();
@@ -234,55 +199,49 @@ function Daily() {
       {
         id: "property",
         header: "Property",
-        width: "14rem",
+        width: "12rem",
         truncate: false,
         accessor: (row) =>
-          [row.propertyName, row.propertyAddress, row.accessNotes].filter(Boolean).join(" · "),
+          [
+            row.propertyName,
+            row.propertyAddress,
+            row.accessNotes,
+            row.previousDayName ? `Yesterday: ${row.previousDayName}` : null,
+            row.isLocked ? "Locked — no tick on previous day" : null,
+          ]
+            .filter(Boolean)
+            .join(" · "),
         cell: (row) => {
-          const propertyLine = [row.propertyAddress, row.accessNotes].filter(Boolean).join(" · ");
-          const propertyTooltip = [row.propertyName, row.propertyAddress, row.accessNotes]
+          const propertyTooltip = [
+            row.propertyName,
+            row.propertyAddress,
+            row.accessNotes,
+            row.previousDayName ? `Yesterday: ${row.previousDayName}` : null,
+            row.isLocked ? "Locked — no tick on previous day" : null,
+          ]
             .filter(Boolean)
             .join(" · ");
           return (
-            <div className="flex items-start gap-1.5">
+            <div className="flex min-w-0 items-center gap-1.5">
               {row.isLocked ? (
                 <Lock
-                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning-foreground"
+                  className="h-3.5 w-3.5 shrink-0 text-warning-foreground"
                   aria-label="Locked"
                 />
               ) : null}
-              <div className="min-w-0">
-                <AppTooltip content={propertyTooltip} asChild align="start">
-                  <Link
-                    to="/tasks/$id"
-                    params={{ id: String(row.taskId) }}
-                    search={{
-                      mode: canModifyDaily ? "edit" : "view",
-                      from: "daily",
-                    }}
-                    className="inline-block max-w-full font-medium hover:text-info hover:underline"
-                  >
-                    {truncateWithEllipsis(row.propertyName, 40)}
-                  </Link>
-                </AppTooltip>
-                {propertyLine ? (
-                  <AppTooltip content={propertyLine} asChild align="start">
-                    <div className="mt-0.5 max-w-full cursor-default truncate text-[11px] text-muted-foreground">
-                      {propertyLine}
-                    </div>
-                  </AppTooltip>
-                ) : null}
-                {row.previousDayName ? (
-                  <div className="mt-1 text-[11px] text-muted-foreground">
-                    Yesterday: {row.previousDayName}
-                  </div>
-                ) : null}
-                {row.isLocked ? (
-                  <div className="mt-1 text-[11px] font-medium text-warning-foreground">
-                    Locked — no tick on previous day
-                  </div>
-                ) : null}
-              </div>
+              <AppTooltip content={propertyTooltip} asChild align="start">
+                <Link
+                  to="/tasks/$id"
+                  params={{ id: String(row.taskId) }}
+                  search={{
+                    mode: canModifyDaily ? "edit" : "view",
+                    from: "daily",
+                  }}
+                  className="inline-block max-w-full truncate font-medium hover:text-info hover:underline"
+                >
+                  {truncateWithEllipsis(row.propertyName, 36)}
+                </Link>
+              </AppTooltip>
             </div>
           );
         },
@@ -293,12 +252,6 @@ function Daily() {
         width: "7rem",
         accessor: (row) => row.contract || "—",
         cell: (row) => <code className="font-mono text-xs">{row.contract || "—"}</code>,
-      },
-      {
-        id: "postCode",
-        header: "Post Code",
-        width: "6rem",
-        accessor: (row) => row.postCode || "—",
       },
       {
         id: "type",
@@ -313,15 +266,6 @@ function Daily() {
         accessor: (row) => row.startingDate?.slice(0, 10) || "—",
         cell: (row) => (
           <span className="tabular-nums">{row.startingDate?.slice(0, 10) || "—"}</span>
-        ),
-      },
-      {
-        id: "ho",
-        header: "HO",
-        width: "6.5rem",
-        accessor: (row) => row.handOverDate?.slice(0, 10) || "—",
-        cell: (row) => (
-          <span className="tabular-nums">{row.handOverDate?.slice(0, 10) || "—"}</span>
         ),
       },
       {
@@ -342,20 +286,9 @@ function Daily() {
         ),
       },
       {
-        id: "tradeOrStatus",
-        header: "Trade / Status",
-        width: "8rem",
-        accessor: (row) => row.tradeOrStatus || "—",
-        cell: (row) => (
-          <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">
-            {row.tradeOrStatus || "—"}
-          </code>
-        ),
-      },
-      {
         id: "name",
         header: "Name",
-        width: "10rem",
+        width: "9rem",
         truncate: false,
         accessor: (row) =>
           [row.nameDisplay, row.notesDisplay].filter(Boolean).join(" · ") || "No allocation",
@@ -363,37 +296,40 @@ function Daily() {
           !row.nameDisplay ? (
             <span className="italic text-muted-foreground">No allocation</span>
           ) : (
-            <div>
-              <div className="font-medium">{row.nameDisplay}</div>
-              {row.notesDisplay ? (
-                <div className="mt-0.5 text-[11px] text-muted-foreground">{row.notesDisplay}</div>
-              ) : null}
-            </div>
+            <AppTooltip
+              content={[row.nameDisplay, row.notesDisplay].filter(Boolean).join(" · ")}
+              asChild
+              align="start"
+            >
+              <span className="block max-w-full cursor-default truncate font-medium">
+                {truncateWithEllipsis(row.nameDisplay, 28)}
+              </span>
+            </AppTooltip>
           ),
+      },
+      {
+        id: "notes",
+        header: "Notes",
+        width: "8rem",
+        truncate: false,
+        accessor: (row) => row.notesDisplay || "—",
+        cell: (row) => {
+          const notes = row.notesDisplay?.trim();
+          if (!notes) return "—";
+          return (
+            <AppTooltip content={notes} asChild align="start">
+              <span className="block max-w-full cursor-default truncate text-muted-foreground">
+                {truncateWithEllipsis(notes, 32)}
+              </span>
+            </AppTooltip>
+          );
+        },
       },
       {
         id: "time",
         header: "Time",
         width: "6rem",
         accessor: (row) => row.timeDisplay || "—",
-      },
-      {
-        id: "nextDay",
-        header: (
-          <AppTooltip content="Suggested codes for this working day — never auto-applied">
-            <span>Next Day</span>
-          </AppTooltip>
-        ),
-        width: "6rem",
-        accessor: (row) => row.nextDay || "—",
-        cell: (row) =>
-          row.nextDay ? (
-            <AppTooltip content="Suggestion only — confirm work, then choose next step">
-              <span>{row.nextDay}</span>
-            </AppTooltip>
-          ) : (
-            "—"
-          ),
       },
     ],
     [canModifyDaily],
@@ -419,68 +355,38 @@ function Daily() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Daily Programmer"
         subtitle={`Roll for ${formatLongDate(date)}`}
         actions={
-          <>
+          <Can route={DAILY_ROUTE} action="modify">
             <Button
-              variant="outline"
               size="sm"
-              onClick={handleExportCsv}
-              disabled={exporting || query.isLoading}
+              onClick={() => navigate({ to: "/tasks/new", search: { from: "daily" } })}
             >
-              {exporting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              Export CSV
+              <Plus className="h-4 w-4" />
+              Add task
             </Button>
-            <Can route={DAILY_ROUTE} action="modify">
-              <Button
-                size="sm"
-                onClick={() => navigate({ to: "/tasks/new", search: { from: "daily" } })}
-              >
-                <Plus className="h-4 w-4" />
-                Add task
-              </Button>
-            </Can>
             {/* Hidden: auto roll-forward runs at midnight UTC
-            <Can route={DAILY_ROUTE} action="modify">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setConfirmRoll(true)}
-                disabled={!data?.canRollForward || rollMutation.isPending}
-              >
-                {data?.canRollForward
-                  ? "Roll forward to next day"
-                  : "Tick at least one to roll forward"}
-              </Button>
-            </Can>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setConfirmRoll(true)}
+              disabled={!data?.canRollForward || rollMutation.isPending}
+            >
+              {data?.canRollForward
+                ? "Roll forward to next day"
+                : "Tick at least one to roll forward"}
+            </Button>
             */}
-          </>
+          </Can>
         }
       />
 
-      {data?.lockActive ? (
-        <div className="card-elevated flex items-start gap-3 border-warning/30 bg-warning/5 p-4">
-          <Lock className="mt-0.5 h-4 w-4 text-warning-foreground" />
-          <div className="text-sm">
-            <div className="font-medium">Some tasks are locked</div>
-            <div className="mt-0.5 text-xs text-muted-foreground">
-              {data.lockMessage ||
-                "Tick at least one allocation on the previous working day for each locked task before adding today's work."}
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {kpis.map((k) => (
-          <Counter key={k.label} label={k.label} value={k.value} tone={k.tone} />
+          <Counter key={k.label} label={k.label} value={k.value} tone={k.tone} icon={k.icon} />
         ))}
       </div>
 
@@ -646,10 +552,12 @@ function Counter({
   label,
   value,
   tone,
+  icon: Icon,
 }: {
   label: string;
   value: number;
-  tone: "info" | "warn" | "ok" | "destructive";
+  tone: "info" | "warn" | "ok" | "site" | "destructive";
+  icon: LucideIcon;
 }) {
   const toneCls =
     tone === "warn"
@@ -658,12 +566,39 @@ function Counter({
         ? "text-destructive"
         : tone === "info"
           ? "text-info"
-          : "text-success";
+          : tone === "site"
+            ? "text-accent"
+            : "text-success";
+  const iconWrapCls =
+    tone === "warn"
+      ? "bg-warning/20 text-warning-foreground"
+      : tone === "destructive"
+        ? "bg-destructive/10 text-destructive"
+        : tone === "info"
+          ? "bg-info/10 text-info"
+          : tone === "site"
+            ? "bg-accent/15 text-accent"
+            : "bg-success/10 text-success";
+  const borderCls =
+    tone === "warn"
+      ? "border-l-warning"
+      : tone === "destructive"
+        ? "border-l-destructive"
+        : tone === "info"
+          ? "border-l-info"
+          : tone === "site"
+            ? "border-l-accent"
+            : "border-l-success";
   return (
-    <div className="card-elevated p-4">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`mt-1 font-display text-2xl font-semibold tabular-nums ${toneCls}`}>
-        {value}
+    <div className={cn("card-elevated flex items-center gap-3 border-l-4 p-3 sm:p-4", borderCls)}>
+      <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-lg", iconWrapCls)}>
+        <Icon className="h-5 w-5" aria-hidden />
+      </div>
+      <div className="min-w-0">
+        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className={cn("mt-0.5 font-display text-2xl font-semibold tabular-nums", toneCls)}>
+          {value}
+        </div>
       </div>
     </div>
   );
