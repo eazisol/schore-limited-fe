@@ -790,7 +790,7 @@ export function TaskFormFields({
   );
 }
 
-const PRODUCT_LINE_TABLE_MIN_WIDTH = "1068px";
+const PRODUCT_LINE_TABLE_MIN_WIDTH = "1264px";
 
 function ProductLinesTable({
   indexes,
@@ -826,6 +826,8 @@ function ProductLinesTable({
           <col style={{ width: "158px" }} />
           <col style={{ width: "118px" }} />
           <col style={{ width: "98px" }} />
+          <col style={{ width: "98px" }} />
+          <col style={{ width: "98px" }} />
           <col style={{ width: "118px" }} />
           <col style={{ width: "88px" }} />
           <col style={{ width: "64px" }} />
@@ -838,6 +840,8 @@ function ProductLinesTable({
             <th className="px-3 py-2 font-medium">Work date</th>
             <th className="px-3 py-2 font-medium">Time</th>
             <th className="px-3 py-2 font-medium">Qty</th>
+            <th className="px-3 py-2 font-medium">Done</th>
+            <th className="px-3 py-2 font-medium">Remaining</th>
             <th className="px-3 py-2 font-medium">Rate</th>
             <th className="px-3 py-2 font-medium">Amount</th>
             <th className="px-3 py-2 font-medium">Ticked</th>
@@ -895,8 +899,11 @@ function ProductLineRow({
   onRateCommit: (index: number, previousRate: string, nextRate: string) => void;
 }) {
   const quantity = Number(useWatch({ control, name: `items.${index}.quantity` }) || 0);
+  const doneQty = Number(useWatch({ control, name: `items.${index}.doneQty` }) || 0);
   const rate = Number(useWatch({ control, name: `items.${index}.rate` }) || 0);
   const notes = String(useWatch({ control, name: `items.${index}.notes` }) ?? "");
+  const remainingQty =
+    Number.isFinite(quantity) && Number.isFinite(doneQty) ? Math.max(0, quantity - doneQty) : 0;
   const amount = Number.isFinite(quantity * rate) ? quantity * rate : 0;
   const rateBeforeEdit = useRef(item?.rate ?? "0");
 
@@ -944,6 +951,20 @@ function ProductLineRow({
           className="h-9 w-[90px] max-w-full rounded-md border border-input bg-background px-3 text-sm"
           {...register(`items.${index}.quantity`)}
         />
+      </td>
+      <td className="px-3 py-2">
+        <input
+          type="number"
+          min={0}
+          step={0.01}
+          className="h-9 w-[90px] max-w-full rounded-md border border-input bg-background px-3 text-sm"
+          {...register(`items.${index}.doneQty`)}
+        />
+      </td>
+      <td className="px-3 py-2">
+        <span className="inline-block tabular-nums text-muted-foreground">
+          {Number.isInteger(remainingQty) ? remainingQty : remainingQty.toFixed(2)}
+        </span>
       </td>
       <td className="px-3 py-2">
         <input

@@ -272,13 +272,15 @@ function TaskDetail() {
                         <h4 className="max-w-full truncate font-medium">{group.operativeName}</h4>
                       </AppTooltip>
                       <div className="min-w-0 max-w-full overflow-x-auto rounded-md border border-border/60">
-                        <table className="w-full min-w-[640px] text-sm">
+                        <table className="w-full min-w-[760px] text-sm">
                           <thead>
                             <tr className="border-b bg-muted/20 text-left text-muted-foreground">
                               <th className="px-3 py-1.5 font-medium">Date</th>
                               <th className="px-3 py-1.5 font-medium">Package / Product</th>
                               <th className="px-3 py-1.5 font-medium">Time</th>
                               <th className="px-3 py-1.5 font-medium">Qty</th>
+                              <th className="px-3 py-1.5 font-medium">Done</th>
+                              <th className="px-3 py-1.5 font-medium">Remaining</th>
                               <th className="px-3 py-1.5 font-medium">Rate</th>
                               <th className="px-3 py-1.5 font-medium">Amount</th>
                               <th className="px-3 py-1.5 font-medium">Ticked</th>
@@ -311,6 +313,11 @@ function TaskDetail() {
                                   </td>
                                   <td className="px-3 py-1.5 whitespace-nowrap">{timeLabel}</td>
                                   <td className="px-3 py-1.5">{item.quantity}</td>
+                                  <td className="px-3 py-1.5">{item.doneQty ?? 0}</td>
+                                  <td className="px-3 py-1.5">
+                                    {item.remainingQty ??
+                                      Math.max(0, Number(item.quantity) - Number(item.doneQty ?? 0))}
+                                  </td>
                                   <td className="px-3 py-1.5">{fmtGBP(Number(item.rate))}</td>
                                   <td className="px-3 py-1.5">
                                     <AppTooltip

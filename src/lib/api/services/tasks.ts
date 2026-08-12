@@ -15,6 +15,8 @@ export interface ApiTaskItem {
   productId: number | null;
   productName: string | null;
   quantity: number;
+  doneQty: number;
+  remainingQty: number;
   rate: number;
   amount: number;
   statusId: number | null;
@@ -72,6 +74,7 @@ export type TaskItemPayload = {
   tradeGroupId?: number | null;
   productId?: number | null;
   quantity: number;
+  doneQty?: number;
   rate: number;
   applyRatePermanently?: boolean;
   statusId?: number | null;

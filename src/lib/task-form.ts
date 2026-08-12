@@ -12,6 +12,7 @@ export type TaskItemFormValues = {
   tradeGroupId: string;
   productId: string;
   quantity: string;
+  doneQty: string;
   rate: string;
   applyRatePermanently: boolean;
   timeSlotId: string;
@@ -44,6 +45,7 @@ export const emptyTaskItem = (): TaskItemFormValues => ({
   tradeGroupId: "",
   productId: "",
   quantity: "1",
+  doneQty: "0",
   rate: "0",
   applyRatePermanently: false,
   timeSlotId: "",
@@ -118,6 +120,7 @@ const taskItemSchema = z
     tradeGroupId: z.string(),
     productId: z.string(),
     quantity: z.string().min(1, "Quantity is required"),
+    doneQty: z.string().min(1, "Done qty is required"),
     rate: z.string().min(1, "Rate is required"),
     applyRatePermanently: z.boolean(),
     timeSlotId: z.string(),
@@ -144,6 +147,20 @@ const taskItemSchema = z
         code: "custom",
         path: ["quantity"],
         message: "Quantity must be greater than zero",
+      });
+    }
+    const doneQty = Number(item.doneQty);
+    if (!Number.isFinite(doneQty) || doneQty < 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["doneQty"],
+        message: "Done qty cannot be negative",
+      });
+    } else if (Number.isFinite(qty) && doneQty > qty) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["doneQty"],
+        message: "Done qty cannot exceed quantity",
       });
     }
     const rate = Number(item.rate);
@@ -214,6 +231,7 @@ export function taskToFormValues(task: ApiTask): TaskFormValues {
       tradeGroupId: item.tradeGroupId != null ? String(item.tradeGroupId) : "",
       productId: item.productId != null ? String(item.productId) : "",
       quantity: String(item.quantity),
+      doneQty: String(item.doneQty ?? 0),
       rate: String(item.rate),
       applyRatePermanently: false,
       timeSlotId: item.timeSlotId != null ? String(item.timeSlotId) : "",
@@ -246,6 +264,7 @@ export function toTaskPayload(values: TaskFormValues): TaskPayload {
       tradeGroupId: item.tradeGroupId.trim() ? Number(item.tradeGroupId) : null,
       productId: item.productId.trim() ? Number(item.productId) : null,
       quantity: Number(item.quantity),
+      doneQty: Number(item.doneQty),
       rate: Number(item.rate),
       applyRatePermanently: item.applyRatePermanently,
       timeSlotId: item.timeSlotId.trim() ? Number(item.timeSlotId) : null,
