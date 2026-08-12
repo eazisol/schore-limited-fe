@@ -6,12 +6,30 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Cell,
+  Label,
+  Pie,
+  PieChart,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
   ClipboardList,
   Clock,
   CheckCircle2,
   Plus,
   Building2,
-  // HardHat, // Operatives on Site — kept for later
   AlertTriangle,
   Eye,
   Loader2,
@@ -31,6 +49,18 @@ export const Route = createFileRoute("/")({
 });
 
 export const dashboardQueryKey = ["dashboard"] as const;
+
+const statusChartConfig = {
+  inProgress: { label: "In Progress", color: "var(--info)" },
+  onHold: { label: "On Hold", color: "var(--warning)" },
+  completed: { label: "Completed", color: "var(--success)" },
+} satisfies ChartConfig;
+
+const activityChartConfig = {
+  count: { label: "Count", color: "var(--accent)" },
+  activeProperties: { label: "Active Properties", color: "var(--info)" },
+  delayed: { label: "Delayed Properties", color: "var(--destructive)" },
+} satisfies ChartConfig;
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -63,26 +93,84 @@ function Dashboard() {
   });
 
   const data = query.data;
-  const kpis = useMemo(
+
+  const statusPieData = useMemo(() => {
+    if (!data) return [];
+    return [
+      {
+        key: "inProgress",
+        name: "In Progress",
+        value: data.inProgressCount,
+        fill: "var(--color-inProgress)",
+      },
+      {
+        key: "onHold",
+        name: "On Hold",
+        value: data.onHoldCount,
+        fill: "var(--color-onHold)",
+      },
+      {
+        key: "completed",
+        name: "Completed",
+        value: data.completedCount,
+        fill: "var(--color-completed)",
+      },
+    ].filter((d) => d.value > 0);
+  }, [data]);
+
+  const statusTotal = useMemo(
+    () =>
+      (data?.inProgressCount ?? 0) +
+      (data?.onHoldCount ?? 0) +
+      (data?.completedCount ?? 0),
+    [data],
+  );
+
+  const statusCounts = useMemo(
     () => [
       {
+        key: "inProgress",
         label: "In Progress",
         value: data?.inProgressCount ?? 0,
         tone: "info" as const,
         icon: ClipboardList,
       },
       {
+        key: "onHold",
         label: "On Hold",
         value: data?.onHoldCount ?? 0,
         tone: "warn" as const,
         icon: Clock,
       },
       {
-        label: "Completed / Handover",
+        key: "completed",
+        label: "Completed",
         value: data?.completedCount ?? 0,
         tone: "ok" as const,
         icon: CheckCircle2,
       },
+    ],
+    [data],
+  );
+
+  const activityLineData = useMemo(() => {
+    if (!data) return [];
+    return [
+      {
+        key: "activeProperties",
+        label: "Active Properties",
+        count: data.activePropertiesCount,
+      },
+      {
+        key: "delayed",
+        label: "Delayed Properties",
+        count: data.delayedPropertiesCount,
+      },
+    ];
+  }, [data]);
+
+  const extraCounts = useMemo(
+    () => [
       {
         label: "New Tasks",
         value: data?.newTasksCount ?? 0,
@@ -95,13 +183,6 @@ function Dashboard() {
         tone: "info" as const,
         icon: Building2,
       },
-      // Operatives on Site — temporarily replaced by Delayed Properties
-      // {
-      //   label: "Operatives on Site",
-      //   value: data?.operativesOnSiteCount ?? 0,
-      //   tone: "site" as const,
-      //   icon: HardHat,
-      // },
       {
         label: "Delayed Properties",
         value: data?.delayedPropertiesCount ?? 0,
@@ -211,91 +292,254 @@ function Dashboard() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {kpis.map((k) => (
-              <Counter key={k.label} label={k.label} value={k.value} tone={k.tone} icon={k.icon} />
-            ))}
-          </div>
-
-          <div className="card-elevated overflow-hidden">
-            <div className="flex items-center justify-between gap-3 border-b px-4 py-3 sm:px-5">
-              <div>
-                <h2 className="font-display font-semibold">Latest In Progress</h2>
-                <p className="text-xs text-muted-foreground">
-                  Newest 5 tasks with property and operatives
-                </p>
+          <div className="grid gap-4 lg:grid-cols-12">
+            {/* Left — Latest In Progress */}
+            <section className="card-elevated flex min-h-0 flex-col overflow-hidden lg:col-span-8">
+              <div className="flex items-center justify-between gap-3 border-b px-4 py-3 sm:px-5">
+                <div>
+                  <h2 className="font-display font-semibold">Latest In Progress</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Newest tasks with property and operatives
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/tasks">View all</Link>
+                </Button>
               </div>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/tasks">View all</Link>
-              </Button>
-            </div>
 
-            {(data?.latestInProgressTasks ?? []).length === 0 ? (
-              <div className="px-4 py-10 text-center text-sm text-muted-foreground sm:px-5">
-                No in-progress tasks right now.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-xs text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-2.5 text-left font-medium sm:px-5">Task</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Property</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Operatives</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Type</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Start</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Status</th>
-                      <th className="px-4 py-2.5 text-right font-medium sm:px-5"> </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {data!.latestInProgressTasks.map((row) => (
-                      <tr key={row.taskId} className="hover:bg-muted/30">
-                        <td className="px-4 py-3 font-medium tabular-nums sm:px-5">
-                          {row.taskNumber}
-                        </td>
-                        <td className="px-3 py-3">
-                          <div className="font-medium">{row.propertyName}</div>
-                          {row.propertyAddress ? (
-                            <div className="mt-0.5 max-w-[14rem] truncate text-xs text-muted-foreground">
-                              {row.propertyAddress}
-                            </div>
-                          ) : null}
-                        </td>
-                        <td className="max-w-[12rem] px-3 py-3 text-muted-foreground">
-                          <span className="line-clamp-2">{row.operativesDisplay || "—"}</span>
-                        </td>
-                        <td className="px-3 py-3 text-muted-foreground">{row.jobTypeName || "—"}</td>
-                        <td className="px-3 py-3 tabular-nums text-muted-foreground">
-                          {formatShortDate(row.startDate)}
-                        </td>
-                        <td className="px-3 py-3">
-                          <StatusBadge status={row.statusName || row.statusCode} />
-                        </td>
-                        <td className="px-4 py-3 text-right sm:px-5">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 px-2"
-                            onClick={() =>
-                              navigate({
-                                to: "/tasks/$id",
-                                params: { id: String(row.taskId) },
-                                search: { mode: "view" },
-                              })
-                            }
-                          >
-                            <Eye className="h-4 w-4" />
-                            <span className="sr-only">View task</span>
-                          </Button>
-                        </td>
+              {(data?.latestInProgressTasks ?? []).length === 0 ? (
+                <div className="flex flex-1 items-center justify-center px-4 py-12 text-center text-sm text-muted-foreground sm:px-5">
+                  No in-progress tasks right now.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 text-xs text-muted-foreground">
+                      <tr>
+                        <th className="px-4 py-2.5 text-left font-medium sm:px-5">Task</th>
+                        <th className="px-3 py-2.5 text-left font-medium">Property</th>
+                        <th className="px-3 py-2.5 text-left font-medium">Operatives</th>
+                        <th className="px-3 py-2.5 text-left font-medium">Type</th>
+                        <th className="px-3 py-2.5 text-left font-medium">Start</th>
+                        <th className="px-3 py-2.5 text-left font-medium">Status</th>
+                        <th className="px-4 py-2.5 text-right font-medium sm:px-5"> </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y">
+                      {data!.latestInProgressTasks.map((row) => (
+                        <tr key={row.taskId} className="hover:bg-muted/30">
+                          <td className="px-4 py-3 font-medium tabular-nums sm:px-5">
+                            {row.taskNumber}
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="font-medium">{row.propertyName}</div>
+                            {row.propertyAddress ? (
+                              <div className="mt-0.5 max-w-[14rem] truncate text-xs text-muted-foreground">
+                                {row.propertyAddress}
+                              </div>
+                            ) : null}
+                          </td>
+                          <td className="max-w-[12rem] px-3 py-3 text-muted-foreground">
+                            <span className="line-clamp-2">{row.operativesDisplay || "—"}</span>
+                          </td>
+                          <td className="px-3 py-3 text-muted-foreground">
+                            {row.jobTypeName || "—"}
+                          </td>
+                          <td className="px-3 py-3 tabular-nums text-muted-foreground">
+                            {formatShortDate(row.startDate)}
+                          </td>
+                          <td className="px-3 py-3">
+                            <StatusBadge status={row.statusName || row.statusCode} />
+                          </td>
+                          <td className="px-4 py-3 text-right sm:px-5">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2"
+                              onClick={() =>
+                                navigate({
+                                  to: "/tasks/$id",
+                                  params: { id: String(row.taskId) },
+                                  search: { mode: "view" },
+                                })
+                              }
+                            >
+                              <Eye className="h-4 w-4" />
+                              <span className="sr-only">View task</span>
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+
+            {/* Right — Status pie + counts */}
+            <section className="flex flex-col gap-4 lg:col-span-4">
+              <div className="card-elevated overflow-hidden">
+                <div className="border-b px-4 py-3 sm:px-5">
+                  <h2 className="font-display font-semibold">Status Overview</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Task status mix for this period
+                  </p>
+                </div>
+
+                <div className="px-4 pb-2 pt-4 sm:px-5">
+                  {statusTotal === 0 ? (
+                    <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
+                      No status data for this period.
+                    </div>
+                  ) : (
+                    <ChartContainer
+                      config={statusChartConfig}
+                      className="mx-auto aspect-square h-[220px] w-full max-w-[260px]"
+                    >
+                      <PieChart>
+                        <ChartTooltip
+                          cursor={false}
+                          content={<ChartTooltipContent hideLabel nameKey="key" />}
+                        />
+                        <Pie
+                          data={statusPieData}
+                          dataKey="value"
+                          nameKey="key"
+                          innerRadius={58}
+                          outerRadius={88}
+                          strokeWidth={2}
+                          stroke="var(--color-card)"
+                          paddingAngle={2}
+                        >
+                          {statusPieData.map((entry) => (
+                            <Cell key={entry.key} fill={entry.fill} />
+                          ))}
+                          <Label
+                            content={({ viewBox }) => {
+                              if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                                return (
+                                  <text
+                                    x={viewBox.cx}
+                                    y={viewBox.cy}
+                                    textAnchor="middle"
+                                    dominantBaseline="middle"
+                                  >
+                                    <tspan
+                                      x={viewBox.cx}
+                                      y={(viewBox.cy ?? 0) - 6}
+                                      className="fill-foreground font-display text-2xl font-semibold"
+                                    >
+                                      {statusTotal}
+                                    </tspan>
+                                    <tspan
+                                      x={viewBox.cx}
+                                      y={(viewBox.cy ?? 0) + 14}
+                                      className="fill-muted-foreground text-[11px]"
+                                    >
+                                      Total
+                                    </tspan>
+                                  </text>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                        </Pie>
+                        <ChartLegend
+                          content={<ChartLegendContent nameKey="key" />}
+                          className="-translate-y-1 flex-wrap gap-2"
+                        />
+                      </PieChart>
+                    </ChartContainer>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 border-t p-3 sm:p-4">
+                  {statusCounts.map((s) => (
+                    <StatusCount
+                      key={s.key}
+                      label={s.label}
+                      value={s.value}
+                      tone={s.tone}
+                      icon={s.icon}
+                    />
+                  ))}
+                </div>
               </div>
-            )}
+
+              <div className="grid grid-cols-3 gap-2">
+                {extraCounts.map((k) => (
+                  <MiniCount
+                    key={k.label}
+                    label={k.label}
+                    value={k.value}
+                    tone={k.tone}
+                    icon={k.icon}
+                  />
+                ))}
+              </div>
+            </section>
           </div>
+
+          {/* Full-width activity line chart */}
+          <section className="card-elevated overflow-hidden">
+            <div className="border-b px-4 py-3 sm:px-5">
+              <h2 className="font-display font-semibold">Activity Snapshot</h2>
+              <p className="text-xs text-muted-foreground">
+                Active and delayed properties for this period
+              </p>
+            </div>
+            <div className="px-2 pb-4 pt-3 sm:px-4">
+              <ChartContainer config={activityChartConfig} className="h-[280px] w-full aspect-auto">
+                <AreaChart
+                  accessibilityLayer
+                  data={activityLineData}
+                  margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="activityFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={10}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    width={36}
+                    allowDecimals={false}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <ChartTooltip
+                    cursor={{ stroke: "var(--border)", strokeDasharray: "4 4" }}
+                    content={<ChartTooltipContent indicator="line" />}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="count"
+                    name="Count"
+                    stroke="var(--color-count)"
+                    strokeWidth={2.5}
+                    fill="url(#activityFill)"
+                    dot={{
+                      r: 4,
+                      fill: "var(--color-count)",
+                      stroke: "var(--color-card)",
+                      strokeWidth: 2,
+                    }}
+                    activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--color-card)" }}
+                  />
+                </AreaChart>
+              </ChartContainer>
+            </div>
+          </section>
         </>
       )}
     </div>
@@ -328,7 +572,7 @@ function formatShortDate(iso: string) {
   });
 }
 
-function Counter({
+function StatusCount({
   label,
   value,
   tone,
@@ -336,47 +580,70 @@ function Counter({
 }: {
   label: string;
   value: number;
-  tone: "info" | "warn" | "ok" | "site" | "destructive";
+  tone: "info" | "warn" | "ok";
   icon: LucideIcon;
 }) {
   const toneCls =
     tone === "warn"
       ? "text-warning-foreground"
-      : tone === "destructive"
-        ? "text-destructive"
-        : tone === "info"
-          ? "text-info"
-          : tone === "site"
-            ? "text-accent"
-            : "text-success";
+      : tone === "info"
+        ? "text-info"
+        : "text-success";
   const iconWrapCls =
     tone === "warn"
       ? "bg-warning/20 text-warning-foreground"
-      : tone === "destructive"
-        ? "bg-destructive/10 text-destructive"
-        : tone === "info"
-          ? "bg-info/10 text-info"
-          : tone === "site"
-            ? "bg-accent/15 text-accent"
-            : "bg-success/10 text-success";
-  const borderCls =
-    tone === "warn"
-      ? "border-l-warning"
-      : tone === "destructive"
-        ? "border-l-destructive"
-        : tone === "info"
-          ? "border-l-info"
-          : tone === "site"
-            ? "border-l-accent"
-            : "border-l-success";
+      : tone === "info"
+        ? "bg-info/10 text-info"
+        : "bg-success/10 text-success";
+
   return (
-    <div className={cn("card-elevated flex items-center gap-3 border-l-4 p-3 sm:p-4", borderCls)}>
-      <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-lg", iconWrapCls)}>
-        <Icon className="h-5 w-5" aria-hidden />
+    <div className="rounded-lg bg-muted/40 px-2.5 py-2.5 text-center sm:text-left">
+      <div className="flex items-center justify-center gap-1.5 sm:justify-start">
+        <span className={cn("grid h-6 w-6 place-items-center rounded-md", iconWrapCls)}>
+          <Icon className="h-3.5 w-3.5" aria-hidden />
+        </span>
+        <span className="hidden text-[11px] text-muted-foreground sm:inline">{label}</span>
       </div>
-      <div className="min-w-0">
-        <div className="text-xs text-muted-foreground">{label}</div>
-        <div className={cn("mt-0.5 font-display text-2xl font-semibold tabular-nums", toneCls)}>
+      <div className="mt-1 text-[10px] text-muted-foreground sm:hidden">{label}</div>
+      <div className={cn("mt-0.5 font-display text-xl font-semibold tabular-nums", toneCls)}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function MiniCount({
+  label,
+  value,
+  tone,
+  icon: Icon,
+}: {
+  label: string;
+  value: number;
+  tone: "info" | "site" | "destructive";
+  icon: LucideIcon;
+}) {
+  const toneCls =
+    tone === "destructive"
+      ? "text-destructive"
+      : tone === "site"
+        ? "text-accent"
+        : "text-info";
+  const iconWrapCls =
+    tone === "destructive"
+      ? "bg-destructive/10 text-destructive"
+      : tone === "site"
+        ? "bg-accent/15 text-accent"
+        : "bg-info/10 text-info";
+
+  return (
+    <div className="card-elevated flex flex-col gap-2 p-3">
+      <div className={cn("grid h-8 w-8 place-items-center rounded-lg", iconWrapCls)}>
+        <Icon className="h-4 w-4" aria-hidden />
+      </div>
+      <div>
+        <div className="text-[11px] leading-tight text-muted-foreground">{label}</div>
+        <div className={cn("mt-0.5 font-display text-xl font-semibold tabular-nums", toneCls)}>
           {value}
         </div>
       </div>
