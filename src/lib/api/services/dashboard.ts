@@ -33,6 +33,23 @@ export interface ApiDashboard {
   latestInProgressTasks: ApiDashboardTaskRow[];
 }
 
+export interface ApiDashboardActivityPoint {
+  date: string;
+  inProgressCount: number;
+  onHoldCount: number;
+  completedCount: number;
+  newTasksCount: number;
+  activePropertiesCount: number;
+  delayedPropertiesCount: number;
+}
+
+export interface ApiDashboardActivity {
+  period: string;
+  fromDate: string;
+  toDate: string;
+  points: ApiDashboardActivityPoint[];
+}
+
 export type DashboardQueryParams = {
   period: DashboardPeriod;
   date?: string;
@@ -43,6 +60,15 @@ export type DashboardQueryParams = {
 export const dashboardService = {
   get: ({ period, date, fromDate, toDate }: DashboardQueryParams) =>
     http.get<ApiEnvelope<ApiDashboard>>("Dashboard", {
+      params: {
+        Period: period,
+        ...(date ? { Date: date } : {}),
+        ...(fromDate ? { FromDate: fromDate } : {}),
+        ...(toDate ? { ToDate: toDate } : {}),
+      },
+    }),
+  getActivity: ({ period, date, fromDate, toDate }: DashboardQueryParams) =>
+    http.get<ApiEnvelope<ApiDashboardActivity>>("Dashboard/activity", {
       params: {
         Period: period,
         ...(date ? { Date: date } : {}),

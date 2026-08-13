@@ -30,9 +30,9 @@ import {
   dashboardService,
   type ApiDashboard,
   type DashboardPeriod,
+  type DashboardQueryParams,
 } from "@/lib/api/services/dashboard";
-import { buildActivityTrend } from "@/lib/dashboard-activity";
-import { periodFallbackRange } from "@/lib/dashboard-period";
+import { mapActivityPoints } from "@/lib/dashboard-activity";
 import type { ApiError } from "@/lib/api/axios";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +42,7 @@ export const Route = createFileRoute("/")({
 });
 
 export const dashboardQueryKey = ["dashboard"] as const;
+export const dashboardActivityQueryKey = ["dashboard", "activity"] as const;
 
 const statusChartConfig = {
   inProgress: { label: "In Progress", color: "var(--info)" },
@@ -66,17 +67,23 @@ function Dashboard() {
   const [customFrom, setCustomFrom] = useState(monthStartIso);
   const [customTo, setCustomTo] = useState(todayIso);
 
+  const queryParams = useMemo<DashboardQueryParams>(
+    () => ({
+      period,
+      ...(period === "Custom" ? { fromDate: customFrom, toDate: customTo } : {}),
+    }),
+    [period, customFrom, customTo],
+  );
+
   const query = useQuery({
-    queryKey: [...dashboardQueryKey, period, customFrom, customTo],
-    queryFn: async () =>
-      (
-        await dashboardService.get({
-          period,
-          ...(period === "Custom"
-            ? { fromDate: customFrom, toDate: customTo }
-            : {}),
-        })
-      ).data,
+    queryKey: [...dashboardQueryKey, queryParams],
+    queryFn: async () => (await dashboardService.get(queryParams)).data,
+    placeholderData: keepPreviousData,
+  });
+
+  const activityQuery = useQuery({
+    queryKey: [...dashboardActivityQueryKey, queryParams],
+    queryFn: async () => (await dashboardService.getActivity(queryParams)).data,
     placeholderData: keepPreviousData,
   });
 
@@ -141,21 +148,9 @@ function Dashboard() {
     [data],
   );
 
-  const activityRange = useMemo(() => {
-    if (data?.fromDate && data.period === period) {
-      return { from: data.fromDate, to: data.toDate };
-    }
-    return periodFallbackRange(period, customFrom, customTo);
-  }, [data, period, customFrom, customTo]);
-
   const activityLineData = useMemo(
-    () =>
-      buildActivityTrend({
-        fromDate: activityRange.from,
-        toDate: activityRange.to,
-        activeCount: data?.activePropertiesCount ?? 0,
-      }),
-    [activityRange, data?.activePropertiesCount],
+    () => mapActivityPoints(activityQuery.data?.points ?? []),
+    [activityQuery.data?.points],
   );
 
   const extraCounts = useMemo(
@@ -199,7 +194,7 @@ function Dashboard() {
               setCustomFrom(from);
               setCustomTo(to);
             }}
-            fetching={query.isFetching}
+            fetching={query.isFetching || activityQuery.isFetching}
           />
         }
       />
@@ -411,10 +406,32 @@ function Dashboard() {
             </section>
           </div>
 
-          <ActivitySnapshotChart
-            data={activityLineData}
-            subtitle="Current active properties for the selected period"
-          />
+          {activityQuery.isLoading && !activityQuery.isPlaceholderData ? (
+            <section className="card-elevated flex h-[300px] items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading activity history…
+            </section>
+          ) : activityQuery.isError && !activityQuery.data ? (
+            <section className="card-elevated p-8 text-center">
+              <p className="font-medium">Unable to load activity history</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {(activityQuery.error as unknown as ApiError)?.message || "Please try again."}
+              </p>
+              <Button
+                className="mt-4"
+                variant="outline"
+                size="sm"
+                onClick={() => void activityQuery.refetch()}
+              >
+                Retry
+              </Button>
+            </section>
+          ) : (
+            <ActivitySnapshotChart
+              data={activityLineData}
+              subtitle="Daily history for the selected period"
+            />
+          )}
         </>
       )}
     </div>
