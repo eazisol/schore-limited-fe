@@ -1,7 +1,7 @@
 import { http } from "@/lib/api/axios";
 import type { ApiEnvelope } from "./auth";
 
-export type DashboardPeriod = "Daily" | "Monthly" | "Yearly" | "Custom";
+export type DashboardPeriod = "Daily" | "Weekly" | "Monthly" | "Yearly" | "Custom";
 
 export interface ApiDashboardTaskRow {
   taskId: number;

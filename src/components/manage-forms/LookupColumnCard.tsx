@@ -1,0 +1,289 @@
+import type { ReactNode } from "react";
+import { Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { activeStatusClass } from "@/lib/module-ui";
+
+export function LookupColumnCard({
+  title,
+  searchInput,
+  onSearchChange,
+  searchPlaceholder,
+  searchAriaLabel,
+  canAdd,
+  onAdd,
+  addAriaLabel,
+  loading,
+  fetching,
+  loadingText,
+  error,
+  empty,
+  footer,
+  children,
+}: {
+  title: string;
+  searchInput: string;
+  onSearchChange: (value: string) => void;
+  searchPlaceholder: string;
+  searchAriaLabel: string;
+  canAdd: boolean;
+  onAdd: () => void;
+  addAriaLabel: string;
+  loading: boolean;
+  fetching: boolean;
+  loadingText: string;
+  error: { title: string; message: string; onRetry: () => void } | null;
+  empty: ReactNode;
+  footer?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex min-h-[28rem] min-w-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card shadow-sm xl:min-h-0">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3">
+        <h2 className="font-display text-base font-semibold tracking-tight">{title}</h2>
+        <div className="flex items-center gap-1">
+          {fetching && !loading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+          ) : null}
+          {canAdd ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onAdd}
+              aria-label={addAriaLabel}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="shrink-0 px-3 py-2.5">
+        <div className="flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3">
+          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <input
+            value={searchInput}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder={searchPlaceholder}
+            className="w-full min-w-0 bg-transparent text-sm outline-none"
+            aria-label={searchAriaLabel}
+          />
+        </div>
+      </div>
+
+      <div className="scrollbar-elegant min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+        {loading ? (
+          <div className="grid h-32 place-items-center text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {loadingText}
+            </span>
+          </div>
+        ) : error ? (
+          <div className="rounded-md border border-destructive/20 bg-destructive/5 p-3 text-sm">
+            <p className="font-medium text-destructive">{error.title}</p>
+            <p className="mt-1 text-muted-foreground">{error.message}</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={error.onRetry}>
+              Retry
+            </Button>
+          </div>
+        ) : (
+          children
+        )}
+        {!loading && !error ? empty : null}
+      </div>
+
+      {footer ? <div className="shrink-0 border-t px-3 py-2">{footer}</div> : null}
+    </section>
+  );
+}
+
+export function LookupItemRow({
+  label,
+  subtitle,
+  inactive,
+  canEdit,
+  canDelete,
+  onEdit,
+  onDelete,
+}: {
+  label: string;
+  subtitle?: string;
+  inactive?: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "group flex items-center gap-2 rounded-md border bg-background px-3 py-2",
+        inactive && "opacity-70",
+      )}
+    >
+      <button
+        type="button"
+        className="min-w-0 flex-1 text-left"
+        onClick={onEdit}
+      >
+        <span className="block truncate text-sm font-medium leading-tight">{label}</span>
+        {subtitle ? (
+          <span className="mt-0.5 block truncate text-[11px] leading-tight text-muted-foreground">
+            {subtitle}
+          </span>
+        ) : null}
+      </button>
+      {inactive ? (
+        <span
+          className={`hidden rounded-full border px-1.5 py-0.5 text-[10px] font-medium sm:inline-flex ${activeStatusClass(false)}`}
+        >
+          Inactive
+        </span>
+      ) : null}
+      <div className="flex shrink-0 items-center gap-0.5 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+        {canEdit ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={onEdit}
+            aria-label={`Edit ${label}`}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        ) : null}
+        {canDelete ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-destructive hover:text-destructive"
+            onClick={onDelete}
+            aria-label={`Delete ${label}`}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+export function LookupEmptyState({
+  title,
+  description,
+  onClear,
+}: {
+  title: string;
+  description?: string;
+  onClear?: () => void;
+}) {
+  return (
+    <div className="grid h-32 place-items-center px-2 text-center text-sm text-muted-foreground">
+      <div>
+        <p className="font-medium text-foreground">{title}</p>
+        {description ? <p className="mt-1">{description}</p> : null}
+        {onClear ? (
+          <Button variant="outline" size="sm" className="mt-3" onClick={onClear}>
+            Clear search
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+export function LookupColumnFooter({
+  page,
+  totalPages,
+  totalCount,
+  itemLabel,
+  disabled,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  totalCount: number;
+  itemLabel: string;
+  disabled: boolean;
+  onPageChange: (page: number) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+      <span>
+        {totalCount} {itemLabel}
+      </span>
+      {totalPages > 1 ? (
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 px-2"
+            disabled={disabled || page <= 1}
+            onClick={() => onPageChange(page - 1)}
+          >
+            Prev
+          </Button>
+          <span>
+            {page}/{totalPages}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 px-2"
+            disabled={disabled || page >= totalPages}
+            onClick={() => onPageChange(page + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function DeleteConfirmDialog({
+  title,
+  description,
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  description?: string;
+  pending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-md rounded-lg border bg-card p-6"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h3 className="font-display text-lg font-semibold">{title}</h3>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {description ?? "This action cannot be undone."}
+        </p>
+        <div className="mt-6 flex justify-end gap-2">
+          <Button variant="outline" onClick={onCancel} disabled={pending}>
+            Cancel
+          </Button>
+          <Button variant="destructive" disabled={pending} onClick={onConfirm}>
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

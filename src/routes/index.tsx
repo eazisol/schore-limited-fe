@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
+import { ActivitySnapshotChart } from "@/components/dashboard/ActivitySnapshotChart";
+import { DashboardPeriodFilter } from "@/components/dashboard/DashboardPeriodFilter";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   ChartContainer,
   ChartTooltip,
@@ -13,17 +14,7 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Cell,
-  Label,
-  Pie,
-  PieChart,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Cell, Label, Pie, PieChart } from "recharts";
 import {
   ClipboardList,
   Clock,
@@ -40,6 +31,8 @@ import {
   type ApiDashboard,
   type DashboardPeriod,
 } from "@/lib/api/services/dashboard";
+import { buildActivityTrend } from "@/lib/dashboard-activity";
+import { periodFallbackRange } from "@/lib/dashboard-period";
 import type { ApiError } from "@/lib/api/axios";
 import { cn } from "@/lib/utils";
 
@@ -54,12 +47,6 @@ const statusChartConfig = {
   inProgress: { label: "In Progress", color: "var(--info)" },
   onHold: { label: "On Hold", color: "var(--warning)" },
   completed: { label: "Completed", color: "var(--success)" },
-} satisfies ChartConfig;
-
-const activityChartConfig = {
-  count: { label: "Count", color: "var(--accent)" },
-  activeProperties: { label: "Active Properties", color: "var(--info)" },
-  delayed: { label: "Delayed Properties", color: "var(--destructive)" },
 } satisfies ChartConfig;
 
 function todayIso() {
@@ -90,6 +77,7 @@ function Dashboard() {
             : {}),
         })
       ).data,
+    placeholderData: keepPreviousData,
   });
 
   const data = query.data;
@@ -153,21 +141,22 @@ function Dashboard() {
     [data],
   );
 
-  const activityLineData = useMemo(() => {
-    if (!data) return [];
-    return [
-      {
-        key: "activeProperties",
-        label: "Active Properties",
-        count: data.activePropertiesCount,
-      },
-      {
-        key: "delayed",
-        label: "Delayed Properties",
-        count: data.delayedPropertiesCount,
-      },
-    ];
-  }, [data]);
+  const activityRange = useMemo(() => {
+    if (data?.fromDate && data.period === period) {
+      return { from: data.fromDate, to: data.toDate };
+    }
+    return periodFallbackRange(period, customFrom, customTo);
+  }, [data, period, customFrom, customTo]);
+
+  const activityLineData = useMemo(
+    () =>
+      buildActivityTrend({
+        fromDate: activityRange.from,
+        toDate: activityRange.to,
+        activeCount: data?.activePropertiesCount ?? 0,
+      }),
+    [activityRange, data?.activePropertiesCount],
+  );
 
   const extraCounts = useMemo(
     () => [
@@ -201,86 +190,26 @@ function Dashboard() {
         title="Dashboard"
         subtitle={periodLabel}
         actions={
-          <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
-            <ToggleGroup
-              type="single"
-              value={period}
-              onValueChange={(value) => {
-                if (
-                  value === "Daily" ||
-                  value === "Monthly" ||
-                  value === "Yearly" ||
-                  value === "Custom"
-                ) {
-                  setPeriod(value);
-                }
-              }}
-              variant="outline"
-              size="sm"
-              className="justify-start sm:justify-end"
-              aria-label="Dashboard period"
-            >
-              <ToggleGroupItem value="Daily" aria-label="Daily">
-                Daily
-              </ToggleGroupItem>
-              <ToggleGroupItem value="Monthly" aria-label="Monthly">
-                Monthly
-              </ToggleGroupItem>
-              <ToggleGroupItem value="Yearly" aria-label="Yearly">
-                Yearly
-              </ToggleGroupItem>
-              <ToggleGroupItem value="Custom" aria-label="Custom">
-                Custom
-              </ToggleGroupItem>
-            </ToggleGroup>
-
-            {period === "Custom" ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="sr-only sm:not-sr-only">From</span>
-                  <input
-                    type="date"
-                    value={customFrom}
-                    max={customTo || undefined}
-                    onChange={(e) => {
-                      const next = e.target.value;
-                      if (!next) return;
-                      setCustomFrom(next);
-                      if (customTo && next > customTo) setCustomTo(next);
-                    }}
-                    className="h-9 rounded-md border border-input bg-background px-2 text-sm outline-none"
-                    aria-label="Custom from date"
-                  />
-                </label>
-                <span className="text-xs text-muted-foreground">to</span>
-                <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="sr-only sm:not-sr-only">To</span>
-                  <input
-                    type="date"
-                    value={customTo}
-                    min={customFrom || undefined}
-                    onChange={(e) => {
-                      const next = e.target.value;
-                      if (!next) return;
-                      setCustomTo(next);
-                      if (customFrom && next < customFrom) setCustomFrom(next);
-                    }}
-                    className="h-9 rounded-md border border-input bg-background px-2 text-sm outline-none"
-                    aria-label="Custom to date"
-                  />
-                </label>
-              </div>
-            ) : null}
-          </div>
+          <DashboardPeriodFilter
+            period={period}
+            onPeriodChange={setPeriod}
+            customFrom={customFrom}
+            customTo={customTo}
+            onCustomChange={(from, to) => {
+              setCustomFrom(from);
+              setCustomTo(to);
+            }}
+            fetching={query.isFetching}
+          />
         }
       />
 
-      {query.isLoading ? (
+      {query.isLoading && !query.isPlaceholderData ? (
         <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading dashboard…
         </div>
-      ) : query.isError ? (
+      ) : query.isError && !data ? (
         <div className="card-elevated p-8 text-center">
           <p className="font-medium">Unable to load dashboard</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -321,7 +250,7 @@ function Dashboard() {
                         <th className="px-3 py-2.5 text-left font-medium">Operatives</th>
                         <th className="px-3 py-2.5 text-left font-medium">Type</th>
                         <th className="px-3 py-2.5 text-left font-medium">Start</th>
-                        <th className="px-3 py-2.5 text-left font-medium">Status</th>
+                        <th className="whitespace-nowrap px-3 py-2.5 text-left font-medium">Status</th>
                         <th className="px-4 py-2.5 text-right font-medium sm:px-5"> </th>
                       </tr>
                     </thead>
@@ -348,7 +277,7 @@ function Dashboard() {
                           <td className="px-3 py-3 tabular-nums text-muted-foreground">
                             {formatShortDate(row.startDate)}
                           </td>
-                          <td className="px-3 py-3">
+                          <td className="whitespace-nowrap px-3 py-3">
                             <StatusBadge status={row.statusName || row.statusCode} />
                           </td>
                           <td className="px-4 py-3 text-right sm:px-5">
@@ -410,6 +339,7 @@ function Dashboard() {
                           strokeWidth={2}
                           stroke="var(--color-card)"
                           paddingAngle={2}
+                          isAnimationActive={false}
                         >
                           {statusPieData.map((entry) => (
                             <Cell key={entry.key} fill={entry.fill} />
@@ -481,65 +411,10 @@ function Dashboard() {
             </section>
           </div>
 
-          {/* Full-width activity line chart */}
-          <section className="card-elevated overflow-hidden">
-            <div className="border-b px-4 py-3 sm:px-5">
-              <h2 className="font-display font-semibold">Activity Snapshot</h2>
-              <p className="text-xs text-muted-foreground">
-                Active and delayed properties for this period
-              </p>
-            </div>
-            <div className="px-2 pb-4 pt-3 sm:px-4">
-              <ChartContainer config={activityChartConfig} className="h-[280px] w-full aspect-auto">
-                <AreaChart
-                  accessibilityLayer
-                  data={activityLineData}
-                  margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient id="activityFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.02} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="label"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={10}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    width={36}
-                    allowDecimals={false}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <ChartTooltip
-                    cursor={{ stroke: "var(--border)", strokeDasharray: "4 4" }}
-                    content={<ChartTooltipContent indicator="line" />}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="count"
-                    name="Count"
-                    stroke="var(--color-count)"
-                    strokeWidth={2.5}
-                    fill="url(#activityFill)"
-                    dot={{
-                      r: 4,
-                      fill: "var(--color-count)",
-                      stroke: "var(--color-card)",
-                      strokeWidth: 2,
-                    }}
-                    activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--color-card)" }}
-                  />
-                </AreaChart>
-              </ChartContainer>
-            </div>
-          </section>
+          <ActivitySnapshotChart
+            data={activityLineData}
+            subtitle="Current active properties for the selected period"
+          />
         </>
       )}
     </div>
@@ -547,18 +422,25 @@ function Dashboard() {
 }
 
 function formatPeriodLabel(period: DashboardPeriod, data?: ApiDashboard) {
-  if (!data?.fromDate) {
+  const range =
+    data?.fromDate && data.period === period
+      ? { from: data.fromDate, to: data.toDate }
+      : undefined;
+
+  if (!range) {
     return period === "Daily"
       ? "Today's snapshot"
-      : period === "Monthly"
-        ? "This month"
-        : period === "Yearly"
-          ? "This year"
-          : "Custom range";
+      : period === "Weekly"
+        ? "This week"
+        : period === "Monthly"
+          ? "This month"
+          : period === "Yearly"
+            ? "This year"
+            : "Custom range";
   }
 
-  const from = formatShortDate(data.fromDate);
-  const to = formatShortDate(data.toDate);
+  const from = formatShortDate(range.from);
+  const to = formatShortDate(range.to);
   if (period === "Daily") return `Stats for ${from}`;
   return `Stats for ${from} – ${to}`;
 }
