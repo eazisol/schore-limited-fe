@@ -149,8 +149,14 @@ function Dashboard() {
   );
 
   const activityLineData = useMemo(
-    () => mapActivityPoints(activityQuery.data?.points ?? []),
-    [activityQuery.data?.points],
+    () =>
+      mapActivityPoints(
+        activityQuery.data?.points ?? [],
+        period,
+        activityQuery.data?.fromDate ?? data?.fromDate,
+        activityQuery.data?.toDate ?? data?.toDate,
+      ),
+    [activityQuery.data?.points, activityQuery.data?.fromDate, activityQuery.data?.toDate, period, data?.fromDate, data?.toDate],
   );
 
   const extraCounts = useMemo(
@@ -429,7 +435,11 @@ function Dashboard() {
           ) : (
             <ActivitySnapshotChart
               data={activityLineData}
-              subtitle="Daily history for the selected period"
+              subtitle={
+                period === "Yearly"
+                  ? "Monthly history for the selected year"
+                  : "Daily history for the selected period"
+              }
             />
           )}
         </>
