@@ -91,3 +91,4 @@ src/
 - All API calls go through `src/lib/api/axios.ts` (`api` / `http`). Do not call Axios directly from feature code.
 - Toasts are bottom-right (`sonner`). API errors for network / 5xx / 403 are toasted once in the Axios interceptor — use `notifyApiError` in catch blocks so messages are not duplicated.
 - `.env` is gitignored; commit `.env.example` only.
+
