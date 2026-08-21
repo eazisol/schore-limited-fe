@@ -1,88 +1,180 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Mail, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Mail, Loader2, Banknote } from "lucide-react";
 import { toast } from "sonner";
-import { wageSheets, operatives, fmtGBP } from "@/lib/data";
+import { fmtGBP } from "@/lib/data";
 import { StatusBadge } from "@/components/StatusBadge";
+import { holidaysService } from "@/lib/api/services/holidays";
+import { payStatementsService } from "@/lib/api/services/pay-statements";
+import { notifyApiError } from "@/lib/api/axios";
+import { usePermission } from "@/components/Permission";
+import { formatUkDate, getWeekEndingDate, invoiceNo, toYmd } from "@/lib/week-ending";
+import { payStatementsQueryKey } from "./payroll";
 
 export const Route = createFileRoute("/statements")({
-  head: () => ({ meta: [{ title: "Statement Approval | Schore" }] }),
+  head: () => ({ meta: [{ title: "Statements | Schore" }] }),
   component: Statements,
 });
 
-type S = "Pending" | "Accepted" | "Refused";
-
 function Statements() {
-  const [state, setState] = useState<Record<string, { status: S; reason?: string; date?: string }>>(
-    Object.fromEntries(wageSheets.map(w => [w.id, {
-      status: w.status === "Approved" ? "Accepted" : w.status === "Refused" ? "Refused" : "Pending",
-      reason: w.status === "Refused" ? "Cost split disputed" : undefined,
-      date: w.status !== "Pending" ? "2026-01-24" : undefined,
-    }]))
-  );
-  const [sending, setSending] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const canModify = usePermission({ pathname: "/statements", action: "modify" });
+  const weekendQuery = useQuery({
+    queryKey: ["holidays", "weekend"],
+    queryFn: async () => (await holidaysService.getWeekend()).data,
+  });
+  const defaultWeek = useMemo(() => {
+    const weekend = weekendQuery.data;
+    if (!weekend) return toYmd(new Date());
+    return toYmd(getWeekEndingDate(new Date(), weekend.days, weekend.weekEndingDay));
+  }, [weekendQuery.data]);
+  const [weekEnding, setWeek] = useState("");
+  const selectedWeek = weekEnding || defaultWeek;
 
-  const send = async (id: string) => {
-    setSending(id);
-    await new Promise(r => setTimeout(r, 500));
-    setSending(null);
-    toast.success("Statement emailed to operative");
-  };
+  const listQuery = useQuery({
+    queryKey: [...payStatementsQueryKey, "statements", selectedWeek],
+    queryFn: async () =>
+      (await payStatementsService.list({ weekEnding: selectedWeek, page: 1, pageSize: 200 })).data,
+    enabled: Boolean(selectedWeek),
+    placeholderData: keepPreviousData,
+  });
 
-  const accept = (id: string) => { setState(s => ({...s, [id]: { status: "Accepted", date: new Date().toISOString().slice(0,10) }})); toast.success("Statement accepted"); };
-  const refuse = (id: string) => {
-    const reason = prompt("Refusal reason?");
-    if (!reason) return;
-    setState(s => ({...s, [id]: { status: "Refused", reason, date: new Date().toISOString().slice(0,10) }}));
-    toast.error("Statement refused", { description: reason });
-  };
+  const sendMutation = useMutation({
+    mutationFn: (id: number) => payStatementsService.send(id),
+    onSuccess: (res) => {
+      toast.success(res.message || "Statement emailed to operative");
+      queryClient.invalidateQueries({ queryKey: payStatementsQueryKey });
+    },
+    onError: (err) => notifyApiError(err, "Failed to send statement"),
+  });
+  const resendMutation = useMutation({
+    mutationFn: (id: number) => payStatementsService.resend(id),
+    onSuccess: (res) => {
+      toast.success(res.message || "Statement resent");
+      queryClient.invalidateQueries({ queryKey: payStatementsQueryKey });
+    },
+    onError: (err) => notifyApiError(err, "Failed to resend statement"),
+  });
+  const paidMutation = useMutation({
+    mutationFn: (id: number) => payStatementsService.markPaid(id, {}),
+    onSuccess: (res) => {
+      toast.success(res.message || "Marked paid");
+      queryClient.invalidateQueries({ queryKey: payStatementsQueryKey });
+    },
+    onError: (err) => notifyApiError(err, "Failed to mark paid"),
+  });
+
+  const rows = listQuery.data?.items ?? [];
 
   return (
     <div>
-      <PageHeader title="Statement Approval" subtitle="Operatives review their wage statement and accept or refuse it." />
+      <PageHeader
+        title="Statements"
+        subtitle="Office send, sign-off status, refusal reason, and paid / unpaid. Operatives accept or refuse after login."
+      />
+      <div className="card-elevated mb-4 p-4">
+        <label className="text-[11px] font-medium text-muted-foreground">Week ending</label>
+        <input
+          type="date"
+          value={selectedWeek}
+          onChange={(e) => setWeek(e.target.value)}
+          className="ml-3 h-9 rounded-md border border-input bg-background px-3 text-sm"
+        />
+      </div>
       <div className="card-elevated overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-muted/30 text-xs text-muted-foreground uppercase tracking-wide">
+          <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
-              <th className="px-5 py-3 text-left">Statement ID</th>
+              <th className="px-5 py-3 text-left">Statement</th>
               <th className="px-3 py-3 text-left">Operative</th>
               <th className="px-3 py-3 text-left">Week</th>
               <th className="px-3 py-3 text-right">Net</th>
-              <th className="px-3 py-3 text-left">Status</th>
+              <th className="px-3 py-3 text-left">Sign-off</th>
+              <th className="px-3 py-3 text-left">Payment</th>
               <th className="px-3 py-3 text-left">Response date</th>
               <th className="px-3 py-3 text-left">Refusal reason</th>
               <th className="px-5 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y">
-            {wageSheets.map(w => {
-              const o = operatives.find(x => x.id === w.operativeId);
-              const st = state[w.id];
+            {rows.map((w) => {
+              const canSend = w.statusCode === "DRAFT" || w.statusCode === "REFUSED";
+              const canResend = w.statusCode === "SENT";
+              const canPay = w.statusCode === "ACCEPTED" && w.paymentStatusCode !== "PAID";
+              const responseDate = w.approveDate ?? w.rejectDate;
               return (
                 <tr key={w.id} className="hover:bg-muted/30">
-                  <td className="px-5 py-3"><code className="text-xs font-mono">{w.invoiceNo}</code></td>
-                  <td className="px-3 py-3 font-medium">{o?.name}</td>
-                  <td className="px-3 py-3 text-muted-foreground">WE {w.weekEnding}</td>
-                  <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtGBP(w.net)}</td>
-                  <td className="px-3 py-3"><StatusBadge status={st.status === "Accepted" ? "Approved" : st.status === "Refused" ? "Refused" : "Pending"} /></td>
-                  <td className="px-3 py-3 text-muted-foreground">{st.date ?? "—"}</td>
-                  <td className="px-3 py-3 text-muted-foreground">{st.reason ?? "—"}</td>
                   <td className="px-5 py-3">
-                    <div className="flex items-center gap-1 justify-end">
-                      <Button variant="outline" size="sm" disabled={sending===w.id} onClick={()=>send(w.id)}>
-                        {sending===w.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}Send
-                      </Button>
-                      {st.status === "Pending" && <>
-                        <button onClick={()=>accept(w.id)} aria-label="Accept" className="h-8 w-8 grid place-items-center rounded-md text-success hover:bg-success/10"><CheckCircle2 className="h-4 w-4" /></button>
-                        <button onClick={()=>refuse(w.id)} aria-label="Refuse" className="h-8 w-8 grid place-items-center rounded-md text-destructive hover:bg-destructive/10"><XCircle className="h-4 w-4" /></button>
-                      </>}
+                    <Link to="/wages/$id" params={{ id: String(w.id) }} className="font-mono text-xs hover:underline">
+                      {invoiceNo(w.id)}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-3 font-medium">{w.operativeName}</td>
+                  <td className="px-3 py-3 text-muted-foreground">WE {formatUkDate(w.weekEnding)}</td>
+                  <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtGBP(w.net)}</td>
+                  <td className="px-3 py-3"><StatusBadge status={w.statusName} /></td>
+                  <td className="px-3 py-3"><StatusBadge status={w.paymentStatusName} /></td>
+                  <td className="px-3 py-3 text-muted-foreground">
+                    {responseDate ? formatUkDate(responseDate) : "—"}
+                  </td>
+                  <td className="px-3 py-3 text-muted-foreground">{w.refusalReason ?? "—"}</td>
+                  <td className="px-5 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      {canModify && canSend && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={sendMutation.isPending}
+                          onClick={() => sendMutation.mutate(w.id)}
+                        >
+                          {sendMutation.isPending ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Mail className="h-3.5 w-3.5" />
+                          )}
+                          Send
+                        </Button>
+                      )}
+                      {canModify && canResend && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={resendMutation.isPending}
+                          onClick={() => resendMutation.mutate(w.id)}
+                        >
+                          {resendMutation.isPending ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Mail className="h-3.5 w-3.5" />
+                          )}
+                          Resend
+                        </Button>
+                      )}
+                      {canModify && canPay && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={paidMutation.isPending}
+                          onClick={() => paidMutation.mutate(w.id)}
+                        >
+                          <Banknote className="h-3.5 w-3.5" />Paid
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>
               );
             })}
+            {!listQuery.isLoading && rows.length === 0 && (
+              <tr>
+                <td colSpan={9} className="px-5 py-12 text-center text-sm text-muted-foreground">
+                  No statements for this week.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

@@ -21,6 +21,12 @@ export interface HolidayPayload {
   isActive: boolean;
 }
 
+export interface ApiWeekendDays {
+  days: number[];
+  weekEndingDay: number;
+  weekEndingDayName: string;
+}
+
 export interface HolidayListParams {
   page?: number;
   pageSize?: number;
@@ -41,6 +47,9 @@ export const holidaysService = {
   list: (params: HolidayListParams = {}) =>
     http.get<ApiEnvelope<PagedResult<ApiHoliday>>>("Holidays", { params: listQuery(params) }),
   get: (id: number | string) => http.get<ApiEnvelope<ApiHoliday>>(`Holidays/${id}`),
+  getWeekend: () => http.get<ApiEnvelope<ApiWeekendDays>>("Holidays/weekend"),
+  saveWeekend: (days: number[]) =>
+    http.put<ApiEnvelope<ApiWeekendDays>>("Holidays/weekend", { days }),
   create: (payload: HolidayPayload) => http.post<ApiEnvelope<ApiHoliday>>("Holidays", payload),
   update: (id: number | string, payload: HolidayPayload) =>
     http.put<ApiEnvelope<ApiHoliday>>(`Holidays/${id}`, payload),

@@ -38,6 +38,8 @@ export interface StatusListParams {
 export const DOCUMENT_TYPE_CODE = {
   TASK: "TASK",
   TASK_ITEM: "TASK_ITEM",
+  STATEMENT: "STATEMENT",
+  STATEMENT_PAYMENT: "STATEMENT_PAYMENT",
 } as const;
 
 const listQuery = (params: StatusListParams) => ({

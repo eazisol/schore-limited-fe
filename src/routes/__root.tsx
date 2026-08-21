@@ -51,7 +51,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     if (typeof window === "undefined") return;
     if (isPublicPath(location.pathname)) return;
     if (!getStoredSession()) {
-      throw redirect({ to: "/signin", replace: true });
+      const redirectTo = `${location.pathname}${location.search}`;
+      throw redirect({
+        to: "/signin",
+        search: { redirect: redirectTo.startsWith("/") ? redirectTo : "/" },
+        replace: true,
+      });
     }
   },
   head: () => ({

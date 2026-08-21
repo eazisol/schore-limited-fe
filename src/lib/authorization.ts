@@ -77,7 +77,8 @@ export function isPublicPath(pathname: string): boolean {
 }
 
 export function isPermissionExemptPath(pathname: string): boolean {
-  return (PERMISSION_EXEMPT_PATHS as readonly string[]).includes(pathname);
+  if ((PERMISSION_EXEMPT_PATHS as readonly string[]).includes(pathname)) return true;
+  return /^\/wages\/\d+$/.test(pathname);
 }
 
 function sortByOrder<T extends { orderBy: number }>(items: T[]): T[] {

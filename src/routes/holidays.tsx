@@ -40,6 +40,7 @@ export const Route = createFileRoute("/holidays")({
 });
 
 export const holidaysQueryKey = ["holidays"] as const;
+export const weekendQueryKey = ["holidays", "weekend"] as const;
 
 const schema = z.object({
   name: nameSchema(),
@@ -111,7 +112,6 @@ function HolidaysPage() {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [selectedYmd, setSelectedYmd] = useState<string | null>(null);
-  const [offWeekdays, setOffWeekdays] = useState<Set<number>>(() => new Set(DEFAULT_OFF_WEEKDAYS));
   const [mode, setMode] = useState<Mode | null>(null);
   const [confirmDel, setConfirmDel] = useState<ApiHoliday | null>(null);
 
@@ -130,6 +130,16 @@ function HolidaysPage() {
       ).data,
     placeholderData: keepPreviousData,
   });
+
+  const weekendQuery = useQuery({
+    queryKey: weekendQueryKey,
+    queryFn: async () => (await holidaysService.getWeekend()).data,
+  });
+
+  const offWeekdays = useMemo(
+    () => new Set(weekendQuery.data?.days ?? [...DEFAULT_OFF_WEEKDAYS]),
+    [weekendQuery.data?.days],
+  );
 
   const rows = useMemo(() => query.data?.items ?? [], [query.data?.items]);
 
@@ -178,13 +188,24 @@ function HolidaysPage() {
     onError: (err) => notifyApiError(err, "Failed to delete holiday"),
   });
 
+  const weekendMutation = useMutation({
+    mutationFn: (days: number[]) => holidaysService.saveWeekend(days),
+    onSuccess: (res) => {
+      toast.success(res.message || "Weekend days saved");
+      qc.setQueryData(weekendQueryKey, res.data);
+    },
+    onError: (err) => notifyApiError(err, "Failed to save weekend days"),
+  });
+
   function toggleOffWeekday(day: number, checked: boolean) {
-    setOffWeekdays((prev) => {
-      const next = new Set(prev);
-      if (checked) next.add(day);
-      else next.delete(day);
-      return next;
-    });
+    const next = new Set(offWeekdays);
+    if (checked) next.add(day);
+    else next.delete(day);
+    if (next.size === 7) {
+      toast.error("At least one working day is required.");
+      return;
+    }
+    weekendMutation.mutate([...next]);
   }
 
   function handleDaySelect(day: Date | undefined) {
@@ -265,6 +286,9 @@ function HolidaysPage() {
               <h2 className="font-display text-base font-semibold tracking-tight">This month</h2>
               <p className="text-xs text-muted-foreground">
                 Working days · {checkedCount} off day{checkedCount === 1 ? "" : "s"} checked
+                {weekendQuery.data?.weekEndingDayName
+                  ? ` · Week ends ${weekendQuery.data.weekEndingDayName}`
+                  : ""}
               </p>
             </div>
 
@@ -287,7 +311,7 @@ function HolidaysPage() {
                       <Checkbox
                         id={id}
                         checked={checked}
-                        disabled={!canModify}
+                        disabled={!canModify || weekendMutation.isPending}
                         onCheckedChange={(value) => toggleOffWeekday(opt.day, value === true)}
                       />
                       <span className="min-w-0 flex-1">

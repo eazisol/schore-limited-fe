@@ -1,86 +1,262 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Play, Loader2, Download } from "lucide-react";
+import { Send, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { wageSheets, operatives, fmtGBP } from "@/lib/data";
+import { fmtGBP } from "@/lib/data";
+import { holidaysService } from "@/lib/api/services/holidays";
+import { payStatementsService } from "@/lib/api/services/pay-statements";
+import { usersService } from "@/lib/api/services/users";
+import { USER_TYPE_ID } from "@/lib/user-module";
+import { notifyApiError } from "@/lib/api/axios";
+import { usePermission } from "@/components/Permission";
+import {
+  downloadCsv,
+  formatUkDate,
+  getWeekEndingDate,
+  invoiceNo,
+  toYmd,
+} from "@/lib/week-ending";
+import { StatusBadge } from "@/components/StatusBadge";
 
 export const Route = createFileRoute("/payroll")({
   head: () => ({ meta: [{ title: "Payroll Engine | Schore" }] }),
   component: Payroll,
 });
 
+export const payStatementsQueryKey = ["pay-statements"] as const;
+
 function Payroll() {
-  const [weekEnding, setWeek] = useState("2026-01-23");
-  const [contract, setContract] = useState<"All" | "MS" | "John">("All");
-  const [running, setRunning] = useState(false);
-  const [ran, setRan] = useState(false);
+  const queryClient = useQueryClient();
+  const canModify = usePermission({ pathname: "/payroll", action: "modify" });
+  const weekendQuery = useQuery({
+    queryKey: ["holidays", "weekend"],
+    queryFn: async () => (await holidaysService.getWeekend()).data,
+  });
+  const defaultWeek = useMemo(() => {
+    const weekend = weekendQuery.data;
+    if (!weekend) return toYmd(new Date());
+    return toYmd(getWeekEndingDate(new Date(), weekend.days, weekend.weekEndingDay));
+  }, [weekendQuery.data]);
+  const [weekEnding, setWeek] = useState("");
+  const selectedWeek = weekEnding || defaultWeek;
+  const [contractorId, setContractorId] = useState<number | "all">("all");
 
-  const rows = wageSheets.filter(w => (contract === "All" || w.contract === contract) && w.weekEnding === weekEnding);
-  const totals = rows.reduce((s, r) => ({ gross: s.gross + r.gross, cis: s.cis + r.cisTax, net: s.net + r.net }), { gross: 0, cis: 0, net: 0 });
+  const contractorsQuery = useQuery({
+    queryKey: ["users", "dropdown", "contractors"],
+    queryFn: async () =>
+      (await usersService.dropdown({ userTypeId: USER_TYPE_ID.contractor })).data ?? [],
+  });
 
-  const run = async () => {
-    setRunning(true);
-    await new Promise(r => setTimeout(r, 1100));
-    setRunning(false);
-    setRan(true);
-    toast.success(`Payroll generated — ${rows.length} operative(s)`, { description: `Engine used MAX(price work, daily rate). Gross ${fmtGBP(totals.gross)}.` });
-  };
+  const listQuery = useQuery({
+    queryKey: [...payStatementsQueryKey, "payroll", { week: selectedWeek, contractorId }],
+    queryFn: async () =>
+      (
+        await payStatementsService.list({
+          weekEnding: selectedWeek,
+          contractorId: contractorId === "all" ? undefined : contractorId,
+          page: 1,
+          pageSize: 200,
+        })
+      ).data,
+    enabled: Boolean(selectedWeek),
+    placeholderData: keepPreviousData,
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: (id: number) => payStatementsService.send(id),
+    onSuccess: (res) => {
+      toast.success(res.message || "Statement sent");
+      queryClient.invalidateQueries({ queryKey: payStatementsQueryKey });
+    },
+    onError: (err) => notifyApiError(err, "Failed to send statement"),
+  });
+  const resendMutation = useMutation({
+    mutationFn: (id: number) => payStatementsService.resend(id),
+    onSuccess: (res) => {
+      toast.success(res.message || "Statement resent");
+      queryClient.invalidateQueries({ queryKey: payStatementsQueryKey });
+    },
+    onError: (err) => notifyApiError(err, "Failed to resend statement"),
+  });
+
+  const exportMutation = useMutation({
+    mutationFn: () =>
+      payStatementsService.export({
+        weekEnding: selectedWeek,
+        contractorId: contractorId === "all" ? undefined : contractorId,
+      }),
+    onSuccess: (res) => {
+      const bundles = res.data?.contractors ?? [];
+      if (bundles.length === 0) {
+        toast.error("No contractor lines to export for this week.");
+        return;
+      }
+      for (const bundle of bundles) {
+        downloadCsv(`payroll-${bundle.contractorName.replaceAll(" ", "-")}-WE-${selectedWeek}.csv`, [
+          ["Contractor", "Operative", "Date", "Property", "Description", "Amount", "Top-up"],
+          ...bundle.lines.map((line) => [
+            bundle.contractorName,
+            line.operativeName,
+            line.lineDate,
+            line.propertyName ?? "",
+            line.description,
+            String(line.amount),
+            line.isTopUp ? "Yes" : "No",
+          ]),
+        ]);
+      }
+      toast.success(`Exported ${bundles.length} contractor file(s)`);
+    },
+    onError: (err) => notifyApiError(err, "Export failed"),
+  });
+
+  const rows = listQuery.data?.items ?? [];
+  const totals = rows.reduce(
+    (sum, row) => ({
+      gross: sum.gross + row.gross,
+      cis: sum.cis + row.cisDeduction,
+      net: sum.net + row.net,
+    }),
+    { gross: 0, cis: 0, net: 0 },
+  );
 
   return (
     <div>
       <PageHeader
         title="Payroll Engine"
-        subtitle="Weekly run · MAX(price work, daily rate) with CIS deduction."
+        subtitle="Live weekly totals · MAX(price work, daily rate) with CIS. Email is sent only when you press Send."
         actions={
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={!ran} onClick={() => toast.success("Exported CIS report (PDF)")}><Download className="h-4 w-4" />CIS Report</Button>
-            <Button size="sm" onClick={run} disabled={running}>{running ? <><Loader2 className="h-4 w-4 animate-spin" />Running…</> : <><Play className="h-4 w-4" />Run payroll</>}</Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={exportMutation.isPending || !selectedWeek}
+            onClick={() => exportMutation.mutate()}
+          >
+            {exportMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Export by contractor
+          </Button>
         }
       />
 
-      <div className="card-elevated mb-6 p-4 flex flex-wrap gap-3">
+      <div className="card-elevated mb-6 flex flex-wrap gap-3 p-4">
         <label className="block">
           <span className="text-[11px] font-medium text-muted-foreground">Week ending</span>
-          <input type="date" value={weekEnding} onChange={e=>setWeek(e.target.value)} className="mt-1 h-9 rounded-md border border-input bg-background px-3 text-sm" />
+          <input
+            type="date"
+            value={selectedWeek}
+            onChange={(e) => setWeek(e.target.value)}
+            className="mt-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
+          />
         </label>
         <label className="block">
-          <span className="text-[11px] font-medium text-muted-foreground">Contract</span>
-          <select value={contract} onChange={e=>setContract(e.target.value as any)} className="mt-1 h-9 rounded-md border border-input bg-background px-3 text-sm">
-            <option>All</option><option value="MS">MS</option><option value="John">John</option>
+          <span className="text-[11px] font-medium text-muted-foreground">Contractor</span>
+          <select
+            value={contractorId === "all" ? "all" : String(contractorId)}
+            onChange={(e) => setContractorId(e.target.value === "all" ? "all" : Number(e.target.value))}
+            className="mt-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="all">All (separate on export)</option>
+            {(contractorsQuery.data ?? []).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
           </select>
         </label>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="card-elevated p-5"><div className="text-xs text-muted-foreground">Gross pay</div><div className="text-2xl font-display font-semibold font-mono">{fmtGBP(totals.gross)}</div></div>
-        <div className="card-elevated p-5"><div className="text-xs text-muted-foreground">CIS deduction</div><div className="text-2xl font-display font-semibold font-mono text-warning-foreground">{fmtGBP(totals.cis)}</div></div>
-        <div className="card-elevated p-5"><div className="text-xs text-muted-foreground">Net to pay</div><div className="text-2xl font-display font-semibold font-mono text-success">{fmtGBP(totals.net)}</div></div>
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="card-elevated p-5">
+          <div className="text-xs text-muted-foreground">Gross pay</div>
+          <div className="font-display font-semibold font-mono text-2xl">{fmtGBP(totals.gross)}</div>
+        </div>
+        <div className="card-elevated p-5">
+          <div className="text-xs text-muted-foreground">CIS deduction</div>
+          <div className="font-display font-semibold font-mono text-2xl text-warning-foreground">{fmtGBP(totals.cis)}</div>
+        </div>
+        <div className="card-elevated p-5">
+          <div className="text-xs text-muted-foreground">Net to pay</div>
+          <div className="font-display font-semibold font-mono text-2xl text-success">{fmtGBP(totals.net)}</div>
+        </div>
       </div>
 
       <div className="card-elevated overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-muted/30 text-xs text-muted-foreground uppercase tracking-wide">
-            <tr><th className="px-5 py-3 text-left">Operative</th><th className="px-3 py-3 text-left">Contract</th><th className="px-3 py-3 text-right">Gross</th><th className="px-3 py-3 text-right">CIS %</th><th className="px-3 py-3 text-right">CIS Tax</th><th className="px-3 py-3 text-right">Net</th><th className="px-5 py-3"></th></tr>
+          <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th className="px-5 py-3 text-left">Operative</th>
+              <th className="px-3 py-3 text-left">Contractor(s)</th>
+              <th className="px-3 py-3 text-right">Gross</th>
+              <th className="px-3 py-3 text-right">CIS %</th>
+              <th className="px-3 py-3 text-right">CIS Tax</th>
+              <th className="px-3 py-3 text-right">Net</th>
+              <th className="px-3 py-3 text-left">Sign-off</th>
+              <th className="px-5 py-3"></th>
+            </tr>
           </thead>
           <tbody className="divide-y">
-            {rows.map(w => {
-              const o = operatives.find(x => x.id === w.operativeId);
+            {rows.map((row) => {
+              const canSend = row.statusCode === "DRAFT" || row.statusCode === "REFUSED";
+              const canResend = row.statusCode === "SENT";
               return (
-                <tr key={w.id} className="hover:bg-muted/30">
-                  <td className="px-5 py-3 font-medium">{o?.name}</td>
-                  <td className="px-3 py-3 text-muted-foreground">{w.contract}</td>
-                  <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtGBP(w.gross)}</td>
-                  <td className="px-3 py-3 text-right text-muted-foreground">{w.cisRate}%</td>
-                  <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtGBP(w.cisTax)}</td>
-                  <td className="px-3 py-3 text-right font-mono tabular-nums font-medium">{fmtGBP(w.net)}</td>
-                  <td className="px-5 py-3 text-right"><Link to="/wages/$id" params={{id:w.id}} search={{ from: "payroll" }} className="text-xs text-info hover:underline">View sheet</Link></td>
+                <tr key={row.id} className="hover:bg-muted/30">
+                  <td className="px-5 py-3 font-medium">{row.operativeName}</td>
+                  <td className="px-3 py-3 text-muted-foreground">{row.contractorNames ?? "—"}</td>
+                  <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtGBP(row.gross)}</td>
+                  <td className="px-3 py-3 text-right text-muted-foreground">{row.cisRate}%</td>
+                  <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtGBP(row.cisDeduction)}</td>
+                  <td className="px-3 py-3 text-right font-mono tabular-nums font-medium">{fmtGBP(row.net)}</td>
+                  <td className="px-3 py-3"><StatusBadge status={row.statusName} /></td>
+                  <td className="px-5 py-3 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      {canModify && canSend && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={sendMutation.isPending}
+                          onClick={() => sendMutation.mutate(row.id)}
+                        >
+                          <Send className="h-3.5 w-3.5" />Send
+                        </Button>
+                      )}
+                      {canModify && canResend && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={resendMutation.isPending}
+                          onClick={() => resendMutation.mutate(row.id)}
+                        >
+                          <Send className="h-3.5 w-3.5" />Resend
+                        </Button>
+                      )}
+                      <Link
+                        to="/wages/$id"
+                        params={{ id: String(row.id) }}
+                        search={{ from: "payroll" }}
+                        className="text-xs text-info hover:underline"
+                      >
+                        {invoiceNo(row.id)}
+                      </Link>
+                    </div>
+                  </td>
                 </tr>
               );
             })}
-            {rows.length === 0 && <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-muted-foreground">No wage sheets for this week / contract.</td></tr>}
+            {listQuery.isLoading && (
+              <tr>
+                <td colSpan={8} className="px-5 py-12 text-center text-sm text-muted-foreground">Loading payroll…</td>
+              </tr>
+            )}
+            {!listQuery.isLoading && rows.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-5 py-12 text-center text-sm text-muted-foreground">
+                  No wage sheets for week ending {formatUkDate(selectedWeek)}. Sheets build as work is ticked.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
