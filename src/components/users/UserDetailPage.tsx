@@ -12,6 +12,10 @@ import { toast } from "sonner";
 import { Form, SubmitButton } from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
 import { UserFormFields } from "@/components/users/UserFormFields";
+import {
+  ContractorCostBudgetCard,
+  ContractorRunningTasksCard,
+} from "@/components/users/ContractorDetailExtras";
 import { displayUserName } from "@/components/users/UsersListPage";
 import {
   resolveProfileImageUrl,
@@ -459,16 +463,23 @@ export function UserDetailPage() {
                 </div>
               </div>
             ) : null}
+
+            {cfg.isContractor ? <ContractorRunningTasksCard contractorId={numericId} /> : null}
           </div>
         )}
 
-        <div className="card-elevated self-start p-6">
-          <DetailSectionHeading className="mb-4">Account</DetailSectionHeading>
-          <dl className="space-y-3">
-            <DetailMetaRow label={`${cfg.labels.entityTitle} ID`}>{user.id}</DetailMetaRow>
-            <DetailMetaRow label="Created">{formatDateTime(user.createdDate)}</DetailMetaRow>
-            <DetailMetaRow label="Last edited">{formatDateTime(user.editDate)}</DetailMetaRow>
-          </dl>
+        <div className="space-y-6">
+          <div className="card-elevated self-start p-6">
+            <DetailSectionHeading className="mb-4">Account</DetailSectionHeading>
+            <dl className="space-y-3">
+              <DetailMetaRow label={`${cfg.labels.entityTitle} ID`}>{user.id}</DetailMetaRow>
+              <DetailMetaRow label="Created">{formatDateTime(user.createdDate)}</DetailMetaRow>
+              <DetailMetaRow label="Last edited">{formatDateTime(user.editDate)}</DetailMetaRow>
+            </dl>
+          </div>
+          {cfg.isContractor && !isEditing ? (
+            <ContractorCostBudgetCard contractorId={numericId} />
+          ) : null}
         </div>
       </div>
 

@@ -1,10 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AppTooltip } from "@/components/AppTooltip";
+import { Modal } from "@/components/Modal";
+import { Pagination } from "@/components/Pagination";
 import {
   DataTable,
   useDebouncedSearch,
@@ -27,10 +29,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { dailyProgrammeService, type ApiDailyRow } from "@/lib/api/services/daily-programme";
+import { costBudgetService, type ApiCostBudgetTask } from "@/lib/api/services/cost-budget";
+import { tasksService, type ApiTaskItem } from "@/lib/api/services/tasks";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { Can, usePermission } from "@/components/Permission";
 import { DAILY_ROUTE } from "@/lib/daily";
 import { truncateWithEllipsis } from "@/lib/module-ui";
+import { fmtGBP } from "@/lib/data";
+import { formatUkDate } from "@/lib/week-ending";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
@@ -90,6 +96,10 @@ function Daily() {
   const [date, setDate] = useState(todayIso);
   const [showHO, setShowHO] = useState(false);
   const [confirmRoll, setConfirmRoll] = useState(false);
+  const [completedModal, setCompletedModal] = useState<{
+    taskId: number;
+    propertyName: string;
+  } | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
@@ -114,6 +124,32 @@ function Daily() {
     queryKey: [...dailyQueryKey, date, showHO],
     queryFn: async () => (await dailyProgrammeService.get(date, showHO)).data,
     placeholderData: keepPreviousData,
+  });
+
+  const costQuery = useQuery({
+    queryKey: ["cost-budget", "daily-all-time"],
+    queryFn: async () => (await costBudgetService.get({})).data,
+    placeholderData: keepPreviousData,
+  });
+
+  const costByTaskId = useMemo(() => {
+    const map = new Map<number, ApiCostBudgetTask>();
+    for (const task of costQuery.data?.tasks ?? []) {
+      map.set(task.taskId, task);
+    }
+    return map;
+  }, [costQuery.data]);
+
+  const completedItemsQuery = useQuery({
+    queryKey: ["tasks", completedModal?.taskId, "completed-items"],
+    queryFn: async () => {
+      const task = (await tasksService.get(completedModal!.taskId)).data;
+      const items = (task?.items ?? [])
+        .filter((item) => item.isTicked)
+        .sort((a, b) => completedItemSortKey(b) - completedItemSortKey(a));
+      return { task, items };
+    },
+    enabled: completedModal != null,
   });
 
   const rollMutation = useMutation({
@@ -323,8 +359,63 @@ function Daily() {
         width: "6rem",
         accessor: (row) => row.timeDisplay || "—",
       },
+      {
+        id: "cost",
+        header: "Cost",
+        width: "8.5rem",
+        truncate: false,
+        accessor: (row) => {
+          const cost = costByTaskId.get(row.taskId);
+          return cost ? fmtGBP(cost.spent) : fmtGBP(0);
+        },
+        cell: (row) => {
+          const cost = costByTaskId.get(row.taskId);
+          const spent = cost?.spent ?? 0;
+          const budget = cost?.budget ?? null;
+          const pct =
+            budget != null && budget > 0 ? Math.round((spent / budget) * 100) : 0;
+          const tooltip =
+            budget != null
+              ? `${fmtGBP(spent)} of ${fmtGBP(budget)} (${pct}%)`
+              : `${fmtGBP(spent)} spent · no budget set`;
+
+          return (
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex items-baseline justify-between gap-2">
+                <div className="font-mono text-xs tabular-nums">{fmtGBP(spent)}</div>
+                <div className="shrink-0 text-[10px] font-medium tabular-nums text-muted-foreground">
+                  {budget != null && budget > 0 ? `${pct}%` : "—"}
+                </div>
+              </div>
+              <AppTooltip content={tooltip} asChild>
+                <button
+                  type="button"
+                  className="block w-full cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={`View completed items for ${row.propertyName}. ${tooltip}`}
+                  onClick={() =>
+                    setCompletedModal({
+                      taskId: row.taskId,
+                      propertyName: row.propertyName,
+                    })
+                  }
+                >
+                  <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className={cn(
+                        "h-full transition-[width]",
+                        pct > 90 ? "bg-destructive" : "bg-accent",
+                      )}
+                      style={{ width: `${Math.min(Math.max(pct, 0), 100)}%` }}
+                    />
+                  </div>
+                </button>
+              </AppTooltip>
+            </div>
+          );
+        },
+      },
     ],
-    [canModifyDaily],
+    [canModifyDaily, costByTaskId],
   );
 
   const rowActions = useMemo<DataTableRowAction<ApiDailyRow>[]>(
@@ -536,6 +627,142 @@ function Daily() {
           </div>
         </div>
       ) : null}
+
+      <Modal
+        open={completedModal != null}
+        onClose={() => setCompletedModal(null)}
+        title="Completed items"
+        subtitle={
+          completedModal
+            ? `${completedModal.propertyName}${
+                completedItemsQuery.data?.task?.taskNumber
+                  ? ` · ${completedItemsQuery.data.task.taskNumber}`
+                  : ""
+              }`
+            : undefined
+        }
+        size="lg"
+      >
+        <CompletedItemsModalBody
+          key={completedModal?.taskId ?? "closed"}
+          loading={completedItemsQuery.isLoading}
+          error={completedItemsQuery.isError}
+          onRetry={() => {
+            void completedItemsQuery.refetch();
+          }}
+          items={completedItemsQuery.data?.items ?? []}
+        />
+      </Modal>
+    </div>
+  );
+}
+
+function completedItemSortKey(item: ApiTaskItem) {
+  const raw = item.completedDate || item.workDate;
+  const time = new Date(raw).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function CompletedItemsModalBody({
+  loading,
+  error,
+  onRetry,
+  items,
+}: {
+  loading: boolean;
+  error: boolean;
+  onRetry: () => void;
+  items: ApiTaskItem[];
+}) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const totalCount = items.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const pageSafe = Math.min(page, totalPages);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const pageRows = useMemo(() => {
+    const start = (pageSafe - 1) * pageSize;
+    return items.slice(start, start + pageSize);
+  }, [items, pageSafe, pageSize]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading completed items…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-3 py-6 text-center">
+        <p className="text-sm text-muted-foreground">Unable to load completed items.</p>
+        <Button variant="outline" size="sm" onClick={onRetry}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        No completed items for this task yet.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2.5 text-left font-medium">Completed</th>
+              <th className="px-3 py-2.5 text-left font-medium">Work date</th>
+              <th className="px-3 py-2.5 text-left font-medium">Operative</th>
+              <th className="px-3 py-2.5 text-left font-medium">Trade</th>
+              <th className="px-3 py-2.5 text-left font-medium">Item</th>
+              <th className="px-3 py-2.5 text-right font-medium">Amount</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {pageRows.map((item) => (
+              <tr key={item.id} className="hover:bg-muted/30">
+                <td className="px-3 py-2.5 tabular-nums text-muted-foreground">
+                  {formatUkDate(item.completedDate)}
+                </td>
+                <td className="px-3 py-2.5 tabular-nums">{formatUkDate(item.workDate)}</td>
+                <td className="px-3 py-2.5 font-medium">{item.operativeName}</td>
+                <td className="px-3 py-2.5 text-muted-foreground">{item.tradeName || "—"}</td>
+                <td className="px-3 py-2.5 text-muted-foreground">{item.productName || "—"}</td>
+                <td className="px-3 py-2.5 text-right font-mono tabular-nums">
+                  {fmtGBP(item.amount)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Pagination
+        page={pageSafe}
+        pageSize={pageSize}
+        totalCount={totalCount}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+        itemLabel="items"
+        controlsAlign="center"
+      />
     </div>
   );
 }

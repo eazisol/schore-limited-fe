@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
@@ -31,7 +31,8 @@ import { z } from "zod";
 
 const searchSchema = z.object({
   mode: z.enum(["view", "edit"]).optional().default("view"),
-  from: z.enum(["daily"]).optional(),
+  from: z.enum(["daily", "contractor"]).optional(),
+  contractorId: z.string().optional(),
 });
 
 export const Route = createFileRoute("/tasks/$id")({
@@ -42,15 +43,35 @@ export const Route = createFileRoute("/tasks/$id")({
 
 function TaskDetail() {
   const { id } = Route.useParams();
-  const { mode, from } = Route.useSearch();
+  const { mode, from, contractorId } = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canModify = usePermission({ route: TASKS_ROUTE, action: "modify" });
   const isEdit = mode === "edit" && canModify;
   const fromDaily = from === "daily";
-  const backTo = fromDaily ? "/daily" : "/tasks";
-  const backLabel = fromDaily ? "Back to daily programmer" : "Back to tasks";
-  const dailySearch = fromDaily ? { from: "daily" as const } : undefined;
+  const fromContractor = from === "contractor" && Boolean(contractorId);
+  const backLabel = fromDaily
+    ? "Back to daily programmer"
+    : fromContractor
+      ? "Back to contractor"
+      : "Back to tasks";
+  const contextSearch = fromDaily
+    ? { from: "daily" as const }
+    : fromContractor
+      ? { from: "contractor" as const, contractorId: String(contractorId) }
+      : undefined;
+
+  const goBack = () => {
+    if (fromDaily) {
+      navigate({ to: "/daily" });
+      return;
+    }
+    if (fromContractor && contractorId) {
+      navigate({ to: "/contractors/$id", params: { id: String(contractorId) } });
+      return;
+    }
+    navigate({ to: "/tasks" });
+  };
 
   const {
     data: task,
@@ -119,10 +140,14 @@ function TaskDetail() {
         navigate({ to: "/daily" });
         return;
       }
+      if (fromContractor && contractorId) {
+        navigate({ to: "/contractors/$id", params: { id: String(contractorId) } });
+        return;
+      }
       navigate({
         to: "/tasks/$id",
         params: { id },
-        search: { mode: "view", ...dailySearch },
+        search: { mode: "view", ...contextSearch },
       });
     },
     onError: (err) => notifyApiError(err, "Failed to update task"),
@@ -159,13 +184,14 @@ function TaskDetail() {
           }
           leading={
             <AppTooltip content={backLabel} asChild>
-              <Link
-                to={backTo}
+              <button
+                type="button"
+                onClick={goBack}
                 aria-label={backLabel}
                 className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <ArrowLeft className="h-4 w-4" />
-              </Link>
+              </button>
             </AppTooltip>
           }
           actions={
@@ -178,7 +204,7 @@ function TaskDetail() {
                     navigate({
                       to: "/tasks/$id",
                       params: { id },
-                      search: { mode: "edit", ...dailySearch },
+                      search: { mode: "edit", ...contextSearch },
                     })
                   }
                 >
@@ -218,11 +244,15 @@ function TaskDetail() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  if (fromDaily) {
-                    navigate({ to: "/daily" });
+                  if (fromDaily || fromContractor) {
+                    goBack();
                     return;
                   }
-                  navigate({ to: "/tasks/$id", params: { id }, search: { mode: "view" } });
+                  navigate({
+                    to: "/tasks/$id",
+                    params: { id },
+                    search: { mode: "view", ...contextSearch },
+                  });
                 }}
                 disabled={updateMutation.isPending}
               >
