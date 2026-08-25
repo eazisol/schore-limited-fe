@@ -27,7 +27,7 @@ export function ActivitySnapshotChart({
 }) {
   const isSingle = data.length === 1;
   const yMax = Math.max(4, ...data.flatMap((point) => ACTIVITY_SERIES.map((series) => point[series.key])));
-
+return <div></div>
   return (
     <section className="card-elevated overflow-hidden">
       <div className="px-4 pt-4 sm:px-5">
