@@ -604,9 +604,9 @@ export function TaskFormFields({
             />
             <SearchableSelectField<TaskFormValues>
               name="siteManagerId"
-              label="Contractor"
-              placeholder="Select contractor"
-              searchPlaceholder="Search contractors…"
+              label="Site Manager"
+              placeholder="Select Site Manager"
+              searchPlaceholder="Search Site Managers…"
               queryKey={["lookups", "site-managers"]}
               selectedLabel={selectedLabels?.siteManager}
               fetchOptions={fetchSiteManagerOptions}
