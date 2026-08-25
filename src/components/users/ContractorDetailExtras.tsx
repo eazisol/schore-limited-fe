@@ -16,8 +16,8 @@ import { cn } from "@/lib/utils";
 
 export function ContractorCostBudgetCard({ contractorId }: { contractorId: number }) {
   const costQuery = useQuery({
-    queryKey: ["cost-budget", { contractorId, allTime: true }],
-    queryFn: async () => (await costBudgetService.get({ contractorId })).data,
+    queryKey: ["users", contractorId, "cost-budget"],
+    queryFn: async () => (await costBudgetService.getForContractor(contractorId)).data,
     enabled: Number.isFinite(contractorId) && contractorId > 0,
   });
 

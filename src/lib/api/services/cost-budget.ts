@@ -60,4 +60,8 @@ export const costBudgetService = {
         ...(params.contractorId != null ? { ContractorId: params.contractorId } : {}),
       },
     }),
+  getForContractor: (contractorId: number | string) =>
+    http.get<ApiEnvelope<ApiCostBudget>>(`Users/${contractorId}/cost-budget`),
+  getForDaily: () =>
+    http.get<ApiEnvelope<ApiCostBudget>>("DailyProgramme/cost-budget"),
 };

@@ -127,8 +127,8 @@ function Daily() {
   });
 
   const costQuery = useQuery({
-    queryKey: ["cost-budget", "daily-all-time"],
-    queryFn: async () => (await costBudgetService.get({})).data,
+    queryKey: ["daily-programme", "cost-budget"],
+    queryFn: async () => (await costBudgetService.getForDaily()).data,
     placeholderData: keepPreviousData,
   });
 
