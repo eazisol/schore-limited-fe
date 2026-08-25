@@ -606,7 +606,7 @@ export function TaskFormFields({
               name="siteManagerId"
               label="Site Manager"
               placeholder="Select Site Manager"
-              searchPlaceholder="Search Site Managers…"
+              searchPlaceholder="Search Site Managers"
               queryKey={["lookups", "site-managers"]}
               selectedLabel={selectedLabels?.siteManager}
               fetchOptions={fetchSiteManagerOptions}
