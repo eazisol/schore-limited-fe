@@ -67,3 +67,4 @@ export function useApi(): ApiContextValue {
   if (!ctx) throw new Error("useApi must be used inside <ApiProvider>");
   return ctx;
 }
+
