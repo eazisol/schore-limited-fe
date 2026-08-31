@@ -84,7 +84,7 @@ function EditItem() {
       toast.success(res.message || "Item updated");
       queryClient.setQueryData(["items", id], res.data);
       queryClient.invalidateQueries({ queryKey: itemsQueryKey });
-      navigate({ to: "/items/$id", params: { id } });
+      navigate({ to: "/items" });
     },
     onError: (err) => notifyApiError(err, "Failed to update item"),
   });
@@ -165,12 +165,12 @@ function EditItem() {
 
   return (
     <RequirePermission route={ITEMS_ROUTE} action="modify">
-      <Form form={form} onSubmit={save} className="w-full">
+      <Form form={form} onSubmit={save} className="max-w-xl">
         <FormPageCard
           title="Edit item"
-          onBack={{ label: "Back to item", onClick: () => navigate({ to: "/items/$id", params: { id } }) }}
+          onBack={{ label: "Back to items", onClick: () => navigate({ to: "/items" }) }}
           headerActions={<SwitchField<ItemFormValues> name="isActive" label="Active" />}
-          maxWidth="w-full max-w-none"
+          maxWidth="max-w-xl"
           footer={
             <>
               <span className="text-xs text-muted-foreground sm:mr-auto">
@@ -182,7 +182,7 @@ function EditItem() {
                   variant="outline"
                   size="sm"
                   disabled={updateMutation.isPending || removingImage}
-                  onClick={() => navigate({ to: "/items/$id", params: { id } })}
+                  onClick={() => navigate({ to: "/items" })}
                 >
                   Cancel
                 </Button>

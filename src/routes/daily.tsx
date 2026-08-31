@@ -50,14 +50,6 @@ function shiftDate(iso: string, days: number) {
   return d.toISOString().slice(0, 10);
 }
 
-function formatLongDate(iso: string) {
-  return new Date(`${iso}T12:00:00`).toLocaleDateString("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
 
 function matchesSearch(row: ApiDailyRow, search: string) {
   if (!search) return true;
@@ -404,10 +396,7 @@ function Daily() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Daily Programmer"
-        subtitle={`Roll for ${formatLongDate(date)}`}
-      />
+      <PageHeader title="Daily Programmer" />
 
       <DataTable
         columns={columns}

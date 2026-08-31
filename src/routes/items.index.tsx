@@ -11,7 +11,7 @@ import {
   type DataTableColumn,
   type DataTableRowAction,
 } from "@/components/data-table";
-import { Plus, Eye, Pencil, Trash2, Loader2, Download, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Download, Package } from "lucide-react";
 import { toast } from "sonner";
 import {
   productsService,
@@ -146,6 +146,11 @@ function ItemsList() {
                     {truncateWithEllipsis(item.name)}
                   </Link>
                 </AppTooltip>
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  {item.unitName?.trim() ? `Unit: ${item.unitName.trim()}` : "Unit: —"}
+                  {" · "}
+                  Cost: {formatGbp(item.costPrice)}
+                </div>
               </div>
             </div>
           );
@@ -186,33 +191,12 @@ function ItemsList() {
         sortable: true,
         cell: (item) => <ActiveStatusBadge isActive={item.isActive} />,
       },
-      {
-        id: "image",
-        header: "Image",
-        align: "center",
-        width: "5rem",
-        truncate: false,
-        cell: (item) => (
-          <TableImagePreview
-            src={resolveProductImageUrl(item.imageUrl, item.editDate)}
-            alt={item.name}
-            variant="icon"
-            tooltip={item.imageUrl ? "View image" : "No image"}
-          />
-        ),
-      },
     ],
     [],
   );
 
   const rowActions = useMemo<DataTableRowAction<ApiProduct>[]>(
     () => [
-      {
-        id: "view",
-        label: "View",
-        icon: <Eye className="h-4 w-4" />,
-        onClick: (item) => navigate({ to: "/items/$id", params: { id: String(item.id) } }),
-      },
       {
         id: "edit",
         label: "Edit",

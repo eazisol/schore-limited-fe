@@ -10,7 +10,7 @@ export const Route = createFileRoute("/categories")({
 
 function CategoriesPage() {
   return (
-    <div className="flex flex-col gap-3 xl:h-[calc(100svh-5.5rem)] xl:min-h-0 xl:overflow-hidden">
+    <div className="flex flex-col xl:h-[calc(100svh-5.5rem)] xl:min-h-0 xl:overflow-hidden">
       <PageHeader title="Categories" />
       <ManageFormsLayoutProvider layout="split">
         <CategoriesColumn />

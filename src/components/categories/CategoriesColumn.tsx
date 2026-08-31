@@ -165,6 +165,7 @@ export function CategoriesColumn() {
                     key={item.id}
                     label={item.name}
                     subtitle={item.code}
+                    description={item.description}
                     inactive={!item.isActive}
                     selected={selectedId === item.id}
                     canEdit={canModify}

@@ -164,6 +164,7 @@ export function StatusesColumn() {
                     key={item.id}
                     label={item.name}
                     subtitle={[item.code, item.documentTypeName].filter(Boolean).join(" · ")}
+                    description={item.description}
                     inactive={!item.isActive}
                     selected={selectedId === item.id}
                     canEdit={canModify}
@@ -276,17 +277,17 @@ function StatusFormPanel({
         }
       >
         <fieldset disabled={isView} className="space-y-3">
+          <SearchableSelectField<Values>
+            name="documentTypeId"
+            label="Document type"
+            required
+            placeholder="Select document type…"
+            searchPlaceholder="Search document types…"
+            queryKey={["lookups", "document-types", "form"]}
+            fetchOptions={fetchDocumentTypeOptions}
+            selectedLabel={existing?.documentTypeName}
+          />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <SearchableSelectField<Values>
-              name="documentTypeId"
-              label="Document type"
-              required
-              placeholder="Select document type…"
-              searchPlaceholder="Search document types…"
-              queryKey={["lookups", "document-types", "form"]}
-              fetchOptions={fetchDocumentTypeOptions}
-              selectedLabel={existing?.documentTypeName}
-            />
             <TextField<Values>
               name="name"
               label="Name"
@@ -301,14 +302,13 @@ function StatusFormPanel({
               transformValue={normalizeCodeInput}
               inputClassName="uppercase"
             />
-            <TextareaField<Values>
-              name="description"
-              label="Description"
-              rows={3}
-              maxLength={DESCRIPTION_MAX_LENGTH}
-              className="sm:col-span-2"
-            />
           </div>
+          <TextareaField<Values>
+            name="description"
+            label="Description"
+            rows={3}
+            maxLength={DESCRIPTION_MAX_LENGTH}
+          />
         </fieldset>
       </LookupFormPanel>
     </Form>

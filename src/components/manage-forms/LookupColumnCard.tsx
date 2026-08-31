@@ -1,24 +1,13 @@
 import type { ReactNode } from "react";
-import { Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { AppTooltip } from "@/components/AppTooltip";
 import { useManageFormsLayout } from "./manage-forms-layout";
 
 export function LookupItemList({ children }: { children: ReactNode }) {
-  const layout = useManageFormsLayout();
-
-  return (
-    <div
-      className={cn(
-        layout === "split"
-          ? "divide-y divide-border overflow-hidden rounded-md border"
-          : "space-y-2",
-      )}
-    >
-      {children}
-    </div>
-  );
+  return <div className="space-y-2">{children}</div>;
 }
 
 export function LookupColumnCard({
@@ -65,8 +54,8 @@ export function LookupColumnCard({
       )}
     >
       {isSplit ? (
-        <div className="flex shrink-0 items-center gap-2 border-b px-4 py-3">
-          <div className="flex h-9 w-full max-w-xs items-center gap-2 rounded-md border border-input bg-background px-3 sm:max-w-sm">
+        <div className="flex shrink-0 items-center gap-2 border-b px-3 py-3">
+          <div className="flex h-9 w-full items-center gap-2 rounded-md border border-input bg-background px-3">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               value={searchInput}
@@ -78,12 +67,6 @@ export function LookupColumnCard({
           </div>
           {fetching && !loading ? (
             <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
-          ) : null}
-          {canAdd ? (
-            <Button type="button" size="sm" onClick={onAdd} aria-label={addAriaLabel}>
-              <Plus className="h-4 w-4" />
-              Add
-            </Button>
           ) : null}
         </div>
       ) : (
@@ -127,7 +110,7 @@ export function LookupColumnCard({
       <div
         className={cn(
           "scrollbar-elegant min-h-0 flex-1 overflow-y-auto",
-          isSplit ? "px-4 pb-4 pt-4" : "px-3 pb-3",
+          isSplit ? "px-3 pb-3 pt-2" : "px-3 pb-3",
         )}
       >
         {loading ? (
@@ -151,7 +134,9 @@ export function LookupColumnCard({
         {!loading && !error ? empty : null}
       </div>
 
-      {footer ? <div className="shrink-0 border-t px-3 py-2">{footer}</div> : null}
+      {footer ? (
+        <div className="shrink-0 border-t px-3 py-2">{footer}</div>
+      ) : null}
     </section>
   );
 }
@@ -182,6 +167,7 @@ export function LookupFormPanel({
 export function LookupItemRow({
   label,
   subtitle,
+  description,
   inactive,
   selected,
   canEdit,
@@ -191,6 +177,7 @@ export function LookupItemRow({
 }: {
   label: string;
   subtitle?: string;
+  description?: string | null;
   inactive?: boolean;
   selected?: boolean;
   canEdit: boolean;
@@ -198,18 +185,24 @@ export function LookupItemRow({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const layout = useManageFormsLayout();
-  const isSplit = layout === "split";
+  const tooltipText = description?.trim();
+  const labelContent = (
+    <span className="block truncate text-sm leading-tight">
+      <span className="font-medium">{label}</span>
+      {subtitle ? (
+        <>
+          <span className="text-muted-foreground"> · </span>
+          <span className="text-muted-foreground">{subtitle}</span>
+        </>
+      ) : null}
+    </span>
+  );
 
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 px-3 py-2.5 transition-colors",
-        isSplit
-          ? "bg-background hover:bg-muted/30"
-          : "rounded-md border bg-background",
-        !isSplit && selected && "border-primary/40 bg-primary/5 ring-1 ring-primary/20",
-        isSplit && selected && "bg-primary/5",
+        "group flex items-center gap-2 rounded-md border bg-background px-2.5 py-2 transition-colors",
+        selected && "border-primary/40 bg-primary/5 ring-1 ring-primary/20",
         inactive && "opacity-70",
       )}
     >
@@ -218,29 +211,18 @@ export function LookupItemRow({
         className="min-w-0 flex-1 text-left"
         onClick={onEdit}
       >
-        <span className="block truncate text-sm font-medium leading-tight">{label}</span>
-        {subtitle ? (
-          <span className="mt-0.5 block truncate text-[11px] leading-tight text-muted-foreground">
-            {subtitle}
-          </span>
-        ) : null}
+        {tooltipText ? (
+          <AppTooltip content={tooltipText} asChild align="start">
+            {labelContent}
+          </AppTooltip>
+        ) : (
+          labelContent
+        )}
       </button>
       {inactive ? (
         <ActiveStatusBadge isActive={false} className="hidden px-1.5 text-[10px] sm:inline-flex" />
       ) : null}
       <div className="flex shrink-0 items-center gap-0.5 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-        {canEdit ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={onEdit}
-            aria-label={`Edit ${label}`}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-        ) : null}
         {canDelete ? (
           <Button
             type="button"

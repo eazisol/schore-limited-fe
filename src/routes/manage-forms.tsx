@@ -20,14 +20,12 @@ const TAB_PANEL_CLASS =
 
 function ManageFormsPage() {
   return (
-    <div className="flex flex-col gap-3 xl:h-[calc(100svh-5.5rem)] xl:min-h-0 xl:overflow-hidden">
-      <PageHeader
-        title="Manage Forms"
-        subtitle="Statuses, job types, day suggestions, and hold reasons."
-      />
+    <div className="flex flex-col xl:h-[calc(100svh-5.5rem)] xl:min-h-0 xl:overflow-hidden">
+      <PageHeader title="Manage Forms" />
 
       <ManageFormsLayoutProvider layout="split">
-        <Tabs defaultValue="statuses" className="flex min-h-0 flex-1 flex-col gap-4">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <Tabs defaultValue="statuses" className="flex min-h-0 flex-1 flex-col gap-3">
           <TabsList className="inline-flex h-auto w-full shrink-0 flex-row items-start justify-start gap-4 rounded-none border-b border-border bg-transparent p-0 pb-0">
             <TabsTrigger value="statuses" className={TAB_TRIGGER_CLASS}>
               Statuses
@@ -56,6 +54,7 @@ function ManageFormsPage() {
             <HoldReasonsColumn />
           </TabsContent>
         </Tabs>
+        </div>
       </ManageFormsLayoutProvider>
     </div>
   );

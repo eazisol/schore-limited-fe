@@ -66,8 +66,6 @@ const WEEKDAY_OPTIONS = [
   { day: 0, label: "Sunday" },
 ] as const;
 
-const DEFAULT_OFF_WEEKDAYS = new Set<number>([0, 6]);
-
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => ({
   value: String(index),
   label: new Date(2000, index, 1).toLocaleDateString("en-GB", { month: "long" }),
@@ -136,10 +134,10 @@ function HolidaysPage() {
     queryFn: async () => (await holidaysService.getWeekend()).data,
   });
 
-  const offWeekdays = useMemo(
-    () => new Set(weekendQuery.data?.days ?? [...DEFAULT_OFF_WEEKDAYS]),
-    [weekendQuery.data?.days],
-  );
+  const offWeekdays = useMemo(() => {
+    if (!weekendQuery.data?.days) return undefined;
+    return new Set(weekendQuery.data.days);
+  }, [weekendQuery.data?.days]);
 
   const rows = useMemo(() => query.data?.items ?? [], [query.data?.items]);
 
@@ -164,6 +162,7 @@ function HolidaysPage() {
   );
 
   const offDayDates = useMemo(() => {
+    if (!offWeekdays) return [];
     const days: Date[] = [];
     const end = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
     for (let d = 1; d <= end; d++) {
@@ -176,7 +175,6 @@ function HolidaysPage() {
   const selectedDate = selectedYmd ? parseYmd(selectedYmd) : undefined;
   const selectedHolidays = selectedYmd ? (holidaysByDate.get(selectedYmd) ?? []) : [];
   const monthHolidayCount = rows.length;
-  const checkedCount = offWeekdays.size;
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => holidaysService.remove(id),
@@ -198,6 +196,7 @@ function HolidaysPage() {
   });
 
   function toggleOffWeekday(day: number, checked: boolean) {
+    if (!offWeekdays) return;
     const next = new Set(offWeekdays);
     if (checked) next.add(day);
     else next.delete(day);
@@ -261,10 +260,9 @@ function HolidaysPage() {
   const monthTitle = month.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 
   return (
-    <div className="flex h-[calc(100svh-5.5rem)] min-h-0 flex-col gap-3 overflow-hidden">
+    <div className="flex min-h-0 flex-col overflow-hidden xl:h-[calc(100svh-5.5rem)]">
       <PageHeader
         title={HOLIDAYS_LABEL}
-        subtitle="Excluded automatically from DAYS and KPI working-day counts."
         actions={
           <Can route={HOLIDAYS_ROUTE} action="modify">
             <Button
@@ -284,17 +282,24 @@ function HolidaysPage() {
           <div className="card-elevated flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-xl border bg-card">
             <div className="shrink-0 border-b px-4 py-2.5">
               <h2 className="font-display text-base font-semibold tracking-tight">This month</h2>
-              <p className="text-xs text-muted-foreground">
-                Working days · {checkedCount} off day{checkedCount === 1 ? "" : "s"} checked
-                {weekendQuery.data?.weekEndingDayName
-                  ? ` · Week ends ${weekendQuery.data.weekEndingDayName}`
-                  : ""}
-              </p>
             </div>
 
+            {weekendQuery.isLoading ? (
+              <div className="flex min-h-0 flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading working days…
+              </div>
+            ) : weekendQuery.isError ? (
+              <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+                <p className="text-sm font-medium">Unable to load working days</p>
+                <Button variant="outline" size="sm" onClick={() => void weekendQuery.refetch()}>
+                  Retry
+                </Button>
+              </div>
+            ) : (
             <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2">
               {WEEKDAY_OPTIONS.map((opt) => {
-                const checked = offWeekdays.has(opt.day);
+                const checked = offWeekdays?.has(opt.day) ?? false;
                 const id = `weekday-off-${opt.day}`;
                 return (
                   <li key={opt.day}>
@@ -325,6 +330,7 @@ function HolidaysPage() {
                 );
               })}
             </ul>
+            )}
 
             <div className="shrink-0 border-t px-4 py-2.5 text-xs text-muted-foreground">
               {monthTitle}: {daysInMonth} days · {monthHolidayCount} holiday
@@ -341,13 +347,6 @@ function HolidaysPage() {
                 <h2 className="font-display text-base font-semibold tracking-tight">
                   Calendar · {monthTitle}
                 </h2>
-                <p className="text-xs text-muted-foreground">
-                  {selectedYmd
-                    ? selectedHolidays.length > 0
-                      ? `${selectedHolidays.length} holiday${selectedHolidays.length === 1 ? "" : "s"} on ${parseYmd(selectedYmd).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}`
-                      : `Selected ${parseYmd(selectedYmd).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}`
-                    : `${daysInMonth} days in ${month.toLocaleDateString("en-GB", { month: "long" })} · click a box to add or open a holiday`}
-                </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button
@@ -529,7 +528,7 @@ function HolidaysPage() {
                       <HolidayDayCell
                         {...props}
                         holidays={holidaysByDate.get(toYmd(props.day.date)) ?? []}
-                        isOffDay={offWeekdays.has(props.day.date.getDay())}
+                        isOffDay={offWeekdays?.has(props.day.date.getDay()) ?? false}
                       />
                     ),
                   }}

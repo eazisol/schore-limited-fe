@@ -147,6 +147,7 @@ export function CisColumn() {
                     key={item.id}
                     label={item.name}
                     subtitle={[item.code, formatCisRate(item.rate)].filter(Boolean).join(" · ")}
+                    description={item.description}
                     inactive={!item.isActive}
                     selected={selectedId === item.id}
                     canEdit={canModify}

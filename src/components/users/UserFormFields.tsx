@@ -173,30 +173,31 @@ export function UserFormFields({
             ) : isCustomer ? (
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
+                <CreatableSearchableSelectField<UserFormValues>
+                  name="contractorId"
+                  label="Contractor"
+                  placeholder="Select contractor"
+                  searchPlaceholder="Search contractors…"
+                  queryKey={["users", "contractors", "dropdown"]}
+                  selectedLabel={contractorSelectedLabel}
+                  fetchOptions={fetchContractorOptions}
+                  lookupType="contractor"
+                />
               </div>
             ) : null}
             {isCustomer ? (
               <>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <CreatableSearchableSelectField<UserFormValues>
-                    name="contractorId"
-                    label="Contractor"
-                    placeholder="Select contractor"
-                    searchPlaceholder="Search contractors…"
-                    queryKey={["users", "contractors", "dropdown"]}
-                    selectedLabel={contractorSelectedLabel}
-                    fetchOptions={fetchContractorOptions}
-                    lookupType="contractor"
-                  />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <TextField<UserFormValues>
                     name="address"
                     label="Address"
                     maxLength={ADDRESS_MAX_LENGTH}
+                    className="sm:col-span-2 lg:col-span-2"
                   />
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <TextField<UserFormValues> name="city" label="City" maxLength={100} />
                   <TextField<UserFormValues> name="state" label="State" maxLength={100} />
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <TextField<UserFormValues> name="country" label="Country" maxLength={100} />
                   <TextField<UserFormValues> name="zipCode" label="ZIP Code" maxLength={20} />
                 </div>

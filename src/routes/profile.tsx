@@ -173,7 +173,6 @@ function ProfilePage() {
 
   if (!authUser) return null;
 
-  const jobTitle = apiUser?.userTypeName ?? "";
   const roleLabel = (apiUser?.roleNames ?? []).filter(Boolean).join(", ");
 
   async function onSaveProfile(values: ProfileValues) {
@@ -291,16 +290,6 @@ function ProfilePage() {
           />
           <PhoneNumberField<ProfileValues> name="phone" label="Phone" placeholder="07700 900000" />
           <TextField<ProfileValues> name="dateOfBirth" label="Date of birth" type="date" />
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Job title</label>
-            <AppTooltip content="Job title is managed by an administrator." className="w-full">
-              <input
-                value={jobTitle}
-                disabled
-                className="pointer-events-none flex h-9 w-full cursor-default rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground"
-              />
-            </AppTooltip>
-          </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Role</label>
             <AppTooltip content="Assigned by an administrator." className="w-full">

@@ -145,7 +145,7 @@ export function HoldReasonsColumn() {
                   <LookupItemRow
                     key={item.id}
                     label={item.name}
-                    subtitle={item.description ?? undefined}
+                    description={item.description}
                     inactive={!item.isActive}
                     selected={selectedId === item.id}
                     canEdit={canModify}

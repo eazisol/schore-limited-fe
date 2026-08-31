@@ -231,7 +231,7 @@ export function UserDetailPage() {
           ? undefined
           : roleLabel !== "—"
             ? roleLabel
-            : user.userTypeName?.trim() || undefined;
+            : undefined;
 
   const profileHeroHighlights = ((): DetailProfileHighlight[] | undefined => {
     if (cfg.isOperative) {
@@ -246,9 +246,6 @@ export function UserDetailPage() {
       const loginUsername = user.username?.trim();
       const accountEmail = user.email?.trim();
       if (roleLabel !== "—") items.push({ label: "Role", value: roleLabel });
-      if (user.userTypeName?.trim()) {
-        items.push({ label: "Job title", value: user.userTypeName.trim() });
-      }
       if (
         loginUsername &&
         loginUsername.toLowerCase() !== accountEmail?.toLowerCase() &&

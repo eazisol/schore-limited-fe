@@ -179,6 +179,7 @@ export function DaySuggestionsColumn() {
                     key={item.id}
                     label={`Day ${item.dayNumber}`}
                     subtitle={tradeLabel(item) || undefined}
+                    description={item.description}
                     inactive={!item.isActive}
                     selected={selectedId === item.id}
                     canEdit={canModify}
@@ -309,7 +310,7 @@ function DaySuggestionFormPanel({
         }
       >
         <fieldset disabled={isView} className="space-y-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
             <TextField<Values>
               name="dayNumber"
               label="Day number"
@@ -317,6 +318,7 @@ function DaySuggestionFormPanel({
               min={1}
               step={1}
               required
+              className="w-full sm:w-32"
             />
             <SearchableMultiSelectField<Values>
               name="tradeIds"
@@ -327,15 +329,15 @@ function DaySuggestionFormPanel({
               queryKey={tradeOptionsQueryKey}
               fetchOptions={fetchTradeOptions}
               selectedLabels={selectedLabels}
-            />
-            <TextareaField<Values>
-              name="description"
-              label="Description"
-              rows={3}
-              maxLength={DESCRIPTION_MAX_LENGTH}
-              className="sm:col-span-2"
+              className="min-w-0 flex-1"
             />
           </div>
+          <TextareaField<Values>
+            name="description"
+            label="Description"
+            rows={3}
+            maxLength={DESCRIPTION_MAX_LENGTH}
+          />
         </fieldset>
       </LookupFormPanel>
     </Form>
