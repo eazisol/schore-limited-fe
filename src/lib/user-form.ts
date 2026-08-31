@@ -168,31 +168,13 @@ function contactModuleExtrasRefine(mode: UserModuleMode, values: UserFormValues,
 
 function employmentDatesRefine(values: UserFormValues, ctx: z.RefinementCtx) {
   const startDate = values.startDate.trim();
-  const endDate = values.endDate.trim();
   const parsedStart = startDate ? parseDateInput(startDate) : null;
-  const parsedEnd = endDate ? parseDateInput(endDate) : null;
 
   if (startDate && !parsedStart) {
     ctx.addIssue({
       code: "custom",
       path: ["startDate"],
       message: "Enter a valid start date.",
-    });
-  }
-
-  if (endDate && !parsedEnd) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["endDate"],
-      message: "Enter a valid end date.",
-    });
-  }
-
-  if (parsedStart && parsedEnd && parsedEnd.getTime() < parsedStart.getTime()) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["endDate"],
-      message: "End date cannot be earlier than start date.",
     });
   }
 }
@@ -318,7 +300,7 @@ export function toCreateUserPayload(
     userTypeId: USER_TYPE_ID[mode],
     roleIds: isUser ? [Number(values.roleId)] : null,
     startDate: isOperative ? values.startDate.trim() || null : null,
-    endDate: isOperative ? values.endDate.trim() || null : null,
+    endDate: null,
   };
 
   if (isOperative) {
@@ -361,7 +343,7 @@ export function toUpdateUserPayload(
     roleIds: isUser ? [Number(values.roleId)] : null,
     password: isUser ? nextPassword || null : isOperative ? nextPassword || null : null,
     startDate: isOperative ? values.startDate.trim() || null : null,
-    endDate: isOperative ? values.endDate.trim() || null : null,
+    endDate: null,
   };
 
   if (isOperative) {

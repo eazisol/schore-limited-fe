@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 import { useFormContext } from "react-hook-form";
 import {
   TextField,
@@ -7,33 +8,36 @@ import {
   SwitchField,
   CheckboxField,
   PhoneNumberField,
-  SearchableSelectField,
+  CreatableSearchableSelectField,
   type SelectOption,
 } from "@/components/form";
 import { PasswordRequirements } from "@/lib/password";
 import type { UserFormValues } from "@/lib/user-form";
 import { type UserModuleMode } from "@/lib/user-module";
-import { fetchContractorOptions } from "@/lib/user-dropdowns";
+import { fetchContractorOptions, fetchCisOptions, fetchTradeOptions } from "@/lib/user-dropdowns";
 import { ADDRESS_MAX_LENGTH } from "@/lib/field-validation";
 
 export function UserFormFields({
   mode,
   variant,
   disabled = false,
+  embedded = false,
   lookupsLoading = false,
   roleOptions,
-  tradeOptions = [],
-  cisOptions = [],
+  operativeSelectedLabels,
   contractorSelectedLabel,
   autoFocusFirstName = false,
 }: {
   mode: UserModuleMode;
   variant: "create" | "edit";
   disabled?: boolean;
+  embedded?: boolean;
   lookupsLoading?: boolean;
   roleOptions: SelectOption[];
-  tradeOptions?: SelectOption[];
-  cisOptions?: SelectOption[];
+  operativeSelectedLabels?: {
+    trade?: string | null;
+    cis?: string | null;
+  };
   contractorSelectedLabel?: string | null;
   autoFocusFirstName?: boolean;
 }) {
@@ -46,14 +50,17 @@ export function UserFormFields({
   const isContactModule = isContractor || isCustomer;
 
   return (
-    <fieldset className="space-y-6" disabled={disabled}>
+    <fieldset className="space-y-3" disabled={disabled}>
       <Section
         title="Personal Information"
-        headerAction={<SwitchField<UserFormValues> name="isActive" label="Active" />}
+        embedded={embedded}
+        headerAction={
+          embedded ? undefined : <SwitchField<UserFormValues> name="isActive" label="Active" />
+        }
       >
         {isContractor ? (
           <>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <TextField<UserFormValues>
                 name="companyName"
                 label="Company name"
@@ -67,7 +74,7 @@ export function UserFormFields({
                 maxLength={50}
               />
             </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <TextField<UserFormValues> name="lastName" label="Last name" required maxLength={50} />
               <TextField<UserFormValues>
                 name="email"
@@ -77,7 +84,7 @@ export function UserFormFields({
                 placeholder="name@schore.co.uk"
               />
             </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <PhoneNumberField<UserFormValues>
                 name="phone"
                 label="Phone"
@@ -89,7 +96,7 @@ export function UserFormFields({
                 maxLength={ADDRESS_MAX_LENGTH}
               />
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <TextField<UserFormValues> name="city" label="City" maxLength={100} />
               <TextField<UserFormValues> name="state" label="State" maxLength={100} />
               <TextField<UserFormValues> name="country" label="Country" maxLength={100} />
@@ -98,7 +105,7 @@ export function UserFormFields({
           </>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <TextField<UserFormValues>
                 name="firstName"
                 label="First name"
@@ -108,7 +115,7 @@ export function UserFormFields({
               />
               <TextField<UserFormValues> name="lastName" label="Last name" required maxLength={50} />
             </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <TextField<UserFormValues>
                 name="email"
                 label="Email"
@@ -124,7 +131,7 @@ export function UserFormFields({
             </div>
             {isOperative ? (
               <>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div className="space-y-3">
                     <PasswordField<UserFormValues>
                       name="password"
@@ -141,13 +148,12 @@ export function UserFormFields({
                   </div>
                   <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
                 </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="max-w-xs">
                   <TextField<UserFormValues> name="startDate" label="Joining Date" type="date" />
-                  <TextField<UserFormValues> name="endDate" label="Leaving Date" type="date" />
                 </div>
               </>
             ) : isUser ? (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div className="space-y-3">
                   <PasswordField<UserFormValues>
                     name="password"
@@ -165,14 +171,14 @@ export function UserFormFields({
                 <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
               </div>
             ) : isCustomer ? (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
               </div>
             ) : null}
             {isCustomer ? (
               <>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <SearchableSelectField<UserFormValues>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <CreatableSearchableSelectField<UserFormValues>
                     name="contractorId"
                     label="Contractor"
                     placeholder="Select contractor"
@@ -180,6 +186,7 @@ export function UserFormFields({
                     queryKey={["users", "contractors", "dropdown"]}
                     selectedLabel={contractorSelectedLabel}
                     fetchOptions={fetchContractorOptions}
+                    lookupType="contractor"
                   />
                   <TextField<UserFormValues>
                     name="address"
@@ -187,7 +194,7 @@ export function UserFormFields({
                     maxLength={ADDRESS_MAX_LENGTH}
                   />
                 </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <TextField<UserFormValues> name="city" label="City" maxLength={100} />
                   <TextField<UserFormValues> name="state" label="State" maxLength={100} />
                   <TextField<UserFormValues> name="country" label="Country" maxLength={100} />
@@ -200,8 +207,8 @@ export function UserFormFields({
       </Section>
 
       {!isOperative && !isContactModule ? (
-        <Section title="Access" hint="Roles control what this user can see and edit.">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Section title="Access" hint="Roles control what this user can see and edit." embedded={embedded} separated={embedded}>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <SelectField<UserFormValues>
               name="roleId"
               label="Role"
@@ -215,26 +222,34 @@ export function UserFormFields({
       ) : null}
 
       {isOperative ? (
-        <Section title="Workforce" hint="Trade and CIS status used on wage sheets.">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <SelectField<UserFormValues>
+        <Section title="Workforce" hint="Trade and CIS status used on wage sheets." embedded={embedded} separated={embedded}>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <CreatableSearchableSelectField<UserFormValues>
               name="tradeId"
               label="Trade"
               required
-              placeholder={lookupsLoading ? "Loading trades…" : "Select trade"}
-              disabled={lookupsLoading}
-              options={tradeOptions}
+              placeholder="Select trade"
+              searchPlaceholder="Search trades…"
+              disabled={disabled}
+              queryKey={["lookups", "trades"]}
+              selectedLabel={operativeSelectedLabels?.trade}
+              fetchOptions={fetchTradeOptions}
+              lookupType="trade"
             />
-            <SelectField<UserFormValues>
+            <CreatableSearchableSelectField<UserFormValues>
               name="cisId"
               label="CIS"
               required
-              placeholder={lookupsLoading ? "Loading CIS…" : "Select CIS"}
-              disabled={lookupsLoading}
-              options={cisOptions}
+              placeholder="Select CIS"
+              searchPlaceholder="Search CIS statuses…"
+              disabled={disabled}
+              queryKey={["lookups", "cis"]}
+              selectedLabel={operativeSelectedLabels?.cis}
+              fetchOptions={fetchCisOptions}
+              lookupType="cis"
             />
           </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <TextField<UserFormValues>
               name="dailyRate"
               label="Daily rate (£)"
@@ -261,15 +276,31 @@ function Section({
   title,
   hint,
   headerAction,
+  embedded,
+  separated,
   children,
 }: {
   title: string;
   hint?: string;
   headerAction?: ReactNode;
+  embedded?: boolean;
+  separated?: boolean;
   children: ReactNode;
 }) {
+  if (embedded) {
+    return (
+      <div className={cn("space-y-3", separated && "border-t border-border pt-6")}>
+        <div className="min-w-0">
+          <h3 className="font-display text-base font-semibold">{title}</h3>
+          {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
+        </div>
+        {children}
+      </div>
+    );
+  }
+
   return (
-    <div className="card-elevated space-y-4 p-4 sm:p-6">
+    <div className="card-elevated space-y-3 p-4 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h3 className="font-display font-semibold">{title}</h3>

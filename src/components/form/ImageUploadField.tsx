@@ -2,7 +2,9 @@ import { useRef, type ReactNode } from "react";
 import { useFormContext, type FieldValues, type Path } from "react-hook-form";
 import { ImagePlus, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
-import { FormField, FormItem, FormLabel, FormDescription } from "@/components/ui/form";
+import { FormField, FormItem } from "@/components/ui/form";
+import { FormFieldLabel } from "@/components/form/FormFieldLabel";
+import { shouldShowFieldError } from "@/components/form/shouldShowFieldError";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -87,16 +89,20 @@ export function ImageUploadField<T extends FieldValues>({
           clearImage();
         }
 
+        const invalid = shouldShowFieldError(fieldState.error, formState.isSubmitted);
+
         return (
           <FormItem className={className}>
-            {label && <FormLabel>{label}</FormLabel>}
+            {label && (
+              <FormFieldLabel label={label} description={description} />
+            )}
             <div
               className={cn(
-                "rounded-lg border bg-muted/25 p-4",
-                fieldState.error && "border-destructive",
+                "rounded-lg border bg-muted/25 p-3",
+                invalid && "border-destructive",
               )}
             >
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                 <button
                   type="button"
                   onClick={openPicker}
@@ -152,7 +158,6 @@ export function ImageUploadField<T extends FieldValues>({
                 </div>
               </div>
             </div>
-            {description && <FormDescription>{description}</FormDescription>}
             <input
               ref={fileRef}
               type="file"

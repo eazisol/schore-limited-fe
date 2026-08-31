@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check, ChevronDown, Loader2, Search } from "lucide-react";
+import { Check, ChevronDown, Loader2, Plus, Search } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useDebouncedSearch } from "@/components/data-table";
+
+/** Matches `Input` / `SelectTrigger` styling for form dropdown triggers. */
+export const searchableSelectTriggerClassName =
+  "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-card px-3 py-2 text-sm font-normal shadow-none transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
 export interface SearchableSelectOption {
   value: string;
@@ -37,6 +40,14 @@ export interface SearchableSelectProps {
   emptyOption?: SearchableSelectOption;
   /** Called when the user picks an option (value + label). */
   onSelect?: (option: SearchableSelectOption) => void;
+  /** When set, shows an "Add" action at the bottom of the dropdown list. */
+  onAddNew?: () => void;
+  /** Label for the add action. Defaults to "Add new". */
+  addNewLabel?: string;
+  /** When true, shows a clear option while a value is selected. Defaults to false. */
+  clearable?: boolean;
+  /** Label for the clear option. Defaults to "Clear selection". */
+  clearLabel?: string;
   invalid?: boolean;
 }
 
@@ -54,9 +65,15 @@ export function SearchableSelect({
   selectedLabel,
   emptyOption,
   onSelect,
+  onAddNew,
+  addNewLabel = "Add new",
+  clearable = false,
+  clearLabel = "Clear selection",
   invalid,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const { searchInput, setSearchInput, search } = useDebouncedSearch({
     delayMs: 300,
   });
@@ -79,14 +96,50 @@ export function SearchableSelect({
     if (!open) setSearchInput("");
   }, [open, setSearchInput]);
 
-  const options = useMemo(() => {
-    const loaded = optionsQuery.data ?? initialQuery.data ?? [];
-    if (!emptyOption) return loaded;
-    const withoutEmpty = loaded.filter((option) => option.value !== emptyOption.value);
-    return [emptyOption, ...withoutEmpty];
-  }, [optionsQuery.data, initialQuery.data, emptyOption]);
+  // Close when clicking anywhere outside (works inside modals too).
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (rootRef.current?.contains(target)) return;
+      if (contentRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () => document.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [open]);
+
+  const clearOption = useMemo<SearchableSelectOption>(
+    () => ({ value: "", label: clearLabel }),
+    [clearLabel],
+  );
 
   const rawValue = value ?? "";
+
+  const options = useMemo(() => {
+    const loaded = optionsQuery.data ?? initialQuery.data ?? [];
+    let list = loaded;
+
+    if (emptyOption) {
+      list = list.filter((option) => option.value !== emptyOption.value);
+      list = [emptyOption, ...list];
+    } else if (clearable && rawValue) {
+      list = list.filter((option) => option.value !== "");
+      list = [clearOption, ...list];
+    }
+
+    return list;
+  }, [
+    optionsQuery.data,
+    initialQuery.data,
+    emptyOption,
+    clearable,
+    rawValue,
+    clearOption,
+  ]);
+
   const fromOptions = options.find((option) => option.value === rawValue)?.label;
   const displayLabel =
     (rawValue && fromOptions) ||
@@ -95,7 +148,7 @@ export function SearchableSelect({
     "";
 
   return (
-    <div className={className}>
+    <div ref={rootRef} className={className}>
       <Popover
         open={open}
         onOpenChange={(next) => {
@@ -104,16 +157,15 @@ export function SearchableSelect({
         }}
       >
         <PopoverTrigger asChild>
-          <Button
+          <button
             type="button"
-            variant="outline"
             role="combobox"
             aria-expanded={open}
             aria-label={ariaLabel}
             aria-invalid={invalid || undefined}
             disabled={disabled}
             className={cn(
-              "h-10 w-full justify-between font-normal",
+              searchableSelectTriggerClassName,
               !displayLabel && "text-muted-foreground",
               invalid && "border-destructive focus-visible:ring-destructive",
               triggerClassName,
@@ -121,14 +173,22 @@ export function SearchableSelect({
           >
             <span className="truncate">{displayLabel || placeholder}</span>
             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
+          </button>
         </PopoverTrigger>
-        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <PopoverContent
+          ref={contentRef}
+          className="z-[60] w-[var(--radix-popover-trigger-width)] p-0"
+          align="start"
+          onCloseAutoFocus={(event) => event.preventDefault()}
+        >
           <div className="flex items-center gap-2 border-b px-3 py-2">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.preventDefault();
+              }}
               placeholder={searchPlaceholder}
               className="w-full bg-transparent text-sm outline-none"
               autoFocus
@@ -146,6 +206,8 @@ export function SearchableSelect({
             ) : (
               options.map((option) => {
                 const active = option.value === rawValue;
+                const isClearOption =
+                  option.value === "" && (emptyOption?.value === "" || clearable);
                 return (
                   <li key={option.value || "__empty__"}>
                     <button
@@ -158,6 +220,7 @@ export function SearchableSelect({
                       className={cn(
                         "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-accent/10",
                         active && "bg-accent/10 font-medium",
+                        isClearOption && !active && "text-muted-foreground",
                       )}
                     >
                       <span className="min-w-0 flex-1 truncate">{option.label}</span>
@@ -168,6 +231,23 @@ export function SearchableSelect({
               })
             )}
           </ul>
+          {onAddNew ? (
+            <div className="border-t p-1">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setOpen(false);
+                  onAddNew();
+                }}
+                className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm font-medium text-accent transition-colors hover:bg-accent/10"
+              >
+                <Plus className="h-4 w-4 shrink-0" />
+                <span className="truncate">{addNewLabel}</span>
+              </button>
+            </div>
+          ) : null}
         </PopoverContent>
       </Popover>
     </div>

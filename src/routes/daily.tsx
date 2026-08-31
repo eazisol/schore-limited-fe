@@ -1,5 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -11,16 +11,12 @@ import {
   DataTable,
   useDebouncedSearch,
   type DataTableColumn,
-  type DataTableRowAction,
 } from "@/components/data-table";
 import {
   Lock,
   ChevronLeft,
   ChevronRight,
   Loader2,
-  Plus,
-  Eye,
-  Pencil,
   X,
   ClipboardList,
   Clock,
@@ -32,13 +28,14 @@ import { dailyProgrammeService, type ApiDailyRow } from "@/lib/api/services/dail
 import { costBudgetService, type ApiCostBudgetTask } from "@/lib/api/services/cost-budget";
 import { tasksService, type ApiTaskItem } from "@/lib/api/services/tasks";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
-import { Can, usePermission } from "@/components/Permission";
+import { usePermission } from "@/components/Permission";
 import { DAILY_ROUTE } from "@/lib/daily";
 import { truncateWithEllipsis } from "@/lib/module-ui";
 import { fmtGBP } from "@/lib/data";
 import { formatUkDate } from "@/lib/week-ending";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
+import { DailyItemsCell } from "@/components/daily/DailyItemsCell";
 
 export const Route = createFileRoute("/daily")({
   head: () => ({ meta: [{ title: "Daily Programmer | Schore" }] }),
@@ -82,6 +79,7 @@ function matchesSearch(row: ApiDailyRow, search: string) {
     row.nameDisplay,
     row.notesDisplay,
     row.nextDay,
+    ...(row.itemOptions ?? []).map((option) => option.label),
   ]
     .filter(Boolean)
     .join(" ")
@@ -90,7 +88,6 @@ function matchesSearch(row: ApiDailyRow, search: string) {
 }
 
 function Daily() {
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const canModifyDaily = usePermission({ route: DAILY_ROUTE, action: "modify" });
   const [date, setDate] = useState(todayIso);
@@ -105,20 +102,6 @@ function Daily() {
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
     onPageReset: () => setPage(1),
   });
-
-  const openTask = useCallback(
-    (taskId: number, mode: "view" | "edit") => {
-      navigate({
-        to: "/tasks/$id",
-        params: { id: String(taskId) },
-        search: {
-          mode: mode === "edit" && canModifyDaily ? "edit" : "view",
-          from: "daily",
-        },
-      });
-    },
-    [canModifyDaily, navigate],
-  );
 
   const query = useQuery({
     queryKey: [...dailyQueryKey, date, showHO],
@@ -336,6 +319,20 @@ function Daily() {
           ),
       },
       {
+        id: "items",
+        header: "Items",
+        width: "10rem",
+        truncate: false,
+        accessor: (row) =>
+          (row.itemOptions ?? [])
+            .filter((option) => option.isSelected)
+            .map((option) => option.label)
+            .join(", ") || "No items",
+        cell: (row) => (
+          <DailyItemsCell row={row} date={date} disabled={!canModifyDaily} />
+        ),
+      },
+      {
         id: "notes",
         header: "Notes",
         width: "8rem",
@@ -415,26 +412,7 @@ function Daily() {
         },
       },
     ],
-    [canModifyDaily, costByTaskId],
-  );
-
-  const rowActions = useMemo<DataTableRowAction<ApiDailyRow>[]>(
-    () => [
-      {
-        id: "view",
-        label: "View",
-        icon: <Eye className="h-4 w-4" />,
-        onClick: (row) => openTask(row.taskId, "view"),
-      },
-      {
-        id: "edit",
-        label: "Edit",
-        icon: <Pencil className="h-4 w-4" />,
-        hidden: () => !canModifyDaily,
-        onClick: (row) => openTask(row.taskId, "edit"),
-      },
-    ],
-    [canModifyDaily, openTask],
+    [canModifyDaily, costByTaskId, date],
   );
 
   return (
@@ -442,29 +420,6 @@ function Daily() {
       <PageHeader
         title="Daily Programmer"
         subtitle={`Roll for ${formatLongDate(date)}`}
-        actions={
-          <Can route={DAILY_ROUTE} action="modify">
-            <Button
-              size="sm"
-              onClick={() => navigate({ to: "/tasks/new", search: { from: "daily" } })}
-            >
-              <Plus className="h-4 w-4" />
-              Add task
-            </Button>
-            {/* Hidden: auto roll-forward runs at midnight UTC
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setConfirmRoll(true)}
-              disabled={!data?.canRollForward || rollMutation.isPending}
-            >
-              {data?.canRollForward
-                ? "Roll forward to next day"
-                : "Tick at least one to roll forward"}
-            </Button>
-            */}
-          </Can>
-        }
       />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -576,7 +531,6 @@ function Daily() {
             </Button>
           ) : undefined,
         }}
-        rowActions={rowActions}
         pagination={{
           page: pageSafe,
           pageSize,

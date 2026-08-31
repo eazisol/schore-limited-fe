@@ -1,34 +1,20 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PageHeader } from "@/components/AppShell";
-import { AppTooltip } from "@/components/AppTooltip";
-import { DetailField, DetailMetaRow, DetailSectionHeading } from "@/components/DetailField";
-import { Button } from "@/components/ui/button";
 import {
-  AlertCircle,
-  ArrowLeft,
-  BadgeCheck,
-  Briefcase,
-  CirclePoundSterling,
-  FileText,
-  Folder,
-  ImageIcon,
-  Layers,
-  Loader2,
-  Package,
-  Pencil,
-  ScrollText,
-  Tag,
-  Trash2,
-} from "lucide-react";
+  DetailProfileHero,
+  type DetailProfileHighlight,
+} from "@/components/DetailProfileHero";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, Loader2, Package, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Can, usePermission } from "@/components/Permission";
 import { TableImagePreview } from "@/components/TableImagePreview";
 import { productsService, resolveProductImageUrl } from "@/lib/api/services/products";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { itemsQueryKey } from "./items.index";
-import { activeStatusClass, formatDateTime, formatGbp } from "@/lib/module-ui";
+import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { formatGbp } from "@/lib/module-ui";
 import { ITEMS_ROUTE } from "@/lib/items";
 
 export const Route = createFileRoute("/items/$id")({
@@ -94,124 +80,69 @@ function ItemDetail() {
   }
 
   const imageSrc = resolveProductImageUrl(item.imageUrl, item.editDate);
+  const subtitle = [item.categoryName?.trim(), item.productTypeName?.trim()]
+    .filter(Boolean)
+    .join(" · ");
+
+  const highlights: DetailProfileHighlight[] = [
+    { label: "SKU", value: item.sku || "—" },
+    { label: "Unit", value: item.unitName?.trim() || "—" },
+    { label: "Sale price", value: formatGbp(item.salePrice) },
+    { label: "Cost price", value: formatGbp(item.costPrice) },
+  ];
+
+  const viewActions = (
+    <>
+      {canModify && (
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/items/$id/edit" params={{ id }}>
+            <Pencil className="h-4 w-4" />
+            Edit item
+          </Link>
+        </Button>
+      )}
+      <Can route={ITEMS_ROUTE} action="delete">
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-destructive/30 text-destructive hover:bg-destructive/5"
+          onClick={() => setConfirmDel(true)}
+        >
+          <Trash2 className="h-4 w-4" />
+          Delete
+        </Button>
+      </Can>
+    </>
+  );
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <DetailProfileHero
+        className="w-full"
         title="Item details"
+        backLabel="Back to items"
+        backTo="/items"
+        headerActions={viewActions}
         leading={
-          <AppTooltip content="Back to items" asChild>
-            <Link
-              to="/items"
-              aria-label="Back to items"
-              className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </AppTooltip>
+          imageSrc ? (
+            <TableImagePreview
+              src={imageSrc}
+              alt={item.name}
+              tooltip="View image"
+              className="h-14 w-14 rounded-lg border-2 border-background shadow-sm sm:h-16 sm:w-16"
+            />
+          ) : (
+            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg border-2 border-background bg-accent/90 text-accent-foreground shadow-sm sm:h-16 sm:w-16">
+              <Package className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
+            </span>
+          )
         }
-        actions={
-          <>
-            {canModify && (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/items/$id/edit" params={{ id }}>
-                  <Pencil className="h-4 w-4" />
-                  Edit item
-                </Link>
-              </Button>
-            )}
-            <Can route={ITEMS_ROUTE} action="delete">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-destructive/30 text-destructive hover:bg-destructive/5"
-                onClick={() => setConfirmDel(true)}
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </Button>
-            </Can>
-          </>
-        }
+        name={item.name}
+        subtitle={subtitle || undefined}
+        status={<ActiveStatusBadge isActive={item.isActive} />}
+        description={item.description?.trim() || undefined}
+        highlights={highlights}
       />
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="card-elevated space-y-5 p-4 sm:p-6 lg:col-span-2">
-          <DetailSectionHeading>Item details</DetailSectionHeading>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <DetailField icon={Package} label="Name" value={item.name} />
-            <DetailField icon={Tag} label="SKU" value={item.sku} />
-            <DetailField
-              icon={BadgeCheck}
-              label="Status"
-              value={
-                <span
-                  className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(item.isActive)}`}
-                >
-                  {item.isActive ? "Active" : "Inactive"}
-                </span>
-              }
-            />
-            <DetailField
-              icon={Briefcase}
-              label="Product type"
-              value={item.productTypeName || "—"}
-            />
-            <DetailField icon={Folder} label="Category" value={item.categoryName || "—"} />
-            <DetailField icon={Layers} label="Unit" value={item.unitName || "—"} />
-            <DetailField
-              icon={CirclePoundSterling}
-              label="Sale price"
-              value={formatGbp(item.salePrice)}
-            />
-            <DetailField
-              icon={CirclePoundSterling}
-              label="Cost price"
-              value={formatGbp(item.costPrice)}
-            />
-            <div className="sm:col-span-2">
-              <DetailField
-                icon={ScrollText}
-                label="Description"
-                value={
-                  <span className="whitespace-pre-wrap leading-relaxed">
-                    {item.description?.trim() || "—"}
-                  </span>
-                }
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="card-elevated self-start p-4 sm:p-6">
-            <DetailSectionHeading className="mb-4" icon={FileText}>
-              Record
-            </DetailSectionHeading>
-            <dl className="space-y-3">
-              <DetailMetaRow label="Item ID">{item.id}</DetailMetaRow>
-              <DetailMetaRow label="Created">{formatDateTime(item.createdDate)}</DetailMetaRow>
-              <DetailMetaRow label="Last edited">{formatDateTime(item.editDate)}</DetailMetaRow>
-            </dl>
-          </div>
-
-          {imageSrc ? (
-            <div className="card-elevated flex flex-col p-4 sm:p-6">
-              <DetailSectionHeading className="mb-4" icon={ImageIcon}>
-                Product image
-              </DetailSectionHeading>
-              <div className="flex items-center justify-center rounded-lg bg-muted/40 p-6">
-                <TableImagePreview
-                  src={imageSrc}
-                  alt={item.name}
-                  tooltip="View image"
-                  className="h-40 w-40 sm:h-44 sm:w-44"
-                />
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </div>
 
       {confirmDel && canDelete && (
         <div

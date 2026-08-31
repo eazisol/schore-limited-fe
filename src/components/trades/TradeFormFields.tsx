@@ -7,21 +7,23 @@ import {
   normalizeCodeInput,
 } from "@/lib/field-validation";
 
-export function TradeFormFields({ disabled = false }: { disabled?: boolean }) {
+export function TradeFormFields({
+  disabled = false,
+  showHeader = true,
+}: {
+  disabled?: boolean;
+  showHeader?: boolean;
+}) {
   return (
-    <fieldset className="space-y-4" disabled={disabled}>
-      <div className="flex items-center justify-between gap-4">
-        <h3 className="font-display font-semibold">Trade</h3>
-        <SwitchField<TradeFormValues> name="isActive" label="Active" />
-      </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <TextField<TradeFormValues>
-          name="name"
-          label="Name"
-          required
-          autoFocus
-          maxLength={NAME_MAX_LENGTH}
-        />
+    <fieldset className="space-y-3" disabled={disabled}>
+      {showHeader ? (
+        <div className="flex items-center justify-between gap-4">
+          <h3 className="font-display font-semibold">Trade</h3>
+          <SwitchField<TradeFormValues> name="isActive" label="Active" />
+        </div>
+      ) : null}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <TextField<TradeFormValues> name="name" label="Name" required maxLength={NAME_MAX_LENGTH} />
         <TextField<TradeFormValues>
           name="code"
           label="Code"
@@ -29,13 +31,14 @@ export function TradeFormFields({ disabled = false }: { disabled?: boolean }) {
           maxLength={CODE_MAX_LENGTH}
           transformValue={normalizeCodeInput}
         />
+        <TextareaField<TradeFormValues>
+          name="description"
+          label="Description"
+          rows={3}
+          maxLength={DESCRIPTION_MAX_LENGTH}
+          className="sm:col-span-2"
+        />
       </div>
-      <TextareaField<TradeFormValues>
-        name="description"
-        label="Description"
-        rows={3}
-        maxLength={DESCRIPTION_MAX_LENGTH}
-      />
     </fieldset>
   );
 }

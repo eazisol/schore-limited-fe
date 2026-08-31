@@ -232,7 +232,13 @@ function QuantityStepper({
 /**
  * Selected Items editor: add rows with product dropdown, qty/price/notes, and drag reorder.
  */
-export function TradeGroupItemsEditor({ disabled = false }: { disabled?: boolean }) {
+export function TradeGroupItemsEditor({
+  disabled = false,
+  embedded = false,
+}: {
+  disabled?: boolean;
+  embedded?: boolean;
+}) {
   const { control, watch, getValues, setValue } = useFormContext<TradeGroupFormValues>();
   const { fields, append, remove, move } = useFieldArray({
     control,
@@ -395,14 +401,11 @@ export function TradeGroupItemsEditor({ disabled = false }: { disabled?: boolean
 
   const selectedFieldIds = fields.map((field) => selectedId(field.id));
 
-  return (
-    <div className="card-elevated space-y-4 p-4 sm:p-6">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-        <h3 className="font-display font-semibold">Items</h3>
-        <p className="text-xs text-muted-foreground">
-          Add products, set quantities and prices, and drag to reorder.
-        </p>
-      </div>
+  const body = (
+    <>
+      <p className="text-xs text-muted-foreground">
+        Add products, set quantities and prices, and drag to reorder.
+      </p>
 
       <DndContext
         sensors={sensors}
@@ -432,14 +435,21 @@ export function TradeGroupItemsEditor({ disabled = false }: { disabled?: boolean
           ) : null}
         </DragOverlay>
       </DndContext>
-    </div>
+    </>
   );
+
+  if (embedded) {
+    return <div className="space-y-3 border-t border-border pt-6">{body}</div>;
+  }
+
+  return <div className="card-elevated space-y-3 p-4 sm:p-6">{body}</div>;
 }
 
 function PanelShell({
   title,
   subtitle,
   action,
+  compact = false,
   isOver,
   setNodeRef,
   children,
@@ -447,6 +457,7 @@ function PanelShell({
   title: string;
   subtitle: ReactNode;
   action?: ReactNode;
+  compact?: boolean;
   isOver?: boolean;
   setNodeRef: (node: HTMLElement | null) => void;
   children: ReactNode;
@@ -455,7 +466,8 @@ function PanelShell({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex min-h-[22rem] min-w-0 flex-col overflow-hidden rounded-md border bg-background",
+        "flex min-w-0 flex-col overflow-hidden rounded-md border bg-background",
+        !compact && "min-h-[22rem]",
         isOver && "ring-1 ring-ring",
       )}
     >
@@ -505,23 +517,26 @@ function SelectedItemsPanel({
     [selectedItems],
   );
 
+  const hasItems = fields.length > 0;
+
   return (
     <PanelShell
       title="Selected Items"
       subtitle={
-        fields.length === 0
-          ? "Use Add item to include products"
-          : `${fields.length} product${fields.length === 1 ? "" : "s"} · drag to reorder`
+        hasItems
+          ? `${fields.length} product${fields.length === 1 ? "" : "s"} · drag to reorder`
+          : "Use Add item to include products"
       }
+      compact={!hasItems}
       isOver={isOver}
       setNodeRef={setNodeRef}
     >
-      <ScrollArea className="h-72 min-w-0 flex-1 sm:h-80">
+      <ScrollArea className={cn("min-w-0", hasItems ? "h-72 flex-1 sm:h-80" : "")}>
         <SortableContext items={selectedFieldIds} strategy={verticalListSortingStrategy}>
           <div className="space-y-2 p-3 pt-3">
-            {fields.length > 0 ? <SelectedItemsRowHeader /> : null}
-            {fields.length === 0 ? (
-              <div className="rounded-md border border-dashed px-3 py-12 text-center text-sm text-muted-foreground">
+            {hasItems ? <SelectedItemsRowHeader /> : null}
+            {!hasItems ? (
+              <div className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
                 No items selected yet.
               </div>
             ) : (

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { useFormContext, type FieldValues, type Path } from "react-hook-form";
-import { FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
+import { FormField, FormItem, FormControl } from "@/components/ui/form";
+import { FormFieldLabel } from "@/components/form/FormFieldLabel";
+import { shouldShowFieldError } from "@/components/form/shouldShowFieldError";
 import {
   SearchableMultiSelect,
   type SearchableMultiSelectProps,
@@ -45,13 +47,12 @@ export function SearchableMultiSelectField<T extends FieldValues>({
             ? []
             : [String(field.value)];
 
+        const invalid = shouldShowFieldError(fieldState.error, formState.isSubmitted);
+
         return (
           <FormItem className={className}>
             {label && (
-              <FormLabel>
-                {label}
-                {required && <span className="text-destructive ml-0.5" aria-hidden>*</span>}
-              </FormLabel>
+              <FormFieldLabel label={label} description={description} required={required} />
             )}
             <FormControl>
               <SearchableMultiSelect
@@ -63,12 +64,11 @@ export function SearchableMultiSelectField<T extends FieldValues>({
                 queryKey={queryKey}
                 fetchOptions={fetchOptions}
                 selectedLabels={selectedLabels}
-                invalid={!!fieldState.error}
+                invalid={invalid}
                 triggerClassName={triggerClassName}
                 aria-label={typeof label === "string" ? label : undefined}
               />
             </FormControl>
-            {description && <FormDescription>{description}</FormDescription>}
           </FormItem>
         );
       }}

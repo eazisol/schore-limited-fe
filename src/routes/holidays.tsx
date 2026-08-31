@@ -24,7 +24,7 @@ import { Can, usePermission } from "@/components/Permission";
 import { AppTooltip } from "@/components/AppTooltip";
 import { holidaysService, type ApiHoliday, type HolidayPayload } from "@/lib/api/services/holidays";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
-import { activeStatusClass } from "@/lib/module-ui";
+import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { HOLIDAYS_LABEL, HOLIDAYS_ROUTE } from "@/lib/holidays";
 import {
   DESCRIPTION_MAX_LENGTH,
@@ -547,14 +547,10 @@ function HolidaysPage() {
                     >
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-medium">{item.name}</span>
-                        <span
-                          className={cn(
-                            "inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium",
-                            activeStatusClass(item.isActive),
-                          )}
-                        >
-                          {item.isActive ? "Active" : "Inactive"}
-                        </span>
+                        <ActiveStatusBadge
+                          isActive={item.isActive}
+                          className="px-1.5 text-[10px]"
+                        />
                       </div>
                       {item.description ? (
                         <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
@@ -777,9 +773,9 @@ function HolidayFormModal({
         showCloseButton={false}
         headerActions={<SwitchField<Values> name="isActive" label="Active" disabled={isView} />}
       >
-        <div className="space-y-4">
-          <fieldset disabled={isView} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-3">
+          <fieldset disabled={isView} className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <TextField<Values>
                 name="name"
                 label="Name"

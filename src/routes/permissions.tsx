@@ -1,9 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertCircle, ChevronRight, Loader2, Save } from "lucide-react";
+import { AlertCircle, ArrowLeft, ChevronRight, Loader2, Save } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
+import { AppTooltip } from "@/components/AppTooltip";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -53,17 +54,26 @@ import {
   type PermissionTreeNode,
 } from "@/lib/permission-tree";
 import { flattenMenuTreeForReorder } from "@/lib/menu-tree";
+import { z } from "zod";
+
+const searchSchema = z.object({
+  roleId: z.coerce.number().optional(),
+  from: z.enum(["roles"]).optional(),
+});
 
 export const Route = createFileRoute("/permissions")({
   head: () => ({ meta: [{ title: "Permissions | Schore" }] }),
+  validateSearch: searchSchema,
   component: PermissionsPage,
 });
 
 function PermissionsPage() {
+  const { roleId: roleIdFromSearch, from } = Route.useSearch();
+  const fromRoles = from === "roles";
   const qc = useQueryClient();
   const canModify = usePermission({ route: PERMISSIONS_ROUTE, action: "modify" });
   const { refreshPermissions } = usePermissions();
-  const [roleId, setRoleId] = useState<number | null>(null);
+  const [roleId, setRoleId] = useState<number | null>(roleIdFromSearch ?? null);
   const [draft, setDraft] = useState<PermissionTreeNode[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<number>>(() => new Set());
   const [confirmSaveOrder, setConfirmSaveOrder] = useState(false);
@@ -87,6 +97,12 @@ function PermissionsPage() {
   });
 
   const roles = rolesQuery.data ?? [];
+
+  useEffect(() => {
+    if (roleIdFromSearch != null) {
+      setRoleId(roleIdFromSearch);
+    }
+  }, [roleIdFromSearch]);
 
   useEffect(() => {
     if (roleId != null || roles.length === 0) return;
@@ -229,15 +245,27 @@ function PermissionsPage() {
   const showTree = roleId != null && draft.length > 0 && !loadingTree && !loadError;
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Permissions" />
+    <div className="w-full space-y-4 lg:w-[58%]">
+      <PageHeader
+        title="Permissions"
+        leading={
+          fromRoles ? (
+            <AppTooltip content="Back to roles" asChild>
+              <Link
+                to="/roles"
+                aria-label="Back to roles"
+                className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </AppTooltip>
+          ) : undefined
+        }
+      />
 
-      <div className="card-elevated p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="w-full space-y-2 sm:w-64">
-            <label htmlFor="permissions-role" className="text-xs font-medium text-muted-foreground">
-              Role
-            </label>
+      <div className="card-elevated px-4 py-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="w-full sm:w-64">
             {rolesQuery.isLoading ? (
               <div className="flex h-9 items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading roles…
@@ -257,7 +285,7 @@ function PermissionsPage() {
                 onValueChange={(v) => setRoleId(Number(v))}
                 disabled={saving}
               >
-                <SelectTrigger id="permissions-role" className="bg-background">
+                <SelectTrigger id="permissions-role" className="bg-background" aria-label="Role">
                   <SelectValue placeholder="Select a role…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -306,16 +334,16 @@ function PermissionsPage() {
       </div>
 
       {roleId == null ? (
-        <div className="card-elevated p-12 text-center text-sm text-muted-foreground">
+        <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
           Select a role to manage its permissions.
         </div>
       ) : loadingTree ? (
-        <div className="card-elevated grid place-items-center p-12 text-sm text-muted-foreground">
+        <div className="card-elevated grid place-items-center p-8 text-sm text-muted-foreground">
           <Loader2 className="mb-2 h-5 w-5 animate-spin" />
           Loading permissions…
         </div>
       ) : loadError ? (
-        <div className="card-elevated p-12 text-center">
+        <div className="card-elevated p-8 text-center">
           <AlertCircle className="mx-auto mb-2 h-5 w-5 text-destructive" />
           <div className="text-sm font-medium">Unable to load permissions</div>
           <Button
@@ -331,16 +359,16 @@ function PermissionsPage() {
           </Button>
         </div>
       ) : !showTree ? (
-        <div className="card-elevated p-12 text-center text-sm text-muted-foreground">
+        <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
           No permissions found for this role.
         </div>
       ) : (
         <div className="card-elevated overflow-x-auto">
           <div className="grid min-w-[36rem] grid-cols-[minmax(0,1fr)_6rem_6rem_6rem] gap-0 border-b bg-muted/50 text-xs text-muted-foreground">
-            <div className="px-5 py-2.5 font-medium">Menu</div>
-            <div className="px-3 py-2.5 text-center font-medium">Read</div>
-            <div className="px-3 py-2.5 text-center font-medium">Modify</div>
-            <div className="px-3 py-2.5 text-center font-medium">Delete</div>
+            <div className="px-4 py-2 font-medium">Menu</div>
+            <div className="px-3 py-2 text-center font-medium">Read</div>
+            <div className="px-3 py-2 text-center font-medium">Modify</div>
+            <div className="px-3 py-2 text-center font-medium">Delete</div>
           </div>
           <TreeSortableProvider
             disabled={!canReorderMenus}
@@ -348,7 +376,7 @@ function PermissionsPage() {
             renderOverlay={(activeId) => {
               const activeNode = findPermissionNode(draft, activeId);
               return (
-                <div className="grid min-w-[36rem] grid-cols-[minmax(0,1fr)_6rem_6rem_6rem] items-center rounded-md border bg-card px-5 py-3 shadow-lg">
+                <div className="grid min-w-[36rem] grid-cols-[minmax(0,1fr)_6rem_6rem_6rem] items-center rounded-md border bg-card px-4 py-2 shadow-lg">
                   <div className="truncate text-xs font-medium text-foreground">
                     {activeNode?.menuName ?? `Menu #${activeId}`}
                   </div>
@@ -446,8 +474,8 @@ function PermissionTreeRow({
       )}
     >
       <div
-        className="flex min-w-0 items-center gap-1.5 px-5 py-3"
-        style={{ paddingLeft: `${1.25 + depth * 1.25}rem` }}
+        className="flex min-w-0 items-center gap-1 px-4 py-2"
+        style={{ paddingLeft: `${1 + depth * 1.25}rem` }}
       >
         <TreeSortableDragHandle
           label={node.menuName}
@@ -480,7 +508,7 @@ function PermissionTreeRow({
         </div>
       </div>
       {(["read", "modify", "delete"] as const).map((flag) => (
-        <div key={flag} className="px-3 py-3 text-center">
+        <div key={flag} className="px-3 py-2 text-center">
           <div className="inline-flex justify-center">
             <Checkbox
               checked={node[flag]}

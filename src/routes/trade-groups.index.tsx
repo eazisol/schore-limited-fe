@@ -20,7 +20,8 @@ import {
 } from "@/lib/api/services/trade-groups";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { AppTooltip } from "@/components/AppTooltip";
-import { activeStatusClass, formatDateTime, truncateWithEllipsis } from "@/lib/module-ui";
+import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { formatDateTime, truncateWithEllipsis } from "@/lib/module-ui";
 import { TRADE_GROUPS_ROUTE } from "@/lib/trade-groups";
 import { SearchableSelect } from "@/components/form";
 import { fetchTradeOptions } from "@/lib/product-dropdowns";
@@ -167,13 +168,7 @@ function TradeGroupsList() {
         header: "Status",
         sortable: true,
         width: "13%",
-        cell: (row) => (
-          <span
-            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(row.isActive)}`}
-          >
-            {row.isActive ? "Active" : "Inactive"}
-          </span>
-        ),
+        cell: (row) => <ActiveStatusBadge isActive={row.isActive} />,
       },
       {
         id: "createdDate",

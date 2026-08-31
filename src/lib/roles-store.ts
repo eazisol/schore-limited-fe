@@ -62,7 +62,7 @@ const DEFAULT_PERMS: Record<RoleKey, PermissionKey[]> = {
 };
 
 const DEFAULT_ROLES: Role[] = [
-  { key: "CEO", name: "CEO",               description: "Full platform access", badgeClass: "bg-destructive/10 text-destructive border-destructive/20", permissions: DEFAULT_PERMS.CEO, isSystem: true },
+  { key: "CEO", name: "CEO",               description: "Full platform access", badgeClass: "bg-primary/10 text-primary border-primary/20", permissions: DEFAULT_PERMS.CEO, isSystem: true },
   { key: "CM",  name: "Contracts Manager", description: "Manage contracts, approve payroll, manage rates", badgeClass: "bg-info/10 text-info border-info/20", permissions: DEFAULT_PERMS.CM, isSystem: true },
   { key: "PM",  name: "Project Manager",   description: "Manage projects, allocate, run payroll", badgeClass: "bg-accent/15 text-accent-foreground border-accent/30", permissions: DEFAULT_PERMS.PM, isSystem: true },
   { key: "SM",  name: "Site Manager",      description: "Allocate, record work, view (but not edit) rates", badgeClass: "bg-muted text-foreground/70 border-border", permissions: DEFAULT_PERMS.SM, isSystem: true },

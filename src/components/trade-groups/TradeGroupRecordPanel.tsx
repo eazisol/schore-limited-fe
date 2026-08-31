@@ -1,4 +1,4 @@
-import { DetailMetaRow, DetailSectionHeading } from "@/components/DetailField";
+import { DetailMetaRow } from "@/components/DetailField";
 import { fmtGBP } from "@/lib/data";
 import { formatDateTime } from "@/lib/module-ui";
 
@@ -7,15 +7,22 @@ export function TradeGroupRecordPanel({
   createdDate,
   editDate,
   totalPrice,
+  embedded = false,
 }: {
   tradeGroupId?: number | null;
   createdDate?: string | null;
   editDate?: string | null;
   totalPrice: number;
+  embedded?: boolean;
 }) {
   return (
-    <div className="card-elevated self-start p-4 sm:p-6">
-      <DetailSectionHeading className="mb-4">Record</DetailSectionHeading>
+    <div
+      className={
+        embedded
+          ? "rounded-lg border border-border bg-muted/20 p-4 sm:p-5"
+          : "card-elevated self-start p-4 sm:p-6"
+      }
+    >
       <dl className="space-y-3">
         <DetailMetaRow label="Trade group ID">
           {tradeGroupId != null ? tradeGroupId : "—"}

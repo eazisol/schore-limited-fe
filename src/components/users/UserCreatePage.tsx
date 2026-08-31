@@ -1,21 +1,17 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PageHeader } from "@/components/AppShell";
-import { AppTooltip } from "@/components/AppTooltip";
+import { FormPageCard } from "@/components/FormPageCard";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, SubmitButton } from "@/components/form";
+import { Form, SubmitButton, SwitchField } from "@/components/form";
 import { RequirePermission } from "@/components/Permission";
 import { UserFormFields } from "@/components/users/UserFormFields";
 import { usersService } from "@/lib/api/services/users";
 import { lookupsService } from "@/lib/api/services/lookups";
-import { tradesService } from "@/lib/api/services/trades";
-import { cisService } from "@/lib/api/services/cis";
 import { notifyApiError } from "@/lib/api/axios";
-import { formatCisRate } from "@/lib/module-ui";
 import { useUserModuleMode, userModuleConfig } from "@/lib/user-module";
 import {
   createUserFormSchema,
@@ -35,20 +31,6 @@ export function UserCreatePage() {
     queryKey: ["roles"],
     queryFn: async () => (await lookupsService.roles()).data,
     enabled: mode === "user",
-    staleTime: 0,
-    refetchOnMount: "always",
-  });
-  const tradesQuery = useQuery({
-    queryKey: ["trades", "options"],
-    queryFn: async () => (await tradesService.options()).data,
-    enabled: cfg.isOperative,
-    staleTime: 0,
-    refetchOnMount: "always",
-  });
-  const cisQuery = useQuery({
-    queryKey: ["cis", "options"],
-    queryFn: async () => (await cisService.options()).data,
-    enabled: cfg.isOperative,
     staleTime: 0,
     refetchOnMount: "always",
   });
@@ -75,30 +57,35 @@ export function UserCreatePage() {
     await createMutation.mutateAsync(toCreateUserPayload(values, mode));
   }
 
-  const lookupsLoading =
-    (mode === "user" && rolesQuery.isLoading) ||
-    (cfg.isOperative && (tradesQuery.isLoading || cisQuery.isLoading));
+  const lookupsLoading = mode === "user" && rolesQuery.isLoading;
 
   return (
     <RequirePermission route={cfg.permissionRoute} action="modify">
-      <div>
-        <PageHeader
+      <Form form={form} onSubmit={submit} className="max-w-3xl">
+        <FormPageCard
           title={cfg.labels.addTitle}
-          leading={
-            <AppTooltip content={cfg.labels.backLabel} asChild>
-              <Link
-                to={cfg.listPath}
-                aria-label={cfg.labels.backLabel}
-                className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          back={{ to: cfg.listPath, label: cfg.labels.backLabel }}
+          headerActions={<SwitchField<UserFormValues> name="isActive" label="Active" />}
+          footer={
+            <div className="flex w-full flex-wrap items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => navigate({ to: cfg.listPath })}
+                disabled={createMutation.isPending}
               >
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </AppTooltip>
+                Cancel
+              </Button>
+              <SubmitButton size="sm" loadingText="Saving…" disabled={lookupsLoading}>
+                {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                {cfg.labels.createButton}
+              </SubmitButton>
+            </div>
           }
-        />
-
-        <Form form={form} onSubmit={submit} className="max-w-3xl space-y-6">
+        >
           <UserFormFields
+            embedded
             mode={mode}
             variant="create"
             disabled={createMutation.isPending}
@@ -109,33 +96,9 @@ export function UserCreatePage() {
               label: r.name,
               description: r.description ?? undefined,
             }))}
-            tradeOptions={(tradesQuery.data ?? []).map((t) => ({
-              value: String(t.id),
-              label: t.name,
-            }))}
-            cisOptions={(cisQuery.data ?? []).map((c) => ({
-              value: String(c.id),
-              label: `${c.name} (${formatCisRate(c.rate)})`,
-            }))}
           />
-
-          <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => navigate({ to: cfg.listPath })}
-              disabled={createMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <SubmitButton size="sm" loadingText="Saving…" disabled={lookupsLoading}>
-              {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              {cfg.labels.createButton}
-            </SubmitButton>
-          </div>
-        </Form>
-      </div>
+        </FormPageCard>
+      </Form>
     </RequirePermission>
   );
 }

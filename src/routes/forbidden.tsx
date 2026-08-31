@@ -20,8 +20,7 @@ function Forbidden() {
       <PageHeader title="Access denied" subtitle="You don't have permission to view this page." />
       <div className="card-elevated p-10 grid place-items-center text-center max-w-xl mx-auto">
         <ShieldAlert className="h-12 w-12 text-destructive" />
-        <h2 className="mt-4 font-display text-xl font-semibold">403 — Forbidden</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-4 text-sm text-muted-foreground">
           This screen is restricted by your role. If you believe you need access, please contact your administrator.
         </p>
         <Button asChild className="mt-6">

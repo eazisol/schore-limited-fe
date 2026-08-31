@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/Modal";
 import {
   Form,
   TextField,
@@ -28,8 +27,11 @@ import {
   LookupColumnCard,
   LookupColumnFooter,
   LookupEmptyState,
+  LookupFormPanel,
+  LookupItemList,
   LookupItemRow,
 } from "./LookupColumnCard";
+import { LookupSplitLayout } from "./LookupSplitLayout";
 import { useManageFormsPermissions } from "./useManageFormsPermissions";
 
 const daySuggestionsQueryKey = ["day-suggestions"] as const;
@@ -79,7 +81,7 @@ export function DaySuggestionsColumn() {
   const qc = useQueryClient();
   const { canModify, canDelete } = useManageFormsPermissions();
   const [page, setPage] = useState(1);
-  const [mode, setMode] = useState<Mode | null>(null);
+  const [mode, setMode] = useState<Mode>({ kind: "create" });
   const [confirmDel, setConfirmDel] = useState<ApiDaySuggestion | null>(null);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
     onPageReset: () => setPage(1),
@@ -95,6 +97,7 @@ export function DaySuggestionsColumn() {
   const rows = query.data?.items ?? [];
   const totalCount = query.data?.totalCount ?? 0;
   const totalPages = query.data?.totalPages ?? 1;
+  const selectedId = mode.kind === "create" ? null : mode.item.id;
 
   useEffect(() => {
     if (!query.isFetching && page > totalPages) {
@@ -107,86 +110,98 @@ export function DaySuggestionsColumn() {
     onSuccess: (res) => {
       toast.success(res.message || "Day suggestion deleted");
       setConfirmDel(null);
+      if (mode.kind !== "create" && confirmDel && mode.item.id === confirmDel.id) {
+        setMode({ kind: "create" });
+      }
       qc.invalidateQueries({ queryKey: daySuggestionsQueryKey });
     },
     onError: (err) => notifyApiError(err, "Failed to delete day suggestion"),
   });
 
-  return (
-    <div className="flex min-h-0 min-w-0 flex-col">
-      <LookupColumnCard
-        title="Day suggestions"
-        searchInput={searchInput}
-        onSearchChange={setSearchInput}
-        searchPlaceholder="Search by day or trade…"
-        searchAriaLabel="Search day suggestions"
-        canAdd={canModify}
-        onAdd={() => setMode({ kind: "create" })}
-        addAriaLabel="Add day suggestion"
-        loading={query.isLoading}
-        fetching={query.isFetching}
-        loadingText="Loading day suggestions…"
-        error={
-          query.isError
-            ? {
-                title: "Unable to load day suggestions",
-                message: (query.error as unknown as ApiError)?.message || "Please try again.",
-                onRetry: () => {
-                  void query.refetch();
-                },
-              }
-            : null
-        }
-        empty={
-          !query.isLoading && !query.isError && rows.length === 0 ? (
-            <LookupEmptyState
-              title="No day suggestions found."
-              description={search ? "Try clearing the search." : undefined}
-              onClear={search ? clearSearch : undefined}
-            />
-          ) : null
-        }
-        footer={
-          rows.length > 0 ? (
-            <LookupColumnFooter
-              page={page}
-              totalPages={totalPages}
-              totalCount={totalCount}
-              itemLabel="suggestions"
-              disabled={query.isFetching}
-              onPageChange={setPage}
-            />
-          ) : null
-        }
-      >
-        {rows.length > 0 ? (
-          <div className="space-y-2">
-            {rows.map((item) => (
-              <LookupItemRow
-                key={item.id}
-                label={`Day ${item.dayNumber}`}
-                subtitle={tradeLabel(item) || undefined}
-                inactive={!item.isActive}
-                canEdit={canModify}
-                canDelete={canDelete}
-                onEdit={() => setMode({ kind: canModify ? "edit" : "view", item })}
-                onDelete={() => setConfirmDel(item)}
-              />
-            ))}
-          </div>
-        ) : null}
-      </LookupColumnCard>
+  function handleSaved() {
+    qc.invalidateQueries({ queryKey: daySuggestionsQueryKey });
+    setMode({ kind: "create" });
+  }
 
-      {mode ? (
-        <DaySuggestionFormModal
-          mode={mode}
-          onClose={() => setMode(null)}
-          onSaved={() => {
-            setMode(null);
-            qc.invalidateQueries({ queryKey: daySuggestionsQueryKey });
-          }}
-        />
-      ) : null}
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <LookupSplitLayout
+        list={
+          <LookupColumnCard
+            title="Day suggestions"
+            searchInput={searchInput}
+            onSearchChange={setSearchInput}
+            searchPlaceholder="Search by day or trade…"
+            searchAriaLabel="Search day suggestions"
+            canAdd={canModify}
+            onAdd={() => setMode({ kind: "create" })}
+            addAriaLabel="Add day suggestion"
+            loading={query.isLoading}
+            fetching={query.isFetching}
+            loadingText="Loading day suggestions…"
+            error={
+              query.isError
+                ? {
+                    title: "Unable to load day suggestions",
+                    message: (query.error as unknown as ApiError)?.message || "Please try again.",
+                    onRetry: () => {
+                      void query.refetch();
+                    },
+                  }
+                : null
+            }
+            empty={
+              !query.isLoading && !query.isError && rows.length === 0 ? (
+                <LookupEmptyState
+                  title="No day suggestions found."
+                  description={search ? "Try clearing the search." : undefined}
+                  onClear={search ? clearSearch : undefined}
+                />
+              ) : null
+            }
+            footer={
+              rows.length > 0 ? (
+                <LookupColumnFooter
+                  page={page}
+                  totalPages={totalPages}
+                  totalCount={totalCount}
+                  itemLabel="suggestions"
+                  disabled={query.isFetching}
+                  onPageChange={setPage}
+                />
+              ) : null
+            }
+          >
+            {rows.length > 0 ? (
+              <LookupItemList>
+                {rows.map((item) => (
+                  <LookupItemRow
+                    key={item.id}
+                    label={`Day ${item.dayNumber}`}
+                    subtitle={tradeLabel(item) || undefined}
+                    inactive={!item.isActive}
+                    selected={selectedId === item.id}
+                    canEdit={canModify}
+                    canDelete={canDelete}
+                    onEdit={() =>
+                      setMode({ kind: canModify ? "edit" : "view", item })
+                    }
+                    onDelete={() => setConfirmDel(item)}
+                  />
+                ))}
+              </LookupItemList>
+            ) : null}
+          </LookupColumnCard>
+        }
+        form={
+          <DaySuggestionFormPanel
+            key={mode.kind === "create" ? "create" : `${mode.kind}-${mode.item.id}`}
+            mode={mode}
+            onCancel={() => setMode({ kind: "create" })}
+            onSaved={handleSaved}
+          />
+        }
+      />
 
       {confirmDel ? (
         <DeleteConfirmDialog
@@ -201,13 +216,13 @@ export function DaySuggestionsColumn() {
   );
 }
 
-function DaySuggestionFormModal({
+function DaySuggestionFormPanel({
   mode,
-  onClose,
+  onCancel,
   onSaved,
 }: {
   mode: Mode;
-  onClose: () => void;
+  onCancel: () => void;
   onSaved: () => void;
 }) {
   const isView = mode.kind === "view";
@@ -229,7 +244,7 @@ function DaySuggestionFormModal({
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    mode: "onBlur",
+    mode: "onSubmit",
     defaultValues: {
       dayNumber: existing?.dayNumber ?? 1,
       tradeIds: (existing?.tradeIds ?? []).map(String),
@@ -271,16 +286,30 @@ function DaySuggestionFormModal({
 
   return (
     <Form form={form} onSubmit={submit} className="contents">
-      <Modal
-        open
-        onClose={onClose}
+      <LookupFormPanel
         title={title}
-        size="md"
-        showCloseButton={false}
         headerActions={<SwitchField<Values> name="isActive" label="Active" disabled={isView} />}
+        footer={
+          <div className="flex justify-end gap-2">
+            {mode.kind !== "create" ? (
+              <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+                New
+              </Button>
+            ) : null}
+            {!isView ? (
+              <SubmitButton size="sm" loadingText="Saving…">
+                {mode.kind === "edit" ? "Update suggestion" : "Create suggestion"}
+              </SubmitButton>
+            ) : (
+              <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+                Close
+              </Button>
+            )}
+          </div>
+        }
       >
-        <div className="space-y-4">
-          <fieldset disabled={isView} className="space-y-4">
+        <fieldset disabled={isView} className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <TextField<Values>
               name="dayNumber"
               label="Day number"
@@ -288,7 +317,6 @@ function DaySuggestionFormModal({
               min={1}
               step={1}
               required
-              autoFocus={!isView}
             />
             <SearchableMultiSelectField<Values>
               name="tradeIds"
@@ -305,20 +333,11 @@ function DaySuggestionFormModal({
               label="Description"
               rows={3}
               maxLength={DESCRIPTION_MAX_LENGTH}
+              className="sm:col-span-2"
             />
-          </fieldset>
-          <div className="flex justify-end gap-2 border-t pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={onClose}>
-              {isView ? "Close" : "Cancel"}
-            </Button>
-            {!isView && (
-              <SubmitButton size="sm" loadingText="Saving…">
-                {mode.kind === "edit" ? "Update suggestion" : "Create suggestion"}
-              </SubmitButton>
-            )}
           </div>
-        </div>
-      </Modal>
+        </fieldset>
+      </LookupFormPanel>
     </Form>
   );
 }

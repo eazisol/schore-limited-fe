@@ -159,6 +159,7 @@ function EmailSmtpPage() {
           <SwitchField<SmtpValues>
             name="enableSsl"
             label="Enable SSL"
+            layout="stacked"
             disabled={!canEdit || loading}
           />
         </div>

@@ -1,13 +1,11 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { PageHeader } from "@/components/AppShell";
-import { AppTooltip } from "@/components/AppTooltip";
+import { FormPageCard } from "@/components/FormPageCard";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, SubmitButton } from "@/components/form";
+import { Form, SubmitButton, SwitchField } from "@/components/form";
 import { RequirePermission } from "@/components/Permission";
 import { propertiesService } from "@/lib/api/services/properties";
 import { notifyApiError } from "@/lib/api/axios";
@@ -51,41 +49,31 @@ function NewProperty() {
 
   return (
     <RequirePermission route={PROPERTIES_ROUTE} action="modify">
-      <div>
-        <PageHeader
+      <Form form={form} onSubmit={submit} className="max-w-4xl">
+        <FormPageCard
           title="Add property"
-          leading={
-            <AppTooltip content="Back to properties" asChild>
-              <Link
-                to="/properties"
-                aria-label="Back to properties"
-                className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          back={{ to: "/properties", label: "Back to properties" }}
+          headerActions={<SwitchField<PropertyFormValues> name="isActive" label="Active" />}
+          footer={
+            <div className="flex w-full flex-wrap items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => navigate({ to: "/properties" })}
+                disabled={createMutation.isPending}
               >
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </AppTooltip>
+                Cancel
+              </Button>
+              <SubmitButton size="sm" loadingText="Saving…">
+                Create property
+              </SubmitButton>
+            </div>
           }
-        />
-
-        <Form form={form} onSubmit={submit} className="max-w-4xl space-y-6">
-          <PropertyFormFields disabled={createMutation.isPending} autoFocusPropertyName />
-
-          <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => navigate({ to: "/properties" })}
-              disabled={createMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <SubmitButton size="sm" loadingText="Saving…">
-              Create property
-            </SubmitButton>
-          </div>
-        </Form>
-      </div>
+        >
+          <PropertyFormFields disabled={createMutation.isPending} embedded autoFocusPropertyName />
+        </FormPageCard>
+      </Form>
     </RequirePermission>
   );
 }

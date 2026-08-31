@@ -32,7 +32,7 @@ import {
 } from "@/lib/api/services/day-suggestions";
 import { tradesService } from "@/lib/api/services/trades";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
-import { activeStatusClass } from "@/lib/module-ui";
+import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { DAY_SUGGESTIONS_ROUTE } from "@/lib/day-suggestions";
 import { DESCRIPTION_MAX_LENGTH, descriptionSchema } from "@/lib/field-validation";
 
@@ -176,13 +176,7 @@ function DaySuggestionsPage() {
       {
         id: "status",
         header: "Status",
-        cell: (item) => (
-          <span
-            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(item.isActive)}`}
-          >
-            {item.isActive ? "Active" : "Inactive"}
-          </span>
-        ),
+        cell: (item) => <ActiveStatusBadge isActive={item.isActive} />,
       },
     ],
     [],
@@ -428,8 +422,8 @@ function DaySuggestionFormModal({
         showCloseButton={false}
         headerActions={<SwitchField<Values> name="isActive" label="Active" disabled={isView} />}
       >
-        <div className="space-y-4">
-          <fieldset disabled={isView} className="space-y-4">
+        <div className="space-y-3">
+          <fieldset disabled={isView} className="space-y-3">
             <TextField<Values>
               name="dayNumber"
               label="Day number"

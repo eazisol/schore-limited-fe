@@ -5,7 +5,7 @@ import { tradesService } from "@/lib/api/services/trades";
 export async function fetchTradeOptions(search: string): Promise<SearchableSelectOption[]> {
   const res = await tradesService.list({
     page: 1,
-    pageSize: 20,
+    pageSize: 10,
     search,
     sortBy: "name",
     sortDir: "asc",
@@ -21,7 +21,7 @@ export async function fetchTradeOptions(search: string): Promise<SearchableSelec
 export async function fetchProductOptions(search: string): Promise<SearchableSelectOption[]> {
   const res = await productsService.list({
     page: 1,
-    pageSize: 20,
+    pageSize: 10,
     search,
     sortBy: "name",
     sortDir: "asc",

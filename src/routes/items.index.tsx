@@ -22,7 +22,8 @@ import {
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { AppTooltip } from "@/components/AppTooltip";
 import { TableImagePreview } from "@/components/TableImagePreview";
-import { activeStatusClass, formatGbp, truncateWithEllipsis } from "@/lib/module-ui";
+import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { formatGbp, truncateWithEllipsis } from "@/lib/module-ui";
 import { ITEMS_ROUTE } from "@/lib/items";
 
 export const Route = createFileRoute("/items/")({
@@ -183,13 +184,7 @@ function ItemsList() {
         id: "status",
         header: "Status",
         sortable: true,
-        cell: (item) => (
-          <span
-            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(item.isActive)}`}
-          >
-            {item.isActive ? "Active" : "Inactive"}
-          </span>
-        ),
+        cell: (item) => <ActiveStatusBadge isActive={item.isActive} />,
       },
       {
         id: "image",

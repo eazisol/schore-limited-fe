@@ -1,7 +1,9 @@
 import { useFormContext, type FieldValues, type Path } from "react-hook-form";
 import { useRef, type ComponentType, type InputHTMLAttributes, type ReactNode } from "react";
 import { Calendar } from "lucide-react";
-import { FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
+import { FormField, FormItem, FormControl } from "@/components/ui/form";
+import { FormFieldLabel } from "@/components/form/FormFieldLabel";
+import { shouldShowFieldError } from "@/components/form/shouldShowFieldError";
 import { Input } from "@/components/ui/input";
 import { AppTooltip } from "@/components/AppTooltip";
 import { cn } from "@/lib/utils";
@@ -46,13 +48,11 @@ export function TextField<T extends FieldValues>({
       name={name}
       render={({ field, fieldState }) => {
         const dateLabel = dateTooltipLabel(String(field.value ?? ""));
+        const invalid = shouldShowFieldError(fieldState.error, formState.isSubmitted);
         return (
           <FormItem className={className}>
             {label && (
-              <FormLabel>
-                {label}
-                {required && <span className="text-destructive ml-0.5" aria-hidden>*</span>}
-              </FormLabel>
+              <FormFieldLabel label={label} description={description} required={required} />
             )}
             <div className="relative">
               {Icon && (
@@ -77,14 +77,14 @@ export function TextField<T extends FieldValues>({
                     inputRef.current = el;
                   }}
                   aria-required={required}
-                  aria-invalid={!!fieldState.error}
+                  aria-invalid={invalid}
                   disabled={disabled || submitting}
                   className={cn(
                     Icon && "pl-9",
                     (rightSlot || isDateField) && "pr-10",
                     isDateField &&
                       "[&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0",
-                    fieldState.error && "border-destructive focus-visible:ring-destructive",
+                    invalid && "border-destructive focus-visible:ring-destructive",
                     inputClassName,
                   )}
                 />
@@ -118,7 +118,6 @@ export function TextField<T extends FieldValues>({
                 </div>
               )}
             </div>
-            {description && <FormDescription>{description}</FormDescription>}
           </FormItem>
         );
       }}

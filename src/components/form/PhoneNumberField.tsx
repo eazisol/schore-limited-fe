@@ -3,10 +3,10 @@ import { useFormContext, type FieldValues, type Path } from "react-hook-form";
 import {
   FormField,
   FormItem,
-  FormLabel,
   FormControl,
-  FormDescription,
 } from "@/components/ui/form";
+import { FormFieldLabel } from "@/components/form/FormFieldLabel";
+import { shouldShowFieldError } from "@/components/form/shouldShowFieldError";
 import PhoneInput, { getCountryCallingCode } from "react-phone-number-input";
 import flags from "react-phone-number-input/flags";
 import {
@@ -299,18 +299,22 @@ export function PhoneNumberField<T extends FieldValues>({
           else clearErrors(name);
         };
 
+        const invalid = shouldShowFieldError(fieldState.error, formState.isSubmitted);
+
         const containerClass = cn(
           "w-full",
-          "[&_.PhoneInput]:flex [&_.PhoneInput]:h-9 [&_.PhoneInput]:w-full [&_.PhoneInput]:items-center [&_.PhoneInput]:rounded-md [&_.PhoneInput]:border [&_.PhoneInput]:border-input [&_.PhoneInput]:bg-transparent [&_.PhoneInput]:px-3 [&_.PhoneInput]:py-1 [&_.PhoneInput]:text-sm [&_.PhoneInput]:shadow-sm [&_.PhoneInput]:transition-colors [&_.PhoneInput]:focus-within:outline-none [&_.PhoneInput]:focus-within:ring-1 [&_.PhoneInput]:focus-within:ring-ring",
+          "[&_.PhoneInput]:flex [&_.PhoneInput]:h-9 [&_.PhoneInput]:w-full [&_.PhoneInput]:items-center [&_.PhoneInput]:rounded-md [&_.PhoneInput]:border [&_.PhoneInput]:border-input [&_.PhoneInput]:bg-transparent [&_.PhoneInput]:px-3 [&_.PhoneInput]:py-1 [&_.PhoneInput]:text-sm [&_.PhoneInput]:shadow-none [&_.PhoneInput]:transition-colors [&_.PhoneInput]:focus-within:outline-none [&_.PhoneInput]:focus-within:ring-1 [&_.PhoneInput]:focus-within:ring-ring",
           "[&_.PhoneInputInput]:h-full [&_.PhoneInputInput]:w-full [&_.PhoneInputInput]:border-0 [&_.PhoneInputInput]:bg-transparent [&_.PhoneInputInput]:text-sm [&_.PhoneInputInput]:outline-none",
-          fieldState.error
+          invalid
             ? "[&_.PhoneInput]:border-destructive [&_.PhoneInput]:focus-within:ring-destructive"
             : "",
         );
 
         return (
           <FormItem className={className}>
-            {label && <FormLabel>{label}</FormLabel>}
+            {label && (
+              <FormFieldLabel label={label} description={description} />
+            )}
 
             <FormControl>
               <div className={containerClass}>
@@ -355,13 +359,11 @@ export function PhoneNumberField<T extends FieldValues>({
                   }}
                   disabled={disabled || submitting}
                   placeholder={placeholder ?? "07700 900000"}
-                  aria-invalid={!!fieldState.error}
+                  aria-invalid={invalid}
                   className={cn("PhoneInput", disabled || submitting ? "opacity-50" : "")}
                 />
               </div>
             </FormControl>
-
-            {description && <FormDescription>{description}</FormDescription>}
           </FormItem>
         );
       }}

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { useFormContext, type FieldValues, type Path } from "react-hook-form";
-import { FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
+import { FormField, FormItem, FormControl } from "@/components/ui/form";
+import { FormFieldLabel } from "@/components/form/FormFieldLabel";
+import { shouldShowFieldError } from "@/components/form/shouldShowFieldError";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
@@ -38,13 +40,11 @@ export function SelectField<T extends FieldValues>({
         // Only pass values that exist in options — Radix clears unmatched values.
         const selectedValue =
           rawValue && options.some((o) => String(o.value) === rawValue) ? rawValue : undefined;
+        const invalid = shouldShowFieldError(fieldState.error, formState.isSubmitted);
         return (
           <FormItem className={className}>
             {label && (
-              <FormLabel>
-                {label}
-                {required && <span className="text-destructive ml-0.5" aria-hidden>*</span>}
-              </FormLabel>
+              <FormFieldLabel label={label} description={description} required={required} />
             )}
             <Select
               key={`${selectedValue ?? "empty"}:${options.map((o) => o.value).join(",")}`}
@@ -55,9 +55,9 @@ export function SelectField<T extends FieldValues>({
               <FormControl>
                 <SelectTrigger
                   aria-required={required}
-                  aria-invalid={!!fieldState.error}
+                  aria-invalid={invalid}
                   className={cn(
-                    fieldState.error && "border-destructive focus-visible:ring-destructive",
+                    invalid && "border-destructive focus-visible:ring-destructive",
                     triggerClassName,
                   )}
                 >
@@ -77,7 +77,6 @@ export function SelectField<T extends FieldValues>({
                 ))}
               </SelectContent>
             </Select>
-            {description && <FormDescription>{description}</FormDescription>}
           </FormItem>
         );
       }}

@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/Modal";
 import { Form, TextField, TextareaField, SwitchField, SubmitButton } from "@/components/form";
 import { useDebouncedSearch } from "@/components/data-table";
 import {
@@ -20,8 +19,11 @@ import {
   LookupColumnCard,
   LookupColumnFooter,
   LookupEmptyState,
+  LookupFormPanel,
+  LookupItemList,
   LookupItemRow,
 } from "./LookupColumnCard";
+import { LookupSplitLayout } from "./LookupSplitLayout";
 import { useManageFormsPermissions } from "./useManageFormsPermissions";
 
 const holdReasonsQueryKey = ["hold-reasons"] as const;
@@ -44,7 +46,7 @@ export function HoldReasonsColumn() {
   const qc = useQueryClient();
   const { canModify, canDelete } = useManageFormsPermissions();
   const [page, setPage] = useState(1);
-  const [mode, setMode] = useState<Mode | null>(null);
+  const [mode, setMode] = useState<Mode>({ kind: "create" });
   const [confirmDel, setConfirmDel] = useState<ApiHoldReason | null>(null);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
     onPageReset: () => setPage(1),
@@ -60,6 +62,7 @@ export function HoldReasonsColumn() {
   const rows = query.data?.items ?? [];
   const totalCount = query.data?.totalCount ?? 0;
   const totalPages = query.data?.totalPages ?? 1;
+  const selectedId = mode.kind === "create" ? null : mode.item.id;
 
   useEffect(() => {
     if (!query.isFetching && page > totalPages) {
@@ -72,88 +75,100 @@ export function HoldReasonsColumn() {
     onSuccess: (res) => {
       toast.success(res.message || "Hold reason deleted");
       setConfirmDel(null);
+      if (mode.kind !== "create" && confirmDel && mode.item.id === confirmDel.id) {
+        setMode({ kind: "create" });
+      }
       qc.invalidateQueries({ queryKey: holdReasonsQueryKey });
       qc.invalidateQueries({ queryKey: lookupsKey });
     },
     onError: (err) => notifyApiError(err, "Failed to delete hold reason"),
   });
 
-  return (
-    <div className="flex min-h-0 min-w-0 flex-col">
-      <LookupColumnCard
-        title="Hold reasons"
-        searchInput={searchInput}
-        onSearchChange={setSearchInput}
-        searchPlaceholder="Search reasons…"
-        searchAriaLabel="Search hold reasons"
-        canAdd={canModify}
-        onAdd={() => setMode({ kind: "create" })}
-        addAriaLabel="Add hold reason"
-        loading={query.isLoading}
-        fetching={query.isFetching}
-        loadingText="Loading hold reasons…"
-        error={
-          query.isError
-            ? {
-                title: "Unable to load hold reasons",
-                message: (query.error as unknown as ApiError)?.message || "Please try again.",
-                onRetry: () => {
-                  void query.refetch();
-                },
-              }
-            : null
-        }
-        empty={
-          !query.isLoading && !query.isError && rows.length === 0 ? (
-            <LookupEmptyState
-              title="No hold reasons found."
-              description={search ? "Try clearing the search." : undefined}
-              onClear={search ? clearSearch : undefined}
-            />
-          ) : null
-        }
-        footer={
-          rows.length > 0 ? (
-            <LookupColumnFooter
-              page={page}
-              totalPages={totalPages}
-              totalCount={totalCount}
-              itemLabel="reasons"
-              disabled={query.isFetching}
-              onPageChange={setPage}
-            />
-          ) : null
-        }
-      >
-        {rows.length > 0 ? (
-          <div className="space-y-2">
-            {rows.map((item) => (
-              <LookupItemRow
-                key={item.id}
-                label={item.name}
-                subtitle={item.description ?? undefined}
-                inactive={!item.isActive}
-                canEdit={canModify}
-                canDelete={canDelete}
-                onEdit={() => setMode({ kind: canModify ? "edit" : "view", item })}
-                onDelete={() => setConfirmDel(item)}
-              />
-            ))}
-          </div>
-        ) : null}
-      </LookupColumnCard>
+  function handleSaved() {
+    qc.invalidateQueries({ queryKey: holdReasonsQueryKey });
+    qc.invalidateQueries({ queryKey: lookupsKey });
+    setMode({ kind: "create" });
+  }
 
-      {mode ? (
-        <HoldReasonFormModal
-          mode={mode}
-          onClose={() => setMode(null)}
-          onSaved={() => {
-            setMode(null);
-            qc.invalidateQueries({ queryKey: holdReasonsQueryKey });
-            qc.invalidateQueries({ queryKey: lookupsKey });
-          }}
-        />
-      ) : null}
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <LookupSplitLayout
+        list={
+          <LookupColumnCard
+            title="Hold reasons"
+            searchInput={searchInput}
+            onSearchChange={setSearchInput}
+            searchPlaceholder="Search reasons…"
+            searchAriaLabel="Search hold reasons"
+            canAdd={canModify}
+            onAdd={() => setMode({ kind: "create" })}
+            addAriaLabel="Add hold reason"
+            loading={query.isLoading}
+            fetching={query.isFetching}
+            loadingText="Loading hold reasons…"
+            error={
+              query.isError
+                ? {
+                    title: "Unable to load hold reasons",
+                    message: (query.error as unknown as ApiError)?.message || "Please try again.",
+                    onRetry: () => {
+                      void query.refetch();
+                    },
+                  }
+                : null
+            }
+            empty={
+              !query.isLoading && !query.isError && rows.length === 0 ? (
+                <LookupEmptyState
+                  title="No hold reasons found."
+                  description={search ? "Try clearing the search." : undefined}
+                  onClear={search ? clearSearch : undefined}
+                />
+              ) : null
+            }
+            footer={
+              rows.length > 0 ? (
+                <LookupColumnFooter
+                  page={page}
+                  totalPages={totalPages}
+                  totalCount={totalCount}
+                  itemLabel="reasons"
+                  disabled={query.isFetching}
+                  onPageChange={setPage}
+                />
+              ) : null
+            }
+          >
+            {rows.length > 0 ? (
+              <LookupItemList>
+                {rows.map((item) => (
+                  <LookupItemRow
+                    key={item.id}
+                    label={item.name}
+                    subtitle={item.description ?? undefined}
+                    inactive={!item.isActive}
+                    selected={selectedId === item.id}
+                    canEdit={canModify}
+                    canDelete={canDelete}
+                    onEdit={() =>
+                      setMode({ kind: canModify ? "edit" : "view", item })
+                    }
+                    onDelete={() => setConfirmDel(item)}
+                  />
+                ))}
+              </LookupItemList>
+            ) : null}
+          </LookupColumnCard>
+        }
+        form={
+          <HoldReasonFormPanel
+            key={mode.kind === "create" ? "create" : `${mode.kind}-${mode.item.id}`}
+            mode={mode}
+            onCancel={() => setMode({ kind: "create" })}
+            onSaved={handleSaved}
+          />
+        }
+      />
 
       {confirmDel ? (
         <DeleteConfirmDialog
@@ -167,13 +182,13 @@ export function HoldReasonsColumn() {
   );
 }
 
-function HoldReasonFormModal({
+function HoldReasonFormPanel({
   mode,
-  onClose,
+  onCancel,
   onSaved,
 }: {
   mode: Mode;
-  onClose: () => void;
+  onCancel: () => void;
   onSaved: () => void;
 }) {
   const isView = mode.kind === "view";
@@ -181,7 +196,7 @@ function HoldReasonFormModal({
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    mode: "onBlur",
+    mode: "onSubmit",
     defaultValues: {
       name: existing?.name ?? "",
       description: existing?.description ?? "",
@@ -221,36 +236,41 @@ function HoldReasonFormModal({
 
   return (
     <Form form={form} onSubmit={submit} className="contents">
-      <Modal
-        open
-        onClose={onClose}
+      <LookupFormPanel
         title={title}
-        size="md"
-        showCloseButton={false}
         headerActions={<SwitchField<Values> name="isActive" label="Active" disabled={isView} />}
+        footer={
+          <div className="flex justify-end gap-2">
+            {mode.kind !== "create" ? (
+              <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+                New
+              </Button>
+            ) : null}
+            {!isView ? (
+              <SubmitButton size="sm" loadingText="Saving…">
+                {mode.kind === "edit" ? "Update reason" : "Create reason"}
+              </SubmitButton>
+            ) : (
+              <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+                Close
+              </Button>
+            )}
+          </div>
+        }
       >
-        <div className="space-y-4">
-          <fieldset disabled={isView} className="space-y-4">
-            <TextField<Values> name="name" label="Name" required autoFocus={!isView} maxLength={50} />
+        <fieldset disabled={isView} className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <TextField<Values> name="name" label="Name" required maxLength={50} />
             <TextareaField<Values>
               name="description"
               label="Description"
               rows={3}
               maxLength={DESCRIPTION_MAX_LENGTH}
+              className="sm:col-span-2"
             />
-          </fieldset>
-          <div className="flex justify-end gap-2 border-t pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={onClose}>
-              {isView ? "Close" : "Cancel"}
-            </Button>
-            {!isView && (
-              <SubmitButton size="sm" loadingText="Saving…">
-                {mode.kind === "edit" ? "Update reason" : "Create reason"}
-              </SubmitButton>
-            )}
           </div>
-        </div>
-      </Modal>
+        </fieldset>
+      </LookupFormPanel>
     </Form>
   );
 }

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { useFormContext, type FieldValues, type Path } from "react-hook-form";
-import { FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
+import { FormField, FormItem, FormControl } from "@/components/ui/form";
+import { FormFieldLabel } from "@/components/form/FormFieldLabel";
+import { shouldShowFieldError } from "@/components/form/shouldShowFieldError";
 import {
   SearchableSelect,
   type SearchableSelectOption,
@@ -34,6 +36,14 @@ export interface SearchableSelectFieldProps<T extends FieldValues> {
   emptyOption?: SearchableSelectOption;
   /** Called when the user picks an option (value + label). */
   onSelect?: (option: SearchableSelectOption) => void;
+  /** When set, shows an "Add" action at the bottom of the dropdown list. */
+  onAddNew?: () => void;
+  /** Label for the add action. Defaults to "Add new". */
+  addNewLabel?: string;
+  /** When true, shows a clear option while a value is selected. Defaults to !required. */
+  clearable?: boolean;
+  /** Label for the clear option. Defaults to "Clear selection". */
+  clearLabel?: string;
 }
 
 export function SearchableSelectField<T extends FieldValues>({
@@ -51,6 +61,10 @@ export function SearchableSelectField<T extends FieldValues>({
   selectedLabel,
   emptyOption,
   onSelect,
+  onAddNew,
+  addNewLabel,
+  clearable,
+  clearLabel,
 }: SearchableSelectFieldProps<T>) {
   const { control, formState } = useFormContext<T>();
   const submitting = formState.isSubmitting;
@@ -61,14 +75,12 @@ export function SearchableSelectField<T extends FieldValues>({
       name={name}
       render={({ field, fieldState }) => {
         const rawValue = field.value == null ? "" : String(field.value);
+        const invalid = shouldShowFieldError(fieldState.error, formState.isSubmitted);
 
         return (
           <FormItem className={className}>
             {label && (
-              <FormLabel>
-                {label}
-                {required && <span className="text-destructive ml-0.5" aria-hidden>*</span>}
-              </FormLabel>
+              <FormFieldLabel label={label} description={description} required={required} />
             )}
             <FormControl>
               <SearchableSelect
@@ -82,12 +94,15 @@ export function SearchableSelectField<T extends FieldValues>({
                 selectedLabel={selectedLabel}
                 emptyOption={emptyOption}
                 onSelect={onSelect}
-                invalid={!!fieldState.error}
+                onAddNew={onAddNew}
+                addNewLabel={addNewLabel}
+                clearable={clearable ?? !required}
+                clearLabel={clearLabel}
+                invalid={invalid}
                 triggerClassName={triggerClassName}
                 aria-label={typeof label === "string" ? label : undefined}
               />
             </FormControl>
-            {description && <FormDescription>{description}</FormDescription>}
           </FormItem>
         );
       }}

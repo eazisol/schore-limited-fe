@@ -1,8 +1,7 @@
 import {
   TextField,
   TextareaField,
-  SwitchField,
-  SearchableSelectField,
+  CreatableSearchableSelectField,
   ImageUploadField,
 } from "@/components/form";
 import { productLookupsService } from "@/lib/api/services/product-lookups";
@@ -48,11 +47,6 @@ export function ItemFormFields({
 }) {
   return (
     <>
-      <div className="flex items-center justify-between gap-4">
-        <h3 className="font-display font-semibold">Item</h3>
-        <SwitchField<ItemFormValues> name="isActive" label="Active" />
-      </div>
-
       <ImageUploadField<ItemFormValues>
         name="imageUrl"
         label="Image"
@@ -64,7 +58,7 @@ export function ItemFormFields({
         disabled={imageDisabled}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <TextField<ItemFormValues>
           name="name"
           label="Name"
@@ -75,8 +69,8 @@ export function ItemFormFields({
         <TextField<ItemFormValues> name="sku" label="SKU" required maxLength={50} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <SearchableSelectField<ItemFormValues>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <CreatableSearchableSelectField<ItemFormValues>
           name="productTypeId"
           label="Product type"
           required
@@ -85,8 +79,9 @@ export function ItemFormFields({
           queryKey={["lookups", "product-types"]}
           selectedLabel={selectedLabels?.productType}
           fetchOptions={(search) => mapLookupOptions(productLookupsService.productTypes, search)}
+          lookupType="productType"
         />
-        <SearchableSelectField<ItemFormValues>
+        <CreatableSearchableSelectField<ItemFormValues>
           name="categoryId"
           label="Category"
           required
@@ -95,8 +90,9 @@ export function ItemFormFields({
           queryKey={["lookups", "categories"]}
           selectedLabel={selectedLabels?.category}
           fetchOptions={(search) => mapLookupOptions(productLookupsService.categories, search)}
+          lookupType="category"
         />
-        <SearchableSelectField<ItemFormValues>
+        <CreatableSearchableSelectField<ItemFormValues>
           name="unitId"
           label="Unit"
           required
@@ -105,10 +101,11 @@ export function ItemFormFields({
           queryKey={["lookups", "units"]}
           selectedLabel={selectedLabels?.unit}
           fetchOptions={(search) => mapLookupOptions(productLookupsService.units, search)}
+          lookupType="unit"
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <TextField<ItemFormValues>
           name="salePrice"
           label="Sale price"

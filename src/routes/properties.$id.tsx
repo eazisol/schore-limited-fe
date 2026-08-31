@@ -4,19 +4,23 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PageHeader } from "@/components/AppShell";
-import { AppTooltip } from "@/components/AppTooltip";
-import { DetailField, DetailMetaRow, DetailSectionHeading } from "@/components/DetailField";
+import { FormPageCard } from "@/components/FormPageCard";
+import { DetailField } from "@/components/DetailField";
+import {
+  DetailProfileHero,
+  type DetailProfileHighlight,
+} from "@/components/DetailProfileHero";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ArrowLeft, Loader2, Pencil, Trash2 } from "lucide-react";
+import { AlertCircle, Building2, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Form, SubmitButton } from "@/components/form";
+import { Form, SubmitButton, SwitchField } from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
-import { propertiesService } from "@/lib/api/services/properties";
+import { propertiesService, type ApiProperty } from "@/lib/api/services/properties";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { propertiesQueryKey } from "./properties.index";
-import { activeStatusClass, formatDateTime } from "@/lib/module-ui";
+import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { PROPERTIES_ROUTE } from "@/lib/properties";
+import { formatDetailAddress } from "@/lib/module-ui";
 import {
   propertyFormSchema,
   toPropertyPayload,
@@ -33,6 +37,22 @@ export const Route = createFileRoute("/properties/$id")({
   validateSearch: detailSearchSchema,
   component: PropertyDetail,
 });
+
+function propertyLocation(row: ApiProperty): string | undefined {
+  const address = formatDetailAddress(row);
+  return address === "—" ? undefined : address;
+}
+
+function propertyHighlights(row: ApiProperty): DetailProfileHighlight[] {
+  const items: DetailProfileHighlight[] = [];
+  if (row.reference?.trim()) {
+    items.push({ label: "Reference", value: row.reference.trim() });
+  }
+  items.push({ label: "Contractor", value: row.contractorName?.trim() || "—" });
+  items.push({ label: "Customer", value: row.customerName?.trim() || "—" });
+  items.push({ label: "Contact", value: row.contactName?.trim() || "—" });
+  return items;
+}
 
 function PropertyDetail() {
   const { id } = Route.useParams();
@@ -140,121 +160,93 @@ function PropertyDetail() {
   }
 
   const dirty = form.formState.isDirty;
+  const viewActions = (
+    <>
+      {canModify && (
+        <Button variant="outline" size="sm" onClick={openEdit}>
+          <Pencil className="h-4 w-4" />
+          Edit property
+        </Button>
+      )}
+      <Can route={PROPERTIES_ROUTE} action="delete">
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-destructive/30 text-destructive hover:bg-destructive/5"
+          onClick={() => setConfirmDel(true)}
+        >
+          <Trash2 className="h-4 w-4" />
+          Delete
+        </Button>
+      </Can>
+    </>
+  );
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={isEditing ? "Edit property" : "Property details"}
-        subtitle={!isEditing ? row.propertyName || undefined : undefined}
-        leading={
-          <AppTooltip content="Back to properties" asChild>
-            <Link
-              to="/properties"
-              aria-label="Back to properties"
-              className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </AppTooltip>
-        }
-        actions={
-          <>
-            {!isEditing && canModify && (
-              <Button variant="outline" size="sm" onClick={openEdit}>
-                <Pencil className="h-4 w-4" />
-                Edit property
-              </Button>
-            )}
-            <Can route={PROPERTIES_ROUTE} action="delete">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-destructive/30 text-destructive hover:bg-destructive/5"
-                onClick={() => setConfirmDel(true)}
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </Button>
-            </Can>
-          </>
-        }
-      />
-
+      {isEditing ? (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {isEditing ? (
-          <Form form={form} onSubmit={save} className="space-y-6 lg:col-span-2">
-            <PropertyFormFields
-              disabled={updateMutation.isPending}
-              customerSelectedLabel={row.customerName}
-              contractorSelectedLabel={row.contractorName}
-            />
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2">
-              <span className="text-xs text-muted-foreground sm:mr-auto">
-                {dirty ? "Unsaved changes" : "All changes saved"}
-              </span>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={updateMutation.isPending}
-                  onClick={() => navigate({ to: "/properties" })}
-                >
-                  Cancel
-                </Button>
-                <SubmitButton size="sm" disabled={!dirty} loadingText="Saving…">
-                  Save changes
-                </SubmitButton>
-              </div>
-            </div>
-          </Form>
-        ) : (
-          <div className="card-elevated space-y-5 p-4 sm:p-6 lg:col-span-2">
-            <DetailSectionHeading>Property details</DetailSectionHeading>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <DetailField label="Property name" value={row.propertyName} />
-              <DetailField label="Contractor" value={row.contractorName || "—"} />
-            </div>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <DetailField label="Customer" value={row.customerName || "—"} />
-            </div>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <DetailField label="Contact name" value={row.contactName} />
-              <DetailField label="Contact phone" value={row.contactPhoneNo || "—"} />
-            </div>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <DetailField label="Contact email" value={row.contactEmail || "—"} />
-              <DetailField label="Address" value={row.address || "—"} />
-            </div>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              <DetailField label="City" value={row.city || "—"} />
-              <DetailField label="State" value={row.state || "—"} />
-              <DetailField label="Country" value={row.country || "—"} />
-              <DetailField label="ZIP Code" value={row.zipCode || "—"} />
-            </div>
-            <DetailField
-              label="Status"
-              value={
-                <span
-                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(row.isActive)}`}
-                >
-                  {row.isActive ? "Active" : "Inactive"}
-                </span>
+          <Form form={form} onSubmit={save} className="lg:col-span-2">
+            <FormPageCard
+              title="Edit property"
+              back={{ to: "/properties", label: "Back to properties" }}
+              headerActions={<SwitchField<PropertyFormValues> name="isActive" label="Active" />}
+              maxWidth="w-full max-w-none"
+              footer={
+                <>
+                  <span className="text-xs text-muted-foreground sm:mr-auto">
+                    {dirty ? "Unsaved changes" : "All changes saved"}
+                  </span>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={updateMutation.isPending}
+                      onClick={() => navigate({ to: "/properties" })}
+                    >
+                      Cancel
+                    </Button>
+                    <SubmitButton size="sm" disabled={!dirty} loadingText="Saving…">
+                      Save changes
+                    </SubmitButton>
+                  </div>
+                </>
               }
-            />
-            <DetailField label="Access notes" value={row.accessNotes || "—"} />
-          </div>
-        )}
-
-        <div className="card-elevated self-start p-6">
-          <DetailSectionHeading className="mb-4">Record</DetailSectionHeading>
-          <dl className="space-y-3">
-            <DetailMetaRow label="Property ID">{row.id}</DetailMetaRow>
-            <DetailMetaRow label="Created">{formatDateTime(row.createdDate)}</DetailMetaRow>
-            <DetailMetaRow label="Last edited">{formatDateTime(row.editDate)}</DetailMetaRow>
-          </dl>
-        </div>
+            >
+              <PropertyFormFields
+                embedded
+                disabled={updateMutation.isPending}
+                customerSelectedLabel={row.customerName}
+                contractorSelectedLabel={row.contractorName}
+              />
+            </FormPageCard>
+          </Form>
       </div>
+      ) : (
+        <DetailProfileHero
+          className="w-full"
+          title="Property details"
+          backLabel="Back to properties"
+          backTo="/properties"
+          headerActions={viewActions}
+          leading={
+            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg border-2 border-background bg-accent/90 text-accent-foreground shadow-sm sm:h-16 sm:w-16">
+              <Building2 className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
+            </span>
+          }
+          name={row.propertyName}
+          location={propertyLocation(row)}
+          status={<ActiveStatusBadge isActive={row.isActive} />}
+          email={row.contactEmail}
+          phone={row.contactPhoneNo}
+          highlights={propertyHighlights(row)}
+        >
+          {row.accessNotes?.trim() ? (
+            <DetailField label="Access notes" value={row.accessNotes} />
+          ) : null}
+        </DetailProfileHero>
+      )}
 
       {confirmDel && canDelete && (
         <div

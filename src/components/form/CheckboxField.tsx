@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useFormContext, type FieldValues, type Path } from "react-hook-form";
-import { FormField, FormItem, FormControl, FormLabel, FormDescription } from "@/components/ui/form";
+import { FormField, FormItem, FormControl } from "@/components/ui/form";
+import { FormFieldLabel } from "@/components/form/FormFieldLabel";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export interface CheckboxFieldProps<T extends FieldValues> {
@@ -32,8 +33,7 @@ export function CheckboxField<T extends FieldValues>({
             />
           </FormControl>
           <div className="space-y-0.5 leading-tight">
-            <FormLabel className="cursor-pointer font-normal">{label}</FormLabel>
-            {description && <FormDescription>{description}</FormDescription>}
+            <FormFieldLabel label={label} description={description} subdued />
           </div>
         </FormItem>
       )}

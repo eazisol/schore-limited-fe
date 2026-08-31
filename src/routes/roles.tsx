@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -20,7 +20,7 @@ import {
 import { rolesService, type ApiRole, type RolePayload } from "@/lib/api/services/system-config";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { ROLES_ROUTE } from "@/lib/roles";
-import { activeStatusClass } from "@/lib/module-ui";
+import { ActiveStatusBadge } from "@/components/StatusBadge";
 
 export const Route = createFileRoute("/roles")({
   head: () => ({ meta: [{ title: "Roles | Schore" }] }),
@@ -48,9 +48,10 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
-type Mode = { kind: "create" } | { kind: "edit"; role: ApiRole } | { kind: "view"; role: ApiRole };
+type Mode = { kind: "create" } | { kind: "edit"; role: ApiRole };
 
 function RolesPage() {
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const canModify = usePermission({ route: ROLES_ROUTE, action: "modify" });
   const canDelete = usePermission({ route: ROLES_ROUTE, action: "delete" });
@@ -114,13 +115,7 @@ function RolesPage() {
       {
         id: "status",
         header: "Status",
-        cell: (role) => (
-          <span
-            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(role.isActive)}`}
-          >
-            {role.isActive ? "Active" : "Inactive"}
-          </span>
-        ),
+        cell: (role) => <ActiveStatusBadge isActive={role.isActive} />,
       },
     ],
     [],
@@ -132,7 +127,11 @@ function RolesPage() {
         id: "view",
         label: "View",
         icon: <Eye className="h-4 w-4" />,
-        onClick: (role) => setMode({ kind: "view", role }),
+        onClick: (role) =>
+          navigate({
+            to: "/permissions",
+            search: { roleId: role.id, from: "roles" },
+          }),
       },
       {
         id: "edit",
@@ -150,7 +149,7 @@ function RolesPage() {
         onClick: (role) => setConfirmDel(role),
       },
     ],
-    [canDelete, canModify],
+    [canDelete, canModify, navigate],
   );
 
   return (
@@ -275,7 +274,6 @@ function RoleFormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const isView = mode.kind === "view";
   const existing = mode.kind === "create" ? null : mode.role;
 
   const form = useForm<Values>({
@@ -309,8 +307,7 @@ function RoleFormModal({
     });
   }
 
-  const title =
-    mode.kind === "create" ? "Add role" : mode.kind === "edit" ? "Edit role" : "View role";
+  const title = mode.kind === "create" ? "Add role" : "Edit role";
 
   return (
     <Form form={form} onSubmit={submit} className="contents">
@@ -319,16 +316,16 @@ function RoleFormModal({
         onClose={onClose}
         title={title}
         size="md"
-        headerActions={<SwitchField<Values> name="isActive" label="Active" disabled={isView} />}
+        headerActions={<SwitchField<Values> name="isActive" label="Active" />}
       >
-        <div className="space-y-4">
-          <fieldset disabled={isView} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-3">
+          <fieldset className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <TextField<Values>
                 name="name"
                 label="Name"
                 required
-                autoFocus={!isView}
+                autoFocus
                 maxLength={50}
               />
               <TextField<Values> name="code" label="Code" required maxLength={50} />
@@ -342,14 +339,12 @@ function RoleFormModal({
           </fieldset>
           <div className="flex justify-end gap-2 border-t pt-2">
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
-              {isView ? "Close" : "Cancel"}
+              Cancel
             </Button>
-            {!isView && (
-              <SubmitButton size="sm" loadingText="Saving…">
-                {mutation.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-                {mode.kind === "edit" ? "Update role" : "Create role"}
-              </SubmitButton>
-            )}
+            <SubmitButton size="sm" loadingText="Saving…">
+              {mutation.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+              {mode.kind === "edit" ? "Update role" : "Create role"}
+            </SubmitButton>
           </div>
         </div>
       </Modal>

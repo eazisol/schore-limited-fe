@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { StatusBadge } from "@/components/StatusBadge";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Can, usePermission } from "@/components/Permission";
@@ -107,7 +108,8 @@ function TasksList() {
     {
       id: "status",
       header: "Status",
-      cell: (task) => task.statusName || "—",
+      cell: (task) =>
+        task.statusName ? <StatusBadge status={task.statusName} /> : "—",
     },
     {
       id: "created",

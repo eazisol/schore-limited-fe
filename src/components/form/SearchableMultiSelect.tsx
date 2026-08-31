@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronDown, Loader2, Search, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useDebouncedSearch } from "@/components/data-table";
 import type { SearchableSelectOption } from "./SearchableSelect";
+import { searchableSelectTriggerClassName } from "./SearchableSelect";
 
 export interface SearchableMultiSelectProps {
   value: string[];
@@ -96,16 +96,16 @@ export function SearchableMultiSelect({
         }}
       >
         <PopoverTrigger asChild>
-          <Button
+          <button
             type="button"
-            variant="outline"
             role="combobox"
             aria-expanded={open}
             aria-label={ariaLabel}
             aria-invalid={invalid || undefined}
             disabled={disabled}
             className={cn(
-              "min-h-10 h-auto w-full justify-between font-normal",
+              searchableSelectTriggerClassName,
+              "min-h-9 h-auto",
               selected.length === 0 && "text-muted-foreground",
               invalid && "border-destructive focus-visible:ring-destructive",
               triggerClassName,
@@ -117,7 +117,7 @@ export function SearchableMultiSelect({
                 : selected.map(resolveLabel).join(", ")}
             </span>
             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
+          </button>
         </PopoverTrigger>
         <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
           <div className="flex items-center gap-2 border-b px-3 py-2">

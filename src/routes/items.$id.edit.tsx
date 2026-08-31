@@ -3,12 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PageHeader } from "@/components/AppShell";
-import { AppTooltip } from "@/components/AppTooltip";
+import { FormPageCard } from "@/components/FormPageCard";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ArrowLeft, Loader2, Trash2 } from "lucide-react";
+import { AlertCircle, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Form, SubmitButton } from "@/components/form";
+import { Form, SubmitButton, SwitchField } from "@/components/form";
 import { RequirePermission } from "@/components/Permission";
 import {
   productsService,
@@ -85,7 +84,7 @@ function EditItem() {
       toast.success(res.message || "Item updated");
       queryClient.setQueryData(["items", id], res.data);
       queryClient.invalidateQueries({ queryKey: itemsQueryKey });
-      navigate({ to: "/items" });
+      navigate({ to: "/items/$id", params: { id } });
     },
     onError: (err) => notifyApiError(err, "Failed to update item"),
   });
@@ -166,24 +165,35 @@ function EditItem() {
 
   return (
     <RequirePermission route={ITEMS_ROUTE} action="modify">
-      <div className="space-y-6">
-        <PageHeader
+      <Form form={form} onSubmit={save} className="w-full">
+        <FormPageCard
           title="Edit item"
-          leading={
-            <AppTooltip content="Back to items" asChild>
-              <Link
-                to="/items"
-                aria-label="Back to items"
-                className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </AppTooltip>
+          onBack={{ label: "Back to item", onClick: () => navigate({ to: "/items/$id", params: { id } }) }}
+          headerActions={<SwitchField<ItemFormValues> name="isActive" label="Active" />}
+          maxWidth="w-full max-w-none"
+          footer={
+            <>
+              <span className="text-xs text-muted-foreground sm:mr-auto">
+                {dirty ? "Unsaved changes" : "All changes saved"}
+              </span>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={updateMutation.isPending || removingImage}
+                  onClick={() => navigate({ to: "/items/$id", params: { id } })}
+                >
+                  Cancel
+                </Button>
+                <SubmitButton size="sm" disabled={!dirty || removingImage} loadingText="Saving…">
+                  Save changes
+                </SubmitButton>
+              </div>
+            </>
           }
-        />
-
-        <Form form={form} onSubmit={save} className="card-elevated max-w-3xl space-y-4 p-6">
-          <fieldset className="space-y-4" disabled={removingImage}>
+        >
+          <fieldset className="space-y-3" disabled={removingImage}>
             <ItemFormFields
               selectedLabels={{
                 productType: item.productTypeName,
@@ -195,26 +205,8 @@ function EditItem() {
               imageDisabled={removingImage}
             />
           </fieldset>
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2">
-            <span className="text-xs text-muted-foreground sm:mr-auto">
-              {dirty ? "Unsaved changes" : "All changes saved"}
-            </span>
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={updateMutation.isPending || removingImage}
-                onClick={() => navigate({ to: "/items" })}
-              >
-                Cancel
-              </Button>
-              <SubmitButton size="sm" disabled={!dirty || removingImage} loadingText="Saving…">
-                Save changes
-              </SubmitButton>
-            </div>
-          </div>
-        </Form>
+        </FormPageCard>
+      </Form>
 
         {confirmImageRemoval && (
           <div
@@ -316,7 +308,6 @@ function EditItem() {
             </div>
           </div>
         )}
-      </div>
-    </RequirePermission>
+      </RequirePermission>
   );
 }

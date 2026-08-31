@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Eye, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
 import { Form, TextField, SwitchField, SubmitButton } from "@/components/form";
@@ -22,6 +23,7 @@ import {
   type UserTypePayload,
 } from "@/lib/api/services/system-config";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
+import { ActiveStatusBadge } from "@/components/StatusBadge";
 
 export const Route = createFileRoute("/settings/user-types")({
   head: () => ({ meta: [{ title: "User Types | Settings" }] }),
@@ -107,17 +109,7 @@ function UserTypesPage() {
       {
         id: "status",
         header: "Status",
-        cell: (item) => (
-          <span
-            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-              item.isActive
-                ? "border-success/20 bg-success/10 text-success"
-                : "border-border bg-muted text-muted-foreground"
-            }`}
-          >
-            {item.isActive ? "Active" : "Inactive"}
-          </span>
-        ),
+        cell: (item) => <ActiveStatusBadge isActive={item.isActive} />,
       },
     ],
     [],
@@ -152,6 +144,8 @@ function UserTypesPage() {
 
   return (
     <div>
+      <PageHeader title="User types" />
+
       <DataTable
         columns={columns}
         rows={rows}
@@ -320,9 +314,9 @@ function UserTypeFormModal({
         size="md"
         headerActions={<SwitchField<Values> name="isActive" label="Active" disabled={isView} />}
       >
-        <div className="space-y-4">
-          <fieldset disabled={isView} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-3">
+          <fieldset disabled={isView} className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <TextField<Values>
                 name="name"
                 label="Name"

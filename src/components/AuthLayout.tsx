@@ -23,15 +23,15 @@ export function AuthLayout({
       <aside className="hidden lg:flex relative bg-sidebar text-sidebar-foreground flex-col justify-between p-10 overflow-hidden">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,oklch(0.58_0.13_45/0.28),transparent_55%)]"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,color-mix(in_oklch,var(--accent)_28%,transparent),transparent_55%)]"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,oklch(0.58_0.13_45/0.18),transparent_50%)]"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,color-mix(in_oklch,var(--accent)_18%,transparent),transparent_50%)]"
         />
 
         <div className="relative z-10 flex items-center gap-2.5">
-          <div className="grid h-10 w-10 place-items-center rounded-md bg-accent text-accent-foreground shadow-[0_0_24px_oklch(0.58_0.13_45/0.45)]">
+          <div className="grid h-10 w-10 place-items-center rounded-md bg-accent text-accent-foreground shadow-[0_0_24px_color-mix(in_oklch,var(--accent)_45%,transparent)]">
             <HardHat className="h-5 w-5" />
           </div>
           <div className="leading-tight">

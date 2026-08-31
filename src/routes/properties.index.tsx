@@ -21,7 +21,8 @@ import {
 } from "@/lib/api/services/properties";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { AppTooltip } from "@/components/AppTooltip";
-import { activeStatusClass, formatDateTime, truncateWithEllipsis } from "@/lib/module-ui";
+import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { formatDateTime, truncateWithEllipsis } from "@/lib/module-ui";
 import { PROPERTIES_ROUTE } from "@/lib/properties";
 import { SearchableSelect } from "@/components/form";
 import { fetchCustomerOptions, fetchContractorOptions } from "@/lib/user-dropdowns";
@@ -166,13 +167,7 @@ function PropertiesList() {
         id: "status",
         header: "Status",
         sortable: false,
-        cell: (row) => (
-          <span
-            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(row.isActive)}`}
-          >
-            {row.isActive ? "Active" : "Inactive"}
-          </span>
-        ),
+        cell: (row) => <ActiveStatusBadge isActive={row.isActive} />,
       },
       {
         id: "createdDate",

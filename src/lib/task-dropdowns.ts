@@ -8,6 +8,7 @@ import { productsService } from "@/lib/api/services/products";
 import { usersService } from "@/lib/api/services/users";
 import { tasksService } from "@/lib/api/services/tasks";
 import { USER_TYPE_ID } from "@/lib/user-module";
+import { getSiteManagerRoleId } from "@/lib/site-manager-role";
 
 function toOptions(
   rows: { id: number; name?: string | null; isActive?: boolean }[],
@@ -60,9 +61,11 @@ export async function fetchTaskItemStatusOptions(search: string): Promise<Search
 }
 
 export async function fetchSiteManagerOptions(search: string): Promise<SearchableSelectOption[]> {
+  const roleId = await getSiteManagerRoleId();
   const res = await usersService.dropdown({
     search,
     userTypeId: USER_TYPE_ID.user,
+    ...(roleId != null ? { roleId } : {}),
   });
   return (res.data ?? []).map((u) => ({
     value: String(u.id),

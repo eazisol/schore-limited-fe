@@ -33,7 +33,8 @@ import {
 import { ROLE_BADGE, ROLE_LABEL, type UserRole } from "@/lib/users-store";
 import { AppTooltip } from "@/components/AppTooltip";
 import { TableImagePreview } from "@/components/TableImagePreview";
-import { activeStatusClass, formatDailyRate, truncateWithEllipsis } from "@/lib/module-ui";
+import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { formatDailyRate, truncateWithEllipsis } from "@/lib/module-ui";
 import { useUserModuleMode, userModuleConfig } from "@/lib/user-module";
 
 const ROLE_NAME_TO_KEY = Object.entries(ROLE_LABEL).reduce<Record<string, UserRole>>(
@@ -344,13 +345,7 @@ export function UsersListPage() {
       id: "status",
       header: "Status",
       sortable: true,
-      cell: (user) => (
-        <span
-          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(user.isActive)}`}
-        >
-          {user.isActive ? "Active" : "Inactive"}
-        </span>
-      ),
+      cell: (user) => <ActiveStatusBadge isActive={user.isActive} />,
     });
 
     return cols;

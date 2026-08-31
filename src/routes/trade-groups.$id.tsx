@@ -2,32 +2,34 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PageHeader } from "@/components/AppShell";
+import { FormPageCard } from "@/components/FormPageCard";
 import { AppTooltip } from "@/components/AppTooltip";
-import { DetailField, DetailSectionHeading } from "@/components/DetailField";
+import {
+  DetailProfileHero,
+  type DetailProfileHighlight,
+} from "@/components/DetailProfileHero";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ArrowLeft, Calculator, Loader2, Pencil, Trash2 } from "lucide-react";
+import { AlertCircle, Calculator, Layers, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Form, SubmitButton } from "@/components/form";
+import { Form, SubmitButton, SwitchField } from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
 import { tradeGroupsService } from "@/lib/api/services/trade-groups";
 import { productsService } from "@/lib/api/services/products";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { tradeGroupsQueryKey } from "./trade-groups.index";
-import { activeStatusClass, truncateWithEllipsis } from "@/lib/module-ui";
+import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { truncateWithEllipsis } from "@/lib/module-ui";
 import { fmtGBP } from "@/lib/data";
 import { TRADE_GROUPS_ROUTE } from "@/lib/trade-groups";
 import {
-  computeTradeGroupTotalPrice,
   tradeGroupFormSchema,
   toTradeGroupPayload,
   type TradeGroupFormValues,
 } from "@/lib/trade-group-form";
 import { TradeGroupFormFields } from "@/components/trade-groups/TradeGroupFormFields";
 import { TradeGroupItemsEditor } from "@/components/trade-groups/TradeGroupItemsEditor";
-import { TradeGroupRecordPanel } from "@/components/trade-groups/TradeGroupRecordPanel";
 
 const detailSearchSchema = z.object({
   mode: z.enum(["edit", "view"]).optional(),
@@ -55,6 +57,15 @@ function TradeGroupDetail() {
       to: "/trade-groups/$id",
       params: { id },
       search: { mode: "edit" },
+      replace: true,
+    });
+  }
+
+  function openView() {
+    navigate({
+      to: "/trade-groups/$id",
+      params: { id },
+      search: {},
       replace: true,
     });
   }
@@ -131,7 +142,7 @@ function TradeGroupDetail() {
       toast.success(res.message || "Trade group updated");
       queryClient.setQueryData(["trade-groups", id], res.data);
       queryClient.invalidateQueries({ queryKey: tradeGroupsQueryKey });
-      navigate({ to: "/trade-groups" });
+      openView();
     },
     onError: (err) => notifyApiError(err, "Failed to update trade group"),
   });
@@ -149,9 +160,6 @@ function TradeGroupDetail() {
   async function save(values: TradeGroupFormValues) {
     await updateMutation.mutateAsync(toTradeGroupPayload(values, row?.orderBy ?? 0));
   }
-
-  const watchedItems = useWatch({ control: form.control, name: "items" });
-  const editTotalPrice = computeTradeGroupTotalPrice(watchedItems);
 
   if (groupQuery.isLoading) {
     return (
@@ -193,126 +201,94 @@ function TradeGroupDetail() {
     return sum + qty * price;
   }, 0);
 
+  const viewActions = (
+    <>
+      {canModify && (
+        <Button variant="outline" size="sm" onClick={openEdit}>
+          <Pencil className="h-4 w-4" />
+          Edit trade group
+        </Button>
+      )}
+      <Can route={TRADE_GROUPS_ROUTE} action="delete">
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-destructive/30 text-destructive hover:bg-destructive/5"
+          onClick={() => setConfirmDel(true)}
+        >
+          <Trash2 className="h-4 w-4" />
+          Delete
+        </Button>
+      </Can>
+    </>
+  );
+
+  const heroHighlights: DetailProfileHighlight[] = [
+    { label: "Code", value: row.code || "—" },
+    { label: "Items", value: String(items.length) },
+    { label: "Total", value: fmtGBP(viewTotalPrice) },
+  ];
+
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={isEditing ? "Edit trade group" : "Trade group details"}
-        leading={
-          <AppTooltip content="Back to trade groups" asChild>
-            <Link
-              to="/trade-groups"
-              aria-label="Back to trade groups"
-              className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      {isEditing ? (
+          <Form form={form} onSubmit={save} className="w-full">
+            <FormPageCard
+              title="Edit trade group"
+              onBack={{ label: "Back to trade group", onClick: openView }}
+              headerActions={<SwitchField<TradeGroupFormValues> name="isActive" label="Active" />}
+              maxWidth="w-full max-w-none"
+              footer={
+                <>
+                  <span className="text-xs text-muted-foreground sm:mr-auto">
+                    {dirty ? "Unsaved changes" : "All changes saved"}
+                  </span>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={updateMutation.isPending}
+                      onClick={openView}
+                    >
+                      Cancel
+                    </Button>
+                    <SubmitButton size="sm" disabled={!dirty} loadingText="Saving…">
+                      Save changes
+                    </SubmitButton>
+                  </div>
+                </>
+              }
             >
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </AppTooltip>
-        }
-        actions={
-          <>
-            {!isEditing && canModify && (
-              <Button variant="outline" size="sm" onClick={openEdit}>
-                <Pencil className="h-4 w-4" />
-                Edit trade group
-              </Button>
-            )}
-            <Can route={TRADE_GROUPS_ROUTE} action="delete">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-destructive/30 text-destructive hover:bg-destructive/5"
-                onClick={() => setConfirmDel(true)}
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </Button>
-            </Can>
-          </>
-        }
-      />
-
-      <div className="space-y-6">
-        {isEditing ? (
-          <Form form={form} onSubmit={save} className="w-full space-y-6">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-              <div className="lg:col-span-8">
-                <TradeGroupFormFields
-                  disabled={updateMutation.isPending}
-                  tradeSelectedLabel={row.tradeName}
-                />
-              </div>
-              <div className="lg:col-span-4">
-                <TradeGroupRecordPanel
-                  tradeGroupId={row.id}
-                  createdDate={row.createdDate}
-                  editDate={row.editDate}
-                  totalPrice={editTotalPrice}
-                />
-              </div>
-            </div>
-
-            <TradeGroupItemsEditor disabled={updateMutation.isPending} />
-
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2">
-              <span className="text-xs text-muted-foreground sm:mr-auto">
-                {dirty ? "Unsaved changes" : "All changes saved"}
-              </span>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={updateMutation.isPending}
-                  onClick={() => navigate({ to: "/trade-groups" })}
-                >
-                  Cancel
-                </Button>
-                <SubmitButton size="sm" disabled={!dirty} loadingText="Saving…">
-                  Save changes
-                </SubmitButton>
-              </div>
-            </div>
+              <TradeGroupFormFields
+                embedded
+                disabled={updateMutation.isPending}
+                tradeSelectedLabel={row.tradeName}
+              />
+              <TradeGroupItemsEditor disabled={updateMutation.isPending} embedded />
+            </FormPageCard>
           </Form>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-              <div className="lg:col-span-8">
-                <div className="card-elevated space-y-5 p-4 sm:p-6">
-                  <DetailSectionHeading>Trade group details</DetailSectionHeading>
-                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                    <DetailField label="Name" value={row.name} />
-                    <DetailField label="Code" value={row.code} />
-                  </div>
-                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                    <DetailField label="Trade" value={row.tradeName || "—"} />
-                    <DetailField
-                      label="Status"
-                      value={
-                        <span
-                          className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(row.isActive)}`}
-                        >
-                          {row.isActive ? "Active" : "Inactive"}
-                        </span>
-                      }
-                    />
-                  </div>
-                  <DetailField label="Description" value={row.description || "—"} />
-                </div>
-              </div>
-              <div className="lg:col-span-4">
-                <TradeGroupRecordPanel
-                  tradeGroupId={row.id}
-                  createdDate={row.createdDate}
-                  editDate={row.editDate}
-                  totalPrice={viewTotalPrice}
-                />
-              </div>
-            </div>
+      ) : (
+        <>
+          <DetailProfileHero
+            className="w-full"
+            title="Trade group details"
+            backLabel="Back to trade groups"
+            backTo="/trade-groups"
+            headerActions={viewActions}
+            leading={
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg border-2 border-background bg-accent/90 text-accent-foreground shadow-sm sm:h-16 sm:w-16">
+                <Layers className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
+              </span>
+            }
+            name={row.name}
+            subtitle={row.tradeName?.trim() || undefined}
+            status={<ActiveStatusBadge isActive={row.isActive} />}
+            description={row.description?.trim() || undefined}
+            highlights={heroHighlights}
+          />
 
-            <div className="card-elevated overflow-hidden">
-              <div className="border-b px-4 py-3 sm:px-6">
-                <DetailSectionHeading className="border-b-0 pb-0">Items</DetailSectionHeading>
-              </div>
+          <div className="card-elevated overflow-hidden">
               {items.length === 0 ? (
                 <div className="p-8 text-center text-sm text-muted-foreground">
                   No items in this trade group.
@@ -424,9 +400,8 @@ function TradeGroupDetail() {
                 </div>
               )}
             </div>
-          </>
-        )}
-      </div>
+        </>
+      )}
 
       {confirmDel && canDelete && (
         <div

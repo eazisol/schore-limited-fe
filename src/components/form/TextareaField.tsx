@@ -1,6 +1,8 @@
 import type { ReactNode, TextareaHTMLAttributes } from "react";
 import { useFormContext, type FieldValues, type Path } from "react-hook-form";
-import { FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
+import { FormField, FormItem, FormControl } from "@/components/ui/form";
+import { FormFieldLabel } from "@/components/form/FormFieldLabel";
+import { shouldShowFieldError } from "@/components/form/shouldShowFieldError";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -39,13 +41,11 @@ export function TextareaField<T extends FieldValues>({
       render={({ field, fieldState }) => {
         const value = String(field.value ?? "");
         const used = value.length;
+        const invalid = shouldShowFieldError(fieldState.error, formState.isSubmitted);
         return (
           <FormItem className={className}>
             {label && (
-              <FormLabel>
-                {label}
-                {required && <span className="text-destructive ml-0.5" aria-hidden>*</span>}
-              </FormLabel>
+              <FormFieldLabel label={label} description={description} required={required} />
             )}
             <FormControl>
               <Textarea
@@ -54,32 +54,25 @@ export function TextareaField<T extends FieldValues>({
                 value={value}
                 maxLength={maxLength}
                 aria-required={required}
-                aria-invalid={!!fieldState.error}
+                aria-invalid={invalid}
                 disabled={disabled || submitting}
                 className={cn(
-                  fieldState.error && "border-destructive focus-visible:ring-destructive",
+                  invalid && "border-destructive focus-visible:ring-destructive",
                   textareaClassName,
                 )}
               />
             </FormControl>
-            {(description || shouldShowCount) && (
-              <div className="flex items-start justify-between gap-3">
-                {description ? (
-                  <FormDescription>{description}</FormDescription>
-                ) : (
-                  <span />
-                )}
-                {shouldShowCount && maxLength != null && (
-                  <p
-                    className={cn(
-                      "shrink-0 text-xs tabular-nums text-muted-foreground",
-                      used >= maxLength && "text-destructive",
-                    )}
-                    aria-live="polite"
-                  >
-                    {used} / {maxLength}
-                  </p>
-                )}
+            {shouldShowCount && maxLength != null && (
+              <div className="flex justify-end">
+                <p
+                  className={cn(
+                    "shrink-0 text-xs tabular-nums text-muted-foreground",
+                    used >= maxLength && "text-destructive",
+                  )}
+                  aria-live="polite"
+                >
+                  {used} / {maxLength}
+                </p>
               </div>
             )}
           </FormItem>

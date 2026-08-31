@@ -15,9 +15,22 @@ export interface FormProps<T extends FieldValues> extends Omit<
   onSubmit: (values: T) => void | Promise<void>;
   /** Toast message shown when submit is attempted with invalid required fields. */
   invalidToastMessage?: string;
+  /** When set, validation errors are delivered here instead of a toast. */
+  onInvalidMessage?: (message: string) => void;
   /** Called with the RHF error map when validation fails. Optional. */
   onInvalidSubmit?: (errors: FieldErrors<T>) => void;
   children: ReactNode;
+}
+
+export function getFirstFormErrorMessage(errors: FieldErrors<FieldValues>): string | null {
+  return firstErrorMessage(errors);
+}
+
+export function focusFirstFormError<T extends FieldValues>(
+  errors: FieldErrors<T>,
+  form: UseFormReturn<T>,
+) {
+  focusFirstInvalid(errors, form);
 }
 
 /**
@@ -35,20 +48,33 @@ export function Form<T extends FieldValues>({
   form,
   onSubmit,
   invalidToastMessage = "Please fill all required fields.",
+  onInvalidMessage,
   onInvalidSubmit,
   children,
   ...rest
 }: FormProps<T>) {
   const handleInvalid = (errors: FieldErrors<T>) => {
     const firstMsg = firstErrorMessage(errors);
-    toast.error(firstMsg || invalidToastMessage, { id: "form-validation" });
+    const message = firstMsg || invalidToastMessage;
+    if (onInvalidMessage) {
+      onInvalidMessage(message);
+    } else {
+      toast.error(message, { id: "form-validation" });
+    }
     focusFirstInvalid(errors, form);
     onInvalidSubmit?.(errors);
   };
 
   return (
     <FormProvider {...form}>
-      <form noValidate onSubmit={form.handleSubmit(onSubmit, handleInvalid)} {...rest}>
+      <form
+        noValidate
+        onSubmit={(event) => {
+          event.stopPropagation();
+          void form.handleSubmit(onSubmit, handleInvalid)(event);
+        }}
+        {...rest}
+      >
         {children}
       </form>
     </FormProvider>

@@ -1,34 +1,27 @@
 import { cn } from "@/lib/utils";
-
-const map: Record<string, string> = {
-  "In Progress": "bg-info/10 text-info border-info/20",
-  "Handed Over": "bg-success/10 text-success border-success/20",
-  "On Hold": "bg-warning/15 text-warning-foreground border-warning/30",
-  "Snag": "bg-destructive/10 text-destructive border-destructive/20",
-  "Draft": "bg-muted text-muted-foreground border-border",
-  "Sent": "bg-warning/15 text-warning-foreground border-warning/30",
-  "Pending": "bg-warning/15 text-warning-foreground border-warning/30",
-  "Accepted": "bg-info/10 text-info border-info/20",
-  "Approved": "bg-info/10 text-info border-info/20",
-  "Refused": "bg-destructive/10 text-destructive border-destructive/20",
-  "Unpaid": "bg-muted text-muted-foreground border-border",
-  "Paid": "bg-success/10 text-success border-success/20",
-  "Active": "bg-success/10 text-success border-success/20",
-  "Inactive": "bg-muted text-muted-foreground border-border",
-  "Ticked": "bg-success/10 text-success border-success/20",
-  "Planned": "bg-info/10 text-info border-info/20",
-  "Locked": "bg-warning/15 text-warning-foreground border-warning/30",
-};
+import { STATUS_BADGE_BASE, statusBadgeClassForLabel } from "@/lib/status-colors";
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
   return (
-    <span className={cn(
-      "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2 py-0.5 text-[11px] font-medium rounded-full border",
-      map[status] ?? "bg-muted text-muted-foreground border-border",
-      className,
-    )}>
-      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+    <span
+      className={cn(
+        STATUS_BADGE_BASE,
+        statusBadgeClassForLabel(status),
+        className,
+      )}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" aria-hidden />
       {status}
     </span>
   );
+}
+
+export function ActiveStatusBadge({
+  isActive,
+  className,
+}: {
+  isActive: boolean;
+  className?: string;
+}) {
+  return <StatusBadge status={isActive ? "Active" : "Inactive"} className={className} />;
 }

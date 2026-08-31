@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PageHeader } from "@/components/AppShell";
+import { StatusBadge } from "@/components/StatusBadge";
+import { FormPageCard } from "@/components/FormPageCard";
 import { AppTooltip } from "@/components/AppTooltip";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Calculator, Pencil } from "lucide-react";
@@ -176,26 +177,22 @@ function TaskDetail() {
   return (
     <RequirePermission route={TASKS_ROUTE} action="read">
       <div className="min-w-0 w-full max-w-full">
-        <PageHeader
-          title={
-            isEdit
-              ? `Edit task ${task.taskNumber || ""}`.trim()
-              : task.taskNumber || task.propertyName
-          }
-          leading={
-            <AppTooltip content={backLabel} asChild>
-              <button
-                type="button"
-                onClick={goBack}
-                aria-label={backLabel}
-                className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </button>
-            </AppTooltip>
-          }
-          actions={
-            !isEdit ? (
+        {!isEdit ? (
+          <PageHeader
+            title={task.taskNumber || task.propertyName}
+            leading={
+              <AppTooltip content={backLabel} asChild>
+                <button
+                  type="button"
+                  onClick={goBack}
+                  aria-label={backLabel}
+                  className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+              </AppTooltip>
+            }
+            actions={
               <Can route={TASKS_ROUTE} action="modify">
                 <Button
                   size="sm"
@@ -212,56 +209,65 @@ function TaskDetail() {
                   Edit
                 </Button>
               </Can>
-            ) : null
-          }
-        />
+            }
+          />
+        ) : null}
 
         {isEdit ? (
-          <Form form={form} onSubmit={submit} className="min-w-0 w-full max-w-full space-y-6">
-            <TaskFormFields
-              disabled={updateMutation.isPending}
-              itemsLocked={Boolean(task.isLocked)}
-              selectedLabels={{
-                property: task.propertyName,
-                jobType: task.jobTypeName,
-                status: task.statusName,
-                siteManager: task.siteManagerName,
-              }}
-              itemSelectedLabels={Object.fromEntries(
-                (task.items ?? []).map((item) => [
-                  String(item.id),
-                  {
-                    operative: item.operativeName,
-                    tradeGroup: item.tradeGroupName,
-                    product: item.productName,
-                  },
-                ]),
-              )}
-            />
-            <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (fromDaily || fromContractor) {
-                    goBack();
-                    return;
-                  }
-                  navigate({
-                    to: "/tasks/$id",
-                    params: { id },
-                    search: { mode: "view", ...contextSearch },
-                  });
-                }}
+          <Form form={form} onSubmit={submit} className="min-w-0 w-full max-w-full">
+            <FormPageCard
+              title={`Edit task ${task.taskNumber || ""}`.trim()}
+              onBack={{ label: backLabel, onClick: goBack }}
+              maxWidth="w-full max-w-none"
+              footer={
+                <div className="flex w-full flex-wrap items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (fromDaily || fromContractor) {
+                        goBack();
+                        return;
+                      }
+                      navigate({
+                        to: "/tasks/$id",
+                        params: { id },
+                        search: { mode: "view", ...contextSearch },
+                      });
+                    }}
+                    disabled={updateMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <SubmitButton size="sm" loading={updateMutation.isPending}>
+                    Save changes
+                  </SubmitButton>
+                </div>
+              }
+            >
+              <TaskFormFields
+                embedded
                 disabled={updateMutation.isPending}
-              >
-                Cancel
-              </Button>
-              <SubmitButton size="sm" loading={updateMutation.isPending}>
-                Save changes
-              </SubmitButton>
-            </div>
+                itemsLocked={Boolean(task.isLocked)}
+                selectedLabels={{
+                  property: task.propertyName,
+                  jobType: task.jobTypeName,
+                  status: task.statusName,
+                  siteManager: task.siteManagerName,
+                }}
+                itemSelectedLabels={Object.fromEntries(
+                  (task.items ?? []).map((item) => [
+                    String(item.id),
+                    {
+                      operative: item.operativeName,
+                      tradeGroup: item.tradeGroupName,
+                      product: item.productName,
+                    },
+                  ]),
+                )}
+              />
+            </FormPageCard>
           </Form>
         ) : (
           <div className="min-w-0 w-full max-w-full space-y-6">
@@ -284,7 +290,6 @@ function TaskDetail() {
             </div>
 
             <div className="min-w-0 space-y-3">
-              <h3 className="font-display font-semibold">Items by operative</h3>
               {(task.itemsByOperative ?? []).length === 0 ? (
                 <div className="card-elevated p-6 text-sm text-muted-foreground">No items.</div>
               ) : (
@@ -362,9 +367,7 @@ function TaskDetail() {
                                   </td>
                                   <td className="px-3 py-1.5">
                                     {item.isTicked ? (
-                                      <span className="inline-flex items-center rounded-full border border-success/20 bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
-                                        Completed
-                                      </span>
+                                      <StatusBadge status="Completed" className="text-xs" />
                                     ) : (
                                       <span className="text-muted-foreground">No</span>
                                     )}

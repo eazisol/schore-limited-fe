@@ -1,10 +1,8 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { PageHeader } from "@/components/AppShell";
-import { AppTooltip } from "@/components/AppTooltip";
+import { FormPageCard } from "@/components/FormPageCard";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -64,41 +62,31 @@ function NewTask() {
 
   return (
     <RequirePermission route={TASKS_ROUTE} action="modify">
-      <div className="min-w-0 w-full max-w-full">
-        <PageHeader
+      <Form form={form} onSubmit={submit} className="min-w-0 w-full max-w-full">
+        <FormPageCard
           title="Add task"
-          leading={
-            <AppTooltip content={backLabel} asChild>
-              <Link
-                to={backTo}
-                aria-label={backLabel}
-                className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          back={{ to: backTo, label: backLabel }}
+          maxWidth="w-full max-w-none"
+          footer={
+            <div className="flex w-full flex-wrap items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => navigate({ to: backTo })}
+                disabled={createMutation.isPending}
               >
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </AppTooltip>
+                Cancel
+              </Button>
+              <SubmitButton size="sm" loading={createMutation.isPending}>
+                Create task
+              </SubmitButton>
+            </div>
           }
-        />
-
-        <Form form={form} onSubmit={submit} className="min-w-0 w-full max-w-full space-y-6">
-          <TaskFormFields disabled={createMutation.isPending} />
-
-          <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => navigate({ to: backTo })}
-              disabled={createMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <SubmitButton size="sm" loading={createMutation.isPending}>
-              Create task
-            </SubmitButton>
-          </div>
-        </Form>
-      </div>
+        >
+          <TaskFormFields disabled={createMutation.isPending} embedded />
+        </FormPageCard>
+      </Form>
     </RequirePermission>
   );
 }

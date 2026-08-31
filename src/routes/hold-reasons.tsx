@@ -24,7 +24,7 @@ import {
   type HoldReasonPayload,
 } from "@/lib/api/services/hold-reasons";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
-import { activeStatusClass } from "@/lib/module-ui";
+import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { HOLD_REASONS_ROUTE } from "@/lib/hold-reasons";
 import {
   DESCRIPTION_MAX_LENGTH,
@@ -130,13 +130,7 @@ function HoldReasonsPage() {
       {
         id: "status",
         header: "Status",
-        cell: (item) => (
-          <span
-            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(item.isActive)}`}
-          >
-            {item.isActive ? "Active" : "Inactive"}
-          </span>
-        ),
+        cell: (item) => <ActiveStatusBadge isActive={item.isActive} />,
       },
     ],
     [],
@@ -352,8 +346,8 @@ function HoldReasonFormModal({
         showCloseButton={false}
         headerActions={<SwitchField<Values> name="isActive" label="Active" disabled={isView} />}
       >
-        <div className="space-y-4">
-          <fieldset disabled={isView} className="space-y-4">
+        <div className="space-y-3">
+          <fieldset disabled={isView} className="space-y-3">
             <TextField<Values> name="name" label="Name" required autoFocus={!isView} maxLength={50} />
             <TextareaField<Values>
               name="description"

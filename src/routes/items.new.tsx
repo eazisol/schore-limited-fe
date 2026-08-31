@@ -1,14 +1,13 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { PageHeader } from "@/components/AppShell";
-import { AppTooltip } from "@/components/AppTooltip";
+import { FormPageCard } from "@/components/FormPageCard";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, SubmitButton } from "@/components/form";
+import { Form, SubmitButton, SwitchField } from "@/components/form";
 import { RequirePermission } from "@/components/Permission";
 import { productsService } from "@/lib/api/services/products";
 import { notifyApiError } from "@/lib/api/axios";
@@ -62,44 +61,32 @@ function NewItem() {
 
   return (
     <RequirePermission route={ITEMS_ROUTE} action="modify">
-      <div>
-        <PageHeader
-          title="Add Item"
-          leading={
-            <AppTooltip content="Back to items" asChild>
-              <Link
-                to="/items"
-                aria-label="Back to items"
-                className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      <Form form={form} onSubmit={submit} className="max-w-3xl">
+        <FormPageCard
+          title="Add item"
+          back={{ to: "/items", label: "Back to items" }}
+          headerActions={<SwitchField<ItemFormValues> name="isActive" label="Active" />}
+          footer={
+            <div className="flex w-full flex-wrap items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => navigate({ to: "/items" })}
+                disabled={createMutation.isPending}
               >
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </AppTooltip>
+                Cancel
+              </Button>
+              <SubmitButton size="sm" loadingText="Saving…">
+                {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                Create item
+              </SubmitButton>
+            </div>
           }
-        />
-
-        <Form form={form} onSubmit={submit} className="max-w-3xl space-y-6">
-          <div className="card-elevated space-y-4 p-6">
-            <ItemFormFields onImageFileChange={setImageFile} />
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => navigate({ to: "/items" })}
-              disabled={createMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <SubmitButton size="sm" loadingText="Saving…">
-              {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              Create item
-            </SubmitButton>
-          </div>
-        </Form>
-      </div>
+        >
+          <ItemFormFields onImageFileChange={setImageFile} />
+        </FormPageCard>
+      </Form>
     </RequirePermission>
   );
 }

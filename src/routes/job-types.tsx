@@ -24,7 +24,7 @@ import {
   type JobTypePayload,
 } from "@/lib/api/services/job-types";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
-import { activeStatusClass } from "@/lib/module-ui";
+import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { JOB_TYPES_ROUTE } from "@/lib/job-types";
 import {
   DESCRIPTION_MAX_LENGTH,
@@ -151,13 +151,7 @@ function JobTypesPage() {
       {
         id: "status",
         header: "Status",
-        cell: (item) => (
-          <span
-            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(item.isActive)}`}
-          >
-            {item.isActive ? "Active" : "Inactive"}
-          </span>
-        ),
+        cell: (item) => <ActiveStatusBadge isActive={item.isActive} />,
       },
     ],
     [],
@@ -387,9 +381,9 @@ function JobTypeFormModal({
         showCloseButton={false}
         headerActions={<SwitchField<Values> name="isActive" label="Active" disabled={isView} />}
       >
-        <div className="space-y-4">
-          <fieldset disabled={isView} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-3">
+          <fieldset disabled={isView} className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <TextField<Values>
                 name="name"
                 label="Name"

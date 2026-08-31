@@ -9,6 +9,8 @@ export interface SwitchFieldProps<T extends FieldValues> {
   label: ReactNode;
   disabled?: boolean;
   className?: string;
+  /** Inline label + switch (default), or stacked like text fields in a grid. */
+  layout?: "inline" | "stacked";
 }
 
 export function SwitchField<T extends FieldValues>({
@@ -16,9 +18,11 @@ export function SwitchField<T extends FieldValues>({
   label,
   disabled,
   className,
+  layout = "inline",
 }: SwitchFieldProps<T>) {
   const { control, formState } = useFormContext<T>();
   const submitting = formState.isSubmitting;
+  const stacked = layout === "stacked";
   return (
     <FormField
       control={control}
@@ -26,18 +30,24 @@ export function SwitchField<T extends FieldValues>({
       render={({ field }) => (
         <FormItem
           className={cn(
-            "flex h-9 items-center justify-start gap-3 space-y-0",
+            stacked
+              ? "space-y-2"
+              : "flex h-9 items-center justify-start gap-3 space-y-0",
             className,
           )}
         >
-          <FormLabel className="cursor-pointer font-medium">{label}</FormLabel>
+          <FormLabel className={cn("font-medium", !stacked && "cursor-pointer")}>
+            {label}
+          </FormLabel>
           <FormControl>
-            <Switch
-              checked={!!field.value}
-              onCheckedChange={field.onChange}
-              disabled={disabled || submitting}
-              aria-label={typeof label === "string" ? label : undefined}
-            />
+            <div className={cn(stacked && "flex h-10 items-center")}>
+              <Switch
+                checked={!!field.value}
+                onCheckedChange={field.onChange}
+                disabled={disabled || submitting}
+                aria-label={typeof label === "string" ? label : undefined}
+              />
+            </div>
           </FormControl>
         </FormItem>
       )}

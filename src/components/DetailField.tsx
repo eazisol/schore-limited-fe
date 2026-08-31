@@ -43,7 +43,7 @@ export function DetailField({
         {Icon ? <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden /> : null}
         {label}
       </div>
-      <div className="break-words text-sm font-normal leading-relaxed text-muted-foreground">
+      <div className="break-words text-sm font-normal leading-relaxed whitespace-pre-line text-muted-foreground">
         {value}
       </div>
     </div>

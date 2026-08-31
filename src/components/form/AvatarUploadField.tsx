@@ -2,7 +2,8 @@ import { useRef, type ReactNode } from "react";
 import { useFormContext, type FieldValues, type Path } from "react-hook-form";
 import { Camera, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { FormField, FormItem, FormLabel, FormDescription } from "@/components/ui/form";
+import { FormField, FormItem } from "@/components/ui/form";
+import { FormFieldHint, FormFieldLabel } from "@/components/form/FormFieldLabel";
 import { cn } from "@/lib/utils";
 
 export interface AvatarUploadFieldProps<T extends FieldValues> {
@@ -131,7 +132,10 @@ export function AvatarUploadField<T extends FieldValues>({
                   {avatarNode}
                   <div className="min-w-0 flex-1">
                     {title && (
-                      <div className="font-display font-semibold text-lg truncate">{title}</div>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="font-display font-semibold text-lg truncate">{title}</div>
+                        {description && <FormFieldHint description={description} />}
+                      </div>
                     )}
                     {subtitle && (
                       <div className="text-sm text-muted-foreground truncate mt-0.5">
@@ -166,7 +170,6 @@ export function AvatarUploadField<T extends FieldValues>({
                   </div>
                 </div>
               </div>
-              {description && <FormDescription className="mt-2">{description}</FormDescription>}
               {fileInput}
             </FormItem>
           );
@@ -174,7 +177,9 @@ export function AvatarUploadField<T extends FieldValues>({
 
         return (
           <FormItem className={className}>
-            {label && <FormLabel>{label}</FormLabel>}
+            {label && (
+              <FormFieldLabel label={label} description={description} />
+            )}
             <div className="flex items-center gap-4">
               {avatarNode}
               <div className="flex flex-col gap-2">
@@ -199,7 +204,6 @@ export function AvatarUploadField<T extends FieldValues>({
                 )}
               </div>
             </div>
-            {description && <FormDescription>{description}</FormDescription>}
             {fileInput}
           </FormItem>
         );

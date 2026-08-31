@@ -13,6 +13,16 @@ export interface ApiDailyAllocation {
   timeSlotCode: string | null;
   notes: string | null;
   isTicked: boolean;
+  itemName: string | null;
+}
+
+export interface ApiDailyItemOption {
+  sourceItemId: number;
+  todayItemId: number | null;
+  label: string;
+  operativeName: string;
+  isSelected: boolean;
+  isTicked: boolean;
 }
 
 export interface ApiDailyRow {
@@ -39,6 +49,7 @@ export interface ApiDailyRow {
   timeDisplay: string | null;
   isLocked: boolean;
   allocations: ApiDailyAllocation[];
+  itemOptions: ApiDailyItemOption[];
   nextDay: string | null;
 }
 
@@ -73,5 +84,10 @@ export const dailyProgrammeService = {
   tick: (itemId: number, date: string) =>
     http.post<ApiEnvelope<ApiDailyAllocation>>(`DailyProgramme/items/${itemId}/tick`, null, {
       params: { date },
+    }),
+  setItems: (taskId: number, date: string, selectedSourceItemIds: number[]) =>
+    http.put<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/items`, {
+      date,
+      selectedSourceItemIds,
     }),
 };

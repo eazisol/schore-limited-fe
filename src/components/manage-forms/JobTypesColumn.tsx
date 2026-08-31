@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/Modal";
 import { Form, TextField, TextareaField, SwitchField, SubmitButton } from "@/components/form";
 import { useDebouncedSearch } from "@/components/data-table";
 import {
@@ -26,8 +25,11 @@ import {
   LookupColumnCard,
   LookupColumnFooter,
   LookupEmptyState,
+  LookupFormPanel,
+  LookupItemList,
   LookupItemRow,
 } from "./LookupColumnCard";
+import { LookupSplitLayout } from "./LookupSplitLayout";
 import { useManageFormsPermissions } from "./useManageFormsPermissions";
 
 const jobTypesQueryKey = ["job-types"] as const;
@@ -53,7 +55,7 @@ export function JobTypesColumn() {
   const qc = useQueryClient();
   const { canModify, canDelete } = useManageFormsPermissions();
   const [page, setPage] = useState(1);
-  const [mode, setMode] = useState<Mode | null>(null);
+  const [mode, setMode] = useState<Mode>({ kind: "create" });
   const [confirmDel, setConfirmDel] = useState<ApiJobType | null>(null);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
     onPageReset: () => setPage(1),
@@ -69,6 +71,7 @@ export function JobTypesColumn() {
   const rows = query.data?.items ?? [];
   const totalCount = query.data?.totalCount ?? 0;
   const totalPages = query.data?.totalPages ?? 1;
+  const selectedId = mode.kind === "create" ? null : mode.item.id;
 
   useEffect(() => {
     if (!query.isFetching && page > totalPages) {
@@ -81,88 +84,100 @@ export function JobTypesColumn() {
     onSuccess: (res) => {
       toast.success(res.message || "Job type deleted");
       setConfirmDel(null);
+      if (mode.kind !== "create" && confirmDel && mode.item.id === confirmDel.id) {
+        setMode({ kind: "create" });
+      }
       qc.invalidateQueries({ queryKey: jobTypesQueryKey });
       qc.invalidateQueries({ queryKey: lookupsKey });
     },
     onError: (err) => notifyApiError(err, "Failed to delete job type"),
   });
 
-  return (
-    <div className="flex min-h-0 min-w-0 flex-col">
-      <LookupColumnCard
-        title="Job Types"
-        searchInput={searchInput}
-        onSearchChange={setSearchInput}
-        searchPlaceholder="Search by name or code…"
-        searchAriaLabel="Search job types"
-        canAdd={canModify}
-        onAdd={() => setMode({ kind: "create" })}
-        addAriaLabel="Add job type"
-        loading={query.isLoading}
-        fetching={query.isFetching}
-        loadingText="Loading job types…"
-        error={
-          query.isError
-            ? {
-                title: "Unable to load job types",
-                message: (query.error as unknown as ApiError)?.message || "Please try again.",
-                onRetry: () => {
-                  void query.refetch();
-                },
-              }
-            : null
-        }
-        empty={
-          !query.isLoading && !query.isError && rows.length === 0 ? (
-            <LookupEmptyState
-              title="No job types found."
-              description={search ? "Try clearing the search." : undefined}
-              onClear={search ? clearSearch : undefined}
-            />
-          ) : null
-        }
-        footer={
-          rows.length > 0 ? (
-            <LookupColumnFooter
-              page={page}
-              totalPages={totalPages}
-              totalCount={totalCount}
-              itemLabel="job types"
-              disabled={query.isFetching}
-              onPageChange={setPage}
-            />
-          ) : null
-        }
-      >
-        {rows.length > 0 ? (
-          <div className="space-y-2">
-            {rows.map((item) => (
-              <LookupItemRow
-                key={item.id}
-                label={item.name}
-                subtitle={item.code}
-                inactive={!item.isActive}
-                canEdit={canModify}
-                canDelete={canDelete}
-                onEdit={() => setMode({ kind: canModify ? "edit" : "view", item })}
-                onDelete={() => setConfirmDel(item)}
-              />
-            ))}
-          </div>
-        ) : null}
-      </LookupColumnCard>
+  function handleSaved() {
+    qc.invalidateQueries({ queryKey: jobTypesQueryKey });
+    qc.invalidateQueries({ queryKey: lookupsKey });
+    setMode({ kind: "create" });
+  }
 
-      {mode ? (
-        <JobTypeFormModal
-          mode={mode}
-          onClose={() => setMode(null)}
-          onSaved={() => {
-            setMode(null);
-            qc.invalidateQueries({ queryKey: jobTypesQueryKey });
-            qc.invalidateQueries({ queryKey: lookupsKey });
-          }}
-        />
-      ) : null}
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <LookupSplitLayout
+        list={
+          <LookupColumnCard
+            title="Job Types"
+            searchInput={searchInput}
+            onSearchChange={setSearchInput}
+            searchPlaceholder="Search by name or code…"
+            searchAriaLabel="Search job types"
+            canAdd={canModify}
+            onAdd={() => setMode({ kind: "create" })}
+            addAriaLabel="Add job type"
+            loading={query.isLoading}
+            fetching={query.isFetching}
+            loadingText="Loading job types…"
+            error={
+              query.isError
+                ? {
+                    title: "Unable to load job types",
+                    message: (query.error as unknown as ApiError)?.message || "Please try again.",
+                    onRetry: () => {
+                      void query.refetch();
+                    },
+                  }
+                : null
+            }
+            empty={
+              !query.isLoading && !query.isError && rows.length === 0 ? (
+                <LookupEmptyState
+                  title="No job types found."
+                  description={search ? "Try clearing the search." : undefined}
+                  onClear={search ? clearSearch : undefined}
+                />
+              ) : null
+            }
+            footer={
+              rows.length > 0 ? (
+                <LookupColumnFooter
+                  page={page}
+                  totalPages={totalPages}
+                  totalCount={totalCount}
+                  itemLabel="job types"
+                  disabled={query.isFetching}
+                  onPageChange={setPage}
+                />
+              ) : null
+            }
+          >
+            {rows.length > 0 ? (
+              <LookupItemList>
+                {rows.map((item) => (
+                  <LookupItemRow
+                    key={item.id}
+                    label={item.name}
+                    subtitle={item.code}
+                    inactive={!item.isActive}
+                    selected={selectedId === item.id}
+                    canEdit={canModify}
+                    canDelete={canDelete}
+                    onEdit={() =>
+                      setMode({ kind: canModify ? "edit" : "view", item })
+                    }
+                    onDelete={() => setConfirmDel(item)}
+                  />
+                ))}
+              </LookupItemList>
+            ) : null}
+          </LookupColumnCard>
+        }
+        form={
+          <JobTypeFormPanel
+            key={mode.kind === "create" ? "create" : `${mode.kind}-${mode.item.id}`}
+            mode={mode}
+            onCancel={() => setMode({ kind: "create" })}
+            onSaved={handleSaved}
+          />
+        }
+      />
 
       {confirmDel ? (
         <DeleteConfirmDialog
@@ -176,13 +191,13 @@ export function JobTypesColumn() {
   );
 }
 
-function JobTypeFormModal({
+function JobTypeFormPanel({
   mode,
-  onClose,
+  onCancel,
   onSaved,
 }: {
   mode: Mode;
-  onClose: () => void;
+  onCancel: () => void;
   onSaved: () => void;
 }) {
   const isView = mode.kind === "view";
@@ -190,7 +205,7 @@ function JobTypeFormModal({
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    mode: "onBlur",
+    mode: "onSubmit",
     reValidateMode: "onChange",
     defaultValues: {
       name: existing?.name ?? "",
@@ -233,52 +248,54 @@ function JobTypeFormModal({
 
   return (
     <Form form={form} onSubmit={submit} className="contents">
-      <Modal
-        open
-        onClose={onClose}
+      <LookupFormPanel
         title={title}
-        size="md"
-        showCloseButton={false}
         headerActions={<SwitchField<Values> name="isActive" label="Active" disabled={isView} />}
+        footer={
+          <div className="flex justify-end gap-2">
+            {mode.kind !== "create" ? (
+              <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+                New
+              </Button>
+            ) : null}
+            {!isView ? (
+              <SubmitButton size="sm" loadingText="Saving…">
+                {mode.kind === "edit" ? "Update job type" : "Create job type"}
+              </SubmitButton>
+            ) : (
+              <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+                Close
+              </Button>
+            )}
+          </div>
+        }
       >
-        <div className="space-y-4">
-          <fieldset disabled={isView} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <TextField<Values>
-                name="name"
-                label="Name"
-                required
-                autoFocus={!isView}
-                maxLength={JOB_TYPE_NAME_MAX_LENGTH}
-              />
-              <TextField<Values>
-                name="code"
-                label="Code"
-                required
-                maxLength={JOB_TYPE_CODE_MAX_LENGTH}
-                transformValue={normalizeCodeInput}
-                inputClassName="uppercase"
-              />
-            </div>
+        <fieldset disabled={isView} className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <TextField<Values>
+              name="name"
+              label="Name"
+              required
+              maxLength={JOB_TYPE_NAME_MAX_LENGTH}
+            />
+            <TextField<Values>
+              name="code"
+              label="Code"
+              required
+              maxLength={JOB_TYPE_CODE_MAX_LENGTH}
+              transformValue={normalizeCodeInput}
+              inputClassName="uppercase"
+            />
             <TextareaField<Values>
               name="description"
               label="Description"
               rows={3}
               maxLength={DESCRIPTION_MAX_LENGTH}
+              className="sm:col-span-2"
             />
-          </fieldset>
-          <div className="flex justify-end gap-2 border-t pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={onClose}>
-              {isView ? "Close" : "Cancel"}
-            </Button>
-            {!isView && (
-              <SubmitButton size="sm" loadingText="Saving…">
-                {mode.kind === "edit" ? "Update job type" : "Create job type"}
-              </SubmitButton>
-            )}
           </div>
-        </div>
-      </Modal>
+        </fieldset>
+      </LookupFormPanel>
     </Form>
   );
 }

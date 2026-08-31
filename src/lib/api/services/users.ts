@@ -168,11 +168,18 @@ export const usersService = {
       },
     }),
   get: (id: number | string) => http.get<ApiEnvelope<ApiUser>>(`Users/${id}`),
-  dropdown: (params: { search?: string; userTypeId: number }) =>
+  dropdown: (params: {
+    search?: string;
+    userTypeId: number;
+    roleId?: number;
+    take?: number;
+  }) =>
     http.get<ApiEnvelope<UserDropdownOption[]>>("Users/dropdown", {
       params: {
         Search: params.search ?? "",
         UserTypeId: params.userTypeId,
+        ...(params.roleId != null ? { RoleId: params.roleId } : {}),
+        ...(params.take != null ? { Take: params.take } : {}),
       },
     }),
   create: (payload: CreateUserPayload) =>

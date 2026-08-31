@@ -99,7 +99,7 @@ export function useUsers() {
 export const ROLES: UserRole[] = ["CEO", "CM", "PM", "SM"];
 
 export const ROLE_BADGE: Record<UserRole, string> = {
-  CEO: "bg-destructive/10 text-destructive border-destructive/20",
+  CEO: "bg-primary/10 text-primary border-primary/20",
   CM:  "bg-info/10 text-info border-info/20",
   PM:  "bg-accent/15 text-accent-foreground border-accent/30",
   SM:  "bg-muted text-foreground/70 border-border",

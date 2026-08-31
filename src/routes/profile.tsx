@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, KeyRound, Save, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Trash2 } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -254,7 +254,6 @@ function ProfilePage() {
     <div className="max-w-3xl">
       <PageHeader
         title="My profile"
-        subtitle=""
         leading={
           <AppTooltip content="Back to dashboard" asChild>
             <Link
@@ -280,7 +279,7 @@ function ProfilePage() {
           disabled={loadingUser || removingImage}
         />
 
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-2 gap-3">
           <TextField<ProfileValues> name="firstName" label="First name" required maxLength={80} />
           <TextField<ProfileValues> name="lastName" label="Last name" required maxLength={80} />
           <TextField<ProfileValues>
@@ -327,11 +326,7 @@ function ProfilePage() {
       </Form>
 
       <Form form={pwForm} onSubmit={onChangePassword} className="card-elevated p-6 mt-6 space-y-5">
-        <div className="flex items-center gap-2">
-          <KeyRound className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-display font-semibold">Change password</h2>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-2 gap-3">
           <PasswordField<PasswordValues>
             name="currentPassword"
             label="Current password"
@@ -345,7 +340,7 @@ function ProfilePage() {
             autoComplete="new-password"
           />
         </div>
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-2 gap-3">
           <PasswordField<PasswordValues>
             name="confirm"
             label="Confirm new password"

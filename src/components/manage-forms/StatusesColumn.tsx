@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/Modal";
 import {
   Form,
   TextField,
@@ -34,8 +33,11 @@ import {
   LookupColumnCard,
   LookupColumnFooter,
   LookupEmptyState,
+  LookupFormPanel,
+  LookupItemList,
   LookupItemRow,
 } from "./LookupColumnCard";
+import { LookupSplitLayout } from "./LookupSplitLayout";
 import { useManageFormsPermissions } from "./useManageFormsPermissions";
 
 const statusesQueryKey = ["statuses"] as const;
@@ -62,7 +64,7 @@ export function StatusesColumn() {
   const qc = useQueryClient();
   const { canModify, canDelete } = useManageFormsPermissions();
   const [page, setPage] = useState(1);
-  const [mode, setMode] = useState<Mode | null>(null);
+  const [mode, setMode] = useState<Mode>({ kind: "create" });
   const [confirmDel, setConfirmDel] = useState<ApiStatus | null>(null);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
     onPageReset: () => setPage(1),
@@ -78,6 +80,7 @@ export function StatusesColumn() {
   const rows = query.data?.items ?? [];
   const totalCount = query.data?.totalCount ?? 0;
   const totalPages = query.data?.totalPages ?? 1;
+  const selectedId = mode.kind === "create" ? null : mode.item.id;
 
   useEffect(() => {
     if (!query.isFetching && page > totalPages) {
@@ -90,88 +93,100 @@ export function StatusesColumn() {
     onSuccess: (res) => {
       toast.success(res.message || "Status deleted");
       setConfirmDel(null);
+      if (mode.kind !== "create" && confirmDel && mode.item.id === confirmDel.id) {
+        setMode({ kind: "create" });
+      }
       qc.invalidateQueries({ queryKey: statusesQueryKey });
       qc.invalidateQueries({ queryKey: lookupsKey });
     },
     onError: (err) => notifyApiError(err, "Failed to delete status"),
   });
 
-  return (
-    <div className="flex min-h-0 min-w-0 flex-col">
-      <LookupColumnCard
-        title="Statuses"
-        searchInput={searchInput}
-        onSearchChange={setSearchInput}
-        searchPlaceholder="Search by name or code…"
-        searchAriaLabel="Search statuses"
-        canAdd={canModify}
-        onAdd={() => setMode({ kind: "create" })}
-        addAriaLabel="Add status"
-        loading={query.isLoading}
-        fetching={query.isFetching}
-        loadingText="Loading statuses…"
-        error={
-          query.isError
-            ? {
-                title: "Unable to load statuses",
-                message: (query.error as unknown as ApiError)?.message || "Please try again.",
-                onRetry: () => {
-                  void query.refetch();
-                },
-              }
-            : null
-        }
-        empty={
-          !query.isLoading && !query.isError && rows.length === 0 ? (
-            <LookupEmptyState
-              title="No statuses found."
-              description={search ? "Try clearing the search." : undefined}
-              onClear={search ? clearSearch : undefined}
-            />
-          ) : null
-        }
-        footer={
-          rows.length > 0 ? (
-            <LookupColumnFooter
-              page={page}
-              totalPages={totalPages}
-              totalCount={totalCount}
-              itemLabel="statuses"
-              disabled={query.isFetching}
-              onPageChange={setPage}
-            />
-          ) : null
-        }
-      >
-        {rows.length > 0 ? (
-          <div className="space-y-2">
-            {rows.map((item) => (
-              <LookupItemRow
-                key={item.id}
-                label={item.name}
-                subtitle={[item.code, item.documentTypeName].filter(Boolean).join(" · ")}
-                inactive={!item.isActive}
-                canEdit={canModify}
-                canDelete={canDelete}
-                onEdit={() => setMode({ kind: canModify ? "edit" : "view", item })}
-                onDelete={() => setConfirmDel(item)}
-              />
-            ))}
-          </div>
-        ) : null}
-      </LookupColumnCard>
+  function handleSaved() {
+    qc.invalidateQueries({ queryKey: statusesQueryKey });
+    qc.invalidateQueries({ queryKey: lookupsKey });
+    setMode({ kind: "create" });
+  }
 
-      {mode ? (
-        <StatusFormModal
-          mode={mode}
-          onClose={() => setMode(null)}
-          onSaved={() => {
-            setMode(null);
-            qc.invalidateQueries({ queryKey: statusesQueryKey });
-            qc.invalidateQueries({ queryKey: lookupsKey });
-          }}
-        />
-      ) : null}
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <LookupSplitLayout
+        list={
+          <LookupColumnCard
+            title="Statuses"
+            searchInput={searchInput}
+            onSearchChange={setSearchInput}
+            searchPlaceholder="Search by name or code…"
+            searchAriaLabel="Search statuses"
+            canAdd={canModify}
+            onAdd={() => setMode({ kind: "create" })}
+            addAriaLabel="Add status"
+            loading={query.isLoading}
+            fetching={query.isFetching}
+            loadingText="Loading statuses…"
+            error={
+              query.isError
+                ? {
+                    title: "Unable to load statuses",
+                    message: (query.error as unknown as ApiError)?.message || "Please try again.",
+                    onRetry: () => {
+                      void query.refetch();
+                    },
+                  }
+                : null
+            }
+            empty={
+              !query.isLoading && !query.isError && rows.length === 0 ? (
+                <LookupEmptyState
+                  title="No statuses found."
+                  description={search ? "Try clearing the search." : undefined}
+                  onClear={search ? clearSearch : undefined}
+                />
+              ) : null
+            }
+            footer={
+              rows.length > 0 ? (
+                <LookupColumnFooter
+                  page={page}
+                  totalPages={totalPages}
+                  totalCount={totalCount}
+                  itemLabel="statuses"
+                  disabled={query.isFetching}
+                  onPageChange={setPage}
+                />
+              ) : null
+            }
+          >
+            {rows.length > 0 ? (
+              <LookupItemList>
+                {rows.map((item) => (
+                  <LookupItemRow
+                    key={item.id}
+                    label={item.name}
+                    subtitle={[item.code, item.documentTypeName].filter(Boolean).join(" · ")}
+                    inactive={!item.isActive}
+                    selected={selectedId === item.id}
+                    canEdit={canModify}
+                    canDelete={canDelete}
+                    onEdit={() =>
+                      setMode({ kind: canModify ? "edit" : "view", item })
+                    }
+                    onDelete={() => setConfirmDel(item)}
+                  />
+                ))}
+              </LookupItemList>
+            ) : null}
+          </LookupColumnCard>
+        }
+        form={
+          <StatusFormPanel
+            key={mode.kind === "create" ? "create" : `${mode.kind}-${mode.item.id}`}
+            mode={mode}
+            onCancel={() => setMode({ kind: "create" })}
+            onSaved={handleSaved}
+          />
+        }
+      />
 
       {confirmDel ? (
         <DeleteConfirmDialog
@@ -185,13 +200,13 @@ export function StatusesColumn() {
   );
 }
 
-function StatusFormModal({
+function StatusFormPanel({
   mode,
-  onClose,
+  onCancel,
   onSaved,
 }: {
   mode: Mode;
-  onClose: () => void;
+  onCancel: () => void;
   onSaved: () => void;
 }) {
   const isView = mode.kind === "view";
@@ -199,7 +214,7 @@ function StatusFormModal({
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    mode: "onBlur",
+    mode: "onSubmit",
     reValidateMode: "onChange",
     defaultValues: {
       name: existing?.name ?? "",
@@ -238,16 +253,30 @@ function StatusFormModal({
 
   return (
     <Form form={form} onSubmit={submit} className="contents">
-      <Modal
-        open
-        onClose={onClose}
+      <LookupFormPanel
         title={title}
-        size="md"
-        showCloseButton={false}
         headerActions={<SwitchField<Values> name="isActive" label="Active" disabled={isView} />}
+        footer={
+          <div className="flex justify-end gap-2">
+            {mode.kind !== "create" ? (
+              <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+                New
+              </Button>
+            ) : null}
+            {!isView ? (
+              <SubmitButton size="sm" loadingText="Saving…">
+                {mode.kind === "edit" ? "Update status" : "Create status"}
+              </SubmitButton>
+            ) : (
+              <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+                Close
+              </Button>
+            )}
+          </div>
+        }
       >
-        <div className="space-y-4">
-          <fieldset disabled={isView} className="space-y-4">
+        <fieldset disabled={isView} className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <SearchableSelectField<Values>
               name="documentTypeId"
               label="Document type"
@@ -258,42 +287,30 @@ function StatusFormModal({
               fetchOptions={fetchDocumentTypeOptions}
               selectedLabel={existing?.documentTypeName}
             />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <TextField<Values>
-                name="name"
-                label="Name"
-                required
-                autoFocus={!isView}
-                maxLength={STATUS_NAME_MAX_LENGTH}
-              />
-              <TextField<Values>
-                name="code"
-                label="Code"
-                required
-                maxLength={STATUS_CODE_MAX_LENGTH}
-                transformValue={normalizeCodeInput}
-                inputClassName="uppercase"
-              />
-            </div>
+            <TextField<Values>
+              name="name"
+              label="Name"
+              required
+              maxLength={STATUS_NAME_MAX_LENGTH}
+            />
+            <TextField<Values>
+              name="code"
+              label="Code"
+              required
+              maxLength={STATUS_CODE_MAX_LENGTH}
+              transformValue={normalizeCodeInput}
+              inputClassName="uppercase"
+            />
             <TextareaField<Values>
               name="description"
               label="Description"
               rows={3}
               maxLength={DESCRIPTION_MAX_LENGTH}
+              className="sm:col-span-2"
             />
-          </fieldset>
-          <div className="flex justify-end gap-2 border-t pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={onClose}>
-              {isView ? "Close" : "Cancel"}
-            </Button>
-            {!isView && (
-              <SubmitButton size="sm" loadingText="Saving…">
-                {mode.kind === "edit" ? "Update status" : "Create status"}
-              </SubmitButton>
-            )}
           </div>
-        </div>
-      </Modal>
+        </fieldset>
+      </LookupFormPanel>
     </Form>
   );
 }

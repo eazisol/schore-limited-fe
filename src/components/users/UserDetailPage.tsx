@@ -3,13 +3,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PageHeader } from "@/components/AppShell";
-import { AppTooltip } from "@/components/AppTooltip";
-import { DetailField, DetailMetaRow, DetailSectionHeading } from "@/components/DetailField";
+import { FormPageCard } from "@/components/FormPageCard";
+import {
+  DetailProfileHero,
+  type DetailProfileHighlight,
+} from "@/components/DetailProfileHero";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ArrowLeft, Loader2, Pencil, Trash2 } from "lucide-react";
+import { AlertCircle, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Form, SubmitButton } from "@/components/form";
+import { Form, SubmitButton, SwitchField } from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
 import { UserFormFields } from "@/components/users/UserFormFields";
 import {
@@ -23,10 +25,9 @@ import {
   toDateInputValue,
 } from "@/lib/api/services/users";
 import { lookupsService } from "@/lib/api/services/lookups";
-import { tradesService } from "@/lib/api/services/trades";
-import { cisService } from "@/lib/api/services/cis";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
-import { activeStatusClass, formatCisRate, formatDailyRate, formatDateTime } from "@/lib/module-ui";
+import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { formatDailyRate, formatDetailAddress, formatDateTime, namesLookSimilar } from "@/lib/module-ui";
 import { useUserModuleMode, userModuleConfig } from "@/lib/user-module";
 import {
   editUserFormSchema,
@@ -78,24 +79,10 @@ export function UserDetailPage() {
     queryFn: async () => (await lookupsService.roles()).data,
     enabled: mode === "user",
   });
-  const tradesQuery = useQuery({
-    queryKey: ["trades", "options"],
-    queryFn: async () => (await tradesService.options()).data,
-    enabled: cfg.isOperative,
-  });
-  const cisQuery = useQuery({
-    queryKey: ["cis", "options"],
-    queryFn: async () => (await cisService.options()).data,
-    enabled: cfg.isOperative,
-  });
 
   const user = userQuery.data;
   const roles = rolesQuery.data ?? [];
-  const trades = tradesQuery.data ?? [];
-  const cisOptions = cisQuery.data ?? [];
-  const lookupsReady =
-    (mode !== "user" || rolesQuery.isSuccess) &&
-    (!cfg.isOperative || (tradesQuery.isSuccess && cisQuery.isSuccess));
+  const lookupsReady = mode !== "user" || rolesQuery.isSuccess;
 
   const resolvedRoleId = useMemo(() => {
     const apiRoleId = user?.roleIds?.[0];
@@ -120,34 +107,6 @@ export function UserDetailPage() {
     }
     return options;
   }, [resolvedRoleId, roles, user?.roleNames]);
-
-  const tradeOptions = useMemo(() => {
-    const options = trades.map((t) => ({ value: String(t.id), label: t.name }));
-    if (
-      user?.tradeId != null &&
-      !options.some((o) => o.value === String(user.tradeId))
-    ) {
-      options.unshift({
-        value: String(user.tradeId),
-        label: user.tradeName || `Trade #${user.tradeId}`,
-      });
-    }
-    return options;
-  }, [trades, user?.tradeId, user?.tradeName]);
-
-  const cisSelectOptions = useMemo(() => {
-    const options = cisOptions.map((c) => ({
-      value: String(c.id),
-      label: `${c.name} (${formatCisRate(c.rate)})`,
-    }));
-    if (user?.cisId != null && !options.some((o) => o.value === String(user.cisId))) {
-      options.unshift({
-        value: String(user.cisId),
-        label: user.cisName || `CIS #${user.cisId}`,
-      });
-    }
-    return options;
-  }, [cisOptions, user?.cisId, user?.cisName]);
 
   const defaults = useMemo<UserFormValues>(
     () => ({
@@ -244,244 +203,185 @@ export function UserDetailPage() {
   }
 
   const dirty = form.formState.isDirty;
-  const lookupsLoading =
-    (mode === "user" && rolesQuery.isLoading) ||
-    (cfg.isOperative && (tradesQuery.isLoading || cisQuery.isLoading));
-  const profileImageUrl = resolveProfileImageUrl(user.profileImagePath);
+  const lookupsLoading = mode === "user" && rolesQuery.isLoading;
+  const profileImageUrl = resolveProfileImageUrl(user.profileImagePath, user.editDate);
   const roleLabel =
     (user.roleNames ?? []).filter(Boolean).join(", ") ||
     roles.find((r) => String(r.id) === resolvedRoleId)?.name ||
     "—";
   const name = displayUserName(user);
 
+  const profileHeroName = cfg.isContractor
+    ? user.companyName?.trim() || name
+    : name;
+
+  const contactPersonName = [user.firstName, user.lastName].filter(Boolean).join(" ");
+
+  const profileHeroSubtitle = cfg.isContractor
+    ? (() => {
+        if (!contactPersonName) return undefined;
+        if (namesLookSimilar(profileHeroName, contactPersonName)) return undefined;
+        return `Contact: ${contactPersonName}`;
+      })()
+    : cfg.isOperative
+      ? user.tradeName?.trim() || undefined
+      : cfg.isCustomer
+        ? user.contractorName?.trim() || undefined
+        : mode === "user"
+          ? undefined
+          : roleLabel !== "—"
+            ? roleLabel
+            : user.userTypeName?.trim() || undefined;
+
+  const profileHeroHighlights = ((): DetailProfileHighlight[] | undefined => {
+    if (cfg.isOperative) {
+      return [
+        { label: "Daily rate", value: formatDailyRate(user.dailyRate) },
+        { label: "CIS", value: user.cisName?.trim() || "—" },
+        { label: "Is daily rate", value: user.isDailyRate ? "Yes" : "No" },
+      ];
+    }
+    if (mode === "user") {
+      const items: DetailProfileHighlight[] = [];
+      const loginUsername = user.username?.trim();
+      const accountEmail = user.email?.trim();
+      if (roleLabel !== "—") items.push({ label: "Role", value: roleLabel });
+      if (user.userTypeName?.trim()) {
+        items.push({ label: "Job title", value: user.userTypeName.trim() });
+      }
+      if (
+        loginUsername &&
+        loginUsername.toLowerCase() !== accountEmail?.toLowerCase() &&
+        !loginUsername.includes("@")
+      ) {
+        items.push({ label: "Username", value: loginUsername });
+      }
+      if (user.createdDate) {
+        items.push({ label: "Member since", value: formatDateTime(user.createdDate) });
+      }
+      return items.length ? items : undefined;
+    }
+    return undefined;
+  })();
+
+  const profileHeroLocation = (() => {
+    if (!cfg.isContractor && !cfg.isCustomer) return undefined;
+    const address = formatDetailAddress(user);
+    return address === "—" ? undefined : address;
+  })();
+
+  const profileDateOfBirth =
+    !cfg.isContractor && !cfg.isCustomer
+      ? toDateInputValue(user.dateOfBirth) || undefined
+      : undefined;
+
+  const profileJoiningDate =
+    cfg.isOperative ? toDateInputValue(user.startDate) || undefined : undefined;
+
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={isEditing ? cfg.labels.editTitle : cfg.labels.viewTitle}
-        leading={
-          <>
-            <AppTooltip content={cfg.labels.backLabel} asChild>
-              <Link
-                to={cfg.listPath}
-                aria-label={cfg.labels.backLabel}
-                className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </AppTooltip>
-            {!isEditing && profileImageUrl ? (
-              <img
-                src={profileImageUrl}
-                alt={`${cfg.labels.entityTitle} profile`}
-                className="h-10 w-10 shrink-0 rounded-full object-cover"
-              />
-            ) : null}
-          </>
-        }
-        actions={
-          <>
-            {!isEditing && canModify && (
-              <Button variant="outline" size="sm" onClick={openEdit}>
-                <Pencil className="h-4 w-4" />
-                {cfg.labels.editButton}
-              </Button>
-            )}
-            <Can route={cfg.permissionRoute} action="delete">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-destructive/30 text-destructive hover:bg-destructive/5"
-                onClick={() => setConfirmDel(true)}
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </Button>
-            </Can>
-          </>
-        }
-      />
-
+      {isEditing ? (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {isEditing ? (
-          <Form form={form} onSubmit={save} className="space-y-6 lg:col-span-2">
-            <UserFormFields
-              mode={mode}
-              variant="edit"
-              disabled={updateMutation.isPending}
-              lookupsLoading={lookupsLoading || !lookupsReady}
-              roleOptions={roleOptions}
-              tradeOptions={tradeOptions}
-              cisOptions={cisSelectOptions}
-              contractorSelectedLabel={user.contractorName}
-            />
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2">
-              <span className="text-xs text-muted-foreground sm:mr-auto">
-                {dirty ? "Unsaved changes" : "All changes saved"}
-              </span>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={updateMutation.isPending}
-                  onClick={() => {
-                    form.reset(defaults);
-                    openView();
-                  }}
-                >
-                  Cancel
-                </Button>
-                <SubmitButton size="sm" disabled={!dirty || lookupsLoading} loadingText="Saving…">
-                  Save changes
-                </SubmitButton>
-              </div>
-            </div>
+          <Form form={form} onSubmit={save} className="lg:col-span-2">
+            <FormPageCard
+              title={cfg.labels.editTitle}
+              back={{ to: cfg.listPath, label: cfg.labels.backLabel }}
+              headerActions={<SwitchField<UserFormValues> name="isActive" label="Active" />}
+              maxWidth="w-full max-w-none"
+              footer={
+                <>
+                  <span className="text-xs text-muted-foreground sm:mr-auto">
+                    {dirty ? "Unsaved changes" : "All changes saved"}
+                  </span>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={updateMutation.isPending}
+                      onClick={() => {
+                        form.reset(defaults);
+                        openView();
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <SubmitButton size="sm" disabled={!dirty || lookupsLoading} loadingText="Saving…">
+                      Save changes
+                    </SubmitButton>
+                  </div>
+                </>
+              }
+            >
+              <UserFormFields
+                embedded
+                mode={mode}
+                variant="edit"
+                disabled={updateMutation.isPending}
+                lookupsLoading={lookupsLoading || !lookupsReady}
+                roleOptions={roleOptions}
+                operativeSelectedLabels={{
+                  trade: user.tradeName,
+                  cis: user.cisName,
+                }}
+                contractorSelectedLabel={user.contractorName}
+              />
+            </FormPageCard>
           </Form>
-        ) : (
-          <div className="space-y-6 lg:col-span-2">
-            <div className="card-elevated space-y-5 p-4 sm:p-6">
-              <DetailSectionHeading>Personal details</DetailSectionHeading>
-              <div className="space-y-5">
-                {cfg.isContractor ? (
-                  <>
-                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                      <DetailField label="Company name" value={user.companyName || "—"} />
-                      <DetailField label="First name" value={user.firstName || "—"} />
-                    </div>
-                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                      <DetailField label="Last name" value={user.lastName || "—"} />
-                      <DetailField label="Email" value={user.email || "—"} />
-                    </div>
-                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                      <DetailField label="Phone" value={user.phone || "—"} />
-                      <DetailField label="Address" value={user.address || "—"} />
-                    </div>
-                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                      <DetailField
-                        label="Status"
-                        value={
-                          <span
-                            className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(user.isActive)}`}
-                          >
-                            {user.isActive ? "Active" : "Inactive"}
-                          </span>
-                        }
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                      <DetailField label="City" value={user.city || "—"} />
-                      <DetailField label="State" value={user.state || "—"} />
-                      <DetailField label="Country" value={user.country || "—"} />
-                      <DetailField label="ZIP Code" value={user.zipCode || "—"} />
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                      <DetailField label="First name" value={user.firstName || "—"} />
-                      <DetailField label="Last name" value={user.lastName || "—"} />
-                    </div>
-                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                      <DetailField label="Email" value={user.email || "—"} />
-                      <DetailField label="Phone" value={user.phone || "—"} />
-                    </div>
-                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                      <DetailField
-                        label="Date of birth"
-                        value={toDateInputValue(user.dateOfBirth) || "—"}
-                      />
-                      {cfg.isOperative || cfg.isContactModule ? (
-                        <DetailField
-                          label="Status"
-                          value={
-                            <span
-                              className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(user.isActive)}`}
-                            >
-                              {user.isActive ? "Active" : "Inactive"}
-                            </span>
-                          }
-                        />
-                      ) : (
-                        <DetailField label="Role" value={roleLabel} />
-                      )}
-                    </div>
-                    {cfg.isOperative ? (
-                      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                        <DetailField
-                          label="Joining Date"
-                          value={toDateInputValue(user.startDate) || "—"}
-                        />
-                        <DetailField
-                          label="Leaving Date"
-                          value={toDateInputValue(user.endDate) || "—"}
-                        />
-                      </div>
-                    ) : null}
-                    {cfg.isCustomer ? (
-                      <div className="space-y-5">
-                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                          <DetailField label="Contractor" value={user.contractorName || "—"} />
-                          <DetailField label="Address" value={user.address || "—"} />
-                        </div>
-                        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                          <DetailField label="City" value={user.city || "—"} />
-                          <DetailField label="State" value={user.state || "—"} />
-                          <DetailField label="Country" value={user.country || "—"} />
-                          <DetailField label="ZIP Code" value={user.zipCode || "—"} />
-                        </div>
-                      </div>
-                    ) : null}
-                    {mode === "user" ? (
-                      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                        <DetailField
-                          label="Status"
-                          value={
-                            <span
-                              className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${activeStatusClass(user.isActive)}`}
-                            >
-                              {user.isActive ? "Active" : "Inactive"}
-                            </span>
-                          }
-                        />
-                      </div>
-                    ) : null}
-                  </>
-                )}
-              </div>
-            </div>
 
-            {cfg.isOperative ? (
-              <div className="card-elevated space-y-5 p-4 sm:p-6">
-                <DetailSectionHeading>Workforce</DetailSectionHeading>
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <DetailField label="Trade" value={user.tradeName || "—"} />
-                  <DetailField label="CIS" value={user.cisName || "—"} />
-                </div>
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <DetailField label="Daily rate" value={formatDailyRate(user.dailyRate)} />
-                  <DetailField label="Is daily rate" value={user.isDailyRate ? "Yes" : "No"} />
-                </div>
-              </div>
-            ) : null}
-
-            {cfg.isContractor ? <ContractorRunningTasksCard contractorId={numericId} /> : null}
-          </div>
-        )}
-
-        <div className="space-y-6">
-          <div className="card-elevated self-start p-6">
-            <DetailSectionHeading className="mb-4">Account</DetailSectionHeading>
-            <dl className="space-y-3">
-              <DetailMetaRow label={`${cfg.labels.entityTitle} ID`}>{user.id}</DetailMetaRow>
-              <DetailMetaRow label="Created">{formatDateTime(user.createdDate)}</DetailMetaRow>
-              <DetailMetaRow label="Last edited">{formatDateTime(user.editDate)}</DetailMetaRow>
-            </dl>
-          </div>
-          {cfg.isContractor && !isEditing ? (
-            <ContractorCostBudgetCard contractorId={numericId} />
-          ) : null}
-        </div>
+        {cfg.isContractor ? <ContractorCostBudgetCard contractorId={numericId} /> : null}
       </div>
+      ) : (
+        <>
+          <DetailProfileHero
+            className="w-full"
+            title={cfg.labels.viewTitle}
+            backLabel={cfg.labels.backLabel}
+            backTo={cfg.listPath}
+            headerActions={
+              <>
+                {canModify && (
+                  <Button variant="outline" size="sm" onClick={openEdit}>
+                    <Pencil className="h-4 w-4" />
+                    {cfg.labels.editButton}
+                  </Button>
+                )}
+                <Can route={cfg.permissionRoute} action="delete">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-destructive/30 text-destructive hover:bg-destructive/5"
+                    onClick={() => setConfirmDel(true)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </Button>
+                </Can>
+              </>
+            }
+            name={profileHeroName}
+            subtitle={profileHeroSubtitle}
+            imageUrl={profileImageUrl || undefined}
+            imageAlt={`${cfg.labels.entityTitle} profile`}
+            status={<ActiveStatusBadge isActive={user.isActive} />}
+            email={user.email}
+            phone={user.phone}
+            dateOfBirth={profileDateOfBirth}
+            joiningDate={profileJoiningDate}
+            location={profileHeroLocation}
+            highlights={profileHeroHighlights}
+          />
+
+          {cfg.isContractor ? (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <ContractorRunningTasksCard contractorId={numericId} />
+              </div>
+              <ContractorCostBudgetCard contractorId={numericId} />
+            </div>
+          ) : null}
+        </>
+      )}
 
       {confirmDel && canDelete && (
         <div

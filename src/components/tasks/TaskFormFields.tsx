@@ -1,6 +1,6 @@
 import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { TextField, TextareaField, SearchableSelectField } from "@/components/form";
+import { TextField, TextareaField, CreatableSearchableSelectField } from "@/components/form";
 import { SearchableSelect } from "@/components/form/SearchableSelect";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -82,11 +82,13 @@ const defaultAddState = (): OperativeAddState => ({
 
 export function TaskFormFields({
   disabled = false,
+  embedded = false,
   itemsLocked = false,
   selectedLabels,
   itemSelectedLabels = {},
 }: {
   disabled?: boolean;
+  embedded?: boolean;
   /** When true, add-item controls are disabled (daily per-task lock). */
   itemsLocked?: boolean;
   selectedLabels?: TaskFormSelectedLabels;
@@ -541,11 +543,16 @@ export function TaskFormFields({
 
   return (
     <>
-      <fieldset disabled={disabled} className="min-w-0 w-full max-w-full space-y-6">
-        <div className="card-elevated min-w-0 space-y-4 overflow-hidden p-4 sm:p-6">
-          <h3 className="font-display font-semibold">Task details</h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
-            <SearchableSelectField<TaskFormValues>
+      <fieldset disabled={disabled} className="min-w-0 w-full max-w-full space-y-3">
+        <div
+          className={
+            embedded
+              ? "min-w-0 space-y-3"
+              : "card-elevated min-w-0 space-y-3 overflow-hidden p-4 sm:p-6"
+          }
+        >
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
+            <CreatableSearchableSelectField<TaskFormValues>
               name="propertyId"
               label="Property"
               required
@@ -554,8 +561,9 @@ export function TaskFormFields({
               queryKey={["lookups", "properties"]}
               selectedLabel={selectedLabels?.property}
               fetchOptions={fetchPropertyOptions}
+              lookupType="property"
             />
-            <SearchableSelectField<TaskFormValues>
+            <CreatableSearchableSelectField<TaskFormValues>
               name="jobTypeId"
               label="Job type"
               required
@@ -564,6 +572,7 @@ export function TaskFormFields({
               queryKey={["lookups", "job-types"]}
               selectedLabel={selectedLabels?.jobType}
               fetchOptions={fetchJobTypeOptions}
+              lookupType="jobType"
             />
             <TextField<TaskFormValues>
               name="startDate"
@@ -591,7 +600,7 @@ export function TaskFormFields({
                 <span className={cn(className, "text-sm font-semibold leading-none")}>£</span>
               )}
             />
-            <SearchableSelectField<TaskFormValues>
+            <CreatableSearchableSelectField<TaskFormValues>
               name="statusId"
               label="Status"
               required
@@ -601,8 +610,9 @@ export function TaskFormFields({
               selectedLabel={selectedLabels?.status}
               fetchOptions={fetchTaskStatusOptions}
               onSelect={handleStatusSelect}
+              lookupType="status"
             />
-            <SearchableSelectField<TaskFormValues>
+            <CreatableSearchableSelectField<TaskFormValues>
               name="siteManagerId"
               label="Site Manager"
               placeholder="Select Site Manager"
@@ -611,6 +621,7 @@ export function TaskFormFields({
               selectedLabel={selectedLabels?.siteManager}
               fetchOptions={fetchSiteManagerOptions}
               emptyOption={{ value: "", label: "None" }}
+              lookupType="siteManager"
             />
           </div>
           <TextareaField<TaskFormValues>
@@ -621,17 +632,14 @@ export function TaskFormFields({
           />
         </div>
 
-        <div className="min-w-0 space-y-4">
+        <div className={embedded ? "min-w-0 space-y-3 border-t border-border pt-6" : "min-w-0 space-y-3"}>
           <div className="min-w-0 space-y-3">
-            <div>
-              <h3 className="font-display font-semibold">Task items by operative</h3>
-              {itemsLocked ? (
-                <p className="mt-1 text-xs font-medium text-warning-foreground">
-                  Locked — tick at least one item on the previous working day before adding new
-                  items.
-                </p>
-              ) : null}
-            </div>
+            {itemsLocked ? (
+              <p className="text-xs font-medium text-warning-foreground">
+                Locked — tick at least one item on the previous working day before adding new
+                items.
+              </p>
+            ) : null}
             {renderAddControls(activeOperativeId, {
               addButtonLabel: "Add item",
               querySuffix: "top",
@@ -664,7 +672,7 @@ export function TaskFormFields({
             return (
               <div
                 key={operativeId}
-                className="card-elevated min-w-0 space-y-4 overflow-hidden p-4 sm:p-6"
+                className="card-elevated min-w-0 space-y-3 overflow-hidden p-4 sm:p-6"
               >
                 <div className="min-w-0 space-y-3">
                   <h4 className="font-medium">{name}</h4>
@@ -759,7 +767,7 @@ export function TaskFormFields({
             size="sm"
             showCloseButton={false}
           >
-            <div className="space-y-4">
+            <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
                 New rate: £{Number(ratePrompt.nextRate || 0).toFixed(2)}
               </p>
