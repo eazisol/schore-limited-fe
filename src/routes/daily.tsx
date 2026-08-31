@@ -18,10 +18,6 @@ import {
   ChevronRight,
   Loader2,
   X,
-  ClipboardList,
-  Clock,
-  Users,
-  HardHat,
 } from "lucide-react";
 import { toast } from "sonner";
 import { dailyProgrammeService, type ApiDailyRow } from "@/lib/api/services/daily-programme";
@@ -34,8 +30,8 @@ import { truncateWithEllipsis } from "@/lib/module-ui";
 import { fmtGBP } from "@/lib/data";
 import { formatUkDate } from "@/lib/week-ending";
 import { cn } from "@/lib/utils";
-import type { LucideIcon } from "lucide-react";
 import { DailyItemsCell } from "@/components/daily/DailyItemsCell";
+import { DailyNameCell } from "@/components/daily/DailyNameCell";
 
 export const Route = createFileRoute("/daily")({
   head: () => ({ meta: [{ title: "Daily Programmer | Schore" }] }),
@@ -79,7 +75,10 @@ function matchesSearch(row: ApiDailyRow, search: string) {
     row.nameDisplay,
     row.notesDisplay,
     row.nextDay,
-    ...(row.itemOptions ?? []).map((option) => option.label),
+    ...(row.assignedByOperative ?? []).flatMap((op) => [
+      ...op.packages.map((pkg) => pkg.tradeGroupName),
+      ...op.addOns.map((a) => a.productName),
+    ]),
   ]
     .filter(Boolean)
     .join(" ")
@@ -163,36 +162,6 @@ function Daily() {
     const start = (pageSafe - 1) * pageSize;
     return filteredRows.slice(start, start + pageSize);
   }, [filteredRows, pageSafe, pageSize]);
-
-  const kpis = useMemo(
-    () => [
-      {
-        label: "In Progress",
-        value: data?.inProgressCount ?? 0,
-        tone: "info" as const,
-        icon: ClipboardList,
-      },
-      {
-        label: "On Hold",
-        value: data?.onHoldCount ?? 0,
-        tone: "warn" as const,
-        icon: Clock,
-      },
-      {
-        label: "On roll",
-        value: allRows.length,
-        tone: "ok" as const,
-        icon: Users,
-      },
-      {
-        label: "Operatives on Site",
-        value: data?.operativesOnSiteCount ?? 0,
-        tone: "site" as const,
-        icon: HardHat,
-      },
-    ],
-    [data, allRows.length],
-  );
 
   function clearFilters() {
     clearSearch();
@@ -297,37 +266,55 @@ function Daily() {
         ),
       },
       {
+        id: "trade",
+        header: "Trade",
+        width: "6rem",
+        accessor: (row) => row.tradeOrStatus || "—",
+        cell: (row) => {
+          const value = row.tradeOrStatus?.trim() || "—";
+          if (value === "—") return "—";
+          const isStatus = value === "hold" || value === "HO";
+          return (
+            <AppTooltip content={value} asChild align="start">
+              <span
+                className={cn(
+                  "block max-w-full truncate font-mono text-xs uppercase",
+                  isStatus && "italic text-muted-foreground",
+                )}
+              >
+                {truncateWithEllipsis(value, 14)}
+              </span>
+            </AppTooltip>
+          );
+        },
+      },
+      {
         id: "name",
         header: "Name",
         width: "9rem",
         truncate: false,
         accessor: (row) =>
-          [row.nameDisplay, row.notesDisplay].filter(Boolean).join(" · ") || "No allocation",
-        cell: (row) =>
-          !row.nameDisplay ? (
-            <span className="italic text-muted-foreground">No allocation</span>
-          ) : (
-            <AppTooltip
-              content={[row.nameDisplay, row.notesDisplay].filter(Boolean).join(" · ")}
-              asChild
-              align="start"
-            >
-              <span className="block max-w-full cursor-default truncate font-medium">
-                {truncateWithEllipsis(row.nameDisplay, 28)}
-              </span>
-            </AppTooltip>
-          ),
+          (row.nameOperatives ?? [])
+            .map((op) => op.operativeName)
+            .join(", ") ||
+          row.nameDisplay ||
+          "No allocation",
+        cell: (row) => (
+          <DailyNameCell row={row} date={date} disabled={!canModifyDaily} />
+        ),
       },
       {
         id: "items",
         header: "Items",
         width: "10rem",
         truncate: false,
-        accessor: (row) =>
-          (row.itemOptions ?? [])
-            .filter((option) => option.isSelected)
-            .map((option) => option.label)
-            .join(", ") || "No items",
+        accessor: (row) => {
+          const names = (row.assignedByOperative ?? []).flatMap((op) => [
+            ...op.packages.map((pkg) => pkg.tradeGroupName),
+            ...op.addOns.map((a) => a.productName),
+          ]);
+          return [...new Set(names)].join(", ") || "No items";
+        },
         cell: (row) => (
           <DailyItemsCell row={row} date={date} disabled={!canModifyDaily} />
         ),
@@ -421,12 +408,6 @@ function Daily() {
         title="Daily Programmer"
         subtitle={`Roll for ${formatLongDate(date)}`}
       />
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {kpis.map((k) => (
-          <Counter key={k.label} label={k.label} value={k.value} tone={k.tone} icon={k.icon} />
-        ))}
-      </div>
 
       <DataTable
         columns={columns}
@@ -717,62 +698,6 @@ function CompletedItemsModalBody({
         itemLabel="items"
         controlsAlign="center"
       />
-    </div>
-  );
-}
-
-function Counter({
-  label,
-  value,
-  tone,
-  icon: Icon,
-}: {
-  label: string;
-  value: number;
-  tone: "info" | "warn" | "ok" | "site" | "destructive";
-  icon: LucideIcon;
-}) {
-  const toneCls =
-    tone === "warn"
-      ? "text-warning-foreground"
-      : tone === "destructive"
-        ? "text-destructive"
-        : tone === "info"
-          ? "text-info"
-          : tone === "site"
-            ? "text-accent"
-            : "text-success";
-  const iconWrapCls =
-    tone === "warn"
-      ? "bg-warning/20 text-warning-foreground"
-      : tone === "destructive"
-        ? "bg-destructive/10 text-destructive"
-        : tone === "info"
-          ? "bg-info/10 text-info"
-          : tone === "site"
-            ? "bg-accent/15 text-accent"
-            : "bg-success/10 text-success";
-  const borderCls =
-    tone === "warn"
-      ? "border-l-warning"
-      : tone === "destructive"
-        ? "border-l-destructive"
-        : tone === "info"
-          ? "border-l-info"
-          : tone === "site"
-            ? "border-l-accent"
-            : "border-l-success";
-  return (
-    <div className={cn("card-elevated flex items-center gap-3 border-l-4 p-3 sm:p-4", borderCls)}>
-      <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-lg", iconWrapCls)}>
-        <Icon className="h-5 w-5" aria-hidden />
-      </div>
-      <div className="min-w-0">
-        <div className="text-xs text-muted-foreground">{label}</div>
-        <div className={cn("mt-0.5 font-display text-2xl font-semibold tabular-nums", toneCls)}>
-          {value}
-        </div>
-      </div>
     </div>
   );
 }

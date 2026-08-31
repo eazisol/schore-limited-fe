@@ -16,13 +16,68 @@ export interface ApiDailyAllocation {
   itemName: string | null;
 }
 
-export interface ApiDailyItemOption {
-  sourceItemId: number;
-  todayItemId: number | null;
-  label: string;
+export interface ApiDailyAssignedItemLine {
+  itemId: number;
+  productId: number | null;
+  productName: string;
+  quantity: number;
+  timeSlotId: number | null;
+  timeSlotName: string | null;
+  rate: number;
+  amount: number;
+  workDate: string;
+  isToday: boolean;
+  isTicked?: boolean;
+}
+
+export interface ApiDailyAssignedPackageGroup {
+  tradeGroupId: number;
+  tradeGroupName: string;
+  items: ApiDailyAssignedItemLine[];
+}
+
+export interface ApiDailyAssignedOperative {
+  operativeId: number;
   operativeName: string;
-  isSelected: boolean;
-  isTicked: boolean;
+  packages: ApiDailyAssignedPackageGroup[];
+  addOns: ApiDailyAssignedItemLine[];
+}
+
+export interface ApiDailyNameOperative {
+  operativeId: number;
+  operativeName: string;
+  items: ApiDailyAssignedItemLine[];
+}
+
+export interface ApiDailyAssignedPackage {
+  tradeGroupId: number;
+  tradeGroupName: string;
+  operativeId: number;
+  operativeName: string;
+  rate: number;
+  isCarryOver: boolean;
+  hasTodayItems: boolean;
+}
+
+export interface ApiDailyUnassignedPackage {
+  tradeGroupId: number;
+  tradeGroupName: string;
+  tradeName: string | null;
+}
+
+export interface ApiDailyAssignedAddOn {
+  productId: number;
+  productName: string;
+  operativeId: number;
+  operativeName: string;
+  rate: number;
+  isCarryOver: boolean;
+  hasTodayItems: boolean;
+}
+
+export interface ApiDailyUnassignedAddOn {
+  productId: number;
+  productName: string;
 }
 
 export interface ApiDailyRow {
@@ -49,7 +104,12 @@ export interface ApiDailyRow {
   timeDisplay: string | null;
   isLocked: boolean;
   allocations: ApiDailyAllocation[];
-  itemOptions: ApiDailyItemOption[];
+  assignedPackages: ApiDailyAssignedPackage[];
+  unassignedPackages: ApiDailyUnassignedPackage[];
+  assignedAddOns: ApiDailyAssignedAddOn[];
+  unassignedAddOns: ApiDailyUnassignedAddOn[];
+  assignedByOperative: ApiDailyAssignedOperative[];
+  nameOperatives: ApiDailyNameOperative[];
   nextDay: string | null;
 }
 
@@ -72,6 +132,26 @@ export interface ApiDailyRollForward {
   openHolds: number;
 }
 
+export type DailyAssignPackagePayload = {
+  date: string;
+  tradeGroupId: number;
+  operativeId: number;
+  rate: number;
+  quantity: number;
+  timeSlotId?: number | null;
+  applyRatePermanently?: boolean;
+};
+
+export type DailyAssignAddOnPayload = {
+  date: string;
+  productId: number;
+  operativeId: number;
+  rate: number;
+  quantity: number;
+  timeSlotId?: number | null;
+  applyRatePermanently?: boolean;
+};
+
 export const dailyProgrammeService = {
   get: (date: string, showHandedOver = false) =>
     http.get<ApiEnvelope<ApiDailyProgramme>>("DailyProgramme", {
@@ -85,9 +165,16 @@ export const dailyProgrammeService = {
     http.post<ApiEnvelope<ApiDailyAllocation>>(`DailyProgramme/items/${itemId}/tick`, null, {
       params: { date },
     }),
-  setItems: (taskId: number, date: string, selectedSourceItemIds: number[]) =>
-    http.put<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/items`, {
-      date,
-      selectedSourceItemIds,
+  completeItem: (itemId: number, date: string) =>
+    http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/items/${itemId}/complete`, null, {
+      params: { date },
     }),
+  removeItem: (itemId: number, date: string) =>
+    http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/items/${itemId}/remove`, null, {
+      params: { date },
+    }),
+  assignPackage: (taskId: number, payload: DailyAssignPackagePayload) =>
+    http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/assign-package`, payload),
+  assignAddOn: (taskId: number, payload: DailyAssignAddOnPayload) =>
+    http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/assign-addon`, payload),
 };
