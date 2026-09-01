@@ -165,12 +165,11 @@ function EditItem() {
 
   return (
     <RequirePermission route={ITEMS_ROUTE} action="modify">
-      <Form form={form} onSubmit={save} className="max-w-xl">
+      <Form form={form} onSubmit={save} className="max-w-4xl">
         <FormPageCard
           title="Edit item"
           onBack={{ label: "Back to items", onClick: () => navigate({ to: "/items" }) }}
           headerActions={<SwitchField<ItemFormValues> name="isActive" label="Active" />}
-          maxWidth="max-w-xl"
           footer={
             <>
               <span className="text-xs text-muted-foreground sm:mr-auto">

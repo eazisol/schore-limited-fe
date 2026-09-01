@@ -61,6 +61,8 @@ const searchSchema = z.object({
   from: z.enum(["roles"]).optional(),
 });
 
+const permissionGridClass = "grid grid-cols-[1fr_3.5rem_3.5rem_3.5rem]";
+
 export const Route = createFileRoute("/permissions")({
   head: () => ({ meta: [{ title: "Permissions | Schore" }] }),
   validateSearch: searchSchema,
@@ -245,7 +247,7 @@ function PermissionsPage() {
   const showTree = roleId != null && draft.length > 0 && !loadingTree && !loadError;
 
   return (
-    <div className="w-full space-y-4 lg:w-[58%]">
+    <div className="max-w-3xl space-y-4">
       <PageHeader
         title="Permissions"
         leading={
@@ -364,7 +366,7 @@ function PermissionsPage() {
         </div>
       ) : (
         <div className="card-elevated overflow-x-auto">
-          <div className="grid min-w-[36rem] grid-cols-[minmax(0,1fr)_6rem_6rem_6rem] gap-0 border-b bg-muted/50 text-xs text-muted-foreground">
+          <div className={cn(permissionGridClass, "gap-0 border-b bg-muted/50 text-xs text-muted-foreground")}>
             <div className="px-4 py-2 font-medium">Menu</div>
             <div className="px-3 py-2 text-center font-medium">Read</div>
             <div className="px-3 py-2 text-center font-medium">Modify</div>
@@ -376,7 +378,7 @@ function PermissionsPage() {
             renderOverlay={(activeId) => {
               const activeNode = findPermissionNode(draft, activeId);
               return (
-                <div className="grid min-w-[36rem] grid-cols-[minmax(0,1fr)_6rem_6rem_6rem] items-center rounded-md border bg-card px-4 py-2 shadow-lg">
+                <div className={cn(permissionGridClass, "items-center rounded-md border bg-card px-4 py-2 shadow-lg")}>
                   <div className="truncate text-xs font-medium text-foreground">
                     {activeNode?.menuName ?? `Menu #${activeId}`}
                   </div>
@@ -469,7 +471,8 @@ function PermissionTreeRow({
   const rowContent = (dragHandleProps: ComponentProps<typeof TreeSortableDragHandle>["dragHandleProps"]) => (
     <div
       className={cn(
-        "grid min-w-[36rem] grid-cols-[minmax(0,1fr)_6rem_6rem_6rem] items-center hover:bg-muted/30",
+        permissionGridClass,
+        "items-center hover:bg-muted/30",
         depth === 0 && hasChildren && "bg-muted/10",
       )}
     >

@@ -61,12 +61,11 @@ function NewItem() {
 
   return (
     <RequirePermission route={ITEMS_ROUTE} action="modify">
-      <Form form={form} onSubmit={submit} className="max-w-xl">
+      <Form form={form} onSubmit={submit} className="max-w-4xl">
         <FormPageCard
           title="Add item"
           back={{ to: "/items", label: "Back to items" }}
           headerActions={<SwitchField<ItemFormValues> name="isActive" label="Active" />}
-          maxWidth="max-w-xl"
           footer={
             <div className="flex w-full flex-wrap items-center justify-end gap-2">
               <Button
