@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { StatusBadge } from "@/components/StatusBadge";
+import { PageHeader } from "@/components/AppShell";
 import { FormPageCard } from "@/components/FormPageCard";
 import { AppTooltip } from "@/components/AppTooltip";
 import { Button } from "@/components/ui/button";
@@ -32,35 +33,41 @@ import { z } from "zod";
 
 const searchSchema = z.object({
   mode: z.enum(["view", "edit"]).optional().default("view"),
-  from: z.enum(["daily", "contractor"]).optional(),
+  from: z.enum(["daily", "contractor", "property"]).optional(),
   contractorId: z.string().optional(),
+  propertyId: z.string().optional(),
 });
 
 export const Route = createFileRoute("/tasks/$id")({
   validateSearch: searchSchema,
-  head: () => ({ meta: [{ title: "Task | Schore" }] }),
+  head: () => ({ meta: [{ title: "Project | Schore" }] }),
   component: TaskDetail,
 });
 
 function TaskDetail() {
   const { id } = Route.useParams();
-  const { mode, from, contractorId } = Route.useSearch();
+  const { mode, from, contractorId, propertyId } = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canModify = usePermission({ route: TASKS_ROUTE, action: "modify" });
   const isEdit = mode === "edit" && canModify;
   const fromDaily = from === "daily";
   const fromContractor = from === "contractor" && Boolean(contractorId);
+  const fromProperty = from === "property" && Boolean(propertyId);
   const backLabel = fromDaily
     ? "Back to daily programmer"
     : fromContractor
       ? "Back to contractor"
-      : "Back to tasks";
+      : fromProperty
+        ? "Back to property"
+        : "Back to tasks";
   const contextSearch = fromDaily
     ? { from: "daily" as const }
     : fromContractor
       ? { from: "contractor" as const, contractorId: String(contractorId) }
-      : undefined;
+      : fromProperty
+        ? { from: "property" as const, propertyId: String(propertyId) }
+        : undefined;
 
   const goBack = () => {
     if (fromDaily) {
@@ -69,6 +76,10 @@ function TaskDetail() {
     }
     if (fromContractor && contractorId) {
       navigate({ to: "/contractors/$id", params: { id: String(contractorId) } });
+      return;
+    }
+    if (fromProperty && propertyId) {
+      navigate({ to: "/properties/$id", params: { id: String(propertyId) } });
       return;
     }
     navigate({ to: "/tasks" });
@@ -134,7 +145,7 @@ function TaskDetail() {
   const updateMutation = useMutation({
     mutationFn: (payload: ReturnType<typeof toTaskPayload>) => tasksService.update(id, payload),
     onSuccess: (res) => {
-      toast.success(res.message || "Task updated");
+      toast.success(res.message || "Project updated");
       queryClient.invalidateQueries({ queryKey: tasksQueryKey });
       if (fromDaily) {
         queryClient.invalidateQueries({ queryKey: ["daily-programme"] });
@@ -145,13 +156,17 @@ function TaskDetail() {
         navigate({ to: "/contractors/$id", params: { id: String(contractorId) } });
         return;
       }
+      if (fromProperty && propertyId) {
+        navigate({ to: "/properties/$id", params: { id: String(propertyId) } });
+        return;
+      }
       navigate({
         to: "/tasks/$id",
         params: { id },
         search: { mode: "view", ...contextSearch },
       });
     },
-    onError: (err) => notifyApiError(err, "Failed to update task"),
+    onError: (err) => notifyApiError(err, "Failed to update project"),
   });
 
   async function submit(values: TaskFormValues) {
@@ -159,13 +174,13 @@ function TaskDetail() {
   }
 
   if (isLoading) {
-    return <div className="p-6 text-sm text-muted-foreground">Loading task…</div>;
+    return <div className="p-6 text-sm text-muted-foreground">Loading project…</div>;
   }
 
   if (isError || !task) {
     return (
       <div className="space-y-3 p-6">
-        <p className="text-sm text-destructive">Failed to load task.</p>
+        <p className="text-sm text-destructive">Failed to load project.</p>
         <Button size="sm" variant="outline" onClick={() => refetch()}>
           Retry
         </Button>
@@ -216,7 +231,7 @@ function TaskDetail() {
         {isEdit ? (
           <Form form={form} onSubmit={submit} className="min-w-0 w-full max-w-full">
             <FormPageCard
-              title={`Edit task ${task.taskNumber || ""}`.trim()}
+              title={`Edit project ${task.taskNumber || ""}`.trim()}
               onBack={{ label: backLabel, onClick: goBack }}
               maxWidth="w-full max-w-none"
               footer={
@@ -226,7 +241,7 @@ function TaskDetail() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      if (fromDaily || fromContractor) {
+                      if (fromDaily || fromContractor || fromProperty) {
                         goBack();
                         return;
                       }
@@ -272,7 +287,7 @@ function TaskDetail() {
         ) : (
           <div className="min-w-0 w-full max-w-full space-y-6">
             <div className="card-elevated grid grid-cols-1 gap-4 overflow-hidden p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-4 [&>*]:min-w-0">
-              <Detail label="Task number" value={task.taskNumber || "—"} />
+              <Detail label="Project number" value={task.taskNumber || "—"} />
               <Detail label="Property" value={task.propertyName} />
               <Detail label="Job type" value={task.jobTypeName} />
               <Detail label="Contractor" value={contractorDisplay} />

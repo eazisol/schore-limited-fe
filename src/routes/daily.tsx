@@ -1,6 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,6 +24,7 @@ import { toast } from "sonner";
 import { dailyProgrammeService, type ApiDailyRow } from "@/lib/api/services/daily-programme";
 import { costBudgetService, type ApiCostBudgetTask } from "@/lib/api/services/cost-budget";
 import { tasksService, type ApiTaskItem } from "@/lib/api/services/tasks";
+import { propertiesService } from "@/lib/api/services/properties";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { usePermission } from "@/components/Permission";
 import { DAILY_ROUTE } from "@/lib/daily";
@@ -30,10 +32,20 @@ import { truncateWithEllipsis } from "@/lib/module-ui";
 import { fmtGBP } from "@/lib/data";
 import { formatUkDate } from "@/lib/week-ending";
 import { cn } from "@/lib/utils";
+import { SearchableSelect } from "@/components/form";
 import { DailyItemsCell } from "@/components/daily/DailyItemsCell";
 import { DailyNameCell } from "@/components/daily/DailyNameCell";
+import {
+  fetchPropertyOptions,
+  fetchTaskStatusOptions,
+} from "@/lib/task-dropdowns";
+
+const dailySearchSchema = z.object({
+  propertyId: z.string().optional(),
+});
 
 export const Route = createFileRoute("/daily")({
+  validateSearch: dailySearchSchema,
   head: () => ({ meta: [{ title: "Daily Programmer | Schore" }] }),
   component: Daily,
 });
@@ -80,6 +92,11 @@ function matchesSearch(row: ApiDailyRow, search: string) {
 
 function Daily() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { propertyId: propertyIdSearch } = Route.useSearch();
+  const filterPropertyId = Number(propertyIdSearch);
+  const hasPropertyFilter =
+    Number.isFinite(filterPropertyId) && filterPropertyId > 0;
   const canModifyDaily = usePermission({ route: DAILY_ROUTE, action: "modify" });
   const [date, setDate] = useState(todayIso);
   const [showHO, setShowHO] = useState(false);
@@ -90,14 +107,44 @@ function Daily() {
   } | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [propertyLabel, setPropertyLabel] = useState<string | null>(null);
+  const [statusId, setStatusId] = useState("");
+  const [statusLabel, setStatusLabel] = useState<string | null>(null);
+  const filterStatusId = Number(statusId);
+  const hasStatusFilter = Number.isFinite(filterStatusId) && filterStatusId > 0;
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
     onPageReset: () => setPage(1),
   });
 
+  useEffect(() => {
+    setPage(1);
+  }, [propertyIdSearch, statusId]);
+
   const query = useQuery({
-    queryKey: [...dailyQueryKey, date, showHO],
-    queryFn: async () => (await dailyProgrammeService.get(date, showHO)).data,
+    queryKey: [
+      ...dailyQueryKey,
+      date,
+      showHO,
+      hasPropertyFilter ? filterPropertyId : null,
+      hasStatusFilter ? filterStatusId : null,
+    ],
+    queryFn: async () =>
+      (
+        await dailyProgrammeService.get({
+          date,
+          showHandedOver: showHO,
+          propertyId: hasPropertyFilter ? filterPropertyId : undefined,
+          statusId: hasStatusFilter ? filterStatusId : undefined,
+        })
+      ).data,
     placeholderData: keepPreviousData,
+  });
+
+  const propertyLookupQuery = useQuery({
+    queryKey: ["properties", filterPropertyId, "daily-filter-label"],
+    queryFn: async () => (await propertiesService.get(filterPropertyId)).data,
+    enabled: hasPropertyFilter && !propertyLabel?.trim(),
+    staleTime: 60_000,
   });
 
   const costQuery = useQuery({
@@ -140,12 +187,27 @@ function Daily() {
   });
 
   const data = query.data;
-  const allRows = data?.rows ?? [];
+  const allRows: ApiDailyRow[] = data?.rows ?? [];
 
   const filteredRows = useMemo(
     () => allRows.filter((row) => matchesSearch(row, search)),
     [allRows, search],
   );
+
+  const propertyFilterLabel = useMemo(() => {
+    if (!hasPropertyFilter) return null;
+    if (propertyLabel?.trim()) return propertyLabel.trim();
+    const fromLookup = propertyLookupQuery.data?.propertyName?.trim();
+    if (fromLookup) return fromLookup;
+    const match = allRows.find((row) => row.propertyId === filterPropertyId);
+    return match?.propertyName?.trim() || `Property #${filterPropertyId}`;
+  }, [
+    allRows,
+    filterPropertyId,
+    hasPropertyFilter,
+    propertyLabel,
+    propertyLookupQuery.data?.propertyName,
+  ]);
 
   const totalCount = filteredRows.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -155,17 +217,53 @@ function Daily() {
     return filteredRows.slice(start, start + pageSize);
   }, [filteredRows, pageSafe, pageSize]);
 
+  function clearPropertyFilter() {
+    setPropertyLabel(null);
+    void navigate({
+      to: "/daily",
+      search: {},
+      replace: true,
+    });
+    setPage(1);
+  }
+
+  function setPropertyFilter(nextId: string, nextLabel?: string | null) {
+    if (!nextId) {
+      clearPropertyFilter();
+      return;
+    }
+    setPropertyLabel(nextLabel?.trim() || null);
+    void navigate({
+      to: "/daily",
+      search: { propertyId: nextId },
+      replace: true,
+    });
+    setPage(1);
+  }
+
+  function clearStatusFilter() {
+    setStatusId("");
+    setStatusLabel(null);
+    setPage(1);
+  }
+
   function clearFilters() {
     clearSearch();
     setShowHO(false);
     setDate(todayIso());
+    clearStatusFilter();
     setPage(1);
+    if (hasPropertyFilter) {
+      clearPropertyFilter();
+    }
   }
 
   const today = todayIso();
   const isDateFiltered = date !== today;
   const isAtOrPastToday = date >= today;
-  const hasActiveFilters = Boolean(search || showHO || isDateFiltered);
+  const hasActiveFilters = Boolean(
+    search || showHO || isDateFiltered || hasPropertyFilter || hasStatusFilter,
+  );
 
   const columns = useMemo<DataTableColumn<ApiDailyRow>[]>(
     () => [
@@ -396,33 +494,9 @@ function Daily() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Daily Programmer" />
-
-      <DataTable
-        columns={columns}
-        rows={rows}
-        getRowId={(row) => row.taskId}
-        loading={query.isLoading}
-        fetching={query.isFetching}
-        loadingText="Loading daily programmer…"
-        error={
-          query.isError
-            ? {
-                title: "Unable to load daily programmer",
-                message: (query.error as unknown as ApiError)?.message || "Please try again.",
-                onRetry: () => {
-                  void query.refetch();
-                },
-              }
-            : null
-        }
-        search={{
-          value: searchInput,
-          onChange: setSearchInput,
-          placeholder: "Search property, contractor, trade…",
-          "aria-label": "Search daily programmer",
-        }}
-        filters={
+      <PageHeader
+        title="Daily Programmer"
+        actions={
           <>
             <div className="flex items-center gap-1 rounded-md border border-input bg-background">
               <button
@@ -490,8 +564,85 @@ function Daily() {
               />
               Show handed-over
             </label>
+            <SearchableSelect
+              value={hasPropertyFilter ? String(filterPropertyId) : ""}
+              onValueChange={(value) => {
+                if (!value) clearPropertyFilter();
+              }}
+              onSelect={(option) => {
+                if (!option.value) {
+                  clearPropertyFilter();
+                  return;
+                }
+                setPropertyFilter(option.value, option.label);
+              }}
+              placeholder="All properties"
+              searchPlaceholder="Search properties…"
+              aria-label="Filter by property"
+              queryKey={["lookups", "properties", "daily-filter"]}
+              fetchOptions={fetchPropertyOptions}
+              selectedLabel={propertyFilterLabel}
+              emptyOption={{ value: "", label: "All properties" }}
+              className="w-full min-w-[11rem] sm:w-52"
+              triggerClassName="h-9 [&>span]:whitespace-nowrap"
+            />
+            <SearchableSelect
+              value={statusId}
+              onValueChange={(value) => {
+                if (!value) {
+                  clearStatusFilter();
+                  return;
+                }
+                setStatusId(value);
+                setPage(1);
+              }}
+              onSelect={(option) => {
+                if (!option.value) {
+                  clearStatusFilter();
+                  return;
+                }
+                setStatusId(option.value);
+                setStatusLabel(option.label?.trim() || null);
+                setPage(1);
+              }}
+              placeholder="All statuses"
+              searchPlaceholder="Search statuses…"
+              aria-label="Filter by status"
+              queryKey={["lookups", "task-statuses", "daily-filter"]}
+              fetchOptions={fetchTaskStatusOptions}
+              selectedLabel={statusLabel}
+              emptyOption={{ value: "", label: "All statuses" }}
+              className="w-full min-w-[11rem] sm:w-52"
+              triggerClassName="h-9 [&>span]:whitespace-nowrap"
+            />
           </>
         }
+      />
+
+      <DataTable
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => row.taskId}
+        loading={query.isLoading}
+        fetching={query.isFetching}
+        loadingText="Loading daily programmer…"
+        error={
+          query.isError
+            ? {
+                title: "Unable to load daily programmer",
+                message: (query.error as unknown as ApiError)?.message || "Please try again.",
+                onRetry: () => {
+                  void query.refetch();
+                },
+              }
+            : null
+        }
+        search={{
+          value: searchInput,
+          onChange: setSearchInput,
+          placeholder: "Search property, contractor, trade…",
+          "aria-label": "Search daily programmer",
+        }}
         emptyState={{
           title: hasActiveFilters ? "No rows match your filters" : "No properties on today's roll",
           description: hasActiveFilters ? "Try clearing the search or filters." : undefined,

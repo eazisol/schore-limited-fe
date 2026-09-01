@@ -27,6 +27,7 @@ import {
   type PropertyFormValues,
 } from "@/lib/property-form";
 import { PropertyFormFields } from "@/components/properties/PropertyFormFields";
+import { PropertyTasksCard } from "@/components/properties/PropertyTasksCard";
 
 const detailSearchSchema = z.object({
   mode: z.enum(["edit", "view"]).optional(),
@@ -224,28 +225,32 @@ function PropertyDetail() {
           </Form>
       </div>
       ) : (
-        <DetailProfileHero
-          className="w-full"
-          title="Property details"
-          backLabel="Back to properties"
-          backTo="/properties"
-          headerActions={viewActions}
-          leading={
-            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg border-2 border-background bg-accent/90 text-accent-foreground shadow-sm sm:h-16 sm:w-16">
-              <Building2 className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
-            </span>
-          }
-          name={row.propertyName}
-          location={propertyLocation(row)}
-          status={<ActiveStatusBadge isActive={row.isActive} />}
-          email={row.contactEmail}
-          phone={row.contactPhoneNo}
-          highlights={propertyHighlights(row)}
-        >
-          {row.accessNotes?.trim() ? (
-            <DetailField label="Access notes" value={row.accessNotes} />
-          ) : null}
-        </DetailProfileHero>
+        <>
+          <DetailProfileHero
+            className="w-full"
+            title="Property details"
+            backLabel="Back to properties"
+            backTo="/properties"
+            headerActions={viewActions}
+            leading={
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg border-2 border-background bg-accent/90 text-accent-foreground shadow-sm sm:h-16 sm:w-16">
+                <Building2 className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
+              </span>
+            }
+            name={row.propertyName}
+            location={propertyLocation(row)}
+            status={<ActiveStatusBadge isActive={row.isActive} />}
+            email={row.contactEmail}
+            phone={row.contactPhoneNo}
+            highlights={propertyHighlights(row)}
+          >
+            {row.accessNotes?.trim() ? (
+              <DetailField label="Access notes" value={row.accessNotes} />
+            ) : null}
+          </DetailProfileHero>
+
+          <PropertyTasksCard propertyId={row.id} propertyName={row.propertyName} />
+        </>
       )}
 
       {confirmDel && canDelete && (

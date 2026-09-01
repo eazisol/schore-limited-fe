@@ -239,7 +239,7 @@ export function TaskFormFields({
 
   async function addForOperative(operativeId: string) {
     if (itemsLocked) {
-      toast.warning("This task is locked. Tick previous-day work before adding items.");
+      toast.warning("This project is locked. Tick previous-day work before adding items.");
       return;
     }
     if (!operativeId) return;
@@ -321,7 +321,7 @@ export function TaskFormFields({
 
   async function addFromTop() {
     if (itemsLocked) {
-      toast.warning("This task is locked. Tick previous-day work before adding items.");
+      toast.warning("This project is locked. Tick previous-day work before adding items.");
       return;
     }
     if (!activeOperativeId) {
@@ -632,6 +632,8 @@ export function TaskFormFields({
           />
         </div>
 
+        {/* Temporarily hidden: Active operative / package items section */}
+        {false && (
         <div className={embedded ? "min-w-0 space-y-3 border-t border-border pt-6" : "min-w-0 space-y-3"}>
           <div className="min-w-0 space-y-3">
             {itemsLocked ? (
@@ -649,7 +651,7 @@ export function TaskFormFields({
 
           {operativeCards.length === 0 ? (
             <div className="card-elevated p-6 text-sm text-muted-foreground">
-              No task items yet. Choose an operative, then add a package or add-on from the top bar.
+              No project items yet. Choose an operative, then add a package or add-on from the top bar.
             </div>
           ) : null}
 
@@ -757,6 +759,7 @@ export function TaskFormFields({
             );
           })}
         </div>
+        )}
 
         {ratePrompt ? (
           <Modal

@@ -152,10 +152,27 @@ export type DailyAssignAddOnPayload = {
   applyRatePermanently?: boolean;
 };
 
+export interface DailyProgrammeListParams {
+  date: string;
+  showHandedOver?: boolean;
+  propertyId?: number;
+  statusId?: number;
+}
+
 export const dailyProgrammeService = {
-  get: (date: string, showHandedOver = false) =>
+  get: ({
+    date,
+    showHandedOver = false,
+    propertyId,
+    statusId,
+  }: DailyProgrammeListParams) =>
     http.get<ApiEnvelope<ApiDailyProgramme>>("DailyProgramme", {
-      params: { Date: date, ShowHandedOver: showHandedOver },
+      params: {
+        Date: date,
+        ShowHandedOver: showHandedOver,
+        ...(propertyId != null ? { PropertyId: propertyId } : {}),
+        ...(statusId != null ? { StatusId: statusId } : {}),
+      },
     }),
   rollForward: (fromDate: string) =>
     http.post<ApiEnvelope<ApiDailyRollForward>>("DailyProgramme/roll-forward", null, {
