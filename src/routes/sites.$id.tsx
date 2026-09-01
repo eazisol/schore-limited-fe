@@ -228,7 +228,7 @@ function SiteDetail() {
             ) : null}
           </DetailProfileHero>
 
-          <EntityHierarchyCard scope="site" siteId={row.id} />
+          <EntityHierarchyCard scope="site" siteId={row.id} customerId={row.customerId} />
         </>
       )}
 

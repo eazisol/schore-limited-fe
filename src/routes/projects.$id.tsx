@@ -230,7 +230,7 @@ function ProjectDetail() {
             ) : null}
           </DetailProfileHero>
 
-          <EntityHierarchyCard scope="project" projectId={row.id} />
+          <EntityHierarchyCard scope="project" projectId={row.id} customerId={row.customerId} />
         </>
       )}
 

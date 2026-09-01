@@ -1,8 +1,8 @@
-import { Link } from "@tanstack/react-router";
-import { ChevronDown, ChevronRight, Eye, Loader2, Pencil } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { CalendarDays, ChevronDown, ChevronRight, Eye, Loader2, Pencil } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { ActiveStatusBadge, StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -13,27 +13,36 @@ import { usePermission } from "@/components/Permission";
 import { projectsService } from "@/lib/api/services/projects";
 import { propertiesService } from "@/lib/api/services/properties";
 import { sitesService } from "@/lib/api/services/sites";
+import { tasksService } from "@/lib/api/services/tasks";
 import {
   buildCustomerHierarchy,
   buildProjectHierarchy,
   buildSiteHierarchy,
+  filterTasksForProperties,
+  type HierarchyJobNode,
   type HierarchyProjectNode,
   type HierarchyPropertyNode,
   type HierarchySiteNode,
 } from "@/lib/entity-hierarchy";
+import { DAILY_ROUTE } from "@/lib/daily";
 import { PROJECTS_ROUTE } from "@/lib/projects";
 import { PROPERTIES_ROUTE } from "@/lib/properties";
 import { SITES_ROUTE } from "@/lib/sites";
+import { TASKS_ROUTE } from "@/lib/tasks";
 import { cn } from "@/lib/utils";
 
 const HIERARCHY_PAGE_SIZE = 500;
 
 type EntityHierarchyCardProps =
   | { scope: "customer"; customerId: number; title?: string }
-  | { scope: "site"; siteId: number; title?: string }
-  | { scope: "project"; projectId: number; title?: string };
+  | { scope: "site"; siteId: number; customerId: number; title?: string }
+  | { scope: "project"; projectId: number; customerId: number; title?: string };
 
-function HierarchyActions({
+type JobNavContext =
+  | { from: "customer"; customerId: number }
+  | { from: "property"; propertyId: number };
+
+function HierarchyEntityActions({
   to,
   id,
   canModify,
@@ -64,23 +73,141 @@ function HierarchyActions({
   );
 }
 
-function PropertyRow({ node }: { node: HierarchyPropertyNode }) {
-  const canModify = usePermission({ route: PROPERTIES_ROUTE, action: "modify" });
+function JobRow({ node, navContext }: { node: HierarchyJobNode; navContext: JobNavContext }) {
+  const navigate = useNavigate();
+  const canModify = usePermission({ route: TASKS_ROUTE, action: "modify" });
+  const canReadDaily = usePermission({ route: DAILY_ROUTE, action: "read" });
+  const params = { id: String(node.id) };
+  const taskSearch =
+    navContext.from === "customer"
+      ? {
+          mode: "view" as const,
+          from: "customer" as const,
+          customerId: String(navContext.customerId),
+        }
+      : {
+          mode: "view" as const,
+          from: "property" as const,
+          propertyId: String(navContext.propertyId),
+        };
+  const taskEditSearch =
+    navContext.from === "customer"
+      ? {
+          mode: "edit" as const,
+          from: "customer" as const,
+          customerId: String(navContext.customerId),
+        }
+      : {
+          mode: "edit" as const,
+          from: "property" as const,
+          propertyId: String(node.propertyId),
+        };
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-background px-3 py-2">
+    <div className="flex items-center justify-between gap-3 rounded-md border border-border/50 bg-background px-3 py-2">
       <div className="min-w-0">
-        <div className="truncate text-sm font-medium">{node.name}</div>
+        <div className="truncate text-sm font-medium">
+          <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">
+            {node.taskNumber || "—"}
+          </code>
+          <span className="ml-2 text-muted-foreground">{node.jobTypeName || "—"}</span>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <ActiveStatusBadge isActive={node.isActive} />
-        <HierarchyActions to="/properties/$id" id={node.id} canModify={canModify} />
+      <div className="flex flex-wrap items-center justify-end gap-1">
+        {node.statusName ? <StatusBadge status={node.statusName} /> : null}
+        <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
+          <Link to="/tasks/$id" params={params} search={taskSearch}>
+            <Eye className="h-3.5 w-3.5" />
+            View
+          </Link>
+        </Button>
+        {canModify ? (
+          <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
+            <Link to="/tasks/$id" params={params} search={taskEditSearch}>
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Link>
+          </Button>
+        ) : null}
+        {canReadDaily ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2"
+            onClick={() =>
+              navigate({
+                to: "/daily",
+                search: { propertyId: String(node.propertyId) },
+              })
+            }
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            Daily
+          </Button>
+        ) : null}
       </div>
     </div>
   );
 }
 
-function ProjectBlock({ node, defaultOpen }: { node: HierarchyProjectNode; defaultOpen?: boolean }) {
+function PropertyBlock({
+  node,
+  navContext,
+  defaultOpen,
+}: {
+  node: HierarchyPropertyNode;
+  navContext: JobNavContext;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
+  const canModify = usePermission({ route: PROPERTIES_ROUTE, action: "modify" });
+  const jobNavContext: JobNavContext =
+    navContext.from === "customer"
+      ? navContext
+      : { from: "property", propertyId: node.id };
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="rounded-md border border-border/60 bg-background"
+    >
+      <div className="flex items-center justify-between gap-2 px-3 py-2">
+        <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-left">
+          {open ? (
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          )}
+          <div className="min-w-0 truncate text-sm font-medium">{node.name}</div>
+        </CollapsibleTrigger>
+        <div className="flex items-center gap-2">
+          <ActiveStatusBadge isActive={node.isActive} />
+          <HierarchyEntityActions to="/properties/$id" id={node.id} canModify={canModify} />
+        </div>
+      </div>
+      <CollapsibleContent className="space-y-2 border-t border-border/60 px-3 py-2">
+        {node.children.length === 0 ? (
+          <p className="py-2 text-xs text-muted-foreground">No jobs linked to this property.</p>
+        ) : (
+          node.children.map((job) => (
+            <JobRow key={job.id} node={job} navContext={jobNavContext} />
+          ))
+        )}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function ProjectBlock({
+  node,
+  navContext,
+  defaultOpen,
+}: {
+  node: HierarchyProjectNode;
+  navContext: JobNavContext;
+  defaultOpen?: boolean;
+}) {
   const [open, setOpen] = useState(defaultOpen ?? false);
   const canModify = usePermission({ route: PROJECTS_ROUTE, action: "modify" });
 
@@ -100,21 +227,31 @@ function ProjectBlock({ node, defaultOpen }: { node: HierarchyProjectNode; defau
         </CollapsibleTrigger>
         <div className="flex items-center gap-2">
           <ActiveStatusBadge isActive={node.isActive} />
-          <HierarchyActions to="/projects/$id" id={node.id} canModify={canModify} />
+          <HierarchyEntityActions to="/projects/$id" id={node.id} canModify={canModify} />
         </div>
       </div>
       <CollapsibleContent className="space-y-2 border-t border-border/60 px-3 py-2">
         {node.children.length === 0 ? (
           <p className="py-2 text-xs text-muted-foreground">No properties linked to this project.</p>
         ) : (
-          node.children.map((property) => <PropertyRow key={property.id} node={property} />)
+          node.children.map((property) => (
+            <PropertyBlock key={property.id} node={property} navContext={navContext} />
+          ))
         )}
       </CollapsibleContent>
     </Collapsible>
   );
 }
 
-function SiteBlock({ node, defaultOpen }: { node: HierarchySiteNode; defaultOpen?: boolean }) {
+function SiteBlock({
+  node,
+  navContext,
+  defaultOpen,
+}: {
+  node: HierarchySiteNode;
+  navContext: JobNavContext;
+  defaultOpen?: boolean;
+}) {
   const [open, setOpen] = useState(defaultOpen ?? false);
   const canModify = usePermission({ route: SITES_ROUTE, action: "modify" });
 
@@ -134,7 +271,7 @@ function SiteBlock({ node, defaultOpen }: { node: HierarchySiteNode; defaultOpen
         </CollapsibleTrigger>
         <div className="flex items-center gap-2">
           <ActiveStatusBadge isActive={node.isActive} />
-          <HierarchyActions to="/sites/$id" id={node.id} canModify={canModify} />
+          <HierarchyEntityActions to="/sites/$id" id={node.id} canModify={canModify} />
         </div>
       </div>
       <CollapsibleContent className="space-y-2 border-t border-border/60 px-3 py-3">
@@ -142,12 +279,34 @@ function SiteBlock({ node, defaultOpen }: { node: HierarchySiteNode; defaultOpen
           <p className="py-2 text-xs text-muted-foreground">No projects linked to this site.</p>
         ) : (
           node.children.map((project) => (
-            <ProjectBlock key={project.id} node={project} />
+            <ProjectBlock key={project.id} node={project} navContext={navContext} />
           ))
         )}
       </CollapsibleContent>
     </Collapsible>
   );
+}
+
+function useTasksForProperties(customerId: number, properties: { id: number }[]) {
+  const enabled =
+    Number.isFinite(customerId) &&
+    customerId > 0 &&
+    properties.length > 0;
+
+  return useQuery({
+    queryKey: ["hierarchy", "tasks", customerId, properties.map((p) => p.id).join(",")],
+    queryFn: async () =>
+      (
+        await tasksService.list({
+          customerId,
+          page: 1,
+          pageSize: HIERARCHY_PAGE_SIZE,
+          sortBy: "createdDate",
+          sortDir: "desc",
+        })
+      ).data.items,
+    enabled,
+  });
 }
 
 function useCustomerHierarchyData(customerId: number) {
@@ -180,23 +339,34 @@ function useCustomerHierarchyData(customerId: number) {
     enabled,
   });
 
-  const tree = useMemo(
-    () =>
-      buildCustomerHierarchy(
-        sitesQuery.data ?? [],
-        projectsQuery.data ?? [],
-        propertiesQuery.data ?? [],
-      ),
-    [sitesQuery.data, projectsQuery.data, propertiesQuery.data],
-  );
+  const properties = propertiesQuery.data ?? [];
+  const tasksQuery = useTasksForProperties(customerId, properties);
 
-  const isLoading = sitesQuery.isLoading || projectsQuery.isLoading || propertiesQuery.isLoading;
-  const isError = sitesQuery.isError || projectsQuery.isError || propertiesQuery.isError;
+  const tree = useMemo(() => {
+    const tasks = filterTasksForProperties(tasksQuery.data ?? [], properties);
+    return buildCustomerHierarchy(
+      sitesQuery.data ?? [],
+      projectsQuery.data ?? [],
+      properties,
+      tasks,
+    );
+  }, [sitesQuery.data, projectsQuery.data, properties, tasksQuery.data]);
+
+  const isLoading =
+    sitesQuery.isLoading ||
+    projectsQuery.isLoading ||
+    propertiesQuery.isLoading ||
+    tasksQuery.isLoading;
+  const isError =
+    sitesQuery.isError ||
+    projectsQuery.isError ||
+    propertiesQuery.isError ||
+    tasksQuery.isError;
 
   return { tree, isLoading, isError };
 }
 
-function useSiteHierarchyData(siteId: number) {
+function useSiteHierarchyData(siteId: number, customerId: number) {
   const enabled = Number.isFinite(siteId) && siteId > 0;
 
   const projectsQuery = useQuery({
@@ -219,18 +389,23 @@ function useSiteHierarchyData(siteId: number) {
     enabled,
   });
 
-  const tree = useMemo(
-    () => buildSiteHierarchy(projectsQuery.data ?? [], propertiesQuery.data ?? []),
-    [projectsQuery.data, propertiesQuery.data],
-  );
+  const properties = propertiesQuery.data ?? [];
+  const tasksQuery = useTasksForProperties(customerId, properties);
 
-  const isLoading = projectsQuery.isLoading || propertiesQuery.isLoading;
-  const isError = projectsQuery.isError || propertiesQuery.isError;
+  const tree = useMemo(() => {
+    const tasks = filterTasksForProperties(tasksQuery.data ?? [], properties);
+    return buildSiteHierarchy(projectsQuery.data ?? [], properties, tasks);
+  }, [projectsQuery.data, properties, tasksQuery.data]);
+
+  const isLoading =
+    projectsQuery.isLoading || propertiesQuery.isLoading || tasksQuery.isLoading;
+  const isError =
+    projectsQuery.isError || propertiesQuery.isError || tasksQuery.isError;
 
   return { tree, isLoading, isError };
 }
 
-function useProjectHierarchyData(projectId: number) {
+function useProjectHierarchyData(projectId: number, customerId: number) {
   const enabled = Number.isFinite(projectId) && projectId > 0;
 
   const propertiesQuery = useQuery({
@@ -246,15 +421,18 @@ function useProjectHierarchyData(projectId: number) {
     enabled,
   });
 
-  const tree = useMemo(
-    () => buildProjectHierarchy(propertiesQuery.data ?? []),
-    [propertiesQuery.data],
-  );
+  const properties = propertiesQuery.data ?? [];
+  const tasksQuery = useTasksForProperties(customerId, properties);
+
+  const tree = useMemo(() => {
+    const tasks = filterTasksForProperties(tasksQuery.data ?? [], properties);
+    return buildProjectHierarchy(properties, tasks);
+  }, [properties, tasksQuery.data]);
 
   return {
     tree,
-    isLoading: propertiesQuery.isLoading,
-    isError: propertiesQuery.isError,
+    isLoading: propertiesQuery.isLoading || tasksQuery.isLoading,
+    isError: propertiesQuery.isError || tasksQuery.isError,
   };
 }
 
@@ -262,17 +440,26 @@ export function EntityHierarchyCard(props: EntityHierarchyCardProps) {
   const title =
     props.title ??
     (props.scope === "customer"
-      ? "Sites, projects & properties"
+      ? "Sites, projects, properties & jobs"
       : props.scope === "site"
-        ? "Projects & properties"
-        : "Properties");
+        ? "Projects, properties & jobs"
+        : "Properties & jobs");
+
+  const customerNav: JobNavContext =
+    props.scope === "customer"
+      ? { from: "customer", customerId: props.customerId }
+      : { from: "property", propertyId: 0 };
 
   const customerData = useCustomerHierarchyData(
     props.scope === "customer" ? props.customerId : 0,
   );
-  const siteData = useSiteHierarchyData(props.scope === "site" ? props.siteId : 0);
+  const siteData = useSiteHierarchyData(
+    props.scope === "site" ? props.siteId : 0,
+    props.scope === "site" ? props.customerId : 0,
+  );
   const projectData = useProjectHierarchyData(
     props.scope === "project" ? props.projectId : 0,
+    props.scope === "project" ? props.customerId : 0,
   );
 
   const { tree, isLoading, isError } =
@@ -288,6 +475,8 @@ export function EntityHierarchyCard(props: EntityHierarchyCardProps) {
       : props.scope === "site"
         ? "No projects linked to this site yet."
         : "No properties linked to this project yet.";
+
+  const propertyNavContext: JobNavContext = { from: "property", propertyId: 0 };
 
   return (
     <div className="card-elevated p-5">
@@ -305,19 +494,27 @@ export function EntityHierarchyCard(props: EntityHierarchyCardProps) {
       ) : props.scope === "customer" ? (
         <div className={cn("space-y-3")}>
           {(tree as HierarchySiteNode[]).map((site) => (
-            <SiteBlock key={site.id} node={site} />
+            <SiteBlock key={site.id} node={site} navContext={customerNav} />
           ))}
         </div>
       ) : props.scope === "site" ? (
         <div className="space-y-3">
           {(tree as HierarchyProjectNode[]).map((project) => (
-            <ProjectBlock key={project.id} node={project} />
+            <ProjectBlock
+              key={project.id}
+              node={project}
+              navContext={propertyNavContext}
+            />
           ))}
         </div>
       ) : (
         <div className="space-y-2">
           {(tree as HierarchyPropertyNode[]).map((property) => (
-            <PropertyRow key={property.id} node={property} />
+            <PropertyBlock
+              key={property.id}
+              node={property}
+              navContext={propertyNavContext}
+            />
           ))}
         </div>
       )}
