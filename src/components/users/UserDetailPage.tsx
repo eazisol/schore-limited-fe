@@ -15,10 +15,12 @@ import { Form, SubmitButton, SwitchField } from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
 import { UserFormFields } from "@/components/users/UserFormFields";
 import {
-  ContractorCostBudgetCard,
-  ContractorRunningTasksCard,
-} from "@/components/users/ContractorDetailExtras";
+  CustomerCostBudgetCard,
+  CustomerRunningTasksCard,
+} from "@/components/users/CustomerDetailExtras";
+import { EntityHierarchyCard } from "@/components/hierarchy/EntityHierarchyCard";
 import { displayUserName } from "@/components/users/UsersListPage";
+import { formatCustomerDisplayName } from "@/lib/customer-display";
 import {
   resolveProfileImageUrl,
   usersService,
@@ -128,6 +130,7 @@ export function UserDetailPage() {
       isDailyRate: user?.isDailyRate ?? false,
       contactName: user?.contactName ?? "",
       companyName: user?.companyName ?? "",
+      clientCode: user?.clientCode ?? "",
       address: user?.address ?? "",
       zipCode: user?.zipCode ?? "",
       city: user?.city ?? "",
@@ -213,7 +216,9 @@ export function UserDetailPage() {
 
   const profileHeroName = cfg.isContractor
     ? user.companyName?.trim() || name
-    : name;
+    : cfg.isCustomer
+      ? formatCustomerDisplayName(user)
+      : name;
 
   const contactPersonName = [user.firstName, user.lastName].filter(Boolean).join(" ");
 
@@ -326,7 +331,7 @@ export function UserDetailPage() {
             </FormPageCard>
           </Form>
 
-        {cfg.isContractor ? <ContractorCostBudgetCard contractorId={numericId} /> : null}
+        {cfg.isCustomer ? <CustomerCostBudgetCard customerId={numericId} /> : null}
       </div>
       ) : (
         <>
@@ -369,12 +374,13 @@ export function UserDetailPage() {
             highlights={profileHeroHighlights}
           />
 
-          {cfg.isContractor ? (
+          {cfg.isCustomer ? (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <ContractorRunningTasksCard contractorId={numericId} />
+              <div className="lg:col-span-2 space-y-6">
+                <EntityHierarchyCard scope="customer" customerId={numericId} />
+                <CustomerRunningTasksCard customerId={numericId} />
               </div>
-              <ContractorCostBudgetCard contractorId={numericId} />
+              <CustomerCostBudgetCard customerId={numericId} />
             </div>
           ) : null}
         </>

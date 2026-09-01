@@ -84,6 +84,7 @@ export type UserFormValues = {
   isDailyRate: boolean;
   contactName: string;
   companyName: string;
+  clientCode: string;
   address: string;
   zipCode: string;
   city: string;
@@ -109,6 +110,7 @@ export const emptyUserFormValues: UserFormValues = {
   isDailyRate: false,
   contactName: "",
   companyName: "",
+  clientCode: "",
   address: "",
   zipCode: "",
   city: "",
@@ -154,6 +156,17 @@ function contactModuleExtrasRefine(mode: UserModuleMode, values: UserFormValues,
     }
   }
 
+  if (mode === "customer") {
+    const clientCode = values.clientCode.trim();
+    if (clientCode && clientCode.length > 100) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["clientCode"],
+        message: "Client code must be 100 characters or fewer",
+      });
+    }
+  }
+
   for (const { key, label, max } of optionalAddressFields) {
     const value = values[key].trim();
     if (value && value.length > max) {
@@ -192,6 +205,7 @@ const sharedFormFields = {
   isDailyRate: z.boolean(),
   contactName: z.string(),
   companyName: z.string(),
+  clientCode: z.string(),
   address: z.string(),
   zipCode: z.string(),
   city: z.string(),
@@ -272,6 +286,9 @@ function applyContactPayload(
   if (isContractor) {
     payload.companyName = values.companyName.trim() || null;
   }
+  if (isCustomer) {
+    payload.clientCode = values.clientCode.trim() || null;
+  }
   payload.address = values.address.trim() || null;
   payload.zipCode = values.zipCode.trim() || null;
   payload.city = values.city.trim() || null;
@@ -314,11 +331,6 @@ export function toCreateUserPayload(
     applyContactPayload(payload, values, mode);
   }
 
-  if (isCustomer) {
-    const contractorId = values.contractorId.trim();
-    payload.contractorId = contractorId ? Number(contractorId) : null;
-  }
-
   return payload;
 }
 
@@ -357,10 +369,6 @@ export function toUpdateUserPayload(
     applyContactPayload(payload, values, mode);
   }
 
-  if (isCustomer) {
-    const contractorId = values.contractorId.trim();
-    payload.contractorId = contractorId ? Number(contractorId) : null;
-  }
 
   return payload;
 }

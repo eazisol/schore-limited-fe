@@ -42,21 +42,21 @@ function Payroll() {
   }, [weekendQuery.data]);
   const [weekEnding, setWeek] = useState("");
   const selectedWeek = weekEnding || defaultWeek;
-  const [contractorId, setContractorId] = useState<number | "all">("all");
+  const [customerId, setCustomerId] = useState<number | "all">("all");
 
-  const contractorsQuery = useQuery({
-    queryKey: ["users", "dropdown", "contractors"],
+  const customersQuery = useQuery({
+    queryKey: ["users", "dropdown", "customers"],
     queryFn: async () =>
-      (await usersService.dropdown({ userTypeId: USER_TYPE_ID.contractor })).data ?? [],
+      (await usersService.dropdown({ userTypeId: USER_TYPE_ID.customer })).data ?? [],
   });
 
   const listQuery = useQuery({
-    queryKey: [...payStatementsQueryKey, "payroll", { week: selectedWeek, contractorId }],
+    queryKey: [...payStatementsQueryKey, "payroll", { week: selectedWeek, customerId }],
     queryFn: async () =>
       (
         await payStatementsService.list({
           weekEnding: selectedWeek,
-          contractorId: contractorId === "all" ? undefined : contractorId,
+          customerId: customerId === "all" ? undefined : customerId,
           page: 1,
           pageSize: 200,
         })
@@ -86,19 +86,19 @@ function Payroll() {
     mutationFn: () =>
       payStatementsService.export({
         weekEnding: selectedWeek,
-        contractorId: contractorId === "all" ? undefined : contractorId,
+        customerId: customerId === "all" ? undefined : customerId,
       }),
     onSuccess: (res) => {
-      const bundles = res.data?.contractors ?? [];
+      const bundles = res.data?.customers ?? [];
       if (bundles.length === 0) {
-        toast.error("No contractor lines to export for this week.");
+        toast.error("No client lines to export for this week.");
         return;
       }
       for (const bundle of bundles) {
-        downloadCsv(`payroll-${bundle.contractorName.replaceAll(" ", "-")}-WE-${selectedWeek}.csv`, [
-          ["Contractor", "Operative", "Date", "Property", "Description", "Amount", "Top-up"],
+        downloadCsv(`payroll-${bundle.customerName.replaceAll(" ", "-")}-WE-${selectedWeek}.csv`, [
+          ["Client", "Operative", "Date", "Property", "Description", "Amount", "Top-up"],
           ...bundle.lines.map((line) => [
-            bundle.contractorName,
+            bundle.customerName,
             line.operativeName,
             line.lineDate,
             line.propertyName ?? "",
@@ -108,7 +108,7 @@ function Payroll() {
           ]),
         ]);
       }
-      toast.success(`Exported ${bundles.length} contractor file(s)`);
+      toast.success(`Exported ${bundles.length} client file(s)`);
     },
     onError: (err) => notifyApiError(err, "Export failed"),
   });
@@ -136,7 +136,7 @@ function Payroll() {
             onClick={() => exportMutation.mutate()}
           >
             {exportMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            Export by contractor
+            Export by client
           </Button>
         }
       />
@@ -152,14 +152,14 @@ function Payroll() {
           />
         </label>
         <label className="block">
-          <span className="text-[11px] font-medium text-muted-foreground">Contractor</span>
+          <span className="text-[11px] font-medium text-muted-foreground">Client</span>
           <select
-            value={contractorId === "all" ? "all" : String(contractorId)}
-            onChange={(e) => setContractorId(e.target.value === "all" ? "all" : Number(e.target.value))}
+            value={customerId === "all" ? "all" : String(customerId)}
+            onChange={(e) => setCustomerId(e.target.value === "all" ? "all" : Number(e.target.value))}
             className="mt-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
           >
             <option value="all">All (separate on export)</option>
-            {(contractorsQuery.data ?? []).map((c) => (
+            {(customersQuery.data ?? []).map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
@@ -188,7 +188,7 @@ function Payroll() {
           <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-5 py-3 text-left">Operative</th>
-              <th className="px-3 py-3 text-left">Contractor(s)</th>
+              <th className="px-3 py-3 text-left">Client(s)</th>
               <th className="px-3 py-3 text-right">Gross</th>
               <th className="px-3 py-3 text-right">CIS %</th>
               <th className="px-3 py-3 text-right">CIS Tax</th>
@@ -204,7 +204,7 @@ function Payroll() {
               return (
                 <tr key={row.id} className="hover:bg-muted/30">
                   <td className="px-5 py-3 font-medium">{row.operativeName}</td>
-                  <td className="px-3 py-3 text-muted-foreground">{row.contractorNames ?? "—"}</td>
+                  <td className="px-3 py-3 text-muted-foreground">{row.customerNames ?? "—"}</td>
                   <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtGBP(row.gross)}</td>
                   <td className="px-3 py-3 text-right text-muted-foreground">{row.cisRate}%</td>
                   <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtGBP(row.cisDeduction)}</td>

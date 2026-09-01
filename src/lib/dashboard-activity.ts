@@ -20,7 +20,7 @@ export const ACTIVITY_SERIES = [
   { key: "inProgress", label: "In Progress", color: "var(--info)" },
   { key: "onHold", label: "On Hold", color: "var(--warning)" },
   { key: "completed", label: "Completed", color: "var(--success)" },
-  { key: "newTasks", label: "New Tasks", color: "var(--accent)" },
+  { key: "newTasks", label: "New Jobs", color: "var(--accent)" },
   { key: "active", label: "Active Properties", color: "oklch(0.68 0.11 220)" },
   { key: "delayed", label: "Delayed Properties", color: "var(--destructive)" },
 ] as const satisfies ReadonlyArray<{

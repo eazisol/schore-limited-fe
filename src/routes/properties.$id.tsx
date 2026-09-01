@@ -49,8 +49,9 @@ function propertyHighlights(row: ApiProperty): DetailProfileHighlight[] {
   if (row.reference?.trim()) {
     items.push({ label: "Reference", value: row.reference.trim() });
   }
-  items.push({ label: "Contractor", value: row.contractorName?.trim() || "—" });
-  items.push({ label: "Customer", value: row.customerName?.trim() || "—" });
+  items.push({ label: "Client", value: row.customerName?.trim() || "—" });
+  items.push({ label: "Site", value: row.siteName?.trim() || "—" });
+  items.push({ label: "Project", value: row.projectName?.trim() || "—" });
   items.push({ label: "Contact", value: row.contactName?.trim() || "—" });
   return items;
 }
@@ -94,7 +95,8 @@ function PropertyDetail() {
       country: row?.country ?? "",
       accessNotes: row?.accessNotes ?? "",
       customerId: row?.customerId != null ? String(row.customerId) : "",
-      contractorId: row?.contractorId != null ? String(row.contractorId) : "",
+      siteId: row?.siteId != null ? String(row.siteId) : "",
+      projectId: row?.projectId != null ? String(row.projectId) : "",
       isActive: row?.isActive ?? true,
     }),
     [row],
@@ -219,7 +221,8 @@ function PropertyDetail() {
                 embedded
                 disabled={updateMutation.isPending}
                 customerSelectedLabel={row.customerName}
-                contractorSelectedLabel={row.contractorName}
+                siteSelectedLabel={row.siteName}
+                projectSelectedLabel={row.projectName}
               />
             </FormPageCard>
           </Form>

@@ -167,7 +167,7 @@ function HoldReasonsPage() {
     <div>
       <PageHeader
         title="Hold reasons"
-        subtitle="Reasons SM selects when placing a task on hold."
+        subtitle="Reasons SM selects when placing a job on hold."
         actions={
           <>
             <Button

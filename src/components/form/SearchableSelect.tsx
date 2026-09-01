@@ -34,7 +34,7 @@ export interface SearchableSelectProps {
    */
   selectedLabel?: string | null;
   /**
-   * Always-visible top option (e.g. "All customers" for list filters).
+   * Always-visible top option (e.g. "All clients" for list filters).
    * Use an empty string value for the clear/all state.
    */
   emptyOption?: SearchableSelectOption;

@@ -42,14 +42,14 @@ function WagesList() {
   }, [weekendQuery.data]);
   const [weekEnding, setWeek] = useState("");
   const selectedWeek = weekEnding || defaultWeek;
-  const [contractorId, setContractorId] = useState<number | "all">("all");
+  const [customerId, setCustomerId] = useState<number | "all">("all");
   const [statusId, setStatusId] = useState<number | "all">("all");
   const [paymentStatusId, setPaymentStatusId] = useState<number | "all">("all");
 
-  const contractorsQuery = useQuery({
-    queryKey: ["users", "dropdown", "contractors"],
+  const customersQuery = useQuery({
+    queryKey: ["users", "dropdown", "customers"],
     queryFn: async () =>
-      (await usersService.dropdown({ userTypeId: USER_TYPE_ID.contractor })).data ?? [],
+      (await usersService.dropdown({ userTypeId: USER_TYPE_ID.customer })).data ?? [],
   });
   const signOffStatuses = useQuery({
     queryKey: ["statuses", DOCUMENT_TYPE_CODE.STATEMENT],
@@ -70,13 +70,13 @@ function WagesList() {
     queryKey: [
       ...payStatementsQueryKey,
       "wages",
-      { selectedWeek, contractorId, statusId, paymentStatusId },
+      { selectedWeek, customerId, statusId, paymentStatusId },
     ],
     queryFn: async () =>
       (
         await payStatementsService.list({
           weekEnding: selectedWeek,
-          contractorId: contractorId === "all" ? undefined : contractorId,
+          customerId: customerId === "all" ? undefined : customerId,
           statusId: statusId === "all" ? undefined : statusId,
           paymentStatusId: paymentStatusId === "all" ? undefined : paymentStatusId,
           page: 1,
@@ -108,19 +108,19 @@ function WagesList() {
     mutationFn: () =>
       payStatementsService.export({
         weekEnding: selectedWeek,
-        contractorId: contractorId === "all" ? undefined : contractorId,
+        customerId: customerId === "all" ? undefined : customerId,
       }),
     onSuccess: (res) => {
-      const bundles = res.data?.contractors ?? [];
+      const bundles = res.data?.customers ?? [];
       if (bundles.length === 0) {
-        toast.error("No contractor lines to export.");
+        toast.error("No client lines to export.");
         return;
       }
       for (const bundle of bundles) {
-        downloadCsv(`wages-${bundle.contractorName.replaceAll(" ", "-")}-WE-${selectedWeek}.csv`, [
-          ["Contractor", "Operative", "Date", "Property", "Description", "Amount", "Top-up"],
+        downloadCsv(`wages-${bundle.customerName.replaceAll(" ", "-")}-WE-${selectedWeek}.csv`, [
+          ["Client", "Operative", "Date", "Property", "Description", "Amount", "Top-up"],
           ...bundle.lines.map((line) => [
-            bundle.contractorName,
+            bundle.customerName,
             line.operativeName,
             line.lineDate,
             line.propertyName ?? "",
@@ -130,7 +130,7 @@ function WagesList() {
           ]),
         ]);
       }
-      toast.success(`Exported ${bundles.length} contractor file(s)`);
+      toast.success(`Exported ${bundles.length} client file(s)`);
     },
     onError: (err) => notifyApiError(err, "Export failed"),
   });
@@ -154,7 +154,7 @@ function WagesList() {
             disabled={exportMutation.isPending}
             onClick={() => exportMutation.mutate()}
           >
-            <Download className="h-4 w-4" />Export by contractor
+            <Download className="h-4 w-4" />Export by client
           </Button>
         }
       />
@@ -174,12 +174,12 @@ function WagesList() {
             className="h-9 rounded-md border border-input bg-background px-3 text-sm"
           />
           <select
-            value={contractorId === "all" ? "all" : String(contractorId)}
-            onChange={(e) => setContractorId(e.target.value === "all" ? "all" : Number(e.target.value))}
+            value={customerId === "all" ? "all" : String(customerId)}
+            onChange={(e) => setCustomerId(e.target.value === "all" ? "all" : Number(e.target.value))}
             className="h-9 rounded-md border border-input bg-background px-3 text-sm"
           >
-            <option value="all">All contractors</option>
-            {(contractorsQuery.data ?? []).map((c) => (
+            <option value="all">All clients</option>
+            {(customersQuery.data ?? []).map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
@@ -219,7 +219,7 @@ function WagesList() {
             <tr>
               <th className="px-5 py-2.5 text-left font-medium">Invoice</th>
               <th className="px-3 py-2.5 text-left font-medium">Operative</th>
-              <th className="px-3 py-2.5 text-left font-medium">Contractor(s)</th>
+              <th className="px-3 py-2.5 text-left font-medium">Client(s)</th>
               <th className="px-3 py-2.5 text-left font-medium">Week Ending</th>
               <th className="px-3 py-2.5 text-right font-medium">Gross</th>
               <th className="px-3 py-2.5 text-right font-medium">CIS</th>
@@ -248,7 +248,7 @@ function WagesList() {
                     <div className="text-[11px] text-muted-foreground">{w.tradeName ?? "—"}</div>
                   </td>
                   <td className="px-3 py-3">
-                    <code className="font-mono text-xs">{w.contractorNames ?? "—"}</code>
+                    <code className="font-mono text-xs">{w.customerNames ?? "—"}</code>
                   </td>
                   <td className="px-3 py-3">{formatUkDate(w.weekEnding)}</td>
                   <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtGBP(w.gross)}</td>

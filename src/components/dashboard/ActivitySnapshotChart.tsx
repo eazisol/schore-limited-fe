@@ -13,7 +13,7 @@ const chartConfig = {
   inProgress: { label: "In Progress", color: "var(--info)" },
   onHold: { label: "On Hold", color: "var(--warning)" },
   completed: { label: "Completed", color: "var(--success)" },
-  newTasks: { label: "New Tasks", color: "var(--accent)" },
+  newTasks: { label: "New Jobs", color: "var(--accent)" },
   active: { label: "Active Properties", color: "oklch(0.68 0.11 220)" },
   delayed: { label: "Delayed Properties", color: "var(--destructive)" },
 } satisfies ChartConfig;

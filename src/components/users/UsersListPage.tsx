@@ -146,6 +146,7 @@ export function UsersListPage() {
           : cfg.isCustomer
             ? [
                 "Name",
+                "Client code",
                 "Email",
                 "Phone",
                 "Address",
@@ -153,7 +154,6 @@ export function UsersListPage() {
                 "State",
                 "Country",
                 "ZIP Code",
-                "Contractor",
                 "Status",
               ]
             : ["Name", "Email", "Phone", "Date of birth", "Roles", "Status"];
@@ -187,6 +187,7 @@ export function UsersListPage() {
               : cfg.isCustomer
                 ? [
                     displayUserName(user),
+                    user.clientCode ?? "",
                     user.email,
                     csvForceText(user.phone ?? ""),
                     user.address ?? "",
@@ -194,7 +195,6 @@ export function UsersListPage() {
                     user.state ?? "",
                     user.country ?? "",
                     user.zipCode ?? "",
-                    user.contractorName ?? "",
                     user.isActive ? "Active" : "Inactive",
                   ]
                 : [
@@ -240,12 +240,14 @@ export function UsersListPage() {
                     {truncateWithEllipsis(name)}
                   </Link>
                 </AppTooltip>
-                <div className="flex min-w-0 items-start gap-2 text-[11px] leading-snug text-muted-foreground">
-                  <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <AppTooltip content={user.email} asChild align="start">
-                    <span className="min-w-0 flex-1 break-all line-clamp-2">{user.email}</span>
-                  </AppTooltip>
-                </div>
+                {!cfg.isCustomer ? (
+                  <div className="flex min-w-0 items-start gap-2 text-[11px] leading-snug text-muted-foreground">
+                    <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <AppTooltip content={user.email} asChild align="start">
+                      <span className="min-w-0 flex-1 break-all line-clamp-2">{user.email}</span>
+                    </AppTooltip>
+                  </div>
+                ) : null}
               </div>
             </div>
           );
@@ -302,14 +304,14 @@ export function UsersListPage() {
       } else if (cfg.isCustomer) {
         cols.push(
           {
+            id: "clientCode",
+            header: "Client code",
+            cell: (user) => user.clientCode || "—",
+          },
+          {
             id: "address",
             header: "Address",
             cell: (user) => user.address || "—",
-          },
-          {
-            id: "contractor",
-            header: "Contractor",
-            cell: (user) => user.contractorName || "—",
           },
         );
       }

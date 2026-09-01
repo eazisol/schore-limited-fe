@@ -18,6 +18,7 @@ import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SystemConfigRouteImport } from './routes/system-config'
 import { Route as StatusesRouteImport } from './routes/statuses'
 import { Route as StatementsRouteImport } from './routes/statements'
+import { Route as SitesRouteImport } from './routes/sites'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RolesRouteImport } from './routes/roles'
@@ -25,6 +26,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as PropertiesRouteImport } from './routes/properties'
+import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProductManagementRouteImport } from './routes/product-management'
 import { Route as ProductRouteImport } from './routes/product'
@@ -60,8 +62,10 @@ import { Route as TradeGroupsIndexRouteImport } from './routes/trade-groups.inde
 import { Route as TradeBuilderIndexRouteImport } from './routes/trade-builder.index'
 import { Route as TasksIndexRouteImport } from './routes/tasks.index'
 import { Route as SystemConfigIndexRouteImport } from './routes/system-config.index'
+import { Route as SitesIndexRouteImport } from './routes/sites.index'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
+import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
 import { Route as ProductIndexRouteImport } from './routes/product.index'
 import { Route as ProductManagementIndexRouteImport } from './routes/product-management.index'
 import { Route as OperativesIndexRouteImport } from './routes/operatives.index'
@@ -82,12 +86,14 @@ import { Route as TasksNewRouteImport } from './routes/tasks.new'
 import { Route as TasksIdRouteImport } from './routes/tasks.$id'
 import { Route as SystemConfigUserTypesRouteImport } from './routes/system-config.user-types'
 import { Route as SystemConfigRolesRouteImport } from './routes/system-config.roles'
+import { Route as SitesIdRouteImport } from './routes/sites.$id'
 import { Route as SettingsUserTypesRouteImport } from './routes/settings.user-types'
 import { Route as SettingsRolesRouteImport } from './routes/settings.roles'
 import { Route as SettingsRolePermissionsRouteImport } from './routes/settings.role-permissions'
 import { Route as SettingsEmailSmtpRouteImport } from './routes/settings.email-smtp'
 import { Route as PropertiesNewRouteImport } from './routes/properties.new'
 import { Route as PropertiesIdRouteImport } from './routes/properties.$id'
+import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
 import { Route as OperativesNewRouteImport } from './routes/operatives.new'
 import { Route as OperativesIdRouteImport } from './routes/operatives.$id'
 import { Route as ItemsNewRouteImport } from './routes/items.new'
@@ -145,6 +151,11 @@ const StatementsRoute = StatementsRouteImport.update({
   path: '/statements',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitesRoute = SitesRouteImport.update({
+  id: '/sites',
+  path: '/sites',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SigninRoute = SigninRouteImport.update({
   id: '/signin',
   path: '/signin',
@@ -178,6 +189,11 @@ const RatesRoute = RatesRouteImport.update({
 const PropertiesRoute = PropertiesRouteImport.update({
   id: '/properties',
   path: '/properties',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -355,6 +371,11 @@ const SystemConfigIndexRoute = SystemConfigIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SystemConfigRoute,
 } as any)
+const SitesIndexRoute = SitesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SitesRoute,
+} as any)
 const SettingsIndexRoute = SettingsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -364,6 +385,11 @@ const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PropertiesRoute,
+} as any)
+const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProjectsRoute,
 } as any)
 const ProductIndexRoute = ProductIndexRouteImport.update({
   id: '/',
@@ -465,6 +491,11 @@ const SystemConfigRolesRoute = SystemConfigRolesRouteImport.update({
   path: '/roles',
   getParentRoute: () => SystemConfigRoute,
 } as any)
+const SitesIdRoute = SitesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SitesRoute,
+} as any)
 const SettingsUserTypesRoute = SettingsUserTypesRouteImport.update({
   id: '/user-types',
   path: '/user-types',
@@ -494,6 +525,11 @@ const PropertiesIdRoute = PropertiesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => PropertiesRoute,
+} as any)
+const ProjectsIdRoute = ProjectsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ProjectsRoute,
 } as any)
 const OperativesNewRoute = OperativesNewRouteImport.update({
   id: '/new',
@@ -581,6 +617,7 @@ export interface FileRoutesByFullPath {
   '/product': typeof ProductRouteWithChildren
   '/product-management': typeof ProductManagementRouteWithChildren
   '/profile': typeof ProfileRoute
+  '/projects': typeof ProjectsRouteWithChildren
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
@@ -588,6 +625,7 @@ export interface FileRoutesByFullPath {
   '/roles': typeof RolesRoute
   '/settings': typeof SettingsRouteWithChildren
   '/signin': typeof SigninRoute
+  '/sites': typeof SitesRouteWithChildren
   '/statements': typeof StatementsRoute
   '/statuses': typeof StatusesRoute
   '/system-config': typeof SystemConfigRouteWithChildren
@@ -607,12 +645,14 @@ export interface FileRoutesByFullPath {
   '/items/new': typeof ItemsNewRoute
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
+  '/projects/$id': typeof ProjectsIdRoute
   '/properties/$id': typeof PropertiesIdRoute
   '/properties/new': typeof PropertiesNewRoute
   '/settings/email-smtp': typeof SettingsEmailSmtpRoute
   '/settings/role-permissions': typeof SettingsRolePermissionsRoute
   '/settings/roles': typeof SettingsRolesRoute
   '/settings/user-types': typeof SettingsUserTypesRoute
+  '/sites/$id': typeof SitesIdRoute
   '/system-config/roles': typeof SystemConfigRolesRoute
   '/system-config/user-types': typeof SystemConfigUserTypesRoute
   '/tasks/$id': typeof TasksIdRoute
@@ -633,8 +673,10 @@ export interface FileRoutesByFullPath {
   '/operatives/': typeof OperativesIndexRoute
   '/product-management/': typeof ProductManagementIndexRoute
   '/product/': typeof ProductIndexRoute
+  '/projects/': typeof ProjectsIndexRoute
   '/properties/': typeof PropertiesIndexRoute
   '/settings/': typeof SettingsIndexRoute
+  '/sites/': typeof SitesIndexRoute
   '/system-config/': typeof SystemConfigIndexRoute
   '/tasks/': typeof TasksIndexRoute
   '/trade-builder/': typeof TradeBuilderIndexRoute
@@ -684,12 +726,14 @@ export interface FileRoutesByTo {
   '/items/new': typeof ItemsNewRoute
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
+  '/projects/$id': typeof ProjectsIdRoute
   '/properties/$id': typeof PropertiesIdRoute
   '/properties/new': typeof PropertiesNewRoute
   '/settings/email-smtp': typeof SettingsEmailSmtpRoute
   '/settings/role-permissions': typeof SettingsRolePermissionsRoute
   '/settings/roles': typeof SettingsRolesRoute
   '/settings/user-types': typeof SettingsUserTypesRoute
+  '/sites/$id': typeof SitesIdRoute
   '/system-config/roles': typeof SystemConfigRolesRoute
   '/system-config/user-types': typeof SystemConfigUserTypesRoute
   '/tasks/$id': typeof TasksIdRoute
@@ -710,8 +754,10 @@ export interface FileRoutesByTo {
   '/operatives': typeof OperativesIndexRoute
   '/product-management': typeof ProductManagementIndexRoute
   '/product': typeof ProductIndexRoute
+  '/projects': typeof ProjectsIndexRoute
   '/properties': typeof PropertiesIndexRoute
   '/settings': typeof SettingsIndexRoute
+  '/sites': typeof SitesIndexRoute
   '/system-config': typeof SystemConfigIndexRoute
   '/tasks': typeof TasksIndexRoute
   '/trade-builder': typeof TradeBuilderIndexRoute
@@ -751,6 +797,7 @@ export interface FileRoutesById {
   '/product': typeof ProductRouteWithChildren
   '/product-management': typeof ProductManagementRouteWithChildren
   '/profile': typeof ProfileRoute
+  '/projects': typeof ProjectsRouteWithChildren
   '/properties': typeof PropertiesRouteWithChildren
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
@@ -758,6 +805,7 @@ export interface FileRoutesById {
   '/roles': typeof RolesRoute
   '/settings': typeof SettingsRouteWithChildren
   '/signin': typeof SigninRoute
+  '/sites': typeof SitesRouteWithChildren
   '/statements': typeof StatementsRoute
   '/statuses': typeof StatusesRoute
   '/system-config': typeof SystemConfigRouteWithChildren
@@ -777,12 +825,14 @@ export interface FileRoutesById {
   '/items/new': typeof ItemsNewRoute
   '/operatives/$id': typeof OperativesIdRoute
   '/operatives/new': typeof OperativesNewRoute
+  '/projects/$id': typeof ProjectsIdRoute
   '/properties/$id': typeof PropertiesIdRoute
   '/properties/new': typeof PropertiesNewRoute
   '/settings/email-smtp': typeof SettingsEmailSmtpRoute
   '/settings/role-permissions': typeof SettingsRolePermissionsRoute
   '/settings/roles': typeof SettingsRolesRoute
   '/settings/user-types': typeof SettingsUserTypesRoute
+  '/sites/$id': typeof SitesIdRoute
   '/system-config/roles': typeof SystemConfigRolesRoute
   '/system-config/user-types': typeof SystemConfigUserTypesRoute
   '/tasks/$id': typeof TasksIdRoute
@@ -803,8 +853,10 @@ export interface FileRoutesById {
   '/operatives/': typeof OperativesIndexRoute
   '/product-management/': typeof ProductManagementIndexRoute
   '/product/': typeof ProductIndexRoute
+  '/projects/': typeof ProjectsIndexRoute
   '/properties/': typeof PropertiesIndexRoute
   '/settings/': typeof SettingsIndexRoute
+  '/sites/': typeof SitesIndexRoute
   '/system-config/': typeof SystemConfigIndexRoute
   '/tasks/': typeof TasksIndexRoute
   '/trade-builder/': typeof TradeBuilderIndexRoute
@@ -845,6 +897,7 @@ export interface FileRouteTypes {
     | '/product'
     | '/product-management'
     | '/profile'
+    | '/projects'
     | '/properties'
     | '/rates'
     | '/reports'
@@ -852,6 +905,7 @@ export interface FileRouteTypes {
     | '/roles'
     | '/settings'
     | '/signin'
+    | '/sites'
     | '/statements'
     | '/statuses'
     | '/system-config'
@@ -871,12 +925,14 @@ export interface FileRouteTypes {
     | '/items/new'
     | '/operatives/$id'
     | '/operatives/new'
+    | '/projects/$id'
     | '/properties/$id'
     | '/properties/new'
     | '/settings/email-smtp'
     | '/settings/role-permissions'
     | '/settings/roles'
     | '/settings/user-types'
+    | '/sites/$id'
     | '/system-config/roles'
     | '/system-config/user-types'
     | '/tasks/$id'
@@ -897,8 +953,10 @@ export interface FileRouteTypes {
     | '/operatives/'
     | '/product-management/'
     | '/product/'
+    | '/projects/'
     | '/properties/'
     | '/settings/'
+    | '/sites/'
     | '/system-config/'
     | '/tasks/'
     | '/trade-builder/'
@@ -948,12 +1006,14 @@ export interface FileRouteTypes {
     | '/items/new'
     | '/operatives/$id'
     | '/operatives/new'
+    | '/projects/$id'
     | '/properties/$id'
     | '/properties/new'
     | '/settings/email-smtp'
     | '/settings/role-permissions'
     | '/settings/roles'
     | '/settings/user-types'
+    | '/sites/$id'
     | '/system-config/roles'
     | '/system-config/user-types'
     | '/tasks/$id'
@@ -974,8 +1034,10 @@ export interface FileRouteTypes {
     | '/operatives'
     | '/product-management'
     | '/product'
+    | '/projects'
     | '/properties'
     | '/settings'
+    | '/sites'
     | '/system-config'
     | '/tasks'
     | '/trade-builder'
@@ -1014,6 +1076,7 @@ export interface FileRouteTypes {
     | '/product'
     | '/product-management'
     | '/profile'
+    | '/projects'
     | '/properties'
     | '/rates'
     | '/reports'
@@ -1021,6 +1084,7 @@ export interface FileRouteTypes {
     | '/roles'
     | '/settings'
     | '/signin'
+    | '/sites'
     | '/statements'
     | '/statuses'
     | '/system-config'
@@ -1040,12 +1104,14 @@ export interface FileRouteTypes {
     | '/items/new'
     | '/operatives/$id'
     | '/operatives/new'
+    | '/projects/$id'
     | '/properties/$id'
     | '/properties/new'
     | '/settings/email-smtp'
     | '/settings/role-permissions'
     | '/settings/roles'
     | '/settings/user-types'
+    | '/sites/$id'
     | '/system-config/roles'
     | '/system-config/user-types'
     | '/tasks/$id'
@@ -1066,8 +1132,10 @@ export interface FileRouteTypes {
     | '/operatives/'
     | '/product-management/'
     | '/product/'
+    | '/projects/'
     | '/properties/'
     | '/settings/'
+    | '/sites/'
     | '/system-config/'
     | '/tasks/'
     | '/trade-builder/'
@@ -1107,6 +1175,7 @@ export interface RootRouteChildren {
   ProductRoute: typeof ProductRouteWithChildren
   ProductManagementRoute: typeof ProductManagementRouteWithChildren
   ProfileRoute: typeof ProfileRoute
+  ProjectsRoute: typeof ProjectsRouteWithChildren
   PropertiesRoute: typeof PropertiesRouteWithChildren
   RatesRoute: typeof RatesRoute
   ReportsRoute: typeof ReportsRoute
@@ -1114,6 +1183,7 @@ export interface RootRouteChildren {
   RolesRoute: typeof RolesRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   SigninRoute: typeof SigninRoute
+  SitesRoute: typeof SitesRouteWithChildren
   StatementsRoute: typeof StatementsRoute
   StatusesRoute: typeof StatusesRoute
   SystemConfigRoute: typeof SystemConfigRouteWithChildren
@@ -1190,6 +1260,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StatementsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sites': {
+      id: '/sites'
+      path: '/sites'
+      fullPath: '/sites'
+      preLoaderRoute: typeof SitesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signin': {
       id: '/signin'
       path: '/signin'
@@ -1237,6 +1314,13 @@ declare module '@tanstack/react-router' {
       path: '/properties'
       fullPath: '/properties'
       preLoaderRoute: typeof PropertiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -1484,6 +1568,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SystemConfigIndexRouteImport
       parentRoute: typeof SystemConfigRoute
     }
+    '/sites/': {
+      id: '/sites/'
+      path: '/'
+      fullPath: '/sites/'
+      preLoaderRoute: typeof SitesIndexRouteImport
+      parentRoute: typeof SitesRoute
+    }
     '/settings/': {
       id: '/settings/'
       path: '/'
@@ -1497,6 +1588,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/properties/'
       preLoaderRoute: typeof PropertiesIndexRouteImport
       parentRoute: typeof PropertiesRoute
+    }
+    '/projects/': {
+      id: '/projects/'
+      path: '/'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof ProjectsIndexRouteImport
+      parentRoute: typeof ProjectsRoute
     }
     '/product/': {
       id: '/product/'
@@ -1638,6 +1736,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SystemConfigRolesRouteImport
       parentRoute: typeof SystemConfigRoute
     }
+    '/sites/$id': {
+      id: '/sites/$id'
+      path: '/$id'
+      fullPath: '/sites/$id'
+      preLoaderRoute: typeof SitesIdRouteImport
+      parentRoute: typeof SitesRoute
+    }
     '/settings/user-types': {
       id: '/settings/user-types'
       path: '/user-types'
@@ -1679,6 +1784,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/properties/$id'
       preLoaderRoute: typeof PropertiesIdRouteImport
       parentRoute: typeof PropertiesRoute
+    }
+    '/projects/$id': {
+      id: '/projects/$id'
+      path: '/$id'
+      fullPath: '/projects/$id'
+      preLoaderRoute: typeof ProjectsIdRouteImport
+      parentRoute: typeof ProjectsRoute
     }
     '/operatives/new': {
       id: '/operatives/new'
@@ -1871,6 +1983,20 @@ const ProductManagementRouteChildren: ProductManagementRouteChildren = {
 const ProductManagementRouteWithChildren =
   ProductManagementRoute._addFileChildren(ProductManagementRouteChildren)
 
+interface ProjectsRouteChildren {
+  ProjectsIdRoute: typeof ProjectsIdRoute
+  ProjectsIndexRoute: typeof ProjectsIndexRoute
+}
+
+const ProjectsRouteChildren: ProjectsRouteChildren = {
+  ProjectsIdRoute: ProjectsIdRoute,
+  ProjectsIndexRoute: ProjectsIndexRoute,
+}
+
+const ProjectsRouteWithChildren = ProjectsRoute._addFileChildren(
+  ProjectsRouteChildren,
+)
+
 interface PropertiesRouteChildren {
   PropertiesIdRoute: typeof PropertiesIdRoute
   PropertiesNewRoute: typeof PropertiesNewRoute
@@ -1906,6 +2032,18 @@ const SettingsRouteChildren: SettingsRouteChildren = {
 const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
   SettingsRouteChildren,
 )
+
+interface SitesRouteChildren {
+  SitesIdRoute: typeof SitesIdRoute
+  SitesIndexRoute: typeof SitesIndexRoute
+}
+
+const SitesRouteChildren: SitesRouteChildren = {
+  SitesIdRoute: SitesIdRoute,
+  SitesIndexRoute: SitesIndexRoute,
+}
+
+const SitesRouteWithChildren = SitesRoute._addFileChildren(SitesRouteChildren)
 
 interface SystemConfigRouteChildren {
   SystemConfigRolesRoute: typeof SystemConfigRolesRoute
@@ -2029,6 +2167,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProductRoute: ProductRouteWithChildren,
   ProductManagementRoute: ProductManagementRouteWithChildren,
   ProfileRoute: ProfileRoute,
+  ProjectsRoute: ProjectsRouteWithChildren,
   PropertiesRoute: PropertiesRouteWithChildren,
   RatesRoute: RatesRoute,
   ReportsRoute: ReportsRoute,
@@ -2036,6 +2175,7 @@ const rootRouteChildren: RootRouteChildren = {
   RolesRoute: RolesRoute,
   SettingsRoute: SettingsRouteWithChildren,
   SigninRoute: SigninRoute,
+  SitesRoute: SitesRouteWithChildren,
   StatementsRoute: StatementsRoute,
   StatusesRoute: StatusesRoute,
   SystemConfigRoute: SystemConfigRouteWithChildren,

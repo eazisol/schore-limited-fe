@@ -42,7 +42,7 @@ export interface ApiTask {
   propertyId: number;
   propertyName: string;
   propertyAddress: string | null;
-  /** Property contractor — same source as Daily Programmer "Contractor". */
+  /** Property customer — same source as Daily Programmer "Customer". */
   contract: string | null;
   /** Property post code — same source as Daily Programmer "Post Code". */
   postCode: string | null;
@@ -107,7 +107,7 @@ export interface TaskListParams {
   propertyId?: number;
   statusId?: number;
   jobTypeId?: number;
-  contractorId?: number;
+  customerId?: number;
   sortBy?: string;
   sortDir?: "asc" | "desc";
 }
@@ -120,7 +120,7 @@ function listQuery(params: TaskListParams) {
     ...(params.propertyId != null ? { PropertyId: params.propertyId } : {}),
     ...(params.statusId != null ? { StatusId: params.statusId } : {}),
     ...(params.jobTypeId != null ? { JobTypeId: params.jobTypeId } : {}),
-    ...(params.contractorId != null ? { ContractorId: params.contractorId } : {}),
+    ...(params.customerId != null ? { CustomerId: params.customerId } : {}),
     ...(params.sortBy ? { SortBy: params.sortBy } : {}),
     ...(params.sortDir ? { SortDir: params.sortDir } : {}),
   };

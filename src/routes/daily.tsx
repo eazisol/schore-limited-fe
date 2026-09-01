@@ -326,7 +326,7 @@ function Daily() {
       },
       {
         id: "contract",
-        header: "Contractor",
+        header: "Client",
         width: "7rem",
         accessor: (row) => row.contract || "—",
         cell: (row) => <code className="font-mono text-xs">{row.contract || "—"}</code>,
@@ -640,7 +640,7 @@ function Daily() {
         search={{
           value: searchInput,
           onChange: setSearchInput,
-          placeholder: "Search property, contractor, trade…",
+          placeholder: "Search property, client, trade…",
           "aria-label": "Search daily programmer",
         }}
         emptyState={{
@@ -788,7 +788,7 @@ function CompletedItemsModalBody({
   if (items.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        No completed items for this task yet.
+        No completed items for this job yet.
       </p>
     );
   }

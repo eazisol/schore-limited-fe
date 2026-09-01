@@ -28,7 +28,7 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute("/tasks/new")({
   validateSearch: searchSchema,
-  head: () => ({ meta: [{ title: "Add Project | Schore" }] }),
+  head: () => ({ meta: [{ title: "Add Job | Schore" }] }),
   component: NewTask,
 });
 
@@ -56,7 +56,7 @@ function NewTask() {
     ? "Back to daily programmer"
     : fromProperty
       ? "Back to property"
-      : "Back to tasks";
+      : "Back to jobs";
 
   const propertyQuery = useQuery({
     queryKey: ["properties", presetPropertyId],
@@ -76,7 +76,7 @@ function NewTask() {
   const createMutation = useMutation({
     mutationFn: (payload: ReturnType<typeof toTaskPayload>) => tasksService.create(payload),
     onSuccess: (res) => {
-      toast.success(res.message || `Project for ${res.data?.propertyName || "property"} created`);
+      toast.success(res.message || `Job for ${res.data?.propertyName || "property"} created`);
       queryClient.invalidateQueries({ queryKey: tasksQueryKey });
       if (fromDaily) {
         queryClient.invalidateQueries({ queryKey: ["daily-programme"] });
@@ -86,7 +86,7 @@ function NewTask() {
       }
       goBack();
     },
-    onError: (err) => notifyApiError(err, "Failed to create project"),
+    onError: (err) => notifyApiError(err, "Failed to create job"),
   });
 
   async function submit(values: TaskFormValues) {
@@ -97,7 +97,7 @@ function NewTask() {
     <RequirePermission route={TASKS_ROUTE} action="modify">
       <Form form={form} onSubmit={submit} className="min-w-0 w-full max-w-full">
         <FormPageCard
-          title="Add project"
+          title="Add job"
           back={{
             to: fromProperty && propertyId ? "/properties/$id" : fromDaily ? "/daily" : "/tasks",
             params: fromProperty && propertyId ? { id: String(propertyId) } : undefined,
@@ -116,7 +116,7 @@ function NewTask() {
                 Cancel
               </Button>
               <SubmitButton size="sm" loading={createMutation.isPending}>
-                Create project
+                Create job
               </SubmitButton>
             </div>
           }

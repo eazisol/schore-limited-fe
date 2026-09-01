@@ -9,12 +9,14 @@ import {
 } from "./SearchableSelectField";
 import { useLookupCreatePermission } from "./useLookupCreatePermission";
 import { LookupQuickCreateModal } from "@/components/lookups/LookupQuickCreateModal";
-import { LOOKUP_CREATE_CONFIG, type LookupCreateType } from "@/lib/lookup-create";
+import { LOOKUP_CREATE_CONFIG, type LookupCreateContext, type LookupCreateType } from "@/lib/lookup-create";
 
 export interface CreatableSearchableSelectFieldProps<T extends FieldValues>
   extends SearchableSelectFieldProps<T> {
   /** Enables inline create for this lookup entity. */
   lookupType?: LookupCreateType;
+  /** Parent form values pre-filled in the quick-create modal. */
+  lookupContext?: LookupCreateContext;
   /** Override permission check (defaults to modify on the entity route). */
   canCreate?: boolean;
   /** Called after a new option is created and selected. */
@@ -23,6 +25,7 @@ export interface CreatableSearchableSelectFieldProps<T extends FieldValues>
 
 export function CreatableSearchableSelectField<T extends FieldValues>({
   lookupType,
+  lookupContext,
   canCreate: canCreateOverride,
   onCreated,
   selectedLabel,
@@ -72,6 +75,7 @@ export function CreatableSearchableSelectField<T extends FieldValues>({
           open={createOpen}
           onClose={() => setCreateOpen(false)}
           onCreated={handleCreated}
+          context={lookupContext}
         />
       ) : null}
     </>

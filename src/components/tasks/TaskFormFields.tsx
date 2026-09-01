@@ -239,7 +239,7 @@ export function TaskFormFields({
 
   async function addForOperative(operativeId: string) {
     if (itemsLocked) {
-      toast.warning("This project is locked. Tick previous-day work before adding items.");
+      toast.warning("This job is locked. Tick previous-day work before adding items.");
       return;
     }
     if (!operativeId) return;
@@ -321,7 +321,7 @@ export function TaskFormFields({
 
   async function addFromTop() {
     if (itemsLocked) {
-      toast.warning("This project is locked. Tick previous-day work before adding items.");
+      toast.warning("This job is locked. Tick previous-day work before adding items.");
       return;
     }
     if (!activeOperativeId) {
@@ -591,9 +591,9 @@ export function TaskFormFields({
             />
             <TextField<TaskFormValues>
               name="budget"
-              label="Price"
-              placeholder="1000 or 1000-2000"
-              description="Single amount or range, with optional £"
+              label="Budget"
+              placeholder="1000"
+              description="Job budget"
               className="min-w-0"
               inputClassName="h-10 min-w-0"
               leftIcon={({ className }) => (
@@ -651,7 +651,7 @@ export function TaskFormFields({
 
           {operativeCards.length === 0 ? (
             <div className="card-elevated p-6 text-sm text-muted-foreground">
-              No project items yet. Choose an operative, then add a package or add-on from the top bar.
+              No job items yet. Choose an operative, then add a package or add-on from the top bar.
             </div>
           ) : null}
 

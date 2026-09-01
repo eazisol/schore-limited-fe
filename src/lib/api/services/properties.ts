@@ -15,10 +15,12 @@ export interface ApiProperty {
   state: string | null;
   country: string | null;
   accessNotes: string | null;
-  customerId: number | null;
+  customerId: number;
   customerName: string | null;
-  contractorId: number | null;
-  contractorName: string | null;
+  projectId: number;
+  projectName: string | null;
+  siteId: number;
+  siteName: string | null;
   isActive: boolean;
   createdBy?: number | null;
   createdDate: string;
@@ -38,8 +40,9 @@ export type PropertyPayload = {
   state: string | null;
   country: string | null;
   accessNotes: string | null;
-  customerId: number | null;
-  contractorId: number | null;
+  customerId: number;
+  siteId: number;
+  projectId: number;
   isActive: boolean;
 };
 
@@ -47,7 +50,8 @@ export type PropertySortBy =
   | "reference"
   | "name"
   | "customer"
-  | "contractor"
+  | "site"
+  | "project"
   | "contactname"
   | "address"
   | "city"
@@ -60,7 +64,8 @@ export interface PropertyListParams {
   pageSize: number;
   search?: string;
   customerId?: number;
-  contractorId?: number;
+  siteId?: number;
+  projectId?: number;
   sortBy?: PropertySortBy;
   sortDir?: PropertySortDir;
 }
@@ -71,7 +76,8 @@ function listQuery(params: PropertyListParams) {
     PageSize: params.pageSize,
     Search: params.search ?? "",
     ...(params.customerId != null ? { CustomerId: params.customerId } : {}),
-    ...(params.contractorId != null ? { ContractorId: params.contractorId } : {}),
+    ...(params.siteId != null ? { SiteId: params.siteId } : {}),
+    ...(params.projectId != null ? { ProjectId: params.projectId } : {}),
     ...(params.sortBy ? { SortBy: params.sortBy } : {}),
     ...(params.sortDir ? { SortDir: params.sortDir } : {}),
   };

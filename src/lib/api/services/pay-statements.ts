@@ -7,7 +7,7 @@ export interface ApiPayStatementSummary {
   operativeId: number;
   operativeName: string;
   tradeName: string | null;
-  contractorNames: string | null;
+  customerNames: string | null;
   weekEnding: string;
   weekStart: string;
   statusId: number;
@@ -44,8 +44,8 @@ export interface ApiPayStatementLine {
   taskId: number | null;
   propertyId: number | null;
   propertyName: string | null;
-  contractorId: number | null;
-  contractorName: string | null;
+  customerId: number | null;
+  customerName: string | null;
   lineDate: string;
   description: string;
   amount: number;
@@ -69,7 +69,7 @@ export interface ApiPayStatementDetail extends ApiPayStatementSummary {
 
 export interface PayStatementListParams {
   weekEnding?: string;
-  contractorId?: number;
+  customerId?: number;
   statusId?: number;
   paymentStatusId?: number;
   page?: number;
@@ -88,8 +88,8 @@ export interface ApiPayStatementExportLine {
 }
 
 export interface ApiPayStatementExportBundle {
-  contractorId: number;
-  contractorName: string;
+  customerId: number;
+  customerName: string;
   weekEnding: string;
   weekStart: string;
   totalAmount: number;
@@ -99,14 +99,14 @@ export interface ApiPayStatementExportBundle {
 export interface ApiPayStatementExport {
   weekEnding: string;
   weekStart: string;
-  contractors: ApiPayStatementExportBundle[];
+  customers: ApiPayStatementExportBundle[];
 }
 
 const listQuery = (params: PayStatementListParams) => ({
   Page: params.page ?? 1,
   PageSize: params.pageSize ?? 100,
   ...(params.weekEnding ? { WeekEnding: params.weekEnding } : {}),
-  ...(params.contractorId != null ? { ContractorId: params.contractorId } : {}),
+  ...(params.customerId != null ? { CustomerId: params.customerId } : {}),
   ...(params.statusId != null ? { StatusId: params.statusId } : {}),
   ...(params.paymentStatusId != null ? { PaymentStatusId: params.paymentStatusId } : {}),
 });
@@ -128,11 +128,11 @@ export const payStatementsService = {
     if (payload.file) form.append("referenceFile", payload.file);
     return http.post<ApiEnvelope<ApiPayStatementDetail>>(`pay-statements/${id}/mark-paid`, form);
   },
-  export: (params: { weekEnding: string; contractorId?: number }) =>
+  export: (params: { weekEnding: string; customerId?: number }) =>
     http.get<ApiEnvelope<ApiPayStatementExport>>("pay-statements/export", {
       params: {
         WeekEnding: params.weekEnding,
-        ...(params.contractorId != null ? { ContractorId: params.contractorId } : {}),
+        ...(params.customerId != null ? { CustomerId: params.customerId } : {}),
       },
     }),
   respond: (id: number | string, payload: { accepted: boolean; reason?: string }) =>

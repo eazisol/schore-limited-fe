@@ -314,7 +314,7 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
       <div className="grid grid-cols-2 gap-6 border-b py-6 text-sm">
         <KV label="Name" value={w.operativeName} />
         <KV label="Trade" value={w.tradeName ?? w.operativeTradeCode ?? "—"} />
-        <KV label="Site / Contract" value={w.contractorNames ?? "—"} />
+        <KV label="Client" value={w.customerNames ?? "—"} />
         <KV label="CIS rate" value={`${w.cisRate}%`} />
       </div>
 

@@ -29,22 +29,22 @@ function CostBudget() {
   }, [weekendQuery.data]);
   const [weekEnding, setWeek] = useState("");
   const selectedWeek = weekEnding || defaultWeek;
-  const [contractorId, setContractorId] = useState<number | "all">("all");
+  const [customerId, setCustomerId] = useState<number | "all">("all");
   const [allTime, setAllTime] = useState(false);
 
-  const contractorsQuery = useQuery({
-    queryKey: ["users", "dropdown", "contractors"],
+  const customersQuery = useQuery({
+    queryKey: ["users", "dropdown", "customers"],
     queryFn: async () =>
-      (await usersService.dropdown({ userTypeId: USER_TYPE_ID.contractor })).data ?? [],
+      (await usersService.dropdown({ userTypeId: USER_TYPE_ID.customer })).data ?? [],
   });
 
   const query = useQuery({
-    queryKey: ["cost-budget", { selectedWeek, contractorId, allTime }],
+    queryKey: ["cost-budget", { selectedWeek, customerId, allTime }],
     queryFn: async () =>
       (
         await costBudgetService.get({
           weekEnding: allTime ? undefined : selectedWeek,
-          contractorId: contractorId === "all" ? undefined : contractorId,
+          customerId: customerId === "all" ? undefined : customerId,
         })
       ).data,
     enabled: allTime || Boolean(selectedWeek),
@@ -52,20 +52,20 @@ function CostBudget() {
   });
 
   const data = query.data;
-  const contractors = data?.contractors ?? [];
+  const customers = data?.customers ?? [];
   const tasks = data?.tasks ?? [];
   const ledger = data?.ledger ?? [];
 
   const exportCsv = () => {
-    if (contractorId === "all" && contractors.length > 1) {
-      for (const contractor of contractors) {
-        const rows = tasks.filter((t) => t.contractorId === contractor.contractorId);
+    if (customerId === "all" && customers.length > 1) {
+      for (const customer of customers) {
+        const rows = tasks.filter((t) => t.customerId === customer.customerId);
         downloadCsv(
-          `cost-budget-${contractor.contractorName.replaceAll(" ", "-")}.csv`,
+          `cost-budget-${customer.customerName.replaceAll(" ", "-")}.csv`,
           taskCsv(rows),
         );
       }
-      toast.success(`Exported ${contractors.length} contractor files`);
+      toast.success(`Exported ${customers.length} client file(s)`);
       return;
     }
     downloadCsv("cost-budget.csv", taskCsv(tasks));
@@ -76,7 +76,7 @@ function CostBudget() {
     <div>
       <PageHeader
         title="Cost & Budget"
-        subtitle="Spent = ticked price work + equal daily top-up share vs task budget. Contractors never mix on export."
+        subtitle="Spent = ticked price work + equal daily top-up share vs job budget. Clients never mix on export."
         actions={
           <Button size="sm" variant="outline" onClick={exportCsv} disabled={tasks.length === 0}>
             <Download className="h-4 w-4" />Export
@@ -100,14 +100,14 @@ function CostBudget() {
           All time
         </label>
         <label className="block">
-          <span className="text-[11px] font-medium text-muted-foreground">Contractor</span>
+          <span className="text-[11px] font-medium text-muted-foreground">Client</span>
           <select
-            value={contractorId === "all" ? "all" : String(contractorId)}
-            onChange={(e) => setContractorId(e.target.value === "all" ? "all" : Number(e.target.value))}
+            value={customerId === "all" ? "all" : String(customerId)}
+            onChange={(e) => setCustomerId(e.target.value === "all" ? "all" : Number(e.target.value))}
             className="mt-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
           >
             <option value="all">All (separate on export)</option>
-            {(contractorsQuery.data ?? []).map((c) => (
+            {(customersQuery.data ?? []).map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
@@ -117,18 +117,18 @@ function CostBudget() {
         {data?.overBudgetCount ? (
           <span className="inline-flex items-center gap-1 text-sm text-destructive">
             <AlertTriangle className="h-4 w-4" />
-            {data.overBudgetCount} task{data.overBudgetCount === 1 ? "" : "s"} over budget
+            {data.overBudgetCount} job{data.overBudgetCount === 1 ? "" : "s"} over budget
           </span>
         ) : null}
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-        {contractors.map((c) => {
+        {customers.map((c) => {
           const pct = c.budget > 0 ? Math.round((c.spent / c.budget) * 100) : 0;
           return (
-            <div key={c.contractorId} className="card-elevated p-5">
+            <div key={c.customerId} className="card-elevated p-5">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="font-semibold">{c.contractorName}</h3>
+                <h3 className="font-semibold">{c.customerName}</h3>
                 {c.overBudgetTaskCount > 0 && (
                   <span className="text-xs text-destructive">{c.overBudgetTaskCount} over budget</span>
                 )}
@@ -158,19 +158,19 @@ function CostBudget() {
             </div>
           );
         })}
-        {contractors.length === 0 && !query.isLoading && (
-          <div className="card-elevated p-5 text-sm text-muted-foreground">No contractor cost yet for this filter.</div>
+        {customers.length === 0 && !query.isLoading && (
+          <div className="card-elevated p-5 text-sm text-muted-foreground">No client cost yet for this filter.</div>
         )}
       </div>
 
       <div className="card-elevated mb-6 overflow-hidden">
-        <div className="border-b px-5 py-3 font-semibold">Task budget tracking</div>
+        <div className="border-b px-5 py-3 font-semibold">Job budget tracking</div>
         <table className="w-full text-sm">
           <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
-              <th className="px-5 py-3 text-left">Task</th>
+              <th className="px-5 py-3 text-left">Job</th>
               <th className="px-3 py-3 text-left">Property</th>
-              <th className="px-3 py-3 text-left">Contractor</th>
+              <th className="px-3 py-3 text-left">Client</th>
               <th className="px-3 py-3 text-right">Budget</th>
               <th className="px-3 py-3 text-right">Price work</th>
               <th className="px-3 py-3 text-right">Top-up</th>
@@ -184,7 +184,7 @@ function CostBudget() {
               <tr key={t.taskId} className={t.isOverBudget ? "bg-destructive/5" : "hover:bg-muted/30"}>
                 <td className="px-5 py-3 font-mono text-xs">{t.taskNumber}</td>
                 <td className="px-3 py-3 font-medium">{t.propertyName}</td>
-                <td className="px-3 py-3 text-muted-foreground">{t.contractorName ?? "—"}</td>
+                <td className="px-3 py-3 text-muted-foreground">{t.customerName ?? "—"}</td>
                 <td className="px-3 py-3 text-right font-mono tabular-nums">
                   {t.budget == null ? "—" : fmtGBP(t.budget)}
                 </td>
@@ -208,7 +208,7 @@ function CostBudget() {
             {!query.isLoading && tasks.length === 0 && (
               <tr>
                 <td colSpan={9} className="px-5 py-12 text-center text-sm text-muted-foreground">
-                  No task cost for this filter.
+                  No job cost for this filter.
                 </td>
               </tr>
             )}
@@ -224,7 +224,7 @@ function CostBudget() {
               <th className="px-5 py-3 text-left">Date</th>
               <th className="px-3 py-3 text-left">Property</th>
               <th className="px-3 py-3 text-left">Operative</th>
-              <th className="px-3 py-3 text-left">Task</th>
+              <th className="px-3 py-3 text-left">Job</th>
               <th className="px-3 py-3 text-right">Cost</th>
             </tr>
           </thead>
@@ -247,13 +247,13 @@ function CostBudget() {
   );
 }
 
-function taskCsv(rows: { taskNumber: string; propertyName: string; contractorName: string | null; budget: number | null; priceWork: number; topUpShare: number; spent: number; remaining: number | null; isOverBudget: boolean }[]) {
+function taskCsv(rows: { taskNumber: string; propertyName: string; customerName: string | null; budget: number | null; priceWork: number; topUpShare: number; spent: number; remaining: number | null; isOverBudget: boolean }[]) {
   return [
-    ["Task", "Property", "Contractor", "Budget", "Price work", "Top-up", "Spent", "Remaining", "Over budget"],
+    ["Job", "Property", "Client", "Budget", "Price work", "Top-up", "Spent", "Remaining", "Over budget"],
     ...rows.map((t) => [
       t.taskNumber,
       t.propertyName,
-      t.contractorName ?? "",
+      t.customerName ?? "",
       t.budget == null ? "" : String(t.budget),
       String(t.priceWork),
       String(t.topUpShare),

@@ -25,7 +25,7 @@ import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { formatDateTime, truncateWithEllipsis } from "@/lib/module-ui";
 import { PROPERTIES_ROUTE } from "@/lib/properties";
 import { SearchableSelect } from "@/components/form";
-import { fetchCustomerOptions, fetchContractorOptions } from "@/lib/user-dropdowns";
+import { fetchCustomerOptions } from "@/lib/user-dropdowns";
 
 export const Route = createFileRoute("/properties/")({
   head: () => ({ meta: [{ title: "Properties | Schore" }] }),
@@ -38,7 +38,9 @@ export const propertiesQueryKey = ["properties"] as const;
 const COLUMN_SORT_KEYS: Record<string, PropertySortBy> = {
   propertyName: "name",
   contactName: "contactname",
-  contractor: "contractor",
+  customer: "customer",
+  site: "site",
+  project: "project",
 };
 
 function PropertiesList() {
@@ -51,9 +53,7 @@ function PropertiesList() {
   const [sortBy, setSortBy] = useState<PropertySortBy>("createdDate");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [customerId, setCustomerId] = useState<number | undefined>(undefined);
-  const [contractorId, setContractorId] = useState<number | undefined>(undefined);
   const [customerLabel, setCustomerLabel] = useState<string | null>(null);
-  const [contractorLabel, setContractorLabel] = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState<ApiProperty | null>(null);
   const [exporting, setExporting] = useState(false);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
@@ -63,7 +63,7 @@ function PropertiesList() {
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: [
       ...propertiesQueryKey,
-      { page, pageSize, search, sortBy, sortDir, customerId, contractorId },
+      { page, pageSize, search, sortBy, sortDir, customerId },
     ],
     queryFn: async () =>
       (
@@ -74,7 +74,6 @@ function PropertiesList() {
           sortBy,
           sortDir,
           customerId,
-          contractorId,
         })
       ).data,
     placeholderData: keepPreviousData,
@@ -106,7 +105,7 @@ function PropertiesList() {
         headers: [
           "Property Name",
           "Contact Name",
-          "Contractor",
+          "Client",
           "Phone",
           "Status",
           "Created Date",
@@ -114,7 +113,7 @@ function PropertiesList() {
         rows: rows.map((row) => [
           row.propertyName,
           row.contactName,
-          row.contractorName ?? "",
+          row.customerName ?? "",
           csvForceText(row.contactPhoneNo ?? ""),
           row.isActive ? "Active" : "Inactive",
           formatDateTime(row.createdDate),
@@ -152,10 +151,22 @@ function PropertiesList() {
         cell: (row) => truncateWithEllipsis(row.contactName),
       },
       {
-        id: "contractor",
-        header: "Contractor",
+        id: "customer",
+        header: "Client",
         sortable: true,
-        cell: (row) => row.contractorName?.trim() || "—",
+        cell: (row) => row.customerName?.trim() || "—",
+      },
+      {
+        id: "site",
+        header: "Site",
+        sortable: true,
+        cell: (row) => row.siteName?.trim() || "—",
+      },
+      {
+        id: "project",
+        header: "Project",
+        sortable: true,
+        cell: (row) => row.projectName?.trim() || "—",
       },
       {
         id: "phone",
@@ -226,13 +237,11 @@ function PropertiesList() {
   function clearFilters() {
     clearSearch();
     setCustomerId(undefined);
-    setContractorId(undefined);
     setCustomerLabel(null);
-    setContractorLabel(null);
     setPage(1);
   }
 
-  const hasActiveFilters = Boolean(search || customerId != null || contractorId != null);
+  const hasActiveFilters = Boolean(search || customerId != null);
 
   return (
     <div>
@@ -297,33 +306,13 @@ function PropertiesList() {
               onSelect={(option) => {
                 setCustomerLabel(option.value ? option.label : null);
               }}
-              placeholder="All customers"
-              searchPlaceholder="Search customers…"
-              aria-label="Filter by customer"
+              placeholder="All clients"
+              searchPlaceholder="Search clients…"
+              aria-label="Filter by client"
               queryKey={["users", "customers", "dropdown"]}
               fetchOptions={fetchCustomerOptions}
               selectedLabel={customerLabel}
-              emptyOption={{ value: "", label: "All customers" }}
-              className="w-full min-w-[11rem] sm:w-52"
-              triggerClassName="h-9 [&>span]:whitespace-nowrap"
-            />
-            <SearchableSelect
-              value={contractorId != null ? String(contractorId) : ""}
-              onValueChange={(value) => {
-                setContractorId(value ? Number(value) : undefined);
-                if (!value) setContractorLabel(null);
-                setPage(1);
-              }}
-              onSelect={(option) => {
-                setContractorLabel(option.value ? option.label : null);
-              }}
-              placeholder="All contractors"
-              searchPlaceholder="Search contractors…"
-              aria-label="Filter by contractor"
-              queryKey={["users", "contractors", "dropdown"]}
-              fetchOptions={fetchContractorOptions}
-              selectedLabel={contractorLabel}
-              emptyOption={{ value: "", label: "All contractors" }}
+              emptyOption={{ value: "", label: "All clients" }}
               className="w-full min-w-[11rem] sm:w-52"
               triggerClassName="h-9 [&>span]:whitespace-nowrap"
             />

@@ -1,4 +1,6 @@
 import { PROPERTIES_ROUTE } from "@/lib/properties";
+import { SITES_ROUTE } from "@/lib/sites";
+import { PROJECTS_ROUTE } from "@/lib/projects";
 import { JOB_TYPES_ROUTE } from "@/lib/job-types";
 import { STATUSES_ROUTE } from "@/lib/statuses";
 import { MANAGE_FORMS_ROUTE } from "@/lib/manage-forms";
@@ -21,7 +23,17 @@ export type LookupCreateType =
   | "trade"
   | "cis"
   | "contractor"
-  | "customer";
+  | "customer"
+  | "site"
+  | "project";
+
+/** Parent form context passed into inline create modals (e.g. pre-selected customer/site). */
+export interface LookupCreateContext {
+  customerId?: string;
+  customerLabel?: string | null;
+  siteId?: string;
+  siteLabel?: string | null;
+}
 
 export interface LookupCreateConfig {
   type: LookupCreateType;
@@ -105,7 +117,27 @@ export const LOOKUP_CREATE_CONFIG: Record<LookupCreateType, LookupCreateConfig> 
       ["users", "customers"],
       ["users", "customers", "dropdown", "quick-create"],
     ],
-    addNewLabel: "Add customer",
+    addNewLabel: "Add client",
+  },
+  site: {
+    type: "site",
+    permissionRoutes: [SITES_ROUTE],
+    invalidateQueryKeys: [
+      ["sites", "dropdown"],
+      ["sites"],
+      ["lookups", "sites"],
+    ],
+    addNewLabel: "Add site",
+  },
+  project: {
+    type: "project",
+    permissionRoutes: [PROJECTS_ROUTE],
+    invalidateQueryKeys: [
+      ["projects", "dropdown"],
+      ["projects"],
+      ["lookups", "projects"],
+    ],
+    addNewLabel: "Add project",
   },
 };
 

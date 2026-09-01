@@ -10,7 +10,7 @@ import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { FormProvider, type FieldErrors } from "react-hook-form";
-import { TextField, PasswordField, SearchableSelectField } from "@/components/form";
+import { TextField, PasswordField, SearchableSelectField, TextareaField } from "@/components/form";
 import { focusFirstFormError, getFirstFormErrorMessage } from "@/components/form/Form";
 import { PasswordRequirements } from "@/lib/password";
 import { toApiError } from "@/lib/api/axios";
@@ -28,7 +28,11 @@ import { tradesService } from "@/lib/api/services/trades";
 import { cisService } from "@/lib/api/services/cis";
 import {
   ADDRESS_MAX_LENGTH,
+  CODE_MAX_LENGTH,
+  DESCRIPTION_MAX_LENGTH,
+  NAME_MAX_LENGTH,
   codeSchema,
+  descriptionSchema,
   nameSchema,
   normalizeCodeInput,
   rateSchema,
@@ -38,9 +42,13 @@ import { getSiteManagerRoleId } from "@/lib/site-manager-role";
 import { USER_TYPE_ID } from "@/lib/user-module";
 import { emailSchema, userNameSchema } from "@/lib/user-validation";
 import { newPasswordSchema } from "@/lib/password";
-import type { LookupCreateType } from "@/lib/lookup-create";
+import type { LookupCreateContext, LookupCreateType } from "@/lib/lookup-create";
 import type { SearchableSelectOption } from "@/components/form";
 import { fetchContractorOptions, fetchCustomerOptions } from "@/lib/user-dropdowns";
+import { formatCustomerDisplayName } from "@/lib/customer-display";
+import { fetchSiteOptions } from "@/lib/site-dropdowns";
+import { sitesService } from "@/lib/api/services/sites";
+import { projectsService } from "@/lib/api/services/projects";
 
 const JOB_TYPE_NAME_MAX = 50;
 const JOB_TYPE_CODE_MAX = 20;
@@ -53,7 +61,6 @@ const propertySchema = z
     propertyName: nameSchema("Property name"),
     contactName: z.string().trim().min(1, "Contact name is required").max(CONTACT_FIELD_MAX),
     customerId: z.string(),
-    contractorId: z.string(),
     address: z.string().trim().min(1, "Address is required").max(ADDRESS_MAX_LENGTH),
     city: z.string().trim().max(100, "City must be 100 characters or fewer"),
     state: z.string().trim().max(100, "State must be 100 characters or fewer"),
@@ -61,11 +68,11 @@ const propertySchema = z
     zipCode: z.string().trim().max(20, "ZIP Code must be 20 characters or fewer"),
   })
   .superRefine((values, ctx) => {
-    if (!values.customerId.trim() && !values.contractorId.trim()) {
+    if (!values.customerId.trim()) {
       ctx.addIssue({
         code: "custom",
         path: ["customerId"],
-        message: "Select a customer or contractor",
+        message: "Client is required",
       });
     }
   });
@@ -99,6 +106,7 @@ const siteManagerSchema = z.object({
 });
 
 const contactUserSchema = z.object({
+  clientCode: z.string().trim().max(100, "Client code must be 100 characters or fewer"),
   firstName: userNameSchema("First name"),
   lastName: userNameSchema("Last name"),
   email: emailSchema(),
@@ -106,6 +114,35 @@ const contactUserSchema = z.object({
 
 const contractorQuickSchema = contactUserSchema.extend({
   companyName: z.string().trim().max(100, "Company name must be 100 characters or fewer"),
+});
+
+const siteQuickSchema = z
+  .object({
+    name: nameSchema("Name", NAME_MAX_LENGTH),
+    code: codeSchema("Code", CODE_MAX_LENGTH),
+    description: descriptionSchema(),
+    address: z.string().trim().max(500, "Address must be 500 characters or fewer"),
+    city: z.string().trim().max(100, "City must be 100 characters or fewer"),
+    state: z.string().trim().max(100, "State must be 100 characters or fewer"),
+    country: z.string().trim().max(100, "Country must be 100 characters or fewer"),
+    zipCode: z.string().trim().max(20, "ZIP Code must be 20 characters or fewer"),
+    customerId: z.string(),
+  })
+  .superRefine((values, ctx) => {
+    if (!values.customerId.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["customerId"],
+        message: "Client is required",
+      });
+    }
+  });
+
+const projectQuickSchema = z.object({
+  name: nameSchema("Name", NAME_MAX_LENGTH),
+  code: codeSchema("Code", CODE_MAX_LENGTH),
+  description: descriptionSchema(),
+  siteId: z.string().trim().min(1, "Site is required"),
 });
 
 type PropertyValues = z.infer<typeof propertySchema>;
@@ -116,15 +153,24 @@ type StatusValues = z.infer<typeof statusSchema>;
 type SiteManagerValues = z.infer<typeof siteManagerSchema>;
 type ContactUserValues = z.infer<typeof contactUserSchema>;
 type ContractorQuickValues = z.infer<typeof contractorQuickSchema>;
+type SiteQuickValues = z.infer<typeof siteQuickSchema>;
+type ProjectQuickValues = z.infer<typeof projectQuickSchema>;
 
 export interface LookupQuickCreateModalProps {
   type: LookupCreateType;
   open: boolean;
   onClose: () => void;
   onCreated: (option: SearchableSelectOption) => void;
+  context?: LookupCreateContext;
 }
 
-export function LookupQuickCreateModal({ type, open, onClose, onCreated }: LookupQuickCreateModalProps) {
+export function LookupQuickCreateModal({
+  type,
+  open,
+  onClose,
+  onCreated,
+  context,
+}: LookupQuickCreateModalProps) {
   if (!open) return null;
 
   switch (type) {
@@ -150,6 +196,10 @@ export function LookupQuickCreateModal({ type, open, onClose, onCreated }: Looku
       return <ContractorQuickCreateModal onClose={onClose} onCreated={onCreated} />;
     case "customer":
       return <CustomerQuickCreateModal onClose={onClose} onCreated={onCreated} />;
+    case "site":
+      return <SiteQuickCreateModal onClose={onClose} onCreated={onCreated} context={context} />;
+    case "project":
+      return <ProjectQuickCreateModal onClose={onClose} onCreated={onCreated} context={context} />;
     default:
       return null;
   }
@@ -168,7 +218,6 @@ function PropertyQuickCreateModal({
       propertyName: "",
       contactName: "",
       customerId: "",
-      contractorId: "",
       address: "",
       city: "",
       state: "",
@@ -191,8 +240,7 @@ function PropertyQuickCreateModal({
         state: values.state.trim() || null,
         country: values.country.trim() || null,
         accessNotes: null,
-        customerId: values.customerId.trim() ? Number(values.customerId) : null,
-        contractorId: values.contractorId.trim() ? Number(values.contractorId) : null,
+        customerId: values.customerId.trim() ? Number(values.customerId) : 0,
         isActive: true,
       }),
     onSuccess: (res) => {
@@ -237,19 +285,11 @@ function PropertyQuickCreateModal({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <SearchableSelectField<PropertyValues>
             name="customerId"
-            label="Customer"
-            placeholder="Select customer"
-            searchPlaceholder="Search customers…"
+            label="Client"
+            placeholder="Select client"
+            searchPlaceholder="Search clients…"
             queryKey={["users", "customers", "dropdown", "quick-create"]}
             fetchOptions={fetchCustomerOptions}
-          />
-          <SearchableSelectField<PropertyValues>
-            name="contractorId"
-            label="Contractor"
-            placeholder="Select contractor"
-            searchPlaceholder="Search contractors…"
-            queryKey={["users", "contractors", "dropdown", "quick-create"]}
-            fetchOptions={fetchContractorOptions}
           />
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -359,7 +399,7 @@ function StatusQuickCreateModal({
     mutationFn: async (values: StatusValues) => {
       const documentTypeId = taskDocTypeQuery.data?.id;
       if (!documentTypeId) {
-        throw new Error("Task document type is not available.");
+        throw new Error("Job document type is not available.");
       }
       return statusesService.create({
         name: values.name.trim(),
@@ -410,11 +450,14 @@ function StatusQuickCreateModal({
 }
 
 function contactUserDropdownLabel(user: {
+  clientCode?: string | null;
   firstName?: string | null;
   lastName?: string | null;
   email?: string | null;
   companyName?: string | null;
 }) {
+  const clientCode = user.clientCode?.trim();
+  if (clientCode) return clientCode;
   const company = user.companyName?.trim();
   if (company) return company;
   const name = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
@@ -583,7 +626,7 @@ function CustomerQuickCreateModal({
 }) {
   const form = useForm<ContactUserValues>({
     resolver: zodResolver(contactUserSchema),
-    defaultValues: { firstName: "", lastName: "", email: "" },
+    defaultValues: { clientCode: "", firstName: "", lastName: "", email: "" },
   });
 
   const mutation = useMutation({
@@ -599,31 +642,39 @@ function CustomerQuickCreateModal({
         isActive: true,
         userTypeId: USER_TYPE_ID.customer,
         roleIds: null,
+        clientCode: values.clientCode.trim() || null,
       }),
     onSuccess: (res) => {
       const created = res.data;
       if (!created) return;
-      toast.success(res.message || "Customer created");
+      toast.success(res.message || "Client created");
       onCreated({
         value: String(created.id),
-        label: contactUserDropdownLabel(created),
+        label: formatCustomerDisplayName(created),
       });
     },
   });
 
   return (
     <QuickCreateShell
-      title="Add customer"
+      title="Add client"
       form={form}
       onClose={onClose}
       onSubmit={async (values) => {
         await mutation.mutateAsync(values);
       }}
       pending={mutation.isPending}
-      submitLabel="Create customer"
+      submitLabel="Create client"
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <TextField<ContactUserValues> name="firstName" label="First name" required autoFocus maxLength={50} />
+        <TextField<ContactUserValues>
+          name="clientCode"
+          label="Client code"
+          autoFocus
+          maxLength={100}
+          className="sm:col-span-2"
+        />
+        <TextField<ContactUserValues> name="firstName" label="First name" required maxLength={50} />
         <TextField<ContactUserValues> name="lastName" label="Last name" required maxLength={50} />
         <TextField<ContactUserValues>
           name="email"
@@ -635,6 +686,230 @@ function CustomerQuickCreateModal({
         />
       </div>
     </QuickCreateShell>
+  );
+}
+
+function SiteQuickCreateModal({
+  onClose,
+  onCreated,
+  context,
+}: {
+  onClose: () => void;
+  onCreated: (option: SearchableSelectOption) => void;
+  context?: LookupCreateContext;
+}) {
+  const lockedCustomerId = context?.customerId?.trim() ?? "";
+
+  const form = useForm<SiteQuickValues>({
+    resolver: zodResolver(siteQuickSchema),
+    defaultValues: {
+      name: "",
+      code: "",
+      description: "",
+      address: "",
+      city: "",
+      state: "",
+      country: "",
+      zipCode: "",
+      customerId: lockedCustomerId,
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: (values: SiteQuickValues) =>
+      sitesService.create({
+        name: values.name.trim(),
+        code: values.code.trim().toUpperCase(),
+        description: values.description.trim() || null,
+        address: values.address.trim() || null,
+        city: values.city.trim() || null,
+        state: values.state.trim() || null,
+        country: values.country.trim() || null,
+        zipCode: values.zipCode.trim() || null,
+        customerId: Number(values.customerId),
+        isActive: true,
+      }),
+    onSuccess: (res) => {
+      const created = res.data;
+      if (!created) return;
+      toast.success(res.message || "Site created");
+      onCreated({
+        value: String(created.id),
+        label: `${created.code} · ${created.name}`,
+      });
+    },
+  });
+
+  return (
+    <QuickCreateShell
+      title="Add site"
+      size="lg"
+      form={form}
+      onClose={onClose}
+      onSubmit={async (values) => {
+        await mutation.mutateAsync(values);
+      }}
+      pending={mutation.isPending}
+      submitLabel="Create site"
+    >
+      <div className="space-y-3">
+        {lockedCustomerId ? (
+          <LockedLookupField
+            label="Client"
+            value={context?.customerLabel?.trim() || "Selected client"}
+          />
+        ) : (
+          <SearchableSelectField<SiteQuickValues>
+            name="customerId"
+            label="Client"
+            required
+            placeholder="Select client"
+            searchPlaceholder="Search clients…"
+            queryKey={["users", "customers", "dropdown", "quick-create"]}
+            fetchOptions={fetchCustomerOptions}
+          />
+        )}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <TextField<SiteQuickValues>
+            name="name"
+            label="Name"
+            required
+            autoFocus
+            maxLength={NAME_MAX_LENGTH}
+          />
+          <TextField<SiteQuickValues>
+            name="code"
+            label="Code"
+            required
+            maxLength={CODE_MAX_LENGTH}
+            transformValue={normalizeCodeInput}
+            inputClassName="uppercase"
+          />
+        </div>
+        <TextareaField<SiteQuickValues>
+          name="description"
+          label="Description"
+          maxLength={DESCRIPTION_MAX_LENGTH}
+          rows={3}
+        />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <TextField<SiteQuickValues> name="address" label="Address" maxLength={500} />
+          <TextField<SiteQuickValues> name="city" label="City" maxLength={100} />
+          <TextField<SiteQuickValues> name="state" label="State" maxLength={100} />
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <TextField<SiteQuickValues> name="country" label="Country" maxLength={100} />
+          <TextField<SiteQuickValues> name="zipCode" label="ZIP Code" maxLength={20} />
+        </div>
+      </div>
+    </QuickCreateShell>
+  );
+}
+
+function ProjectQuickCreateModal({
+  onClose,
+  onCreated,
+  context,
+}: {
+  onClose: () => void;
+  onCreated: (option: SearchableSelectOption) => void;
+  context?: LookupCreateContext;
+}) {
+  const lockedSiteId = context?.siteId?.trim() ?? "";
+  const lockedCustomerId = context?.customerId?.trim() ?? "";
+
+  const form = useForm<ProjectQuickValues>({
+    resolver: zodResolver(projectQuickSchema),
+    defaultValues: {
+      name: "",
+      code: "",
+      description: "",
+      siteId: lockedSiteId,
+    },
+  });
+
+  const fetchSites = (search: string) => fetchSiteOptions(search, lockedCustomerId || undefined);
+
+  const mutation = useMutation({
+    mutationFn: (values: ProjectQuickValues) =>
+      projectsService.create({
+        name: values.name.trim(),
+        code: values.code.trim().toUpperCase(),
+        description: values.description.trim() || null,
+        customerId: lockedCustomerId ? Number(lockedCustomerId) : 0,
+        siteId: Number(values.siteId),
+        isActive: true,
+      }),
+    onSuccess: (res) => {
+      const created = res.data;
+      if (!created) return;
+      toast.success(res.message || "Project created");
+      onCreated({
+        value: String(created.id),
+        label: `${created.code} · ${created.name}`,
+      });
+    },
+  });
+
+  return (
+    <QuickCreateShell
+      title="Add project"
+      form={form}
+      onClose={onClose}
+      onSubmit={async (values) => {
+        await mutation.mutateAsync(values);
+      }}
+      pending={mutation.isPending}
+      submitLabel="Create project"
+    >
+      <div className="space-y-3">
+        {lockedSiteId ? (
+          <LockedLookupField label="Site" value={context?.siteLabel?.trim() || "Selected site"} />
+        ) : (
+          <SearchableSelectField<ProjectQuickValues>
+            name="siteId"
+            label="Site"
+            required
+            placeholder="Select site"
+            searchPlaceholder="Search sites…"
+            queryKey={["lookups", "sites", "quick-create", lockedCustomerId]}
+            fetchOptions={fetchSites}
+          />
+        )}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <TextField<ProjectQuickValues>
+            name="name"
+            label="Name"
+            required
+            autoFocus
+            maxLength={NAME_MAX_LENGTH}
+          />
+          <TextField<ProjectQuickValues>
+            name="code"
+            label="Code"
+            required
+            maxLength={CODE_MAX_LENGTH}
+            transformValue={normalizeCodeInput}
+            inputClassName="uppercase"
+          />
+        </div>
+        <TextareaField<ProjectQuickValues>
+          name="description"
+          label="Description"
+          maxLength={DESCRIPTION_MAX_LENGTH}
+          rows={3}
+        />
+      </div>
+    </QuickCreateShell>
+  );
+}
+
+function LockedLookupField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-sm font-medium leading-none">{label}</p>
+      <p className="rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">{value}</p>
+    </div>
   );
 }
 

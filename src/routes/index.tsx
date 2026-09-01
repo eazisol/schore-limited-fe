@@ -162,7 +162,7 @@ function Dashboard() {
   const extraCounts = useMemo(
     () => [
       {
-        label: "New Tasks",
+        label: "New Jobs",
         value: data?.newTasksCount ?? 0,
         tone: "site" as const,
         icon: Plus,
@@ -229,7 +229,7 @@ function Dashboard() {
                 <div>
                   <h2 className="font-display font-semibold">Latest In Progress</h2>
                   <p className="text-xs text-muted-foreground">
-                    Newest tasks with property and operatives
+                    Newest jobs with property and operatives
                   </p>
                 </div>
                 <Button variant="outline" size="sm" asChild>
@@ -239,14 +239,14 @@ function Dashboard() {
 
               {(data?.latestInProgressTasks ?? []).length === 0 ? (
                 <div className="flex flex-1 items-center justify-center px-4 py-12 text-center text-sm text-muted-foreground sm:px-5">
-                  No in-progress tasks right now.
+                  No in-progress jobs right now.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50 text-xs text-muted-foreground">
                       <tr>
-                        <th className="px-4 py-2.5 text-left font-medium sm:px-5">Task</th>
+                        <th className="px-4 py-2.5 text-left font-medium sm:px-5">Job</th>
                         <th className="px-3 py-2.5 text-left font-medium">Property</th>
                         <th className="px-3 py-2.5 text-left font-medium">Operatives</th>
                         <th className="px-3 py-2.5 text-left font-medium">Type</th>

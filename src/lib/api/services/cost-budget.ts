@@ -1,9 +1,9 @@
 import { http } from "@/lib/api/axios";
 import type { ApiEnvelope } from "./auth";
 
-export interface ApiCostBudgetContractor {
-  contractorId: number;
-  contractorName: string;
+export interface ApiCostBudgetCustomer {
+  customerId: number;
+  customerName: string;
   budget: number;
   spent: number;
   remaining: number;
@@ -15,8 +15,8 @@ export interface ApiCostBudgetTask {
   taskNumber: string;
   propertyId: number;
   propertyName: string;
-  contractorId: number | null;
-  contractorName: string | null;
+  customerId: number;
+  customerName: string | null;
   budget: number | null;
   priceWork: number;
   topUpShare: number;
@@ -33,8 +33,8 @@ export interface ApiCostBudgetLedgerLine {
   taskNumber: string;
   propertyId: number;
   propertyName: string;
-  contractorId: number | null;
-  contractorName: string | null;
+  customerId: number;
+  customerName: string | null;
   priceWork: number;
   topUpShare: number;
   cost: number;
@@ -47,21 +47,21 @@ export interface ApiCostBudget {
   totalBudget: number;
   totalSpent: number;
   totalRemaining: number;
-  contractors: ApiCostBudgetContractor[];
+  customers: ApiCostBudgetCustomer[];
   tasks: ApiCostBudgetTask[];
   ledger: ApiCostBudgetLedgerLine[];
 }
 
 export const costBudgetService = {
-  get: (params: { weekEnding?: string; contractorId?: number } = {}) =>
+  get: (params: { weekEnding?: string; customerId?: number } = {}) =>
     http.get<ApiEnvelope<ApiCostBudget>>("cost-budget", {
       params: {
         ...(params.weekEnding ? { WeekEnding: params.weekEnding } : {}),
-        ...(params.contractorId != null ? { ContractorId: params.contractorId } : {}),
+        ...(params.customerId != null ? { CustomerId: params.customerId } : {}),
       },
     }),
-  getForContractor: (contractorId: number | string) =>
-    http.get<ApiEnvelope<ApiCostBudget>>(`Users/${contractorId}/cost-budget`),
+  getForCustomer: (customerId: number | string) =>
+    http.get<ApiEnvelope<ApiCostBudget>>(`Users/${customerId}/cost-budget`),
   getForDaily: () =>
     http.get<ApiEnvelope<ApiCostBudget>>("DailyProgramme/cost-budget"),
 };

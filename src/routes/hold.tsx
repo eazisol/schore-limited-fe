@@ -31,7 +31,7 @@ export const Route = createFileRoute("/hold")({
 export const taskHoldsQueryKey = ["task-holds"] as const;
 
 const schema = z.object({
-  taskId: z.string().min(1, "Task is required"),
+  taskId: z.string().min(1, "Job is required"),
   holdDate: z.string().min(1, "Date is required"),
   holdReasonId: z.string().min(1, "Reason is required"),
   notes: z.string(),
@@ -75,10 +75,10 @@ function Hold() {
   const columns: DataTableColumn<ApiTaskHold>[] = [
     {
       id: "task",
-      header: "Task",
+      header: "Job",
       cell: (h) => (
         <div>
-          <div className="font-medium">{h.taskNumber || `Task #${h.taskId}`}</div>
+          <div className="font-medium">{h.taskNumber || `Job #${h.taskId}`}</div>
           <div className="text-xs text-muted-foreground">{h.propertyName || "—"}</div>
         </div>
       ),
@@ -169,7 +169,7 @@ function Hold() {
         }}
         emptyState={{
           title: "No hold days recorded.",
-          description: search ? "Try clearing the search." : "Add a hold or set a task status to Hold.",
+          description: search ? "Try clearing the search." : "Add a hold or set a job status to Hold.",
           action: search ? (
             <Button variant="outline" size="sm" onClick={clearSearch}>
               Clear search
@@ -280,14 +280,14 @@ function AddHoldForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-medium text-muted-foreground">
-            Task <span className="text-destructive">*</span>
+            Job <span className="text-destructive">*</span>
           </label>
           <select
             className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
             value={form.watch("taskId")}
             onChange={(e) => form.setValue("taskId", e.target.value, { shouldValidate: true })}
           >
-            <option value="">Select task…</option>
+            <option value="">Select job…</option>
             {(tasksQuery.data ?? []).map((t) => (
               <option key={t.id} value={String(t.id)}>
                 {t.taskNumber} · {t.propertyName}

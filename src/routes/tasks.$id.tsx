@@ -33,38 +33,38 @@ import { z } from "zod";
 
 const searchSchema = z.object({
   mode: z.enum(["view", "edit"]).optional().default("view"),
-  from: z.enum(["daily", "contractor", "property"]).optional(),
-  contractorId: z.string().optional(),
+  from: z.enum(["daily", "customer", "property"]).optional(),
+  customerId: z.string().optional(),
   propertyId: z.string().optional(),
 });
 
 export const Route = createFileRoute("/tasks/$id")({
   validateSearch: searchSchema,
-  head: () => ({ meta: [{ title: "Project | Schore" }] }),
+  head: () => ({ meta: [{ title: "Job | Schore" }] }),
   component: TaskDetail,
 });
 
 function TaskDetail() {
   const { id } = Route.useParams();
-  const { mode, from, contractorId, propertyId } = Route.useSearch();
+  const { mode, from, customerId, propertyId } = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canModify = usePermission({ route: TASKS_ROUTE, action: "modify" });
   const isEdit = mode === "edit" && canModify;
   const fromDaily = from === "daily";
-  const fromContractor = from === "contractor" && Boolean(contractorId);
+  const fromCustomer = from === "customer" && Boolean(customerId);
   const fromProperty = from === "property" && Boolean(propertyId);
   const backLabel = fromDaily
     ? "Back to daily programmer"
-    : fromContractor
-      ? "Back to contractor"
+    : fromCustomer
+      ? "Back to client"
       : fromProperty
         ? "Back to property"
-        : "Back to tasks";
+        : "Back to jobs";
   const contextSearch = fromDaily
     ? { from: "daily" as const }
-    : fromContractor
-      ? { from: "contractor" as const, contractorId: String(contractorId) }
+    : fromCustomer
+      ? { from: "customer" as const, customerId: String(customerId) }
       : fromProperty
         ? { from: "property" as const, propertyId: String(propertyId) }
         : undefined;
@@ -74,8 +74,8 @@ function TaskDetail() {
       navigate({ to: "/daily" });
       return;
     }
-    if (fromContractor && contractorId) {
-      navigate({ to: "/contractors/$id", params: { id: String(contractorId) } });
+    if (fromCustomer && customerId) {
+      navigate({ to: "/customers/$id", params: { id: String(customerId) } });
       return;
     }
     if (fromProperty && propertyId) {
@@ -104,10 +104,10 @@ function TaskDetail() {
   });
 
   /** Prefer task API fields; fall back to property (and daily cache) so list values always show. */
-  const contractorDisplay = (() => {
+  const customerDisplay = (() => {
     const fromTask = task?.contract?.trim();
     if (fromTask) return fromTask;
-    const fromProperty = propertyQuery.data?.contractorName?.trim();
+    const fromProperty = propertyQuery.data?.customerName?.trim();
     if (fromProperty) return fromProperty;
     if (task && fromDaily) {
       const caches = queryClient.getQueriesData<ApiDailyProgramme>({ queryKey: dailyQueryKey });
@@ -145,15 +145,15 @@ function TaskDetail() {
   const updateMutation = useMutation({
     mutationFn: (payload: ReturnType<typeof toTaskPayload>) => tasksService.update(id, payload),
     onSuccess: (res) => {
-      toast.success(res.message || "Project updated");
+      toast.success(res.message || "Job updated");
       queryClient.invalidateQueries({ queryKey: tasksQueryKey });
       if (fromDaily) {
         queryClient.invalidateQueries({ queryKey: ["daily-programme"] });
         navigate({ to: "/daily" });
         return;
       }
-      if (fromContractor && contractorId) {
-        navigate({ to: "/contractors/$id", params: { id: String(contractorId) } });
+      if (fromCustomer && customerId) {
+        navigate({ to: "/customers/$id", params: { id: String(customerId) } });
         return;
       }
       if (fromProperty && propertyId) {
@@ -166,7 +166,7 @@ function TaskDetail() {
         search: { mode: "view", ...contextSearch },
       });
     },
-    onError: (err) => notifyApiError(err, "Failed to update project"),
+    onError: (err) => notifyApiError(err, "Failed to update job"),
   });
 
   async function submit(values: TaskFormValues) {
@@ -174,13 +174,13 @@ function TaskDetail() {
   }
 
   if (isLoading) {
-    return <div className="p-6 text-sm text-muted-foreground">Loading project…</div>;
+    return <div className="p-6 text-sm text-muted-foreground">Loading job…</div>;
   }
 
   if (isError || !task) {
     return (
       <div className="space-y-3 p-6">
-        <p className="text-sm text-destructive">Failed to load project.</p>
+        <p className="text-sm text-destructive">Failed to load job.</p>
         <Button size="sm" variant="outline" onClick={() => refetch()}>
           Retry
         </Button>
@@ -231,7 +231,7 @@ function TaskDetail() {
         {isEdit ? (
           <Form form={form} onSubmit={submit} className="min-w-0 w-full max-w-full">
             <FormPageCard
-              title={`Edit project ${task.taskNumber || ""}`.trim()}
+              title={`Edit job ${task.taskNumber || ""}`.trim()}
               onBack={{ label: backLabel, onClick: goBack }}
               maxWidth="w-full max-w-none"
               footer={
@@ -241,7 +241,7 @@ function TaskDetail() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      if (fromDaily || fromContractor || fromProperty) {
+                      if (fromDaily || fromCustomer || fromProperty) {
                         goBack();
                         return;
                       }
@@ -287,10 +287,10 @@ function TaskDetail() {
         ) : (
           <div className="min-w-0 w-full max-w-full space-y-6">
             <div className="card-elevated grid grid-cols-1 gap-4 overflow-hidden p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-4 [&>*]:min-w-0">
-              <Detail label="Project number" value={task.taskNumber || "—"} />
+              <Detail label="Job number" value={task.taskNumber || "—"} />
               <Detail label="Property" value={task.propertyName} />
               <Detail label="Job type" value={task.jobTypeName} />
-              <Detail label="Contractor" value={contractorDisplay} />
+              <Detail label="Client" value={customerDisplay} />
               <Detail label="Post Code" value={postCodeDisplay} />
               <Detail label="Start date" value={task.startDate?.slice(0, 10) || "—"} />
               <Detail label="HO" value={task.handOverDate?.slice(0, 10) || "—"} />

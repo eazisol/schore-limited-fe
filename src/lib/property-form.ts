@@ -99,11 +99,21 @@ export const propertyFormSchema = z
     country: z.string(),
     accessNotes: descriptionSchema(),
     customerId: z.string(),
-    contractorId: z.string(),
+    siteId: z.string(),
+    projectId: z.string(),
     isActive: z.boolean(),
   })
   .superRefine((values, ctx) => {
     addressFieldsRefine(values, ctx);
+    if (!values.customerId.trim()) {
+      ctx.addIssue({ code: "custom", path: ["customerId"], message: "Client is required" });
+    }
+    if (!values.siteId.trim()) {
+      ctx.addIssue({ code: "custom", path: ["siteId"], message: "Site is required" });
+    }
+    if (!values.projectId.trim()) {
+      ctx.addIssue({ code: "custom", path: ["projectId"], message: "Project is required" });
+    }
   });
 
 export type PropertyFormValues = z.infer<typeof propertyFormSchema>;
@@ -120,15 +130,15 @@ export const propertyFormDefaults: PropertyFormValues = {
   country: "",
   accessNotes: "",
   customerId: "",
-  contractorId: "",
+  siteId: "",
+  projectId: "",
   isActive: true,
 };
 
-function optionalId(value: string): number | null {
+function requiredId(value: string): number {
   const trimmed = value.trim();
-  if (!trimmed) return null;
   const n = Number(trimmed);
-  return Number.isFinite(n) ? n : null;
+  return Number.isFinite(n) ? n : 0;
 }
 
 export function toPropertyPayload(values: PropertyFormValues): PropertyPayload {
@@ -144,8 +154,9 @@ export function toPropertyPayload(values: PropertyFormValues): PropertyPayload {
     state: values.state.trim() || null,
     country: values.country.trim() || null,
     accessNotes: values.accessNotes.trim() || null,
-    customerId: optionalId(values.customerId),
-    contractorId: optionalId(values.contractorId),
+    customerId: requiredId(values.customerId),
+    siteId: requiredId(values.siteId),
+    projectId: requiredId(values.projectId),
     isActive: values.isActive,
   };
 }

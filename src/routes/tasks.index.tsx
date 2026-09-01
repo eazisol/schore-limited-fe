@@ -19,7 +19,7 @@ import { formatDateTime, truncateWithEllipsis } from "@/lib/module-ui";
 import { TASKS_ROUTE } from "@/lib/tasks";
 
 export const Route = createFileRoute("/tasks/")({
-  head: () => ({ meta: [{ title: "Tasks | Schore" }] }),
+  head: () => ({ meta: [{ title: "Jobs | Schore" }] }),
   component: TasksList,
 });
 
@@ -48,11 +48,11 @@ function TasksList() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => tasksService.remove(id),
     onSuccess: (res) => {
-      toast.success(res.message || "Task deleted");
+      toast.success(res.message || "Job deleted");
       setConfirmDel(null);
       queryClient.invalidateQueries({ queryKey: tasksQueryKey });
     },
-    onError: (err) => notifyApiError(err, "Failed to delete task"),
+    onError: (err) => notifyApiError(err, "Failed to delete job"),
   });
 
   const rows = data?.items ?? [];
@@ -62,7 +62,7 @@ function TasksList() {
   const columns: DataTableColumn<ApiTask>[] = [
     {
       id: "taskNumber",
-      header: "Task #",
+      header: "Job #",
       cell: (task) => (
         <code className="rounded bg-secondary px-1.5 py-0.5 text-xs font-mono">
           {task.taskNumber || "—"}
@@ -156,13 +156,13 @@ function TasksList() {
   return (
     <div>
       <PageHeader
-        title="Tasks"
+        title="Jobs"
         actions={
           <Can route={TASKS_ROUTE} action="modify">
             <Button size="sm" asChild>
               <Link to="/tasks/new">
                 <Plus className="mr-1 h-4 w-4" />
-                Add task
+                Add job
               </Link>
             </Button>
           </Can>
@@ -175,11 +175,11 @@ function TasksList() {
         getRowId={(row) => row.id}
         loading={isLoading}
         fetching={isFetching}
-        loadingText="Loading tasks…"
+        loadingText="Loading jobs…"
         error={
           isError
             ? {
-                title: "Unable to load tasks",
+                title: "Unable to load jobs",
                 message: (error as unknown as ApiError)?.message || "Please try again.",
                 onRetry: () => {
                   void refetch();
@@ -190,8 +190,8 @@ function TasksList() {
         search={{
           value: searchInput,
           onChange: setSearchInput,
-          placeholder: "Search tasks…",
-          "aria-label": "Search tasks",
+          placeholder: "Search jobs…",
+          "aria-label": "Search jobs",
         }}
         pagination={{
           page,
@@ -203,21 +203,21 @@ function TasksList() {
             setPageSize(size);
             setPage(1);
           },
-          itemLabel: "tasks",
+          itemLabel: "jobs",
         }}
         rowActions={rowActions}
         emptyState={{
-          title: "No tasks yet",
-          description: "Create a task against a property to allocate work.",
+          title: "No jobs yet",
+          description: "Create a job against a property to allocate work.",
         }}
       />
 
       {confirmDel ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
           <div className="card-elevated w-full max-w-md space-y-4 p-6">
-            <h3 className="font-display text-lg font-semibold">Delete task?</h3>
+            <h3 className="font-display text-lg font-semibold">Delete job?</h3>
             <p className="text-sm text-muted-foreground">
-              Soft-delete task for <strong>{confirmDel.propertyName}</strong>.
+              Soft-delete job for <strong>{confirmDel.propertyName}</strong>.
             </p>
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setConfirmDel(null)}>

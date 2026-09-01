@@ -105,12 +105,20 @@ export function UserFormFields({
           </>
         ) : (
           <>
+            {isCustomer ? (
+              <TextField<UserFormValues>
+                name="clientCode"
+                label="Client code"
+                autoFocus={autoFocusFirstName}
+                maxLength={100}
+              />
+            ) : null}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <TextField<UserFormValues>
                 name="firstName"
                 label="First name"
                 required
-                autoFocus={autoFocusFirstName}
+                autoFocus={autoFocusFirstName && !isCustomer}
                 maxLength={50}
               />
               <TextField<UserFormValues> name="lastName" label="Last name" required maxLength={50} />
@@ -173,16 +181,6 @@ export function UserFormFields({
             ) : isCustomer ? (
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
-                <CreatableSearchableSelectField<UserFormValues>
-                  name="contractorId"
-                  label="Contractor"
-                  placeholder="Select contractor"
-                  searchPlaceholder="Search contractors…"
-                  queryKey={["users", "contractors", "dropdown"]}
-                  selectedLabel={contractorSelectedLabel}
-                  fetchOptions={fetchContractorOptions}
-                  lookupType="contractor"
-                />
               </div>
             ) : null}
             {isCustomer ? (

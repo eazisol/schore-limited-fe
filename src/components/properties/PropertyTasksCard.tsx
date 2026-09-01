@@ -57,7 +57,7 @@ export function PropertyTasksCard({ propertyId, propertyName }: PropertyTasksCar
   const columns: DataTableColumn<ApiTask>[] = [
     {
       id: "taskNumber",
-      header: "Project #",
+      header: "Job #",
       cell: (task) => (
         <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">
           {task.taskNumber || "—"}
@@ -154,7 +154,7 @@ export function PropertyTasksCard({ propertyId, propertyName }: PropertyTasksCar
     <div className="card-elevated overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
         <div className="min-w-0">
-          <h3 className="font-display text-base font-semibold tracking-tight">Projects</h3>
+          <h3 className="font-display text-base font-semibold tracking-tight">Jobs</h3>
         </div>
         <Can route={TASKS_ROUTE} action="modify">
           <Button size="sm" asChild>
@@ -166,7 +166,7 @@ export function PropertyTasksCard({ propertyId, propertyName }: PropertyTasksCar
               }}
             >
               <Plus className="mr-1 h-4 w-4" />
-              New project
+              New job
             </Link>
           </Button>
         </Can>
@@ -179,11 +179,11 @@ export function PropertyTasksCard({ propertyId, propertyName }: PropertyTasksCar
           getRowId={(row) => row.id}
           loading={isLoading}
           fetching={isFetching}
-          loadingText="Loading projects…"
+          loadingText="Loading jobs…"
           error={
             isError
               ? {
-                  title: "Unable to load projects",
+                  title: "Unable to load jobs",
                   message:
                     (error as unknown as ApiError)?.message || "Please try again.",
                   onRetry: () => {
@@ -195,8 +195,8 @@ export function PropertyTasksCard({ propertyId, propertyName }: PropertyTasksCar
           search={{
             value: searchInput,
             onChange: setSearchInput,
-            placeholder: "Search projects…",
-            "aria-label": "Search property projects",
+            placeholder: "Search jobs…",
+            "aria-label": "Search property jobs",
           }}
           pagination={{
             page,
@@ -208,15 +208,15 @@ export function PropertyTasksCard({ propertyId, propertyName }: PropertyTasksCar
               setPageSize(size);
               setPage(1);
             },
-            itemLabel: "projects",
+            itemLabel: "jobs",
             controlsAlign: "center",
           }}
           rowActions={rowActions}
           emptyState={{
-            title: search ? "No matching projects" : "No projects for this property",
+            title: search ? "No matching jobs" : "No jobs for this property",
             description: search
               ? "Try a different search."
-              : "Create a project against this property to allocate work.",
+              : "Create a job against this property to allocate work.",
             action:
               !search && canModify ? (
                 <Button size="sm" asChild>
@@ -228,7 +228,7 @@ export function PropertyTasksCard({ propertyId, propertyName }: PropertyTasksCar
                     }}
                   >
                     <Plus className="mr-1 h-4 w-4" />
-                    New project
+                    New job
                   </Link>
                 </Button>
               ) : undefined,
