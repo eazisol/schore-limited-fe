@@ -11,6 +11,7 @@ import { PRODUCT_MANAGEMENT_ROUTE } from "@/lib/product-management";
 import { ITEMS_ROUTE } from "@/lib/items";
 import { TRADES_ROUTE } from "@/lib/trades";
 import { CIS_ROUTE } from "@/lib/cis";
+import { ROLES_ROUTE } from "@/lib/roles";
 
 export type LookupCreateType =
   | "property"
@@ -25,7 +26,8 @@ export type LookupCreateType =
   | "contractor"
   | "customer"
   | "site"
-  | "project";
+  | "project"
+  | "role";
 
 /** Parent form context passed into inline create modals (e.g. pre-selected customer/site). */
 export interface LookupCreateContext {
@@ -138,6 +140,12 @@ export const LOOKUP_CREATE_CONFIG: Record<LookupCreateType, LookupCreateConfig> 
       ["lookups", "projects"],
     ],
     addNewLabel: "Add project",
+  },
+  role: {
+    type: "role",
+    permissionRoutes: [ROLES_ROUTE],
+    invalidateQueryKeys: [["roles"], ["roles", "list"], ["lookups", "roles"]],
+    addNewLabel: "Add role",
   },
 };
 

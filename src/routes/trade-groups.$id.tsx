@@ -19,6 +19,7 @@ import { tradeGroupsService } from "@/lib/api/services/trade-groups";
 import { productsService } from "@/lib/api/services/products";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { tradeGroupsQueryKey } from "./trade-groups.index";
+import { CodeBadge } from "@/components/CodeBadge";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { truncateWithEllipsis } from "@/lib/module-ui";
 import { fmtGBP } from "@/lib/data";
@@ -224,7 +225,7 @@ function TradeGroupDetail() {
   );
 
   const heroHighlights: DetailProfileHighlight[] = [
-    { label: "Code", value: row.code || "—" },
+    { label: "Code", value: <CodeBadge code={row.code} /> },
     { label: "Items", value: String(items.length) },
     { label: "Total", value: fmtGBP(viewTotalPrice) },
   ];
@@ -277,8 +278,8 @@ function TradeGroupDetail() {
             backTo="/trade-groups"
             headerActions={viewActions}
             leading={
-              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg border-2 border-background bg-accent/90 text-accent-foreground shadow-sm sm:h-16 sm:w-16">
-                <Layers className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border-2 border-background bg-accent/90 text-accent-foreground shadow-sm sm:h-12 sm:w-12">
+                <Layers className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
               </span>
             }
             name={row.name}

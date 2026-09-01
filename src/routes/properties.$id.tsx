@@ -18,6 +18,7 @@ import { Can, usePermission } from "@/components/Permission";
 import { propertiesService, type ApiProperty } from "@/lib/api/services/properties";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { propertiesQueryKey } from "./properties.index";
+import { CodeBadge, CodeWithLabel } from "@/components/CodeBadge";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { PROPERTIES_ROUTE } from "@/lib/properties";
 import { formatDetailAddress } from "@/lib/module-ui";
@@ -28,10 +29,19 @@ import {
 } from "@/lib/property-form";
 import { PropertyFormFields } from "@/components/properties/PropertyFormFields";
 import { PropertyTasksCard } from "@/components/properties/PropertyTasksCard";
+import {
+  hierarchyBackLabel,
+  hierarchyBackNavigation,
+  hierarchyEntityEditSearch,
+  hierarchyReturnSearchSchema,
+  parseHierarchyReturnSearch,
+} from "@/lib/hierarchy-navigation";
 
-const detailSearchSchema = z.object({
-  mode: z.enum(["edit", "view"]).optional(),
-});
+const detailSearchSchema = z
+  .object({
+    mode: z.enum(["edit", "view"]).optional(),
+  })
+  .merge(hierarchyReturnSearchSchema);
 
 export const Route = createFileRoute("/properties/$id")({
   head: ({ params }) => ({ meta: [{ title: `Property #${params.id} | Schore` }] }),
@@ -47,9 +57,9 @@ function propertyLocation(row: ApiProperty): string | undefined {
 function propertyHighlights(row: ApiProperty): DetailProfileHighlight[] {
   const items: DetailProfileHighlight[] = [];
   if (row.reference?.trim()) {
-    items.push({ label: "Reference", value: row.reference.trim() });
+    items.push({ label: "Reference", value: <CodeBadge code={row.reference.trim()} /> });
   }
-  items.push({ label: "Client", value: row.customerName?.trim() || "—" });
+  items.push({ label: "Client", value: <CodeWithLabel combined={row.customerName} /> });
   items.push({ label: "Site", value: row.siteName?.trim() || "—" });
   items.push({ label: "Project", value: row.projectName?.trim() || "—" });
   items.push({ label: "Contact", value: row.contactName?.trim() || "—" });
@@ -58,7 +68,9 @@ function propertyHighlights(row: ApiProperty): DetailProfileHighlight[] {
 
 function PropertyDetail() {
   const { id } = Route.useParams();
-  const { mode } = Route.useSearch();
+  const search = Route.useSearch();
+  const { mode } = search;
+  const returnContext = parseHierarchyReturnSearch(search);
   const numericId = Number(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -67,11 +79,14 @@ function PropertyDetail() {
   const [confirmDel, setConfirmDel] = useState(false);
   const isEditing = mode === "edit" && canModify;
 
+  const backLabel = hierarchyBackLabel(returnContext, "Back to properties");
+  const goBack = () => navigate(hierarchyBackNavigation(returnContext, "/properties"));
+
   function openEdit() {
     navigate({
       to: "/properties/$id",
       params: { id },
-      search: { mode: "edit" },
+      search: returnContext ? hierarchyEntityEditSearch(returnContext) : { mode: "edit" },
       replace: true,
     });
   }
@@ -118,7 +133,11 @@ function PropertyDetail() {
       toast.success(res.message || "Property updated");
       queryClient.setQueryData(["properties", id], res.data);
       queryClient.invalidateQueries({ queryKey: propertiesQueryKey });
-      navigate({ to: "/properties" });
+      if (returnContext) {
+        goBack();
+        return;
+      }
+      navigate({ to: "/properties/$id", params: { id } });
     },
     onError: (err) => notifyApiError(err, "Failed to update property"),
   });
@@ -192,7 +211,8 @@ function PropertyDetail() {
           <Form form={form} onSubmit={save} className="lg:col-span-2">
             <FormPageCard
               title="Edit property"
-              back={{ to: "/properties", label: "Back to properties" }}
+              onBack={returnContext ? { label: backLabel, onClick: goBack } : undefined}
+              back={returnContext ? undefined : { to: "/properties", label: backLabel }}
               headerActions={<SwitchField<PropertyFormValues> name="isActive" label="Active" />}
               maxWidth="w-full max-w-none"
               footer={
@@ -206,7 +226,11 @@ function PropertyDetail() {
                       variant="outline"
                       size="sm"
                       disabled={updateMutation.isPending}
-                      onClick={() => navigate({ to: "/properties" })}
+                      onClick={() =>
+                        returnContext
+                          ? goBack()
+                          : navigate({ to: "/properties/$id", params: { id } })
+                      }
                     >
                       Cancel
                     </Button>
@@ -232,12 +256,13 @@ function PropertyDetail() {
           <DetailProfileHero
             className="w-full"
             title="Property details"
-            backLabel="Back to properties"
-            backTo="/properties"
+            backLabel={returnContext ? undefined : backLabel}
+            backTo={returnContext ? undefined : "/properties"}
+            onBack={returnContext ? { label: backLabel, onClick: goBack } : undefined}
             headerActions={viewActions}
             leading={
-              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg border-2 border-background bg-accent/90 text-accent-foreground shadow-sm sm:h-16 sm:w-16">
-                <Building2 className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border-2 border-background bg-accent/90 text-accent-foreground shadow-sm sm:h-12 sm:w-12">
+                <Building2 className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
               </span>
             }
             name={row.propertyName}

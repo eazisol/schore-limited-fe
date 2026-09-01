@@ -20,13 +20,12 @@ import {
 } from "@/components/users/CustomerDetailExtras";
 import { EntityHierarchyCard } from "@/components/hierarchy/EntityHierarchyCard";
 import { displayUserName } from "@/components/users/UsersListPage";
-import { formatCustomerDisplayName } from "@/lib/customer-display";
+import { CodeBadge, CodeWithLabel } from "@/components/CodeBadge";
 import {
   resolveProfileImageUrl,
   usersService,
   toDateInputValue,
 } from "@/lib/api/services/users";
-import { lookupsService } from "@/lib/api/services/lookups";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { formatDailyRate, formatDetailAddress, formatDateTime, namesLookSimilar } from "@/lib/module-ui";
@@ -76,39 +75,10 @@ export function UserDetailPage() {
     queryFn: async () => (await usersService.get(id)).data,
     enabled: Boolean(id),
   });
-  const rolesQuery = useQuery({
-    queryKey: ["roles"],
-    queryFn: async () => (await lookupsService.roles()).data,
-    enabled: mode === "user",
-  });
-
   const user = userQuery.data;
-  const roles = rolesQuery.data ?? [];
-  const lookupsReady = mode !== "user" || rolesQuery.isSuccess;
 
-  const resolvedRoleId = useMemo(() => {
-    const apiRoleId = user?.roleIds?.[0];
-    if (apiRoleId != null) return String(apiRoleId);
-    const roleName = user?.roleNames?.[0]?.trim().toLowerCase();
-    if (!roleName) return "";
-    return String(roles.find((role) => role.name.trim().toLowerCase() === roleName)?.id ?? "");
-  }, [roles, user?.roleIds, user?.roleNames]);
-
-  const roleOptions = useMemo(() => {
-    const options = roles.map((r) => ({
-      value: String(r.id),
-      label: r.name,
-      description: r.description ?? undefined,
-    }));
-    if (resolvedRoleId && !options.some((o) => o.value === resolvedRoleId)) {
-      options.unshift({
-        value: resolvedRoleId,
-        label: user?.roleNames?.[0]?.trim() || `Role #${resolvedRoleId}`,
-        description: undefined,
-      });
-    }
-    return options;
-  }, [resolvedRoleId, roles, user?.roleNames]);
+  const resolvedRoleId =
+    user?.roleIds?.[0] != null ? String(user.roleIds[0]) : "";
 
   const defaults = useMemo<UserFormValues>(
     () => ({
@@ -148,9 +118,9 @@ export function UserDetailPage() {
     defaultValues: defaults,
   });
   useEffect(() => {
-    if (!user || !lookupsReady) return;
+    if (!user) return;
     form.reset(defaults);
-  }, [user, defaults, form, lookupsReady]);
+  }, [user, defaults, form]);
 
   const updateMutation = useMutation({
     mutationFn: (payload: ReturnType<typeof toUpdateUserPayload>) =>
@@ -206,26 +176,28 @@ export function UserDetailPage() {
   }
 
   const dirty = form.formState.isDirty;
-  const lookupsLoading = mode === "user" && rolesQuery.isLoading;
   const profileImageUrl = resolveProfileImageUrl(user.profileImagePath, user.editDate);
-  const roleLabel =
-    (user.roleNames ?? []).filter(Boolean).join(", ") ||
-    roles.find((r) => String(r.id) === resolvedRoleId)?.name ||
-    "—";
+  const roleLabel = (user.roleNames ?? []).filter(Boolean).join(", ") || "—";
   const name = displayUserName(user);
 
-  const profileHeroName = cfg.isContractor
+  const profileHeroNameText = cfg.isContractor
     ? user.companyName?.trim() || name
     : cfg.isCustomer
-      ? formatCustomerDisplayName(user)
+      ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() ||
+        user.username?.trim() ||
+        "Client"
       : name;
+
+  const profileHeroName = cfg.isCustomer
+    ? <CodeWithLabel code={user.clientCode} label={profileHeroNameText} />
+    : profileHeroNameText;
 
   const contactPersonName = [user.firstName, user.lastName].filter(Boolean).join(" ");
 
   const profileHeroSubtitle = cfg.isContractor
     ? (() => {
         if (!contactPersonName) return undefined;
-        if (namesLookSimilar(profileHeroName, contactPersonName)) return undefined;
+        if (namesLookSimilar(profileHeroNameText, contactPersonName)) return undefined;
         return `Contact: ${contactPersonName}`;
       })()
     : cfg.isOperative
@@ -308,7 +280,7 @@ export function UserDetailPage() {
                     >
                       Cancel
                     </Button>
-                    <SubmitButton size="sm" disabled={!dirty || lookupsLoading} loadingText="Saving…">
+                    <SubmitButton size="sm" disabled={!dirty} loadingText="Saving…">
                       Save changes
                     </SubmitButton>
                   </div>
@@ -320,8 +292,7 @@ export function UserDetailPage() {
                 mode={mode}
                 variant="edit"
                 disabled={updateMutation.isPending}
-                lookupsLoading={lookupsLoading || !lookupsReady}
-                roleOptions={roleOptions}
+                roleSelectedLabel={user.roleNames?.[0]}
                 operativeSelectedLabels={{
                   trade: user.tradeName,
                   cis: user.cisName,
@@ -375,12 +346,14 @@ export function UserDetailPage() {
           />
 
           {cfg.isCustomer ? (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
+              <div className="min-w-0 space-y-6 lg:col-span-2">
                 <EntityHierarchyCard scope="customer" customerId={numericId} />
                 <CustomerRunningTasksCard customerId={numericId} />
               </div>
-              <CustomerCostBudgetCard customerId={numericId} />
+              <div className="self-start">
+                <CustomerCostBudgetCard customerId={numericId} />
+              </div>
             </div>
           ) : null}
         </>

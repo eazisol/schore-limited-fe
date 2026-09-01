@@ -1,11 +1,12 @@
 import type { SearchableSelectOption } from "@/components/form";
 import { productsService } from "@/lib/api/services/products";
 import { tradesService } from "@/lib/api/services/trades";
+import { DROPDOWN_FETCH_SIZE } from "@/lib/dropdown-fetch";
 
 export async function fetchTradeOptions(search: string): Promise<SearchableSelectOption[]> {
   const res = await tradesService.list({
     page: 1,
-    pageSize: 10,
+    pageSize: DROPDOWN_FETCH_SIZE,
     search,
     sortBy: "name",
     sortDir: "asc",
@@ -21,7 +22,7 @@ export async function fetchTradeOptions(search: string): Promise<SearchableSelec
 export async function fetchProductOptions(search: string): Promise<SearchableSelectOption[]> {
   const res = await productsService.list({
     page: 1,
-    pageSize: 10,
+    pageSize: DROPDOWN_FETCH_SIZE,
     search,
     sortBy: "name",
     sortDir: "asc",

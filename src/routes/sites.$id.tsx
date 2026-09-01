@@ -20,6 +20,7 @@ import { Can, usePermission } from "@/components/Permission";
 import { sitesService, type ApiSite } from "@/lib/api/services/sites";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { sitesQueryKey } from "./sites.index";
+import { CodeBadge, CodeWithLabel } from "@/components/CodeBadge";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { SITES_ROUTE } from "@/lib/sites";
 import { formatDetailAddress } from "@/lib/module-ui";
@@ -30,9 +31,19 @@ import {
   type SiteFormValues,
 } from "@/lib/site-form";
 
-const detailSearchSchema = z.object({
-  mode: z.enum(["edit", "view"]).optional(),
-});
+import {
+  hierarchyBackLabel,
+  hierarchyBackNavigation,
+  hierarchyEntityEditSearch,
+  hierarchyReturnSearchSchema,
+  parseHierarchyReturnSearch,
+} from "@/lib/hierarchy-navigation";
+
+const detailSearchSchema = z
+  .object({
+    mode: z.enum(["edit", "view"]).optional(),
+  })
+  .merge(hierarchyReturnSearchSchema);
 
 export const Route = createFileRoute("/sites/$id")({
   head: ({ params }) => ({ meta: [{ title: `Site #${params.id} | Schore` }] }),
@@ -47,14 +58,16 @@ function siteLocation(row: ApiSite): string | undefined {
 
 function siteHighlights(row: ApiSite): DetailProfileHighlight[] {
   return [
-    { label: "Code", value: row.code },
-    { label: "Client", value: row.customerName?.trim() || "—" },
+    { label: "Code", value: <CodeBadge code={row.code} /> },
+    { label: "Client", value: <CodeWithLabel combined={row.customerName} /> },
   ];
 }
 
 function SiteDetail() {
   const { id } = Route.useParams();
-  const { mode } = Route.useSearch();
+  const search = Route.useSearch();
+  const { mode } = search;
+  const returnContext = parseHierarchyReturnSearch(search);
   const numericId = Number(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -63,11 +76,14 @@ function SiteDetail() {
   const [confirmDel, setConfirmDel] = useState(false);
   const isEditing = mode === "edit" && canModify;
 
+  const backLabel = hierarchyBackLabel(returnContext, "Back to sites");
+  const goBack = () => navigate(hierarchyBackNavigation(returnContext, "/sites"));
+
   function openEdit() {
     navigate({
       to: "/sites/$id",
       params: { id },
-      search: { mode: "edit" },
+      search: returnContext ? hierarchyEntityEditSearch(returnContext) : { mode: "edit" },
       replace: true,
     });
   }
@@ -105,6 +121,10 @@ function SiteDetail() {
       toast.success(res.message || "Site updated");
       queryClient.setQueryData(["sites", id], res.data);
       queryClient.invalidateQueries({ queryKey: sitesQueryKey });
+      if (returnContext) {
+        goBack();
+        return;
+      }
       navigate({ to: "/sites/$id", params: { id } });
     },
     onError: (err) => notifyApiError(err, "Failed to update site"),
@@ -177,7 +197,12 @@ function SiteDetail() {
         <Form form={form} onSubmit={save}>
           <FormPageCard
             title="Edit site"
-            back={{ to: "/sites/$id", params: { id }, label: "Back to site" }}
+            onBack={returnContext ? { label: backLabel, onClick: goBack } : undefined}
+            back={
+              returnContext
+                ? undefined
+                : { to: "/sites/$id", params: { id }, label: "Back to site" }
+            }
             headerActions={<SwitchField<SiteFormValues> name="isActive" label="Active" />}
             maxWidth="w-full max-w-none"
             footer={
@@ -191,7 +216,11 @@ function SiteDetail() {
                     variant="outline"
                     size="sm"
                     disabled={updateMutation.isPending}
-                    onClick={() => navigate({ to: "/sites/$id", params: { id } })}
+                    onClick={() =>
+                      returnContext
+                        ? goBack()
+                        : navigate({ to: "/sites/$id", params: { id } })
+                    }
                   >
                     Cancel
                   </Button>
@@ -210,12 +239,13 @@ function SiteDetail() {
           <DetailProfileHero
             className="w-full"
             title="Site details"
-            backLabel="Back to sites"
-            backTo="/sites"
+            backLabel={returnContext ? undefined : backLabel}
+            backTo={returnContext ? undefined : "/sites"}
+            onBack={returnContext ? { label: backLabel, onClick: goBack } : undefined}
             headerActions={viewActions}
             leading={
-              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg border-2 border-background bg-accent/90 text-accent-foreground shadow-sm sm:h-16 sm:w-16">
-                <MapPin className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border-2 border-background bg-accent/90 text-accent-foreground shadow-sm sm:h-12 sm:w-12">
+                <MapPin className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
               </span>
             }
             name={row.name}
@@ -228,7 +258,11 @@ function SiteDetail() {
             ) : null}
           </DetailProfileHero>
 
-          <EntityHierarchyCard scope="site" siteId={row.id} customerId={row.customerId} />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
+            <div className="min-w-0 lg:col-span-2">
+              <EntityHierarchyCard scope="site" siteId={row.id} customerId={row.customerId} />
+            </div>
+          </div>
         </>
       )}
 

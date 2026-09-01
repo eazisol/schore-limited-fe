@@ -20,6 +20,7 @@ import { Can, usePermission } from "@/components/Permission";
 import { projectsService, type ApiProject } from "@/lib/api/services/projects";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { projectsQueryKey } from "./projects.index";
+import { CodeBadge, CodeWithLabel } from "@/components/CodeBadge";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { PROJECTS_ROUTE } from "@/lib/projects";
 import {
@@ -28,10 +29,19 @@ import {
   toProjectPayload,
   type ProjectFormValues,
 } from "@/lib/project-form";
+import {
+  hierarchyBackLabel,
+  hierarchyBackNavigation,
+  hierarchyEntityEditSearch,
+  hierarchyReturnSearchSchema,
+  parseHierarchyReturnSearch,
+} from "@/lib/hierarchy-navigation";
 
-const detailSearchSchema = z.object({
-  mode: z.enum(["edit", "view"]).optional(),
-});
+const detailSearchSchema = z
+  .object({
+    mode: z.enum(["edit", "view"]).optional(),
+  })
+  .merge(hierarchyReturnSearchSchema);
 
 export const Route = createFileRoute("/projects/$id")({
   head: ({ params }) => ({ meta: [{ title: `Project #${params.id} | Schore` }] }),
@@ -41,15 +51,17 @@ export const Route = createFileRoute("/projects/$id")({
 
 function projectHighlights(row: ApiProject): DetailProfileHighlight[] {
   return [
-    { label: "Code", value: row.code },
-    { label: "Client", value: row.customerName?.trim() || "—" },
+    { label: "Code", value: <CodeBadge code={row.code} /> },
+    { label: "Client", value: <CodeWithLabel combined={row.customerName} /> },
     { label: "Site", value: row.siteName?.trim() || "—" },
   ];
 }
 
 function ProjectDetail() {
   const { id } = Route.useParams();
-  const { mode } = Route.useSearch();
+  const search = Route.useSearch();
+  const { mode } = search;
+  const returnContext = parseHierarchyReturnSearch(search);
   const numericId = Number(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -58,11 +70,14 @@ function ProjectDetail() {
   const [confirmDel, setConfirmDel] = useState(false);
   const isEditing = mode === "edit" && canModify;
 
+  const backLabel = hierarchyBackLabel(returnContext, "Back to projects");
+  const goBack = () => navigate(hierarchyBackNavigation(returnContext, "/projects"));
+
   function openEdit() {
     navigate({
       to: "/projects/$id",
       params: { id },
-      search: { mode: "edit" },
+      search: returnContext ? hierarchyEntityEditSearch(returnContext) : { mode: "edit" },
       replace: true,
     });
   }
@@ -104,6 +119,10 @@ function ProjectDetail() {
       toast.success(res.message || "Project updated");
       queryClient.setQueryData(["projects", id], res.data);
       queryClient.invalidateQueries({ queryKey: projectsQueryKey });
+      if (returnContext) {
+        goBack();
+        return;
+      }
       navigate({ to: "/projects/$id", params: { id } });
     },
     onError: (err) => notifyApiError(err, "Failed to update project"),
@@ -177,7 +196,12 @@ function ProjectDetail() {
         <Form form={form} onSubmit={save}>
           <FormPageCard
             title="Edit project"
-            back={{ to: "/projects/$id", params: { id }, label: "Back to project" }}
+            onBack={returnContext ? { label: backLabel, onClick: goBack } : undefined}
+            back={
+              returnContext
+                ? undefined
+                : { to: "/projects/$id", params: { id }, label: "Back to project" }
+            }
             headerActions={<SwitchField<ProjectFormValues> name="isActive" label="Active" />}
             maxWidth="w-full max-w-none"
             footer={
@@ -191,7 +215,11 @@ function ProjectDetail() {
                     variant="outline"
                     size="sm"
                     disabled={updateMutation.isPending}
-                    onClick={() => navigate({ to: "/projects/$id", params: { id } })}
+                    onClick={() =>
+                      returnContext
+                        ? goBack()
+                        : navigate({ to: "/projects/$id", params: { id } })
+                    }
                   >
                     Cancel
                   </Button>
@@ -213,12 +241,13 @@ function ProjectDetail() {
           <DetailProfileHero
             className="w-full"
             title="Project details"
-            backLabel="Back to projects"
-            backTo="/projects"
+            backLabel={returnContext ? undefined : backLabel}
+            backTo={returnContext ? undefined : "/projects"}
+            onBack={returnContext ? { label: backLabel, onClick: goBack } : undefined}
             headerActions={viewActions}
             leading={
-              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg border-2 border-background bg-accent/90 text-accent-foreground shadow-sm sm:h-16 sm:w-16">
-                <FolderKanban className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border-2 border-background bg-accent/90 text-accent-foreground shadow-sm sm:h-12 sm:w-12">
+                <FolderKanban className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
               </span>
             }
             name={row.name}
@@ -230,7 +259,11 @@ function ProjectDetail() {
             ) : null}
           </DetailProfileHero>
 
-          <EntityHierarchyCard scope="project" projectId={row.id} customerId={row.customerId} />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
+            <div className="min-w-0 lg:col-span-2">
+              <EntityHierarchyCard scope="project" projectId={row.id} customerId={row.customerId} />
+            </div>
+          </div>
         </>
       )}
 

@@ -3,6 +3,7 @@ import { useFormContext, type FieldValues, type Path } from "react-hook-form";
 import { FormField, FormItem, FormControl } from "@/components/ui/form";
 import { FormFieldLabel } from "@/components/form/FormFieldLabel";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 
 export interface CheckboxFieldProps<T extends FieldValues> {
   name: Path<T>;
@@ -22,17 +23,16 @@ export function CheckboxField<T extends FieldValues>({
       control={control}
       name={name}
       render={({ field }) => (
-        <FormItem className={"flex flex-row items-start gap-2.5 " + (className ?? "")}>
+        <FormItem className={cn("flex flex-row items-center gap-2.5 space-y-0", className)}>
           <FormControl>
             <Checkbox
               checked={!!field.value}
               onCheckedChange={v => field.onChange(v === true)}
               disabled={disabled || submitting}
               aria-label={typeof label === "string" ? label : undefined}
-              className="mt-0.5"
             />
           </FormControl>
-          <div className="space-y-0.5 leading-tight">
+          <div className="leading-none">
             <FormFieldLabel label={label} description={description} subdued />
           </div>
         </FormItem>

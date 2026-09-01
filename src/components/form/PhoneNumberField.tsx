@@ -71,9 +71,29 @@ export function getMaxNationalLength(country?: string): number {
   return getNationalLengthRange(country).max;
 }
 
-function resolveCountry(value: string, country?: string): CountryCode | undefined {
+/** Matches PhoneInput `defaultCountry` — used when libphonenumber cannot infer country. */
+const DEFAULT_PHONE_COUNTRY: CountryCode = "GB";
+
+function resolveCountry(value: string, country?: string): CountryCode {
   if (country) return country as CountryCode;
-  return parsePhoneNumberFromString(value)?.country;
+
+  const parsed = parsePhoneNumberFromString(value);
+  if (parsed?.country) return parsed.country;
+
+  const trimmed = value.trim();
+  const digits = trimmed.replace(/\D/g, "");
+
+  // UK international prefix — libphonenumber omits country for some ranges (e.g. 07700 900xxx).
+  if (trimmed.startsWith("+44") || (digits.startsWith("44") && digits.length > 2)) {
+    return "GB";
+  }
+
+  // UK national dialling (07…, 01…, 02…, etc.).
+  if (trimmed.startsWith("0")) {
+    return parsePhoneNumberFromString(trimmed, DEFAULT_PHONE_COUNTRY)?.country ?? DEFAULT_PHONE_COUNTRY;
+  }
+
+  return DEFAULT_PHONE_COUNTRY;
 }
 
 function nationalDigits(value: string, country: CountryCode): string {
@@ -86,7 +106,6 @@ function nationalDigits(value: string, country: CountryCode): string {
 
 function exceedsCountryMax(value: string, country?: string): boolean {
   const resolvedCountry = resolveCountry(value, country);
-  if (!resolvedCountry) return value.replace(/\D/g, "").length > 15;
   return nationalDigits(value, resolvedCountry).length > getMaxNationalLength(resolvedCountry);
 }
 
@@ -107,8 +126,6 @@ export function clampPhoneToCountryMax(
   if (!value) return "";
 
   const resolvedCountry = resolveCountry(value, country);
-  if (!resolvedCountry) return value;
-
   const max = getMaxNationalLength(resolvedCountry);
   let callingCode: string;
   try {
@@ -136,10 +153,6 @@ export function getPhoneLengthError(
   if (!trimmed) return null;
 
   const resolvedCountry = resolveCountry(trimmed, country);
-  if (!resolvedCountry) {
-    return "Enter a valid phone number for the selected country.";
-  }
-
   const national = nationalDigits(trimmed, resolvedCountry);
   const { min, max } = getNationalLengthRange(resolvedCountry);
 

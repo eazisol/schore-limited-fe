@@ -1,6 +1,7 @@
 import { http } from "@/lib/api/axios";
 import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
+import { DROPDOWN_FETCH_SIZE } from "@/lib/dropdown-fetch";
 
 export interface ApiDocumentType {
   id: number;
@@ -23,7 +24,7 @@ export const documentTypesService = {
 };
 
 export async function fetchDocumentTypeOptions(search: string) {
-  const res = await documentTypesService.list({ page: 1, pageSize: 50, search });
+  const res = await documentTypesService.list({ page: 1, pageSize: DROPDOWN_FETCH_SIZE, search });
   return (res.data.items ?? [])
     .filter((row) => row.isActive)
     .map((row) => ({

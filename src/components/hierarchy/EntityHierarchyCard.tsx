@@ -1,14 +1,10 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { CalendarDays, ChevronDown, ChevronRight, Eye, Loader2, Pencil } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Link, useNavigate, type LinkProps } from "@tanstack/react-router";
+import { CalendarDays, ChevronRight, Eye, Loader2, Pencil } from "lucide-react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { AppTooltip } from "@/components/AppTooltip";
+import { CodeBadge } from "@/components/CodeBadge";
 import { ActiveStatusBadge, StatusBadge } from "@/components/StatusBadge";
-import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { usePermission } from "@/components/Permission";
 import { projectsService } from "@/lib/api/services/projects";
 import { propertiesService } from "@/lib/api/services/properties";
@@ -30,6 +26,14 @@ import { PROPERTIES_ROUTE } from "@/lib/properties";
 import { SITES_ROUTE } from "@/lib/sites";
 import { TASKS_ROUTE } from "@/lib/tasks";
 import { cn } from "@/lib/utils";
+import {
+  hierarchyEntityEditSearch,
+  hierarchyReturnContextFromCardScope,
+  hierarchyReturnSearch,
+  hierarchyTaskEditSearch,
+  hierarchyTaskViewSearch,
+  type HierarchyReturnContext,
+} from "@/lib/hierarchy-navigation";
 
 const HIERARCHY_PAGE_SIZE = 500;
 
@@ -38,252 +42,445 @@ type EntityHierarchyCardProps =
   | { scope: "site"; siteId: number; customerId: number; title?: string }
   | { scope: "project"; projectId: number; customerId: number; title?: string };
 
-type JobNavContext =
-  | { from: "customer"; customerId: number }
-  | { from: "property"; propertyId: number };
+const ROW_TYPE_LABEL = {
+  site: "Site",
+  project: "Project",
+  property: "Property",
+  job: "Job",
+} as const;
+
+function HierarchyCodeCell({ code }: { code?: string | null }) {
+  return <CodeBadge code={code} />;
+}
+
+function HierarchyTypeCell({ type }: { type: string }) {
+  return <span className="text-xs text-muted-foreground">{type}</span>;
+}
+
+function HierarchyActionLink({
+  label,
+  children,
+  ...linkProps
+}: {
+  label: string;
+  children: ReactNode;
+} & Pick<LinkProps, "to" | "params" | "search">) {
+  return (
+    <AppTooltip content={label} asChild>
+      <Link
+        {...linkProps}
+        aria-label={label}
+        className="inline-grid h-7 w-7 place-items-center rounded-md hover:bg-accent/40"
+      >
+        {children}
+      </Link>
+    </AppTooltip>
+  );
+}
+
+function HierarchyActionButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <AppTooltip content={label} asChild>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        className="inline-grid h-7 w-7 place-items-center rounded-md cursor-pointer hover:bg-accent/40"
+      >
+        {children}
+      </button>
+    </AppTooltip>
+  );
+}
 
 function HierarchyEntityActions({
   to,
   id,
   canModify,
+  returnContext,
 }: {
   to: "/sites/$id" | "/projects/$id" | "/properties/$id";
   id: number;
   canModify: boolean;
+  returnContext: HierarchyReturnContext;
 }) {
   const params = { id: String(id) };
 
   return (
-    <div className="flex shrink-0 items-center gap-1">
-      <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
-        <Link to={to} params={params}>
-          <Eye className="h-3.5 w-3.5" />
-          View
-        </Link>
-      </Button>
+    <div className="flex items-center justify-end -space-x-0.5">
+      <HierarchyActionLink
+        to={to}
+        params={params}
+        search={hierarchyReturnSearch(returnContext)}
+        label="View"
+      >
+        <Eye className="h-4 w-4" />
+      </HierarchyActionLink>
       {canModify ? (
-        <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
-          <Link to={to} params={params} search={{ mode: "edit" }}>
-            <Pencil className="h-3.5 w-3.5" />
-            Edit
-          </Link>
-        </Button>
+        <HierarchyActionLink
+          to={to}
+          params={params}
+          search={hierarchyEntityEditSearch(returnContext)}
+          label="Edit"
+        >
+          <Pencil className="h-4 w-4" />
+        </HierarchyActionLink>
       ) : null}
     </div>
   );
 }
 
-function JobRow({ node, navContext }: { node: HierarchyJobNode; navContext: JobNavContext }) {
+function JobActions({
+  node,
+  returnContext,
+}: {
+  node: HierarchyJobNode;
+  returnContext: HierarchyReturnContext;
+}) {
   const navigate = useNavigate();
   const canModify = usePermission({ route: TASKS_ROUTE, action: "modify" });
   const canReadDaily = usePermission({ route: DAILY_ROUTE, action: "read" });
   const params = { id: String(node.id) };
-  const taskSearch =
-    navContext.from === "customer"
-      ? {
-          mode: "view" as const,
-          from: "customer" as const,
-          customerId: String(navContext.customerId),
-        }
-      : {
-          mode: "view" as const,
-          from: "property" as const,
-          propertyId: String(navContext.propertyId),
-        };
-  const taskEditSearch =
-    navContext.from === "customer"
-      ? {
-          mode: "edit" as const,
-          from: "customer" as const,
-          customerId: String(navContext.customerId),
-        }
-      : {
-          mode: "edit" as const,
-          from: "property" as const,
-          propertyId: String(node.propertyId),
-        };
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md border border-border/50 bg-background px-3 py-2">
-      <div className="min-w-0">
-        <div className="truncate text-sm font-medium">
-          <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">
-            {node.taskNumber || "—"}
-          </code>
-          <span className="ml-2 text-muted-foreground">{node.jobTypeName || "—"}</span>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center justify-end gap-1">
-        {node.statusName ? <StatusBadge status={node.statusName} /> : null}
-        <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
-          <Link to="/tasks/$id" params={params} search={taskSearch}>
-            <Eye className="h-3.5 w-3.5" />
-            View
-          </Link>
-        </Button>
-        {canModify ? (
-          <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
-            <Link to="/tasks/$id" params={params} search={taskEditSearch}>
-              <Pencil className="h-3.5 w-3.5" />
-              Edit
-            </Link>
-          </Button>
-        ) : null}
-        {canReadDaily ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2"
-            onClick={() =>
-              navigate({
-                to: "/daily",
-                search: { propertyId: String(node.propertyId) },
-              })
-            }
-          >
-            <CalendarDays className="h-3.5 w-3.5" />
-            Daily
-          </Button>
-        ) : null}
-      </div>
+    <div className="flex items-center justify-end -space-x-0.5">
+      <HierarchyActionLink
+        to="/tasks/$id"
+        params={params}
+        search={hierarchyTaskViewSearch(returnContext)}
+        label="View"
+      >
+        <Eye className="h-4 w-4" />
+      </HierarchyActionLink>
+      {canModify ? (
+        <HierarchyActionLink
+          to="/tasks/$id"
+          params={params}
+          search={hierarchyTaskEditSearch(returnContext)}
+          label="Edit"
+        >
+          <Pencil className="h-4 w-4" />
+        </HierarchyActionLink>
+      ) : null}
+      {canReadDaily ? (
+        <HierarchyActionButton
+          label="Daily"
+          onClick={() =>
+            navigate({
+              to: "/daily",
+              search: { propertyId: String(node.propertyId) },
+            })
+          }
+        >
+          <CalendarDays className="h-4 w-4" />
+        </HierarchyActionButton>
+      ) : null}
     </div>
   );
 }
 
-function PropertyBlock({
+function ExpandToggle({
+  open,
+  hasChildren,
+  onToggle,
+  label,
+}: {
+  open: boolean;
+  hasChildren: boolean;
+  onToggle: () => void;
+  label: string;
+}) {
+  if (!hasChildren) {
+    return <span className="inline-flex h-5 w-5 shrink-0" aria-hidden />;
+  }
+
+  return (
+    <button
+      type="button"
+      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+      aria-label={open ? `Collapse ${label}` : `Expand ${label}`}
+      aria-expanded={open}
+      onClick={onToggle}
+    >
+      <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-90")} />
+    </button>
+  );
+}
+
+function HierarchyNameCell({
+  depth,
+  open,
+  hasChildren,
+  onToggle,
+  label,
+}: {
+  depth: number;
+  open: boolean;
+  hasChildren: boolean;
+  onToggle: () => void;
+  label: string;
+}) {
+  return (
+    <div
+      className="flex min-w-0 items-center gap-1"
+      style={{ paddingLeft: `${depth}rem` }}
+    >
+      <ExpandToggle
+        open={open}
+        hasChildren={hasChildren}
+        onToggle={onToggle}
+        label={label}
+      />
+      <div className="min-w-0 truncate text-sm">{label}</div>
+    </div>
+  );
+}
+
+function EmptyChildRow({ depth, message }: { depth: number; message: string }) {
+  return (
+    <tr className="hover:bg-transparent">
+      <td colSpan={5} className="px-5 py-1.5">
+        <p
+          className="text-xs text-muted-foreground"
+          style={{ paddingLeft: `${(depth + 1) * 1 + 1.25}rem` }}
+        >
+          {message}
+        </p>
+      </td>
+    </tr>
+  );
+}
+
+function JobRows({
   node,
-  navContext,
-  defaultOpen,
+  depth,
+  returnContext,
+}: {
+  node: HierarchyJobNode;
+  depth: number;
+  returnContext: HierarchyReturnContext;
+}) {
+  return (
+    <tr className="hover:bg-muted/30">
+      <td className="max-w-0 overflow-hidden px-5 py-1.5 align-middle">
+        <div className="min-w-0 truncate text-sm" style={{ paddingLeft: `${depth * 1 + 1.25}rem` }}>
+          {node.jobTypeName || "—"}
+        </div>
+      </td>
+      <td className="overflow-hidden px-3 py-1.5 align-middle">
+        <HierarchyTypeCell type={ROW_TYPE_LABEL.job} />
+      </td>
+      <td className="overflow-hidden px-3 py-1.5 align-middle">
+        <HierarchyCodeCell code={node.taskNumber} />
+      </td>
+      <td className="overflow-hidden px-3 py-1.5 align-middle">
+        {node.statusName ? <StatusBadge status={node.statusName} /> : "—"}
+      </td>
+      <td className="overflow-hidden px-5 py-1.5 align-middle">
+        <JobActions node={node} returnContext={returnContext} />
+      </td>
+    </tr>
+  );
+}
+
+function PropertyRows({
+  node,
+  depth,
+  returnContext,
 }: {
   node: HierarchyPropertyNode;
-  navContext: JobNavContext;
-  defaultOpen?: boolean;
+  depth: number;
+  returnContext: HierarchyReturnContext;
 }) {
-  const [open, setOpen] = useState(defaultOpen ?? false);
+  const [open, setOpen] = useState(false);
   const canModify = usePermission({ route: PROPERTIES_ROUTE, action: "modify" });
-  const jobNavContext: JobNavContext =
-    navContext.from === "customer"
-      ? navContext
-      : { from: "property", propertyId: node.id };
+  const hasChildren = node.children.length > 0;
 
   return (
-    <Collapsible
-      open={open}
-      onOpenChange={setOpen}
-      className="rounded-md border border-border/60 bg-background"
-    >
-      <div className="flex items-center justify-between gap-2 px-3 py-2">
-        <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-left">
-          {open ? (
-            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-          )}
-          <div className="min-w-0 truncate text-sm font-medium">{node.name}</div>
-        </CollapsibleTrigger>
-        <div className="flex items-center gap-2">
+    <Fragment>
+      <tr className="hover:bg-muted/30">
+        <td className="max-w-0 overflow-hidden px-5 py-1.5 align-middle">
+          <HierarchyNameCell
+            depth={depth}
+            open={open}
+            hasChildren={hasChildren}
+            onToggle={() => setOpen((value) => !value)}
+            label={node.name}
+          />
+        </td>
+        <td className="overflow-hidden px-3 py-1.5 align-middle">
+          <HierarchyTypeCell type={ROW_TYPE_LABEL.property} />
+        </td>
+        <td className="overflow-hidden px-3 py-1.5 align-middle">
+          <HierarchyCodeCell />
+        </td>
+        <td className="overflow-hidden px-3 py-1.5 align-middle">
           <ActiveStatusBadge isActive={node.isActive} />
-          <HierarchyEntityActions to="/properties/$id" id={node.id} canModify={canModify} />
-        </div>
-      </div>
-      <CollapsibleContent className="space-y-2 border-t border-border/60 px-3 py-2">
-        {node.children.length === 0 ? (
-          <p className="py-2 text-xs text-muted-foreground">No jobs linked to this property.</p>
-        ) : (
-          node.children.map((job) => (
-            <JobRow key={job.id} node={job} navContext={jobNavContext} />
+        </td>
+        <td className="overflow-hidden px-5 py-1.5 align-middle">
+          <HierarchyEntityActions
+            to="/properties/$id"
+            id={node.id}
+            canModify={canModify}
+            returnContext={returnContext}
+          />
+        </td>
+      </tr>
+      {open && !hasChildren ? (
+        <EmptyChildRow depth={depth} message="No jobs linked to this property." />
+      ) : null}
+      {open
+        ? node.children.map((job) => (
+            <JobRows key={job.id} node={job} depth={depth + 1} returnContext={returnContext} />
           ))
-        )}
-      </CollapsibleContent>
-    </Collapsible>
+        : null}
+    </Fragment>
   );
 }
 
-function ProjectBlock({
+function ProjectRows({
   node,
-  navContext,
-  defaultOpen,
+  depth,
+  returnContext,
 }: {
   node: HierarchyProjectNode;
-  navContext: JobNavContext;
-  defaultOpen?: boolean;
+  depth: number;
+  returnContext: HierarchyReturnContext;
 }) {
-  const [open, setOpen] = useState(defaultOpen ?? false);
+  const [open, setOpen] = useState(false);
   const canModify = usePermission({ route: PROJECTS_ROUTE, action: "modify" });
+  const hasChildren = node.children.length > 0;
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border border-border/70 bg-muted/20">
-      <div className="flex items-center justify-between gap-2 px-3 py-2">
-        <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-left">
-          {open ? (
-            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-          )}
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">{node.name}</div>
-            <div className="truncate text-xs text-muted-foreground">{node.code}</div>
-          </div>
-        </CollapsibleTrigger>
-        <div className="flex items-center gap-2">
+    <Fragment>
+      <tr className="hover:bg-muted/30">
+        <td className="max-w-0 overflow-hidden px-5 py-1.5 align-middle">
+          <HierarchyNameCell
+            depth={depth}
+            open={open}
+            hasChildren={hasChildren}
+            onToggle={() => setOpen((value) => !value)}
+            label={node.name}
+          />
+        </td>
+        <td className="overflow-hidden px-3 py-1.5 align-middle">
+          <HierarchyTypeCell type={ROW_TYPE_LABEL.project} />
+        </td>
+        <td className="overflow-hidden px-3 py-1.5 align-middle">
+          <HierarchyCodeCell code={node.code} />
+        </td>
+        <td className="overflow-hidden px-3 py-1.5 align-middle">
           <ActiveStatusBadge isActive={node.isActive} />
-          <HierarchyEntityActions to="/projects/$id" id={node.id} canModify={canModify} />
-        </div>
-      </div>
-      <CollapsibleContent className="space-y-2 border-t border-border/60 px-3 py-2">
-        {node.children.length === 0 ? (
-          <p className="py-2 text-xs text-muted-foreground">No properties linked to this project.</p>
-        ) : (
-          node.children.map((property) => (
-            <PropertyBlock key={property.id} node={property} navContext={navContext} />
+        </td>
+        <td className="overflow-hidden px-5 py-1.5 align-middle">
+          <HierarchyEntityActions
+            to="/projects/$id"
+            id={node.id}
+            canModify={canModify}
+            returnContext={returnContext}
+          />
+        </td>
+      </tr>
+      {open && !hasChildren ? (
+        <EmptyChildRow depth={depth} message="No properties linked to this project." />
+      ) : null}
+      {open
+        ? node.children.map((property) => (
+            <PropertyRows key={property.id} node={property} depth={depth + 1} returnContext={returnContext} />
           ))
-        )}
-      </CollapsibleContent>
-    </Collapsible>
+        : null}
+    </Fragment>
   );
 }
 
-function SiteBlock({
+function SiteRows({
   node,
-  navContext,
-  defaultOpen,
+  returnContext,
 }: {
   node: HierarchySiteNode;
-  navContext: JobNavContext;
-  defaultOpen?: boolean;
+  returnContext: HierarchyReturnContext;
 }) {
-  const [open, setOpen] = useState(defaultOpen ?? false);
+  const [open, setOpen] = useState(false);
   const canModify = usePermission({ route: SITES_ROUTE, action: "modify" });
+  const hasChildren = node.children.length > 0;
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border border-border bg-card">
-      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-        <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-left">
-          {open ? (
-            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-          )}
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">{node.name}</div>
-            <div className="truncate text-xs text-muted-foreground">{node.code}</div>
-          </div>
-        </CollapsibleTrigger>
-        <div className="flex items-center gap-2">
+    <Fragment>
+      <tr className="hover:bg-muted/30">
+        <td className="max-w-0 overflow-hidden px-5 py-1.5 align-middle">
+          <HierarchyNameCell
+            depth={0}
+            open={open}
+            hasChildren={hasChildren}
+            onToggle={() => setOpen((value) => !value)}
+            label={node.name}
+          />
+        </td>
+        <td className="overflow-hidden px-3 py-1.5 align-middle">
+          <HierarchyTypeCell type={ROW_TYPE_LABEL.site} />
+        </td>
+        <td className="overflow-hidden px-3 py-1.5 align-middle">
+          <HierarchyCodeCell code={node.code} />
+        </td>
+        <td className="overflow-hidden px-3 py-1.5 align-middle">
           <ActiveStatusBadge isActive={node.isActive} />
-          <HierarchyEntityActions to="/sites/$id" id={node.id} canModify={canModify} />
-        </div>
-      </div>
-      <CollapsibleContent className="space-y-2 border-t border-border/60 px-3 py-3">
-        {node.children.length === 0 ? (
-          <p className="py-2 text-xs text-muted-foreground">No projects linked to this site.</p>
-        ) : (
-          node.children.map((project) => (
-            <ProjectBlock key={project.id} node={project} navContext={navContext} />
+        </td>
+        <td className="overflow-hidden px-5 py-1.5 align-middle">
+          <HierarchyEntityActions
+            to="/sites/$id"
+            id={node.id}
+            canModify={canModify}
+            returnContext={returnContext}
+          />
+        </td>
+      </tr>
+      {open && !hasChildren ? (
+        <EmptyChildRow depth={0} message="No projects linked to this site." />
+      ) : null}
+      {open
+        ? node.children.map((project) => (
+            <ProjectRows key={project.id} node={project} depth={1} returnContext={returnContext} />
           ))
-        )}
-      </CollapsibleContent>
-    </Collapsible>
+        : null}
+    </Fragment>
+  );
+}
+
+function HierarchyTable({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+      <table className="w-full table-fixed text-sm" style={{ minWidth: "48rem" }}>
+        <colgroup>
+          <col />
+          <col style={{ width: "6rem" }} />
+          <col style={{ width: "10rem" }} />
+          <col style={{ width: "10rem" }} />
+          <col style={{ width: "8rem" }} />
+        </colgroup>
+        <thead className="bg-muted/50 text-xs text-muted-foreground">
+          <tr>
+            <th className="whitespace-nowrap px-5 py-2 text-left font-medium">Name</th>
+            <th className="whitespace-nowrap px-3 py-2 text-left font-medium">Type</th>
+            <th className="whitespace-nowrap px-3 py-2 text-left font-medium">Code</th>
+            <th className="whitespace-nowrap px-3 py-2 text-left font-medium">Status</th>
+            <th className="whitespace-nowrap px-5 py-2 text-right font-medium">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">{children}</tbody>
+      </table>
+    </div>
   );
 }
 
@@ -440,15 +637,12 @@ export function EntityHierarchyCard(props: EntityHierarchyCardProps) {
   const title =
     props.title ??
     (props.scope === "customer"
-      ? "Sites, projects, properties & jobs"
+      ? "Client Work & Locations"
       : props.scope === "site"
         ? "Projects, properties & jobs"
         : "Properties & jobs");
 
-  const customerNav: JobNavContext =
-    props.scope === "customer"
-      ? { from: "customer", customerId: props.customerId }
-      : { from: "property", propertyId: 0 };
+  const returnContext = hierarchyReturnContextFromCardScope(props);
 
   const customerData = useCustomerHierarchyData(
     props.scope === "customer" ? props.customerId : 0,
@@ -476,47 +670,45 @@ export function EntityHierarchyCard(props: EntityHierarchyCardProps) {
         ? "No projects linked to this site yet."
         : "No properties linked to this project yet.";
 
-  const propertyNavContext: JobNavContext = { from: "property", propertyId: 0 };
-
   return (
-    <div className="card-elevated p-5">
-      <h3 className="mb-4 font-display text-base font-semibold tracking-tight">{title}</h3>
+    <div className="card-elevated overflow-hidden">
+      <div className="border-b px-5 py-3 font-display text-base font-semibold tracking-tight">
+        {title}
+      </div>
 
       {isLoading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 px-5 py-8 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading hierarchy…
         </div>
       ) : isError ? (
-        <p className="py-4 text-sm text-muted-foreground">Unable to load linked records.</p>
+        <p className="px-5 py-6 text-sm text-muted-foreground">Unable to load linked records.</p>
       ) : tree.length === 0 ? (
-        <p className="py-4 text-sm text-muted-foreground">{emptyMessage}</p>
-      ) : props.scope === "customer" ? (
-        <div className={cn("space-y-3")}>
-          {(tree as HierarchySiteNode[]).map((site) => (
-            <SiteBlock key={site.id} node={site} navContext={customerNav} />
-          ))}
-        </div>
-      ) : props.scope === "site" ? (
-        <div className="space-y-3">
-          {(tree as HierarchyProjectNode[]).map((project) => (
-            <ProjectBlock
-              key={project.id}
-              node={project}
-              navContext={propertyNavContext}
-            />
-          ))}
-        </div>
+        <p className="px-5 py-6 text-sm text-muted-foreground">{emptyMessage}</p>
       ) : (
-        <div className="space-y-2">
-          {(tree as HierarchyPropertyNode[]).map((property) => (
-            <PropertyBlock
-              key={property.id}
-              node={property}
-              navContext={propertyNavContext}
-            />
-          ))}
-        </div>
+        <HierarchyTable>
+          {props.scope === "customer"
+            ? (tree as HierarchySiteNode[]).map((site) => (
+                <SiteRows key={site.id} node={site} returnContext={returnContext} />
+              ))
+            : props.scope === "site"
+              ? (tree as HierarchyProjectNode[]).map((project) => (
+                  <ProjectRows
+                    key={project.id}
+                    node={project}
+                    depth={0}
+                    returnContext={returnContext}
+                  />
+                ))
+              : (tree as HierarchyPropertyNode[]).map((property) => (
+                  <PropertyRows
+                    key={property.id}
+                    node={property}
+                    depth={0}
+                    returnContext={returnContext}
+                  />
+                ))}
+        </HierarchyTable>
       )}
     </div>
   );

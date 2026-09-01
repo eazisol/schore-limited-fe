@@ -13,12 +13,13 @@ import {
 } from "@/lib/item-form";
 import type { SearchableSelectOption } from "@/components/form";
 import { DESCRIPTION_MAX_LENGTH, NAME_MAX_LENGTH } from "@/lib/field-validation";
+import { DROPDOWN_FETCH_SIZE } from "@/lib/dropdown-fetch";
 
 async function mapLookupOptions(
   fetcher: typeof productLookupsService.categories,
   search: string,
 ): Promise<SearchableSelectOption[]> {
-  const res = await fetcher({ page: 1, pageSize: 20, search });
+  const res = await fetcher({ page: 1, pageSize: DROPDOWN_FETCH_SIZE, search });
   return (res.data.items ?? [])
     .filter((row) => row.isActive !== false)
     .map((row) => ({

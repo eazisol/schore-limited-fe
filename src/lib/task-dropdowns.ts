@@ -7,6 +7,7 @@ import { tradeGroupsService } from "@/lib/api/services/trade-groups";
 import { productsService } from "@/lib/api/services/products";
 import { usersService } from "@/lib/api/services/users";
 import { tasksService } from "@/lib/api/services/tasks";
+import { DROPDOWN_FETCH_SIZE } from "@/lib/dropdown-fetch";
 import { USER_TYPE_ID } from "@/lib/user-module";
 import { getSiteManagerRoleId } from "@/lib/site-manager-role";
 
@@ -22,7 +23,7 @@ function toOptions(
 }
 
 export async function fetchPropertyOptions(search: string): Promise<SearchableSelectOption[]> {
-  const res = await propertiesService.list({ page: 1, pageSize: 20, search });
+  const res = await propertiesService.list({ page: 1, pageSize: DROPDOWN_FETCH_SIZE, search });
   return (res.data.items ?? []).map((p) => ({
     value: String(p.id),
     label: p.propertyName?.trim() || `Property ${p.id}`,
@@ -30,14 +31,14 @@ export async function fetchPropertyOptions(search: string): Promise<SearchableSe
 }
 
 export async function fetchJobTypeOptions(search: string): Promise<SearchableSelectOption[]> {
-  const res = await jobTypesService.list({ page: 1, pageSize: 20, search });
+  const res = await jobTypesService.list({ page: 1, pageSize: DROPDOWN_FETCH_SIZE, search });
   return toOptions(res.data.items ?? []);
 }
 
 export async function fetchTaskStatusOptions(search: string): Promise<SearchableSelectOption[]> {
   const res = await statusesService.list({
     page: 1,
-    pageSize: 20,
+    pageSize: DROPDOWN_FETCH_SIZE,
     search,
     documentTypeCode: DOCUMENT_TYPE_CODE.TASK,
   });
@@ -53,7 +54,7 @@ export async function fetchTaskStatusOptions(search: string): Promise<Searchable
 export async function fetchTaskItemStatusOptions(search: string): Promise<SearchableSelectOption[]> {
   const res = await statusesService.list({
     page: 1,
-    pageSize: 20,
+    pageSize: DROPDOWN_FETCH_SIZE,
     search,
     documentTypeCode: DOCUMENT_TYPE_CODE.TASK_ITEM,
   });
@@ -65,6 +66,7 @@ export async function fetchSiteManagerOptions(search: string): Promise<Searchabl
   const res = await usersService.dropdown({
     search,
     userTypeId: USER_TYPE_ID.user,
+    take: DROPDOWN_FETCH_SIZE,
     ...(roleId != null ? { roleId } : {}),
   });
   return (res.data ?? []).map((u) => ({
@@ -77,6 +79,7 @@ export async function fetchOperativeOptions(search: string): Promise<SearchableS
   const res = await usersService.dropdown({
     search,
     userTypeId: USER_TYPE_ID.operative,
+    take: DROPDOWN_FETCH_SIZE,
   });
   return (res.data ?? []).map((u) => ({
     value: String(u.id),
@@ -85,7 +88,7 @@ export async function fetchOperativeOptions(search: string): Promise<SearchableS
 }
 
 export async function fetchTradeOptions(search: string): Promise<SearchableSelectOption[]> {
-  const res = await tradesService.list({ page: 1, pageSize: 20, search });
+  const res = await tradesService.list({ page: 1, pageSize: DROPDOWN_FETCH_SIZE, search });
   return toOptions((res.data.items ?? []).map((t) => ({ id: t.id, name: t.name, isActive: t.isActive })));
 }
 
@@ -95,7 +98,7 @@ export async function fetchTradeGroupOptions(
 ): Promise<SearchableSelectOption[]> {
   const res = await tradeGroupsService.list({
     page: 1,
-    pageSize: 20,
+    pageSize: DROPDOWN_FETCH_SIZE,
     search,
     ...(tradeId > 0 ? { tradeId } : {}),
   });
@@ -110,7 +113,7 @@ export async function fetchPackageOptions(search: string): Promise<SearchableSel
 }
 
 export async function fetchProductOptions(search: string): Promise<SearchableSelectOption[]> {
-  const res = await productsService.list({ page: 1, pageSize: 20, search });
+  const res = await productsService.list({ page: 1, pageSize: DROPDOWN_FETCH_SIZE, search });
   return toOptions(
     (res.data.items ?? []).map((p) => ({ id: p.id, name: p.name, isActive: p.isActive })),
   );

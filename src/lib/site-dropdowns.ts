@@ -1,7 +1,6 @@
 import type { SearchableSelectOption } from "@/components/form";
 import { sitesService } from "@/lib/api/services/sites";
-
-const LOOKUP_PAGE_SIZE = 10;
+import { DROPDOWN_FETCH_SIZE } from "@/lib/dropdown-fetch";
 
 export async function fetchSiteOptions(
   search: string,
@@ -10,7 +9,7 @@ export async function fetchSiteOptions(
   const cid = customerId?.trim();
   const res = await sitesService.list({
     page: 1,
-    pageSize: LOOKUP_PAGE_SIZE,
+    pageSize: DROPDOWN_FETCH_SIZE,
     search,
     ...(cid && Number.isFinite(Number(cid)) ? { customerId: Number(cid) } : {}),
   });

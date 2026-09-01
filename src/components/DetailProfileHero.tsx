@@ -12,6 +12,11 @@ export type DetailProfileHighlight = {
   wide?: boolean;
 };
 
+function resolveNameText(name: ReactNode, imageAlt?: string): string {
+  if (typeof name === "string") return name;
+  return imageAlt?.trim() ?? "";
+}
+
 function profileInitials(name: string) {
   return name
     .split(/\s+/)
@@ -26,6 +31,7 @@ export function DetailProfileHero({
   title,
   backLabel,
   backTo,
+  onBack,
   headerActions,
   leading,
   name,
@@ -46,10 +52,11 @@ export function DetailProfileHero({
   title?: string;
   backLabel?: string;
   backTo?: string;
+  onBack?: { label: string; onClick: () => void };
   headerActions?: ReactNode;
   /** Custom leading visual (e.g. property icon). Replaces profile avatar when set. */
   leading?: ReactNode;
-  name: string;
+  name: ReactNode;
   subtitle?: string;
   imageUrl?: string;
   imageAlt?: string;
@@ -66,7 +73,8 @@ export function DetailProfileHero({
   children?: ReactNode;
   className?: string;
 }) {
-  const initials = profileInitials(name);
+  const nameText = resolveNameText(name, imageAlt);
+  const initials = profileInitials(nameText);
   const trimmedEmail = email?.trim();
   const trimmedPhone = phone?.trim();
   const trimmedDob = dateOfBirth?.trim();
@@ -75,24 +83,37 @@ export function DetailProfileHero({
   const trimmedDescription = description?.trim();
   const hasContact = Boolean(trimmedEmail || trimmedPhone || trimmedDob || trimmedJoiningDate);
   const hasHighlights = Boolean(highlights?.length);
-  const hasToolbar = Boolean(title || backTo || headerActions);
+  const hasToolbar = Boolean(title || backTo || onBack || headerActions);
+
+  const backControl = onBack ? (
+    <AppTooltip content={onBack.label} asChild>
+      <button
+        type="button"
+        onClick={onBack.onClick}
+        aria-label={onBack.label}
+        className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        <ArrowLeft className="h-4 w-4" />
+      </button>
+    </AppTooltip>
+  ) : backTo && backLabel ? (
+    <AppTooltip content={backLabel} asChild>
+      <Link
+        to={backTo}
+        aria-label={backLabel}
+        className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        <ArrowLeft className="h-4 w-4" />
+      </Link>
+    </AppTooltip>
+  ) : null;
 
   return (
     <div className={cn("card-elevated overflow-hidden", className)}>
       {hasToolbar ? (
-        <div className="flex flex-col gap-2 border-b border-border px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="flex flex-col gap-2 border-b border-border px-4 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div className="flex min-w-0 items-center gap-2">
-            {backTo && backLabel ? (
-              <AppTooltip content={backLabel} asChild>
-                <Link
-                  to={backTo}
-                  aria-label={backLabel}
-                  className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Link>
-              </AppTooltip>
-            ) : null}
+            {backControl}
             {title ? (
               <h1 className="font-display text-lg font-semibold tracking-tight sm:text-xl">{title}</h1>
             ) : null}
@@ -104,21 +125,21 @@ export function DetailProfileHero({
       ) : null}
       <div
         className={cn(
-          "bg-muted/25 px-4 py-3 sm:px-5 sm:py-3",
+          "bg-muted/25 px-4 py-2 sm:px-5",
           children ? "border-b border-border" : undefined,
         )}
       >
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 flex-col items-center gap-2.5 sm:flex-row sm:items-center sm:gap-3">
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 flex-col items-center gap-2 sm:flex-row sm:items-center sm:gap-2.5">
             {leading ?? (
               <TableImagePreview
                 src={imageUrl ?? ""}
-                alt={imageAlt ?? name}
+                alt={imageAlt ?? nameText}
                 tooltip="View profile photo"
-                className="h-14 w-14 rounded-full border-2 border-background shadow-sm sm:h-16 sm:w-16"
+                className="h-11 w-11 rounded-full border-2 border-background shadow-sm sm:h-12 sm:w-12"
                 fallback={
-                  <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-2 border-background bg-accent/90 text-base font-semibold text-accent-foreground shadow-sm sm:h-16 sm:w-16">
-                    {initials || <User className="h-6 w-6" aria-hidden />}
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-background bg-accent/90 text-sm font-semibold text-accent-foreground shadow-sm sm:h-12 sm:w-12">
+                    {initials || <User className="h-5 w-5" aria-hidden />}
                   </span>
                 }
               />
@@ -135,7 +156,7 @@ export function DetailProfileHero({
                 <p className="mt-0.5 break-words text-xs text-muted-foreground sm:text-sm">{subtitle}</p>
               ) : null}
               {hasContact ? (
-                <div className="mt-1.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 sm:justify-start">
+                <div className="mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 sm:justify-start">
                   {trimmedEmail ? (
                     <span className="inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
                       <Mail className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
@@ -163,13 +184,13 @@ export function DetailProfileHero({
                 </div>
               ) : null}
               {trimmedLocation ? (
-                <div className="mt-1.5 flex items-start justify-center gap-1.5 text-xs text-muted-foreground sm:justify-start sm:text-sm">
+                <div className="mt-1 flex items-start justify-center gap-1.5 text-xs text-muted-foreground sm:justify-start sm:text-sm">
                   <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
                   <span className="break-words whitespace-pre-line leading-relaxed">{trimmedLocation}</span>
                 </div>
               ) : null}
               {trimmedDescription ? (
-                <div className="mt-1.5 flex items-start justify-center gap-1.5 text-xs text-muted-foreground sm:justify-start sm:text-sm">
+                <div className="mt-1 flex items-start justify-center gap-1.5 text-xs text-muted-foreground sm:justify-start sm:text-sm">
                   <ScrollText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
                   <span className="break-words whitespace-pre-line leading-relaxed">{trimmedDescription}</span>
                 </div>
@@ -178,13 +199,18 @@ export function DetailProfileHero({
           </div>
 
           {hasHighlights ? (
-            <dl className="grid w-full grid-cols-2 gap-2 sm:w-auto lg:ml-auto lg:min-w-[280px] lg:max-w-lg lg:shrink-0 lg:border-l lg:border-border lg:pl-4">
+            <dl
+              className={cn(
+                "flex w-full flex-wrap justify-end gap-2 sm:w-auto",
+                "lg:ml-auto lg:shrink-0 lg:border-l lg:border-border lg:pl-4",
+              )}
+            >
               {highlights!.map((item) => (
                 <div
                   key={item.label}
                   className={cn(
-                    "min-w-0 rounded-md border border-border/80 bg-card px-2.5 py-1.5",
-                    item.wide && "col-span-2",
+                    "min-w-[6.5rem] rounded-md border border-border/80 bg-card px-2.5 py-1.5 sm:min-w-[7rem]",
+                    item.wide && "w-full sm:w-auto sm:min-w-[14rem]",
                   )}
                 >
                   <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">

@@ -47,6 +47,14 @@ export function CreatableSearchableSelectField<T extends FieldValues>({
       shouldDirty: true,
       shouldValidate: true,
     });
+    queryClient.setQueriesData<SearchableSelectOption[]>(
+      { queryKey: props.queryKey },
+      (current) => {
+        if (!current) return [option];
+        if (current.some((row) => row.value === option.value)) return current;
+        return [option, ...current];
+      },
+    );
     for (const key of config?.invalidateQueryKeys ?? []) {
       queryClient.invalidateQueries({ queryKey: key });
     }

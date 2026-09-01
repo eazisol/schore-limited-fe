@@ -146,7 +146,7 @@ export function UsersListPage() {
           : cfg.isCustomer
             ? [
                 "Name",
-                "Client code",
+                "Code",
                 "Email",
                 "Phone",
                 "Address",
@@ -305,7 +305,7 @@ export function UsersListPage() {
         cols.push(
           {
             id: "clientCode",
-            header: "Client code",
+            header: "Code",
             cell: (user) => user.clientCode || "—",
           },
           {

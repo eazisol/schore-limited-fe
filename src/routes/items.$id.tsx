@@ -13,6 +13,7 @@ import { TableImagePreview } from "@/components/TableImagePreview";
 import { productsService, resolveProductImageUrl } from "@/lib/api/services/products";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { itemsQueryKey } from "./items.index";
+import { CodeBadge } from "@/components/CodeBadge";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { formatGbp } from "@/lib/module-ui";
 import { ITEMS_ROUTE } from "@/lib/items";
@@ -85,7 +86,7 @@ function ItemDetail() {
     .join(" · ");
 
   const highlights: DetailProfileHighlight[] = [
-    { label: "SKU", value: item.sku || "—" },
+    { label: "SKU", value: <CodeBadge code={item.sku} /> },
     { label: "Unit", value: item.unitName?.trim() || "—" },
     { label: "Sale price", value: formatGbp(item.salePrice) },
     { label: "Cost price", value: formatGbp(item.costPrice) },
@@ -129,11 +130,11 @@ function ItemDetail() {
               src={imageSrc}
               alt={item.name}
               tooltip="View image"
-              className="h-14 w-14 rounded-lg border-2 border-background shadow-sm sm:h-16 sm:w-16"
+              className="h-11 w-11 rounded-lg border-2 border-background shadow-sm sm:h-12 sm:w-12"
             />
           ) : (
-            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg border-2 border-background bg-accent/90 text-accent-foreground shadow-sm sm:h-16 sm:w-16">
-              <Package className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border-2 border-background bg-accent/90 text-accent-foreground shadow-sm sm:h-12 sm:w-12">
+              <Package className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
             </span>
           )
         }

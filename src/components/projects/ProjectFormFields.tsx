@@ -51,33 +51,35 @@ export function ProjectFormFields({
 
   return (
     <div className="space-y-3">
-      <CreatableSearchableSelectField<ProjectFormValues>
-        name="customerId"
-        label="Client"
-        required
-        placeholder="Select client"
-        searchPlaceholder="Search clients…"
-        queryKey={["users", "customers", "dropdown", "project-form", customerId]}
-        selectedLabel={customerLabel ?? customerSelectedLabel}
-        fetchOptions={fetchCustomerOptions}
-        lookupType="customer"
-        onSelect={(option) => setCustomerLabel(option.label)}
-        disabled={disabled}
-      />
-      <CreatableSearchableSelectField<ProjectFormValues>
-        name="siteId"
-        label="Site"
-        required
-        placeholder={customerId ? "Select site" : "Select client first"}
-        searchPlaceholder="Search sites…"
-        queryKey={["sites", "dropdown", "project-form", customerId]}
-        selectedLabel={siteLabel ?? siteSelectedLabel}
-        fetchOptions={fetchSites}
-        lookupType="site"
-        lookupContext={{ customerId, customerLabel: customerLabel ?? customerSelectedLabel ?? undefined }}
-        onSelect={(option) => setSiteLabel(option.label)}
-        disabled={disabled || !customerId}
-      />
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <CreatableSearchableSelectField<ProjectFormValues>
+          name="customerId"
+          label="Client"
+          required
+          placeholder="Select client"
+          searchPlaceholder="Search clients…"
+          queryKey={["users", "customers", "dropdown", "project-form", customerId]}
+          selectedLabel={customerLabel ?? customerSelectedLabel}
+          fetchOptions={fetchCustomerOptions}
+          lookupType="customer"
+          onSelect={(option) => setCustomerLabel(option.label)}
+          disabled={disabled}
+        />
+        <CreatableSearchableSelectField<ProjectFormValues>
+          name="siteId"
+          label="Site"
+          required
+          placeholder={customerId ? "Select site" : "Select client first"}
+          searchPlaceholder="Search sites…"
+          queryKey={["sites", "dropdown", "project-form", customerId]}
+          selectedLabel={siteLabel ?? siteSelectedLabel}
+          fetchOptions={fetchSites}
+          lookupType="site"
+          lookupContext={{ customerId, customerLabel: customerLabel ?? customerSelectedLabel ?? undefined }}
+          onSelect={(option) => setSiteLabel(option.label)}
+          disabled={disabled || !customerId}
+        />
+      </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <TextField<ProjectFormValues>
           name="name"

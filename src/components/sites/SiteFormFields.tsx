@@ -20,19 +20,19 @@ type SiteFormFieldsProps = {
 export function SiteFormFields({ disabled, customerSelectedLabel }: SiteFormFieldsProps) {
   return (
     <div className="space-y-3">
-      <CreatableSearchableSelectField<SiteFormValues>
-        name="customerId"
-        label="Client"
-        required
-        placeholder="Select client"
-        searchPlaceholder="Search clients…"
-        queryKey={["users", "customers", "dropdown", "site-form"]}
-        selectedLabel={customerSelectedLabel}
-        fetchOptions={fetchCustomerOptions}
-        lookupType="customer"
-        disabled={disabled}
-      />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <CreatableSearchableSelectField<SiteFormValues>
+          name="customerId"
+          label="Client"
+          required
+          placeholder="Select client"
+          searchPlaceholder="Search clients…"
+          queryKey={["users", "customers", "dropdown", "site-form"]}
+          selectedLabel={customerSelectedLabel}
+          fetchOptions={fetchCustomerOptions}
+          lookupType="customer"
+          disabled={disabled}
+        />
         <TextField<SiteFormValues>
           name="name"
           label="Name"
@@ -40,6 +40,8 @@ export function SiteFormFields({ disabled, customerSelectedLabel }: SiteFormFiel
           maxLength={NAME_MAX_LENGTH}
           disabled={disabled}
         />
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <TextField<SiteFormValues>
           name="code"
           label="Code"
@@ -49,6 +51,13 @@ export function SiteFormFields({ disabled, customerSelectedLabel }: SiteFormFiel
           inputClassName="uppercase"
           disabled={disabled}
         />
+        <TextField<SiteFormValues> name="address" label="Address" maxLength={500} disabled={disabled} />
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <TextField<SiteFormValues> name="city" label="City" maxLength={100} disabled={disabled} />
+        <TextField<SiteFormValues> name="state" label="State" maxLength={100} disabled={disabled} />
+        <TextField<SiteFormValues> name="country" label="Country" maxLength={100} disabled={disabled} />
+        <TextField<SiteFormValues> name="zipCode" label="ZIP Code" maxLength={20} disabled={disabled} />
       </div>
       <TextareaField<SiteFormValues>
         name="description"
@@ -57,15 +66,6 @@ export function SiteFormFields({ disabled, customerSelectedLabel }: SiteFormFiel
         maxLength={DESCRIPTION_MAX_LENGTH}
         disabled={disabled}
       />
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <TextField<SiteFormValues> name="address" label="Address" maxLength={500} disabled={disabled} />
-        <TextField<SiteFormValues> name="city" label="City" maxLength={100} disabled={disabled} />
-        <TextField<SiteFormValues> name="state" label="State" maxLength={100} disabled={disabled} />
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <TextField<SiteFormValues> name="country" label="Country" maxLength={100} disabled={disabled} />
-        <TextField<SiteFormValues> name="zipCode" label="ZIP Code" maxLength={20} disabled={disabled} />
-      </div>
     </div>
   );
 }

@@ -162,7 +162,7 @@ function contactModuleExtrasRefine(mode: UserModuleMode, values: UserFormValues,
       ctx.addIssue({
         code: "custom",
         path: ["clientCode"],
-        message: "Client code must be 100 characters or fewer",
+        message: "Code must be 100 characters or fewer",
       });
     }
   }

@@ -1,4 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import type { ReactNode } from "react";
+import { CodeBadge, CodeWithLabel } from "@/components/CodeBadge";
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -33,9 +35,11 @@ import { z } from "zod";
 
 const searchSchema = z.object({
   mode: z.enum(["view", "edit"]).optional().default("view"),
-  from: z.enum(["daily", "customer", "property"]).optional(),
+  from: z.enum(["daily", "customer", "property", "site", "project"]).optional(),
   customerId: z.string().optional(),
   propertyId: z.string().optional(),
+  siteId: z.string().optional(),
+  projectId: z.string().optional(),
 });
 
 export const Route = createFileRoute("/tasks/$id")({
@@ -46,7 +50,7 @@ export const Route = createFileRoute("/tasks/$id")({
 
 function TaskDetail() {
   const { id } = Route.useParams();
-  const { mode, from, customerId, propertyId } = Route.useSearch();
+  const { mode, from, customerId, propertyId, siteId, projectId } = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canModify = usePermission({ route: TASKS_ROUTE, action: "modify" });
@@ -54,20 +58,30 @@ function TaskDetail() {
   const fromDaily = from === "daily";
   const fromCustomer = from === "customer" && Boolean(customerId);
   const fromProperty = from === "property" && Boolean(propertyId);
+  const fromSite = from === "site" && Boolean(siteId);
+  const fromProject = from === "project" && Boolean(projectId);
   const backLabel = fromDaily
     ? "Back to daily programmer"
     : fromCustomer
       ? "Back to client"
-      : fromProperty
-        ? "Back to property"
-        : "Back to jobs";
+      : fromSite
+        ? "Back to site"
+        : fromProject
+          ? "Back to project"
+          : fromProperty
+            ? "Back to property"
+            : "Back to jobs";
   const contextSearch = fromDaily
     ? { from: "daily" as const }
     : fromCustomer
       ? { from: "customer" as const, customerId: String(customerId) }
-      : fromProperty
-        ? { from: "property" as const, propertyId: String(propertyId) }
-        : undefined;
+      : fromSite
+        ? { from: "site" as const, siteId: String(siteId) }
+        : fromProject
+          ? { from: "project" as const, projectId: String(projectId) }
+          : fromProperty
+            ? { from: "property" as const, propertyId: String(propertyId) }
+            : undefined;
 
   const goBack = () => {
     if (fromDaily) {
@@ -76,6 +90,14 @@ function TaskDetail() {
     }
     if (fromCustomer && customerId) {
       navigate({ to: "/customers/$id", params: { id: String(customerId) } });
+      return;
+    }
+    if (fromSite && siteId) {
+      navigate({ to: "/sites/$id", params: { id: String(siteId) } });
+      return;
+    }
+    if (fromProject && projectId) {
+      navigate({ to: "/projects/$id", params: { id: String(projectId) } });
       return;
     }
     if (fromProperty && propertyId) {
@@ -154,6 +176,14 @@ function TaskDetail() {
       }
       if (fromCustomer && customerId) {
         navigate({ to: "/customers/$id", params: { id: String(customerId) } });
+        return;
+      }
+      if (fromSite && siteId) {
+        navigate({ to: "/sites/$id", params: { id: String(siteId) } });
+        return;
+      }
+      if (fromProject && projectId) {
+        navigate({ to: "/projects/$id", params: { id: String(projectId) } });
         return;
       }
       if (fromProperty && propertyId) {
@@ -287,10 +317,10 @@ function TaskDetail() {
         ) : (
           <div className="min-w-0 w-full max-w-full space-y-6">
             <div className="card-elevated grid grid-cols-1 gap-4 overflow-hidden p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-4 [&>*]:min-w-0">
-              <Detail label="Job number" value={task.taskNumber || "—"} />
+              <Detail label="Job number" value={<CodeBadge code={task.taskNumber} />} />
               <Detail label="Property" value={task.propertyName} />
               <Detail label="Job type" value={task.jobTypeName} />
-              <Detail label="Client" value={customerDisplay} />
+              <Detail label="Client" value={<CodeWithLabel combined={customerDisplay} />} />
               <Detail label="Post Code" value={postCodeDisplay} />
               <Detail label="Start date" value={task.startDate?.slice(0, 10) || "—"} />
               <Detail label="HO" value={task.handOverDate?.slice(0, 10) || "—"} />
@@ -436,7 +466,7 @@ function TaskDetail() {
   );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function Detail({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="min-w-0">
       <div className="text-xs text-muted-foreground">{label}</div>

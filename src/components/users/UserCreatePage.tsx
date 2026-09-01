@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FormPageCard } from "@/components/FormPageCard";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -10,7 +10,6 @@ import { Form, SubmitButton, SwitchField } from "@/components/form";
 import { RequirePermission } from "@/components/Permission";
 import { UserFormFields } from "@/components/users/UserFormFields";
 import { usersService } from "@/lib/api/services/users";
-import { lookupsService } from "@/lib/api/services/lookups";
 import { notifyApiError } from "@/lib/api/axios";
 import { useUserModuleMode, userModuleConfig } from "@/lib/user-module";
 import {
@@ -26,14 +25,6 @@ export function UserCreatePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const schema = createUserFormSchema(mode);
-
-  const rolesQuery = useQuery({
-    queryKey: ["roles"],
-    queryFn: async () => (await lookupsService.roles()).data,
-    enabled: mode === "user",
-    staleTime: 0,
-    refetchOnMount: "always",
-  });
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(schema),
@@ -57,8 +48,6 @@ export function UserCreatePage() {
     await createMutation.mutateAsync(toCreateUserPayload(values, mode));
   }
 
-  const lookupsLoading = mode === "user" && rolesQuery.isLoading;
-
   return (
     <RequirePermission route={cfg.permissionRoute} action="modify">
       <Form form={form} onSubmit={submit} className="max-w-3xl">
@@ -77,7 +66,7 @@ export function UserCreatePage() {
               >
                 Cancel
               </Button>
-              <SubmitButton size="sm" loadingText="Saving…" disabled={lookupsLoading}>
+              <SubmitButton size="sm" loadingText="Saving…">
                 {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 {cfg.labels.createButton}
               </SubmitButton>
@@ -89,13 +78,7 @@ export function UserCreatePage() {
             mode={mode}
             variant="create"
             disabled={createMutation.isPending}
-            lookupsLoading={lookupsLoading}
             autoFocusFirstName
-            roleOptions={(rolesQuery.data ?? []).map((r) => ({
-              value: String(r.id),
-              label: r.name,
-              description: r.description ?? undefined,
-            }))}
           />
         </FormPageCard>
       </Form>

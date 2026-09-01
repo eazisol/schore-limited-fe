@@ -4,17 +4,15 @@ import { useFormContext } from "react-hook-form";
 import {
   TextField,
   PasswordField,
-  SelectField,
   SwitchField,
   CheckboxField,
   PhoneNumberField,
   CreatableSearchableSelectField,
-  type SelectOption,
 } from "@/components/form";
 import { PasswordRequirements } from "@/lib/password";
 import type { UserFormValues } from "@/lib/user-form";
 import { type UserModuleMode } from "@/lib/user-module";
-import { fetchContractorOptions, fetchCisOptions, fetchTradeOptions } from "@/lib/user-dropdowns";
+import { fetchCisOptions, fetchRoleOptions, fetchTradeOptions } from "@/lib/user-dropdowns";
 import { ADDRESS_MAX_LENGTH } from "@/lib/field-validation";
 
 export function UserFormFields({
@@ -23,7 +21,7 @@ export function UserFormFields({
   disabled = false,
   embedded = false,
   lookupsLoading = false,
-  roleOptions,
+  roleSelectedLabel,
   operativeSelectedLabels,
   contractorSelectedLabel,
   autoFocusFirstName = false,
@@ -33,7 +31,7 @@ export function UserFormFields({
   disabled?: boolean;
   embedded?: boolean;
   lookupsLoading?: boolean;
-  roleOptions: SelectOption[];
+  roleSelectedLabel?: string | null;
   operativeSelectedLabels?: {
     trade?: string | null;
     cis?: string | null;
@@ -103,22 +101,55 @@ export function UserFormFields({
               <TextField<UserFormValues> name="zipCode" label="ZIP Code" maxLength={20} />
             </div>
           </>
-        ) : (
+        ) : isCustomer ? (
           <>
-            {isCustomer ? (
-              <TextField<UserFormValues>
-                name="clientCode"
-                label="Client code"
-                autoFocus={autoFocusFirstName}
-                maxLength={100}
-              />
-            ) : null}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <TextField<UserFormValues>
                 name="firstName"
                 label="First name"
                 required
-                autoFocus={autoFocusFirstName && !isCustomer}
+                autoFocus={autoFocusFirstName}
+                maxLength={50}
+              />
+              <TextField<UserFormValues> name="lastName" label="Last name" required maxLength={50} />
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <TextField<UserFormValues> name="clientCode" label="Code" maxLength={100} />
+              <TextField<UserFormValues>
+                name="email"
+                label="Email"
+                required
+                type="email"
+                placeholder="name@schore.co.uk"
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <PhoneNumberField<UserFormValues>
+                name="phone"
+                label="Phone"
+                placeholder="07700 900000"
+              />
+              <TextField<UserFormValues>
+                name="address"
+                label="Address"
+                maxLength={ADDRESS_MAX_LENGTH}
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <TextField<UserFormValues> name="city" label="City" maxLength={100} />
+              <TextField<UserFormValues> name="state" label="State" maxLength={100} />
+              <TextField<UserFormValues> name="country" label="Country" maxLength={100} />
+              <TextField<UserFormValues> name="zipCode" label="ZIP Code" maxLength={20} />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <TextField<UserFormValues>
+                name="firstName"
+                label="First name"
+                required
+                autoFocus={autoFocusFirstName}
                 maxLength={50}
               />
               <TextField<UserFormValues> name="lastName" label="Last name" required maxLength={50} />
@@ -178,28 +209,6 @@ export function UserFormFields({
                 </div>
                 <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
               </div>
-            ) : isCustomer ? (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
-              </div>
-            ) : null}
-            {isCustomer ? (
-              <>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <TextField<UserFormValues>
-                    name="address"
-                    label="Address"
-                    maxLength={ADDRESS_MAX_LENGTH}
-                    className="sm:col-span-2 lg:col-span-2"
-                  />
-                  <TextField<UserFormValues> name="city" label="City" maxLength={100} />
-                  <TextField<UserFormValues> name="state" label="State" maxLength={100} />
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <TextField<UserFormValues> name="country" label="Country" maxLength={100} />
-                  <TextField<UserFormValues> name="zipCode" label="ZIP Code" maxLength={20} />
-                </div>
-              </>
             ) : null}
           </>
         )}
@@ -208,13 +217,17 @@ export function UserFormFields({
       {!isOperative && !isContactModule ? (
         <Section title="Access" hint="Roles control what this user can see and edit." embedded={embedded} separated={embedded}>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <SelectField<UserFormValues>
+            <CreatableSearchableSelectField<UserFormValues>
               name="roleId"
               label="Role"
               required
-              placeholder={lookupsLoading ? "Loading roles…" : "Select role"}
-              disabled={lookupsLoading}
-              options={roleOptions}
+              placeholder="Select role"
+              searchPlaceholder="Search roles…"
+              disabled={disabled || lookupsLoading}
+              queryKey={["lookups", "roles"]}
+              selectedLabel={roleSelectedLabel}
+              fetchOptions={fetchRoleOptions}
+              lookupType="role"
             />
           </div>
         </Section>
@@ -222,7 +235,7 @@ export function UserFormFields({
 
       {isOperative ? (
         <Section title="Workforce" hint="Trade and CIS status used on wage sheets." embedded={embedded} separated={embedded}>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <CreatableSearchableSelectField<UserFormValues>
               name="tradeId"
               label="Trade"
@@ -234,6 +247,15 @@ export function UserFormFields({
               selectedLabel={operativeSelectedLabels?.trade}
               fetchOptions={fetchTradeOptions}
               lookupType="trade"
+            />
+            <TextField<UserFormValues>
+              name="dailyRate"
+              label="Daily rate (£)"
+              required
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder="0.00"
             />
             <CreatableSearchableSelectField<UserFormValues>
               name="cisId"
@@ -248,23 +270,10 @@ export function UserFormFields({
               lookupType="cis"
             />
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <TextField<UserFormValues>
-              name="dailyRate"
-              label="Daily rate (£)"
-              required
-              type="number"
-              min={0}
-              step="0.01"
-              placeholder="0.00"
-            />
-            <div className="flex items-end pb-1">
-              <CheckboxField<UserFormValues>
-                name="isDailyRate"
-                label="Use daily rate for pay (MAX price vs daily)"
-              />
-            </div>
-          </div>
+          <CheckboxField<UserFormValues>
+            name="isDailyRate"
+            label="Use daily rate for pay (MAX price vs daily)"
+          />
         </Section>
       ) : null}
     </fieldset>

@@ -26,6 +26,7 @@ import {
 } from "@/lib/api/services/units-categories";
 import { tradesService } from "@/lib/api/services/trades";
 import { cisService } from "@/lib/api/services/cis";
+import { rolesService } from "@/lib/api/services/system-config";
 import {
   ADDRESS_MAX_LENGTH,
   CODE_MAX_LENGTH,
@@ -106,7 +107,7 @@ const siteManagerSchema = z.object({
 });
 
 const contactUserSchema = z.object({
-  clientCode: z.string().trim().max(100, "Client code must be 100 characters or fewer"),
+  clientCode: z.string().trim().max(100, "Code must be 100 characters or fewer"),
   firstName: userNameSchema("First name"),
   lastName: userNameSchema("Last name"),
   email: emailSchema(),
@@ -145,6 +146,12 @@ const projectQuickSchema = z.object({
   siteId: z.string().trim().min(1, "Site is required"),
 });
 
+const roleQuickSchema = z.object({
+  name: nameSchema("Name", 50),
+  code: codeSchema("Code", 50),
+  description: descriptionSchema(),
+});
+
 type PropertyValues = z.infer<typeof propertySchema>;
 type JobTypeValues = z.infer<typeof jobTypeSchema>;
 type NamedLookupValues = z.infer<typeof namedLookupSchema>;
@@ -155,6 +162,7 @@ type ContactUserValues = z.infer<typeof contactUserSchema>;
 type ContractorQuickValues = z.infer<typeof contractorQuickSchema>;
 type SiteQuickValues = z.infer<typeof siteQuickSchema>;
 type ProjectQuickValues = z.infer<typeof projectQuickSchema>;
+type RoleQuickValues = z.infer<typeof roleQuickSchema>;
 
 export interface LookupQuickCreateModalProps {
   type: LookupCreateType;
@@ -200,6 +208,8 @@ export function LookupQuickCreateModal({
       return <SiteQuickCreateModal onClose={onClose} onCreated={onCreated} context={context} />;
     case "project":
       return <ProjectQuickCreateModal onClose={onClose} onCreated={onCreated} context={context} />;
+    case "role":
+      return <RoleQuickCreateModal onClose={onClose} onCreated={onCreated} />;
     default:
       return null;
   }
@@ -666,24 +676,27 @@ function CustomerQuickCreateModal({
       pending={mutation.isPending}
       submitLabel="Create client"
     >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <TextField<ContactUserValues>
-          name="clientCode"
-          label="Client code"
-          autoFocus
-          maxLength={100}
-          className="sm:col-span-2"
-        />
-        <TextField<ContactUserValues> name="firstName" label="First name" required maxLength={50} />
-        <TextField<ContactUserValues> name="lastName" label="Last name" required maxLength={50} />
-        <TextField<ContactUserValues>
-          name="email"
-          label="Email"
-          required
-          type="email"
-          placeholder="name@schore.co.uk"
-          className="sm:col-span-2"
-        />
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <TextField<ContactUserValues>
+            name="firstName"
+            label="First name"
+            required
+            autoFocus
+            maxLength={50}
+          />
+          <TextField<ContactUserValues> name="lastName" label="Last name" required maxLength={50} />
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <TextField<ContactUserValues> name="clientCode" label="Code" maxLength={100} />
+          <TextField<ContactUserValues>
+            name="email"
+            label="Email"
+            required
+            type="email"
+            placeholder="name@schore.co.uk"
+          />
+        </div>
       </div>
     </QuickCreateShell>
   );
@@ -753,23 +766,23 @@ function SiteQuickCreateModal({
       submitLabel="Create site"
     >
       <div className="space-y-3">
-        {lockedCustomerId ? (
-          <LockedLookupField
-            label="Client"
-            value={context?.customerLabel?.trim() || "Selected client"}
-          />
-        ) : (
-          <SearchableSelectField<SiteQuickValues>
-            name="customerId"
-            label="Client"
-            required
-            placeholder="Select client"
-            searchPlaceholder="Search clients…"
-            queryKey={["users", "customers", "dropdown", "quick-create"]}
-            fetchOptions={fetchCustomerOptions}
-          />
-        )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {lockedCustomerId ? (
+            <LockedLookupField
+              label="Client"
+              value={context?.customerLabel?.trim() || "Selected client"}
+            />
+          ) : (
+            <SearchableSelectField<SiteQuickValues>
+              name="customerId"
+              label="Client"
+              required
+              placeholder="Select client"
+              searchPlaceholder="Search clients…"
+              queryKey={["users", "customers", "dropdown", "quick-create"]}
+              fetchOptions={fetchCustomerOptions}
+            />
+          )}
           <TextField<SiteQuickValues>
             name="name"
             label="Name"
@@ -777,6 +790,8 @@ function SiteQuickCreateModal({
             autoFocus
             maxLength={NAME_MAX_LENGTH}
           />
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <TextField<SiteQuickValues>
             name="code"
             label="Code"
@@ -785,6 +800,13 @@ function SiteQuickCreateModal({
             transformValue={normalizeCodeInput}
             inputClassName="uppercase"
           />
+          <TextField<SiteQuickValues> name="address" label="Address" maxLength={500} />
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <TextField<SiteQuickValues> name="city" label="City" maxLength={100} />
+          <TextField<SiteQuickValues> name="state" label="State" maxLength={100} />
+          <TextField<SiteQuickValues> name="country" label="Country" maxLength={100} />
+          <TextField<SiteQuickValues> name="zipCode" label="ZIP Code" maxLength={20} />
         </div>
         <TextareaField<SiteQuickValues>
           name="description"
@@ -792,15 +814,6 @@ function SiteQuickCreateModal({
           maxLength={DESCRIPTION_MAX_LENGTH}
           rows={3}
         />
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <TextField<SiteQuickValues> name="address" label="Address" maxLength={500} />
-          <TextField<SiteQuickValues> name="city" label="City" maxLength={100} />
-          <TextField<SiteQuickValues> name="state" label="State" maxLength={100} />
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <TextField<SiteQuickValues> name="country" label="Country" maxLength={100} />
-          <TextField<SiteQuickValues> name="zipCode" label="ZIP Code" maxLength={20} />
-        </div>
       </div>
     </QuickCreateShell>
   );
@@ -863,19 +876,27 @@ function ProjectQuickCreateModal({
       submitLabel="Create project"
     >
       <div className="space-y-3">
-        {lockedSiteId ? (
-          <LockedLookupField label="Site" value={context?.siteLabel?.trim() || "Selected site"} />
-        ) : (
-          <SearchableSelectField<ProjectQuickValues>
-            name="siteId"
-            label="Site"
-            required
-            placeholder="Select site"
-            searchPlaceholder="Search sites…"
-            queryKey={["lookups", "sites", "quick-create", lockedCustomerId]}
-            fetchOptions={fetchSites}
-          />
-        )}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {lockedCustomerId ? (
+            <LockedLookupField
+              label="Client"
+              value={context?.customerLabel?.trim() || "Selected client"}
+            />
+          ) : null}
+          {lockedSiteId ? (
+            <LockedLookupField label="Site" value={context?.siteLabel?.trim() || "Selected site"} />
+          ) : (
+            <SearchableSelectField<ProjectQuickValues>
+              name="siteId"
+              label="Site"
+              required
+              placeholder="Select site"
+              searchPlaceholder="Search sites…"
+              queryKey={["lookups", "sites", "quick-create", lockedCustomerId]}
+              fetchOptions={fetchSites}
+            />
+          )}
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <TextField<ProjectQuickValues>
             name="name"
@@ -1086,6 +1107,72 @@ function CisQuickCreateModal({
           max={100}
           step="0.01"
           className="sm:col-span-2"
+        />
+      </div>
+    </QuickCreateShell>
+  );
+}
+
+function RoleQuickCreateModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (option: SearchableSelectOption) => void;
+}) {
+  const form = useForm<RoleQuickValues>({
+    resolver: zodResolver(roleQuickSchema),
+    defaultValues: { name: "", code: "", description: "" },
+  });
+
+  const mutation = useMutation({
+    mutationFn: (values: RoleQuickValues) =>
+      rolesService.create({
+        name: values.name.trim(),
+        code: values.code.trim(),
+        description: values.description.trim(),
+        isActive: true,
+      }),
+    onSuccess: (res) => {
+      const created = res.data;
+      if (!created) return;
+      toast.success(res.message || "Role created");
+      onCreated({
+        value: String(created.id),
+        label: created.name?.trim() || `Role ${created.id}`,
+        description: created.description?.trim() || undefined,
+      });
+    },
+  });
+
+  return (
+    <QuickCreateShell
+      title="Add role"
+      form={form}
+      onClose={onClose}
+      onSubmit={async (values) => {
+        await mutation.mutateAsync(values);
+      }}
+      pending={mutation.isPending}
+      submitLabel="Create role"
+    >
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <TextField<RoleQuickValues> name="name" label="Name" required autoFocus maxLength={50} />
+          <TextField<RoleQuickValues>
+            name="code"
+            label="Code"
+            required
+            maxLength={50}
+            transformValue={normalizeCodeInput}
+            inputClassName="uppercase"
+          />
+        </div>
+        <TextareaField<RoleQuickValues>
+          name="description"
+          label="Description"
+          rows={3}
+          maxLength={500}
         />
       </div>
     </QuickCreateShell>

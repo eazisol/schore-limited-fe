@@ -110,7 +110,20 @@ function backendMessage(data: unknown, fallback: string): string {
   return fallback;
 }
 
+function isApiError(err: unknown): err is ApiError {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "message" in err &&
+    typeof (err as ApiError).message === "string" &&
+    "status" in err &&
+    typeof (err as ApiError).status === "number" &&
+    "isNetworkError" in err
+  );
+}
+
 export function toApiError(err: unknown): ApiError {
+  if (isApiError(err)) return err;
   if (axios.isAxiosError(err)) {
     const ax = err as AxiosError<any>;
     const status = ax.response?.status ?? 0;

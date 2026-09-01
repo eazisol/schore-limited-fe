@@ -39,6 +39,7 @@ import {
   type TradeGroupItemFormValues,
 } from "@/lib/trade-group-form";
 import { fmtGBP, fmtGBPp } from "@/lib/data";
+import { DROPDOWN_FETCH_SIZE } from "@/lib/dropdown-fetch";
 import { truncateWithEllipsis } from "@/lib/module-ui";
 import { cn } from "@/lib/utils";
 
@@ -255,7 +256,7 @@ export function TradeGroupItemsEditor({
   const unitsQuery = useQuery({
     queryKey: ["units", "trade-group-item-options"],
     queryFn: async () => {
-      const res = await productLookupsService.units({ page: 1, pageSize: 100, search: "" });
+      const res = await productLookupsService.units({ page: 1, pageSize: DROPDOWN_FETCH_SIZE, search: "" });
       return (res.data.items ?? []).filter((unit) => unit.isActive !== false);
     },
     staleTime: 60_000,
@@ -283,7 +284,7 @@ export function TradeGroupItemsEditor({
     ): Promise<SearchableSelectOption[]> => {
       const res = await productsService.list({
         page: 1,
-        pageSize: 50,
+        pageSize: DROPDOWN_FETCH_SIZE,
         search,
         sortBy: "name",
         sortDir: "asc",
