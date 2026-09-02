@@ -11,10 +11,10 @@ export type PermissionFlags = {
 };
 
 export type PermissionTreeNode = {
-  menuId: number;
+  menuId: string;
   menuName: string;
   menuCode: string;
-  parentMenuId: number | null;
+  parentMenuId: string | null;
   orderBy: number;
   read: boolean;
   modify: boolean;
@@ -65,7 +65,7 @@ function applyFlags(node: PermissionTreeNode, flags: PermissionFlags): Permissio
 
 function findAndApply(
   nodes: PermissionTreeNode[],
-  menuId: number,
+  menuId: string,
   updater: (node: PermissionTreeNode) => PermissionTreeNode,
 ): { tree: PermissionTreeNode[]; found: boolean } {
   let found = false;
@@ -85,7 +85,7 @@ function findAndApply(
   return { tree, found };
 }
 
-function collectMenuIds(nodes: PermissionTreeNode[], out = new Set<number>()): Set<number> {
+function collectMenuIds(nodes: PermissionTreeNode[], out = new Set<string>()): Set<string> {
   for (const node of nodes) {
     out.add(node.menuId);
     if (node.children.length) collectMenuIds(node.children, out);
@@ -101,7 +101,7 @@ export function mergePermissions(
   tree: PermissionTreeNode[],
   flatPerms: ApiPermission[],
 ): PermissionTreeNode[] {
-  const byId = new Map<number, PermissionFlags>();
+  const byId = new Map<string, PermissionFlags>();
   for (const perm of flatPerms) {
     byId.set(perm.menuId, {
       read: Boolean(perm.read),
@@ -164,7 +164,7 @@ export function updateChildrenPermissions(
 /** Recompute parent.read from children (Rules 2–3), walking up from menuId. */
 export function updateParentPermissions(
   tree: PermissionTreeNode[],
-  menuId: number,
+  menuId: string,
 ): PermissionTreeNode[] {
   const path = findPath(tree, menuId);
   if (!path || path.length < 2) return tree;
@@ -181,7 +181,7 @@ export function updateParentPermissions(
 
 function findPath(
   nodes: PermissionTreeNode[],
-  menuId: number,
+  menuId: string,
   trail: PermissionTreeNode[] = [],
 ): PermissionTreeNode[] | null {
   for (const node of nodes) {
@@ -195,7 +195,7 @@ function findPath(
 
 function recomputeParentRead(
   tree: PermissionTreeNode[],
-  parentId: number,
+  parentId: string,
 ): PermissionTreeNode[] {
   const { tree: next } = findAndApply(tree, parentId, (parent) => {
     if (parent.children.length === 0) return parent;
@@ -247,7 +247,7 @@ function normalizeParentReads(tree: PermissionTreeNode[]): PermissionTreeNode[] 
  */
 export function setPermissionFlag(
   tree: PermissionTreeNode[],
-  menuId: number,
+  menuId: string,
   flag: PermissionFlag,
   value: boolean,
 ): PermissionTreeNode[] {
@@ -314,7 +314,7 @@ function enforceAncestorReadLocks(tree: PermissionTreeNode[]): PermissionTreeNod
 }
 
 /** True when any ancestor of menuId has read === false. */
-export function isDescendantLocked(tree: PermissionTreeNode[], menuId: number): boolean {
+export function isDescendantLocked(tree: PermissionTreeNode[], menuId: string): boolean {
   const path = findPath(tree, menuId);
   if (!path || path.length < 2) return false;
   // Ancestors are all but the last node
@@ -323,7 +323,7 @@ export function isDescendantLocked(tree: PermissionTreeNode[], menuId: number): 
 
 export function findPermissionNode(
   tree: PermissionTreeNode[],
-  menuId: number,
+  menuId: string,
 ): PermissionTreeNode | null {
   const path = findPath(tree, menuId);
   return path?.[path.length - 1] ?? null;
@@ -370,8 +370,8 @@ export function samePermissionTree(
 }
 
 /** Collect menuIds that have children (for default expanded state). */
-export function collectExpandableMenuIds(tree: PermissionTreeNode[]): number[] {
-  const ids: number[] = [];
+export function collectExpandableMenuIds(tree: PermissionTreeNode[]): string[] {
+  const ids: string[] = [];
   const walk = (nodes: PermissionTreeNode[]) => {
     for (const node of nodes) {
       if (node.children.length > 0) {

@@ -94,8 +94,8 @@ function ProjectDetail() {
         : projectToFormValues({
             name: "",
             code: "",
-            customerId: 0,
-            siteId: 0,
+            customerId: "",
+            siteId: "",
             isActive: true,
           }),
     [row],

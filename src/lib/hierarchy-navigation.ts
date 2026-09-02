@@ -1,5 +1,6 @@
 import type { NavigateOptions } from "@tanstack/react-router";
 import { z } from "zod";
+import { isNonEmptyId } from "@/lib/ids";
 
 export const hierarchyReturnSearchSchema = z.object({
   from: z.enum(["customer", "site", "project"]).optional(),
@@ -33,13 +34,13 @@ export function hierarchyReturnContextFromCardScope(
 export function parseHierarchyReturnSearch(
   search: z.infer<typeof hierarchyReturnSearchSchema>,
 ): HierarchyReturnContext | null {
-  if (search.from === "customer" && search.customerId?.trim()) {
+  if (search.from === "customer" && isNonEmptyId(search.customerId)) {
     return { from: "customer", customerId: search.customerId };
   }
-  if (search.from === "site" && search.siteId?.trim()) {
+  if (search.from === "site" && isNonEmptyId(search.siteId)) {
     return { from: "site", siteId: search.siteId };
   }
-  if (search.from === "project" && search.projectId?.trim()) {
+  if (search.from === "project" && isNonEmptyId(search.projectId)) {
     return { from: "project", projectId: search.projectId };
   }
   return null;

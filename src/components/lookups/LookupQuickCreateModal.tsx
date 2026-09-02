@@ -50,6 +50,7 @@ import { formatCustomerDisplayName } from "@/lib/customer-display";
 import { fetchSiteOptions } from "@/lib/site-dropdowns";
 import { sitesService } from "@/lib/api/services/sites";
 import { projectsService } from "@/lib/api/services/projects";
+import { asIdString, isNonEmptyId } from "@/lib/ids";
 
 const JOB_TYPE_NAME_MAX = 50;
 const JOB_TYPE_CODE_MAX = 20;
@@ -250,7 +251,7 @@ function PropertyQuickCreateModal({
         state: values.state.trim() || null,
         country: values.country.trim() || null,
         accessNotes: null,
-        customerId: values.customerId.trim() ? Number(values.customerId) : 0,
+        customerId: values.customerId.trim(),
         isActive: true,
       }),
     onSuccess: (res) => {
@@ -711,7 +712,7 @@ function SiteQuickCreateModal({
   onCreated: (option: SearchableSelectOption) => void;
   context?: LookupCreateContext;
 }) {
-  const lockedCustomerId = context?.customerId?.trim() ?? "";
+  const lockedCustomerId = asIdString(context?.customerId);
 
   const form = useForm<SiteQuickValues>({
     resolver: zodResolver(siteQuickSchema),
@@ -739,7 +740,7 @@ function SiteQuickCreateModal({
         state: values.state.trim() || null,
         country: values.country.trim() || null,
         zipCode: values.zipCode.trim() || null,
-        customerId: Number(values.customerId),
+        customerId: values.customerId.trim(),
         isActive: true,
       }),
     onSuccess: (res) => {
@@ -828,8 +829,8 @@ function ProjectQuickCreateModal({
   onCreated: (option: SearchableSelectOption) => void;
   context?: LookupCreateContext;
 }) {
-  const lockedSiteId = context?.siteId?.trim() ?? "";
-  const lockedCustomerId = context?.customerId?.trim() ?? "";
+  const lockedSiteId = asIdString(context?.siteId);
+  const lockedCustomerId = asIdString(context?.customerId);
 
   const form = useForm<ProjectQuickValues>({
     resolver: zodResolver(projectQuickSchema),
@@ -849,8 +850,8 @@ function ProjectQuickCreateModal({
         name: values.name.trim(),
         code: values.code.trim().toUpperCase(),
         description: values.description.trim() || null,
-        customerId: lockedCustomerId ? Number(lockedCustomerId) : 0,
-        siteId: Number(values.siteId),
+        customerId: isNonEmptyId(lockedCustomerId) ? lockedCustomerId : "",
+        siteId: values.siteId.trim(),
         isActive: true,
       }),
     onSuccess: (res) => {

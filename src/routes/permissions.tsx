@@ -77,7 +77,7 @@ function PermissionsPage() {
   const { refreshPermissions } = usePermissions();
   const [roleId, setRoleId] = useState<string | null>(roleIdFromSearch ?? null);
   const [draft, setDraft] = useState<PermissionTreeNode[]>([]);
-  const [expandedIds, setExpandedIds] = useState<Set<number>>(() => new Set());
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [confirmSaveOrder, setConfirmSaveOrder] = useState(false);
 
   const handleMenuTreeChange = useCallback((tree: Parameters<typeof buildPermissionTree>[0]) => {
@@ -208,7 +208,7 @@ function PermissionsPage() {
   const savingOrder = saveOrderMutation.isPending;
   const saving = savingPermissions || savingOrder;
 
-  function toggle(menuId: number, flag: PermissionFlag) {
+  function toggle(menuId: string, flag: PermissionFlag) {
     setDraft((prev) => {
       const node = findPermissionNode(prev, menuId);
       if (!node) return prev;
@@ -229,7 +229,7 @@ function PermissionsPage() {
     saveOrderMutation.mutate(menuTreeDraft);
   }
 
-  function toggleExpanded(menuId: number, open: boolean) {
+  function toggleExpanded(menuId: string, open: boolean) {
     setExpandedIds((prev) => {
       const next = new Set(prev);
       if (open) next.add(menuId);
@@ -455,9 +455,9 @@ function PermissionTreeRow({
   node: PermissionTreeNode;
   depth: number;
   tree: PermissionTreeNode[];
-  expandedIds: Set<number>;
-  onToggleExpanded: (menuId: number, open: boolean) => void;
-  onToggleFlag: (menuId: number, flag: PermissionFlag) => void;
+  expandedIds: Set<string>;
+  onToggleExpanded: (menuId: string, open: boolean) => void;
+  onToggleFlag: (menuId: string, flag: PermissionFlag) => void;
   canModify: boolean;
   canReorder: boolean;
   saving: boolean;

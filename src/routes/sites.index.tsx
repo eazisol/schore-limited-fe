@@ -44,7 +44,7 @@ function SitesList() {
   const canDelete = usePermission({ route: SITES_ROUTE, action: "delete" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [customerId, setCustomerId] = useState<number | undefined>(undefined);
+  const [customerId, setCustomerId] = useState<string | undefined>(undefined);
   const [customerLabel, setCustomerLabel] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [confirmDel, setConfirmDel] = useState<ApiSite | null>(null);

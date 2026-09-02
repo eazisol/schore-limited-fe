@@ -31,7 +31,7 @@ export function flattenMenuDefinitions(items: ApiMenuDefinition[]): ApiMenuDefin
 /** Find a menu definition anywhere in a nested tree by id. */
 export function findMenuDefinitionInTree(
   items: ApiMenuDefinition[],
-  menuId: number,
+  menuId: string,
 ): ApiMenuDefinition | null {
   for (const item of items) {
     if (item.id === menuId) return item;

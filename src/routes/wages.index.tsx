@@ -42,7 +42,7 @@ function WagesList() {
   }, [weekendQuery.data]);
   const [weekEnding, setWeek] = useState("");
   const selectedWeek = weekEnding || defaultWeek;
-  const [customerId, setCustomerId] = useState<number | "all">("all");
+  const [customerId, setCustomerId] = useState<string | "all">("all");
   const [statusId, setStatusId] = useState<number | "all">("all");
   const [paymentStatusId, setPaymentStatusId] = useState<number | "all">("all");
 
@@ -175,7 +175,7 @@ function WagesList() {
           />
           <select
             value={customerId === "all" ? "all" : String(customerId)}
-            onChange={(e) => setCustomerId(e.target.value === "all" ? "all" : Number(e.target.value))}
+            onChange={(e) => setCustomerId(e.target.value === "all" ? "all" : e.target.value)}
             className="h-9 rounded-md border border-input bg-background px-3 text-sm"
           >
             <option value="all">All clients</option>

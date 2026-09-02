@@ -12,13 +12,14 @@ import {
 import { tasksService } from "@/lib/api/services/tasks";
 import { fmtGBP } from "@/lib/data";
 import { IN_PROGRESS_STATUS_CODE } from "@/lib/hold";
+import { isNonEmptyId } from "@/lib/ids";
 import { cn } from "@/lib/utils";
 
-export function CustomerCostBudgetCard({ customerId }: { customerId: number }) {
+export function CustomerCostBudgetCard({ customerId }: { customerId: string }) {
   const costQuery = useQuery({
     queryKey: ["users", customerId, "cost-budget"],
     queryFn: async () => (await costBudgetService.getForCustomer(customerId)).data,
-    enabled: Boolean(customerId?.trim()),
+    enabled: isNonEmptyId(customerId),
   });
 
   const summary = useMemo(() => {
@@ -94,7 +95,7 @@ export function CustomerCostBudgetCard({ customerId }: { customerId: number }) {
   );
 }
 
-export function CustomerRunningTasksCard({ customerId }: { customerId: number }) {
+export function CustomerRunningTasksCard({ customerId }: { customerId: string }) {
   const statusesQuery = useQuery({
     queryKey: ["statuses", "task", "options"],
     queryFn: async () =>
@@ -104,7 +105,7 @@ export function CustomerRunningTasksCard({ customerId }: { customerId: number })
           pageSize: 50,
         })
       ).data,
-    enabled: Boolean(customerId?.trim()),
+    enabled: isNonEmptyId(customerId),
   });
 
   const inProgressStatusId = useMemo(() => {
@@ -124,7 +125,7 @@ export function CustomerRunningTasksCard({ customerId }: { customerId: number })
           sortDir: "desc",
         })
       ).data,
-    enabled: Boolean(customerId?.trim()) &&
+    enabled: isNonEmptyId(customerId) &&
       inProgressStatusId != null,
   });
 

@@ -2,7 +2,7 @@ import { http } from "@/lib/api/axios";
 import type { ApiEnvelope } from "./auth";
 
 export interface ApiPermission {
-  id: string;
+  id: string | null;
   menuId: string;
   menuName: string | null;
   menuCode: string | null;

@@ -53,14 +53,14 @@ export interface ApiCostBudget {
 }
 
 export const costBudgetService = {
-  get: (params: { weekEnding?: string; customerId?: number } = {}) =>
+  get: (params: { weekEnding?: string; customerId?: string } = {}) =>
     http.get<ApiEnvelope<ApiCostBudget>>("cost-budget", {
       params: {
         ...(params.weekEnding ? { WeekEnding: params.weekEnding } : {}),
         ...(params.customerId != null ? { CustomerId: params.customerId } : {}),
       },
     }),
-  getForCustomer: (customerId: number | string) =>
+  getForCustomer: (customerId: string) =>
     http.get<ApiEnvelope<ApiCostBudget>>(`Users/${customerId}/cost-budget`),
   getForDaily: () =>
     http.get<ApiEnvelope<ApiCostBudget>>("DailyProgramme/cost-budget"),

@@ -42,7 +42,7 @@ function Payroll() {
   }, [weekendQuery.data]);
   const [weekEnding, setWeek] = useState("");
   const selectedWeek = weekEnding || defaultWeek;
-  const [customerId, setCustomerId] = useState<number | "all">("all");
+  const [customerId, setCustomerId] = useState<string | "all">("all");
 
   const customersQuery = useQuery({
     queryKey: ["users", "dropdown", "customers"],
@@ -155,7 +155,7 @@ function Payroll() {
           <span className="text-[11px] font-medium text-muted-foreground">Client</span>
           <select
             value={customerId === "all" ? "all" : String(customerId)}
-            onChange={(e) => setCustomerId(e.target.value === "all" ? "all" : Number(e.target.value))}
+            onChange={(e) => setCustomerId(e.target.value === "all" ? "all" : e.target.value)}
             className="mt-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
           >
             <option value="all">All (separate on export)</option>

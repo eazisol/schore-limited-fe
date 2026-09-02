@@ -11,7 +11,7 @@ export interface ApiUser {
   phone?: string | null;
   profileImagePath?: string | null;
   isActive: boolean;
-  userTypeId: string;
+  userTypeId: number;
   userTypeName: string;
   roleIds: string[];
   roleNames: string[];
@@ -71,7 +71,7 @@ export interface CreateUserPayload {
   dateOfBirth?: string | null;
   phone?: string | null;
   isActive: boolean;
-  userTypeId: string;
+  userTypeId: number;
   roleIds: string[] | null;
   tradeId?: string | null;
   cisId?: string | null;
@@ -98,7 +98,7 @@ export interface UpdateUserPayload {
   phone?: string | null;
   password?: string | null;
   isActive: boolean;
-  userTypeId: string;
+  userTypeId: number;
   roleIds: string[] | null;
   tradeId?: string | null;
   cisId?: string | null;
@@ -128,7 +128,7 @@ export interface UsersListParams {
   pageSize: number;
   search?: string;
   roleId?: string;
-  userTypeId?: string;
+  userTypeId?: number;
   sortBy?: UsersSortBy;
   sortDir?: UsersSortDir;
 }
@@ -173,7 +173,7 @@ export const usersService = {
   get: (id: string) => http.get<ApiEnvelope<ApiUser>>(`Users/${id}`),
   dropdown: (params: {
     search?: string;
-    userTypeId: string;
+    userTypeId: number;
     roleId?: string;
     take?: number;
   }) =>

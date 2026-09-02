@@ -16,6 +16,7 @@ import type { ApiError } from "@/lib/api/axios";
 import { formatDateTime, truncateWithEllipsis } from "@/lib/module-ui";
 import { TASKS_ROUTE } from "@/lib/tasks";
 import { DAILY_ROUTE } from "@/lib/daily";
+import { isNonEmptyId } from "@/lib/ids";
 import { tasksQueryKey } from "@/routes/tasks.index";
 
 type PropertyTasksCardProps = {
@@ -46,7 +47,7 @@ export function PropertyTasksCard({ propertyId, propertyName }: PropertyTasksCar
           sortDir: "desc",
         })
       ).data,
-    enabled: Boolean(propertyId?.trim()),
+    enabled: isNonEmptyId(propertyId),
     placeholderData: keepPreviousData,
   });
 

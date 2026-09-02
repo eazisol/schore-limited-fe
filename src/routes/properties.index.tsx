@@ -52,7 +52,7 @@ function PropertiesList() {
   const [pageSize, setPageSize] = useState(10);
   const [sortBy, setSortBy] = useState<PropertySortBy>("createdDate");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [customerId, setCustomerId] = useState<number | undefined>(undefined);
+  const [customerId, setCustomerId] = useState<string | undefined>(undefined);
   const [customerLabel, setCustomerLabel] = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState<ApiProperty | null>(null);
   const [exporting, setExporting] = useState(false);

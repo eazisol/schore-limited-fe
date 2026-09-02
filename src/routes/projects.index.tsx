@@ -44,7 +44,7 @@ function ProjectsList() {
   const canDelete = usePermission({ route: PROJECTS_ROUTE, action: "delete" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [customerId, setCustomerId] = useState<number | undefined>(undefined);
+  const [customerId, setCustomerId] = useState<string | undefined>(undefined);
   const [customerLabel, setCustomerLabel] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [confirmDel, setConfirmDel] = useState<ApiProject | null>(null);

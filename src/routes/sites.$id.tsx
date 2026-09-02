@@ -97,7 +97,7 @@ function SiteDetail() {
     () => (row ? siteToFormValues(row) : siteToFormValues({
       name: "",
       code: "",
-      customerId: 0,
+      customerId: "",
       isActive: true,
     })),
     [row],

@@ -38,8 +38,8 @@ export type HierarchySiteNode = {
   children: HierarchyProjectNode[];
 };
 
-function groupBy<T>(items: T[], key: (item: T) => number): Map<number, T[]> {
-  const map = new Map<number, T[]>();
+function groupBy<T>(items: T[], key: (item: T) => string): Map<string, T[]> {
+  const map = new Map<string, T[]>();
   for (const item of items) {
     const id = key(item);
     const bucket = map.get(id);
@@ -65,7 +65,7 @@ function mapJob(task: ApiTask): HierarchyJobNode {
 
 function mapProperty(
   property: ApiProperty,
-  tasksByProperty: Map<number, ApiTask[]>,
+  tasksByProperty: Map<string, ApiTask[]>,
 ): HierarchyPropertyNode {
   return {
     kind: "property",
@@ -78,8 +78,8 @@ function mapProperty(
 
 function mapProject(
   project: ApiProject,
-  propertiesByProject: Map<number, ApiProperty[]>,
-  tasksByProperty: Map<number, ApiTask[]>,
+  propertiesByProject: Map<string, ApiProperty[]>,
+  tasksByProperty: Map<string, ApiTask[]>,
 ): HierarchyProjectNode {
   return {
     kind: "project",

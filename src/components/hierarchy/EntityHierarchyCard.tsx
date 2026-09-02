@@ -34,13 +34,14 @@ import {
   hierarchyTaskViewSearch,
   type HierarchyReturnContext,
 } from "@/lib/hierarchy-navigation";
+import { asIdString, isNonEmptyId } from "@/lib/ids";
 
 const HIERARCHY_PAGE_SIZE = 500;
 
 type EntityHierarchyCardProps =
-  | { scope: "customer"; customerId: number; title?: string }
-  | { scope: "site"; siteId: number; customerId: number; title?: string }
-  | { scope: "project"; projectId: number; customerId: number; title?: string };
+  | { scope: "customer"; customerId: string; title?: string }
+  | { scope: "site"; siteId: string; customerId: string; title?: string }
+  | { scope: "project"; projectId: string; customerId: string; title?: string };
 
 const ROW_TYPE_LABEL = {
   site: "Site",
@@ -484,17 +485,16 @@ function HierarchyTable({
   );
 }
 
-function useTasksForProperties(customerId: number, properties: { id: number }[]) {
-  const enabled =
-    Boolean(customerId?.trim()) &&
-    properties.length > 0;
+function useTasksForProperties(customerId: string, properties: { id: string }[]) {
+  const id = asIdString(customerId);
+  const enabled = isNonEmptyId(id) && properties.length > 0;
 
   return useQuery({
-    queryKey: ["hierarchy", "tasks", customerId, properties.map((p) => p.id).join(",")],
+    queryKey: ["hierarchy", "tasks", id, properties.map((p) => p.id).join(",")],
     queryFn: async () =>
       (
         await tasksService.list({
-          customerId,
+          customerId: id,
           page: 1,
           pageSize: HIERARCHY_PAGE_SIZE,
           sortBy: "createdDate",
@@ -505,29 +505,30 @@ function useTasksForProperties(customerId: number, properties: { id: number }[])
   });
 }
 
-function useCustomerHierarchyData(customerId: number) {
-  const enabled = Boolean(customerId?.trim());
+function useCustomerHierarchyData(customerId: string) {
+  const id = asIdString(customerId);
+  const enabled = isNonEmptyId(id);
 
   const sitesQuery = useQuery({
-    queryKey: ["hierarchy", "customer", customerId, "sites"],
+    queryKey: ["hierarchy", "customer", id, "sites"],
     queryFn: async () =>
-      (await sitesService.list({ customerId, page: 1, pageSize: HIERARCHY_PAGE_SIZE })).data.items,
+      (await sitesService.list({ customerId: id, page: 1, pageSize: HIERARCHY_PAGE_SIZE })).data.items,
     enabled,
   });
 
   const projectsQuery = useQuery({
-    queryKey: ["hierarchy", "customer", customerId, "projects"],
+    queryKey: ["hierarchy", "customer", id, "projects"],
     queryFn: async () =>
-      (await projectsService.list({ customerId, page: 1, pageSize: HIERARCHY_PAGE_SIZE })).data.items,
+      (await projectsService.list({ customerId: id, page: 1, pageSize: HIERARCHY_PAGE_SIZE })).data.items,
     enabled,
   });
 
   const propertiesQuery = useQuery({
-    queryKey: ["hierarchy", "customer", customerId, "properties"],
+    queryKey: ["hierarchy", "customer", id, "properties"],
     queryFn: async () =>
       (
         await propertiesService.list({
-          customerId,
+          customerId: id,
           page: 1,
           pageSize: HIERARCHY_PAGE_SIZE,
         })
@@ -536,7 +537,7 @@ function useCustomerHierarchyData(customerId: number) {
   });
 
   const properties = propertiesQuery.data ?? [];
-  const tasksQuery = useTasksForProperties(customerId, properties);
+  const tasksQuery = useTasksForProperties(id, properties);
 
   const tree = useMemo(() => {
     const tasks = filterTasksForProperties(tasksQuery.data ?? [], properties);
@@ -562,22 +563,24 @@ function useCustomerHierarchyData(customerId: number) {
   return { tree, isLoading, isError };
 }
 
-function useSiteHierarchyData(siteId: number, customerId: number) {
-  const enabled = Boolean(siteId?.trim());
+function useSiteHierarchyData(siteId: string, customerId: string) {
+  const sid = asIdString(siteId);
+  const cid = asIdString(customerId);
+  const enabled = isNonEmptyId(sid);
 
   const projectsQuery = useQuery({
-    queryKey: ["hierarchy", "site", siteId, "projects"],
+    queryKey: ["hierarchy", "site", sid, "projects"],
     queryFn: async () =>
-      (await projectsService.list({ siteId, page: 1, pageSize: HIERARCHY_PAGE_SIZE })).data.items,
+      (await projectsService.list({ siteId: sid, page: 1, pageSize: HIERARCHY_PAGE_SIZE })).data.items,
     enabled,
   });
 
   const propertiesQuery = useQuery({
-    queryKey: ["hierarchy", "site", siteId, "properties"],
+    queryKey: ["hierarchy", "site", sid, "properties"],
     queryFn: async () =>
       (
         await propertiesService.list({
-          siteId,
+          siteId: sid,
           page: 1,
           pageSize: HIERARCHY_PAGE_SIZE,
         })
@@ -586,7 +589,7 @@ function useSiteHierarchyData(siteId: number, customerId: number) {
   });
 
   const properties = propertiesQuery.data ?? [];
-  const tasksQuery = useTasksForProperties(customerId, properties);
+  const tasksQuery = useTasksForProperties(cid, properties);
 
   const tree = useMemo(() => {
     const tasks = filterTasksForProperties(tasksQuery.data ?? [], properties);
@@ -601,15 +604,17 @@ function useSiteHierarchyData(siteId: number, customerId: number) {
   return { tree, isLoading, isError };
 }
 
-function useProjectHierarchyData(projectId: number, customerId: number) {
-  const enabled = Boolean(projectId?.trim());
+function useProjectHierarchyData(projectId: string, customerId: string) {
+  const pid = asIdString(projectId);
+  const cid = asIdString(customerId);
+  const enabled = isNonEmptyId(pid);
 
   const propertiesQuery = useQuery({
-    queryKey: ["hierarchy", "project", projectId, "properties"],
+    queryKey: ["hierarchy", "project", pid, "properties"],
     queryFn: async () =>
       (
         await propertiesService.list({
-          projectId,
+          projectId: pid,
           page: 1,
           pageSize: HIERARCHY_PAGE_SIZE,
         })
@@ -618,7 +623,7 @@ function useProjectHierarchyData(projectId: number, customerId: number) {
   });
 
   const properties = propertiesQuery.data ?? [];
-  const tasksQuery = useTasksForProperties(customerId, properties);
+  const tasksQuery = useTasksForProperties(cid, properties);
 
   const tree = useMemo(() => {
     const tasks = filterTasksForProperties(tasksQuery.data ?? [], properties);
@@ -644,15 +649,15 @@ export function EntityHierarchyCard(props: EntityHierarchyCardProps) {
   const returnContext = hierarchyReturnContextFromCardScope(props);
 
   const customerData = useCustomerHierarchyData(
-    props.scope === "customer" ? props.customerId : 0,
+    props.scope === "customer" ? asIdString(props.customerId) : "",
   );
   const siteData = useSiteHierarchyData(
-    props.scope === "site" ? props.siteId : 0,
-    props.scope === "site" ? props.customerId : 0,
+    props.scope === "site" ? asIdString(props.siteId) : "",
+    props.scope === "site" ? asIdString(props.customerId) : "",
   );
   const projectData = useProjectHierarchyData(
-    props.scope === "project" ? props.projectId : 0,
-    props.scope === "project" ? props.customerId : 0,
+    props.scope === "project" ? asIdString(props.projectId) : "",
+    props.scope === "project" ? asIdString(props.customerId) : "",
   );
 
   const { tree, isLoading, isError } =
