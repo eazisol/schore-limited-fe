@@ -46,7 +46,7 @@ function NewTask() {
       return;
     }
     if (fromProperty && propertyId) {
-      navigate({ to: "/properties/$id", params: { id: String(propertyId) } });
+      navigate({ to: "/properties/$id", params: { id: propertyId } });
       return;
     }
     navigate({ to: "/tasks" });

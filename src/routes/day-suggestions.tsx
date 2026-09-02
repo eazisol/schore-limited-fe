@@ -398,7 +398,7 @@ function DaySuggestionFormModal({
   async function submit(values: Values) {
     await mutation.mutateAsync({
       dayNumber: values.dayNumber,
-      tradeIds: values.tradeIds.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0),
+      tradeIds: values.tradeIds.map((id) => id.trim()).filter((id) => id.length > 0),
       description: values.description.trim() || null,
       orderBy: 0,
       isActive: values.isActive,

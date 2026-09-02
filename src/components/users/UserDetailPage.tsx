@@ -43,8 +43,7 @@ export function UserDetailPage() {
   const params = useParams({ strict: false }) as { id?: string };
   const search = useSearch({ strict: false }) as { mode?: "edit" | "view" };
   const id = String(params.id ?? "");
-  const numericId = Number(id);
-  const navigate = useNavigate();
+    const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canModify = usePermission({ route: cfg.permissionRoute, action: "modify" });
   const canDelete = usePermission({ route: cfg.permissionRoute, action: "delete" });
@@ -78,7 +77,7 @@ export function UserDetailPage() {
   const user = userQuery.data;
 
   const resolvedRoleId =
-    user?.roleIds?.[0] != null ? String(user.roleIds[0]) : "";
+    user?.roleIds?.[0] ?? "";
 
   const defaults = useMemo<UserFormValues>(
     () => ({
@@ -124,7 +123,7 @@ export function UserDetailPage() {
 
   const updateMutation = useMutation({
     mutationFn: (payload: ReturnType<typeof toUpdateUserPayload>) =>
-      usersService.update(numericId, payload),
+      usersService.update(id, payload),
     onSuccess: (res) => {
       toast.success(res.message || `${cfg.labels.entityTitle} updated`);
       queryClient.setQueryData([...cfg.queryKey, id], res.data);
@@ -135,7 +134,7 @@ export function UserDetailPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => usersService.remove(numericId),
+    mutationFn: () => usersService.remove(id),
     onSuccess: (res) => {
       toast.success(res.message || `${cfg.labels.entityTitle} deleted`);
       queryClient.invalidateQueries({ queryKey: cfg.queryKey });
@@ -302,7 +301,7 @@ export function UserDetailPage() {
             </FormPageCard>
           </Form>
 
-        {cfg.isCustomer ? <CustomerCostBudgetCard customerId={numericId} /> : null}
+        {cfg.isCustomer ? <CustomerCostBudgetCard customerId={id} /> : null}
       </div>
       ) : (
         <>
@@ -348,11 +347,11 @@ export function UserDetailPage() {
           {cfg.isCustomer ? (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
               <div className="min-w-0 space-y-6 lg:col-span-2">
-                <EntityHierarchyCard scope="customer" customerId={numericId} />
-                <CustomerRunningTasksCard customerId={numericId} />
+                <EntityHierarchyCard scope="customer" customerId={id} />
+                <CustomerRunningTasksCard customerId={id} />
               </div>
               <div className="self-start">
-                <CustomerCostBudgetCard customerId={numericId} />
+                <CustomerCostBudgetCard customerId={id} />
               </div>
             </div>
           ) : null}

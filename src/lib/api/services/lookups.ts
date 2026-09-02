@@ -3,7 +3,7 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiRole {
-  id: number;
+  id: string;
   name: string;
   code: string;
   description: string | null;
@@ -11,7 +11,7 @@ export interface ApiRole {
 }
 
 export interface ApiUserType {
-  id: number;
+  id: string;
   name: string;
   code: string;
   isActive: boolean;

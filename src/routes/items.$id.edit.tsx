@@ -31,8 +31,7 @@ export const Route = createFileRoute("/items/$id/edit")({
 
 function EditItem() {
   const { id } = Route.useParams();
-  const numericId = Number(id);
-  const navigate = useNavigate();
+    const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [confirmImageRemoval, setConfirmImageRemoval] = useState(false);
@@ -79,7 +78,7 @@ function EditItem() {
     }: {
       payload: ReturnType<typeof toProductPayload>;
       file: File | null;
-    }) => productsService.update(numericId, payload, file),
+    }) => productsService.update(id, payload, file),
     onSuccess: (res) => {
       toast.success(res.message || "Item updated");
       queryClient.setQueryData(["items", id], res.data);
@@ -90,7 +89,7 @@ function EditItem() {
   });
 
   const removeImageMutation = useMutation({
-    mutationFn: () => productsService.removeImage(numericId),
+    mutationFn: () => productsService.removeImage(id),
     onSuccess: (res) => {
       toast.success(res.message || "Image removed");
       setConfirmImageRemoval(false);

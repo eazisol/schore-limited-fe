@@ -315,14 +315,14 @@ export function toCreateUserPayload(
     dateOfBirth: values.dateOfBirth.trim() || null,
     isActive: values.isActive,
     userTypeId: USER_TYPE_ID[mode],
-    roleIds: isUser ? [Number(values.roleId)] : null,
+    roleIds: isUser ? [values.roleId] : null,
     startDate: isOperative ? values.startDate.trim() || null : null,
     endDate: null,
   };
 
   if (isOperative) {
-    payload.tradeId = Number(values.tradeId);
-    payload.cisId = Number(values.cisId);
+    payload.tradeId = values.tradeId;
+    payload.cisId = values.cisId;
     payload.dailyRate = parseDailyRate(values.dailyRate);
     payload.isDailyRate = values.isDailyRate;
   }
@@ -352,15 +352,15 @@ export function toUpdateUserPayload(
     dateOfBirth: values.dateOfBirth.trim() || null,
     isActive: values.isActive,
     userTypeId: USER_TYPE_ID[mode],
-    roleIds: isUser ? [Number(values.roleId)] : null,
+    roleIds: isUser ? [values.roleId] : null,
     password: isUser ? nextPassword || null : isOperative ? nextPassword || null : null,
     startDate: isOperative ? values.startDate.trim() || null : null,
     endDate: null,
   };
 
   if (isOperative) {
-    payload.tradeId = Number(values.tradeId);
-    payload.cisId = Number(values.cisId);
+    payload.tradeId = values.tradeId;
+    payload.cisId = values.cisId;
     payload.dailyRate = parseDailyRate(values.dailyRate);
     payload.isDailyRate = values.isDailyRate;
   }

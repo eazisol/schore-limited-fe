@@ -89,19 +89,19 @@ function TaskDetail() {
       return;
     }
     if (fromCustomer && customerId) {
-      navigate({ to: "/customers/$id", params: { id: String(customerId) } });
+      navigate({ to: "/customers/$id", params: { id: customerId } });
       return;
     }
     if (fromSite && siteId) {
-      navigate({ to: "/sites/$id", params: { id: String(siteId) } });
+      navigate({ to: "/sites/$id", params: { id: siteId } });
       return;
     }
     if (fromProject && projectId) {
-      navigate({ to: "/projects/$id", params: { id: String(projectId) } });
+      navigate({ to: "/projects/$id", params: { id: projectId } });
       return;
     }
     if (fromProperty && propertyId) {
-      navigate({ to: "/properties/$id", params: { id: String(propertyId) } });
+      navigate({ to: "/properties/$id", params: { id: propertyId } });
       return;
     }
     navigate({ to: "/tasks" });
@@ -175,19 +175,19 @@ function TaskDetail() {
         return;
       }
       if (fromCustomer && customerId) {
-        navigate({ to: "/customers/$id", params: { id: String(customerId) } });
+        navigate({ to: "/customers/$id", params: { id: customerId } });
         return;
       }
       if (fromSite && siteId) {
-        navigate({ to: "/sites/$id", params: { id: String(siteId) } });
+        navigate({ to: "/sites/$id", params: { id: siteId } });
         return;
       }
       if (fromProject && projectId) {
-        navigate({ to: "/projects/$id", params: { id: String(projectId) } });
+        navigate({ to: "/projects/$id", params: { id: projectId } });
         return;
       }
       if (fromProperty && propertyId) {
-        navigate({ to: "/properties/$id", params: { id: String(propertyId) } });
+        navigate({ to: "/properties/$id", params: { id: propertyId } });
         return;
       }
       navigate({

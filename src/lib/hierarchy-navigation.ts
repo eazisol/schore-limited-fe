@@ -9,14 +9,14 @@ export const hierarchyReturnSearchSchema = z.object({
 });
 
 export type HierarchyReturnContext =
-  | { from: "customer"; customerId: number }
-  | { from: "site"; siteId: number }
-  | { from: "project"; projectId: number };
+  | { from: "customer"; customerId: string }
+  | { from: "site"; siteId: string }
+  | { from: "project"; projectId: string };
 
 export type HierarchyCardScope =
-  | { scope: "customer"; customerId: number }
-  | { scope: "site"; siteId: number; customerId: number }
-  | { scope: "project"; projectId: number; customerId: number };
+  | { scope: "customer"; customerId: string }
+  | { scope: "site"; siteId: string; customerId: string }
+  | { scope: "project"; projectId: string; customerId: string };
 
 export function hierarchyReturnContextFromCardScope(
   props: HierarchyCardScope,
@@ -33,21 +33,14 @@ export function hierarchyReturnContextFromCardScope(
 export function parseHierarchyReturnSearch(
   search: z.infer<typeof hierarchyReturnSearchSchema>,
 ): HierarchyReturnContext | null {
-  if (search.from === "customer" && search.customerId) {
-    const customerId = Number(search.customerId);
-    return Number.isFinite(customerId) && customerId > 0
-      ? { from: "customer", customerId }
-      : null;
+  if (search.from === "customer" && search.customerId?.trim()) {
+    return { from: "customer", customerId: search.customerId };
   }
-  if (search.from === "site" && search.siteId) {
-    const siteId = Number(search.siteId);
-    return Number.isFinite(siteId) && siteId > 0 ? { from: "site", siteId } : null;
+  if (search.from === "site" && search.siteId?.trim()) {
+    return { from: "site", siteId: search.siteId };
   }
-  if (search.from === "project" && search.projectId) {
-    const projectId = Number(search.projectId);
-    return Number.isFinite(projectId) && projectId > 0
-      ? { from: "project", projectId }
-      : null;
+  if (search.from === "project" && search.projectId?.trim()) {
+    return { from: "project", projectId: search.projectId };
   }
   return null;
 }
@@ -55,11 +48,11 @@ export function parseHierarchyReturnSearch(
 export function hierarchyReturnSearch(ctx: HierarchyReturnContext): Record<string, string> {
   switch (ctx.from) {
     case "customer":
-      return { from: "customer", customerId: String(ctx.customerId) };
+      return { from: "customer", customerId: ctx.customerId };
     case "site":
-      return { from: "site", siteId: String(ctx.siteId) };
+      return { from: "site", siteId: ctx.siteId };
     case "project":
-      return { from: "project", projectId: String(ctx.projectId) };
+      return { from: "project", projectId: ctx.projectId };
   }
 }
 
@@ -73,19 +66,19 @@ export function hierarchyTaskViewSearch(ctx: HierarchyReturnContext) {
       return {
         mode: "view" as const,
         from: "customer" as const,
-        customerId: String(ctx.customerId),
+        customerId: ctx.customerId,
       };
     case "site":
       return {
         mode: "view" as const,
         from: "site" as const,
-        siteId: String(ctx.siteId),
+        siteId: ctx.siteId,
       };
     case "project":
       return {
         mode: "view" as const,
         from: "project" as const,
-        projectId: String(ctx.projectId),
+        projectId: ctx.projectId,
       };
   }
 }
@@ -118,10 +111,10 @@ export function hierarchyBackNavigation(
   }
   switch (ctx.from) {
     case "customer":
-      return { to: "/customers/$id", params: { id: String(ctx.customerId) } };
+      return { to: "/customers/$id", params: { id: ctx.customerId } };
     case "site":
-      return { to: "/sites/$id", params: { id: String(ctx.siteId) } };
+      return { to: "/sites/$id", params: { id: ctx.siteId } };
     case "project":
-      return { to: "/projects/$id", params: { id: String(ctx.projectId) } };
+      return { to: "/projects/$id", params: { id: ctx.projectId } };
   }
 }

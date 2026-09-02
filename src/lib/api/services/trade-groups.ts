@@ -3,13 +3,13 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiTradeGroupItem {
-  id: number;
-  productId: number;
+  id: string;
+  productId: string;
   productName?: string | null;
   productSku?: string | null;
-  unitId?: number | null;
+  unitId?: string | null;
   unitName?: string | null;
-  categoryId?: number | null;
+  categoryId?: string | null;
   categoryName?: string | null;
   quantity: number;
   salePrice?: number | null;
@@ -20,8 +20,8 @@ export interface ApiTradeGroupItem {
 }
 
 export interface ApiTradeGroup {
-  id: number;
-  tradeId: number;
+  id: string;
+  tradeId: string;
   tradeName: string | null;
   name: string;
   code: string;
@@ -36,9 +36,9 @@ export interface ApiTradeGroup {
 }
 
 export type TradeGroupItemPayload = {
-  id: number | null;
-  productId: number;
-  unitId: number | null;
+  id: string | null;
+  productId: string;
+  unitId: string | null;
   quantity: number;
   salePrice: number;
   orderBy: number;
@@ -46,7 +46,7 @@ export type TradeGroupItemPayload = {
 };
 
 export type TradeGroupPayload = {
-  tradeId: number;
+  tradeId: string;
   name: string;
   code: string;
   description: string;
@@ -63,7 +63,7 @@ export interface TradeGroupListParams {
   page: number;
   pageSize: number;
   search?: string;
-  tradeId?: number;
+  tradeId?: string;
   sortBy?: TradeGroupSortBy;
   sortDir?: TradeGroupSortDir;
 }
@@ -107,10 +107,10 @@ export const tradeGroupsService = {
     );
     return { ...res, data: normalizePaged(res.data) };
   },
-  get: (id: number | string) => http.get<ApiEnvelope<ApiTradeGroup>>(`TradeGroups/${id}`),
+  get: (id: string) => http.get<ApiEnvelope<ApiTradeGroup>>(`TradeGroups/${id}`),
   create: (payload: TradeGroupPayload) =>
     http.post<ApiEnvelope<ApiTradeGroup>>("TradeGroups", payload),
-  update: (id: number | string, payload: TradeGroupPayload) =>
+  update: (id: string, payload: TradeGroupPayload) =>
     http.put<ApiEnvelope<ApiTradeGroup>>(`TradeGroups/${id}`, payload),
-  remove: (id: number | string) => http.delete<ApiEnvelope<null>>(`TradeGroups/${id}`),
+  remove: (id: string) => http.delete<ApiEnvelope<null>>(`TradeGroups/${id}`),
 };

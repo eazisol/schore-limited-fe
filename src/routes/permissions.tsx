@@ -57,7 +57,7 @@ import { flattenMenuTreeForReorder } from "@/lib/menu-tree";
 import { z } from "zod";
 
 const searchSchema = z.object({
-  roleId: z.coerce.number().optional(),
+  roleId: z.string().optional(),
   from: z.enum(["roles"]).optional(),
 });
 
@@ -75,7 +75,7 @@ function PermissionsPage() {
   const qc = useQueryClient();
   const canModify = usePermission({ route: PERMISSIONS_ROUTE, action: "modify" });
   const { refreshPermissions } = usePermissions();
-  const [roleId, setRoleId] = useState<number | null>(roleIdFromSearch ?? null);
+  const [roleId, setRoleId] = useState<string | null>(roleIdFromSearch ?? null);
   const [draft, setDraft] = useState<PermissionTreeNode[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<number>>(() => new Set());
   const [confirmSaveOrder, setConfirmSaveOrder] = useState(false);
@@ -130,7 +130,7 @@ function PermissionsPage() {
   }, [menusQuery.isSuccess, menusQuery.data, permsQuery.isSuccess, permsQuery.data]);
 
   const saveMutation = useMutation({
-    mutationFn: (payload: { roleId: number; permissions: UpsertPermission[] }) =>
+    mutationFn: (payload: { roleId: string; permissions: UpsertPermission[] }) =>
       permissionsService.assign(payload),
     onSuccess: async (res, vars) => {
       toast.success(res.message || "Permissions saved");
@@ -283,8 +283,8 @@ function PermissionsPage() {
               <p className="text-sm text-muted-foreground">No roles available.</p>
             ) : (
               <Select
-                value={roleId != null ? String(roleId) : undefined}
-                onValueChange={(v) => setRoleId(Number(v))}
+                value={roleId ?? undefined}
+                onValueChange={(v) => setRoleId(v)}
                 disabled={saving}
               >
                 <SelectTrigger id="permissions-role" className="bg-background" aria-label="Role">

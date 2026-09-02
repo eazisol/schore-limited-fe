@@ -17,8 +17,8 @@ import { usersService } from "@/lib/api/services/users";
 import { buildAuthorizedMenus } from "@/lib/authorization";
 
 interface PermissionCache {
-  userId: number | null;
-  roleIds: number[] | null;
+  userId: string | null;
+  roleIds: string[] | null;
   menuTree: ApiMenuDefinition[] | null;
 }
 

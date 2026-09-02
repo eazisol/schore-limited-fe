@@ -24,15 +24,15 @@ import { canReorderSiblings } from "@/lib/tree-order";
 import { cn } from "@/lib/utils";
 
 export type TreeReorderPayload = {
-  draggedId: number;
-  targetId: number;
-  parentMenuId: number | null;
+  draggedId: string;
+  targetId: string;
+  parentMenuId: string | null;
 };
 
 type TreeSortableContextValue = {
   disabled: boolean;
-  activeId: number | null;
-  overId: number | null;
+  activeId: string | null;
+  overId: string | null;
 };
 
 const TreeSortableContext = createContext<TreeSortableContextValue>({
@@ -163,8 +163,8 @@ export function TreeSortableItem({
   className,
   children,
 }: {
-  id: number;
-  parentMenuId: number | null;
+  id: string;
+  parentMenuId: string | null;
   disabled?: boolean;
   className?: string;
   children: (props: TreeSortableItemRenderProps) => ReactNode;

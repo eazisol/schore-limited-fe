@@ -1,12 +1,12 @@
 import { http } from "@/lib/api/axios";
 
 export interface ApiMenu {
-  id: number;
+  id: string;
   name: string;
   code: string;
   route: string;
   icon: string | null;
-  parentMenuId: number | null;
+  parentMenuId: string | null;
   orderBy: number;
   read: boolean;
   modify: boolean;
@@ -17,7 +17,7 @@ export interface ApiMenu {
 export interface ApiLoginData {
   token: string;
   expiresAt: string;
-  userId: number;
+  userId: string;
   username: string;
   email: string;
   firstName: string;

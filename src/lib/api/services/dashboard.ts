@@ -4,9 +4,9 @@ import type { ApiEnvelope } from "./auth";
 export type DashboardPeriod = "Daily" | "Weekly" | "Monthly" | "Yearly" | "Custom";
 
 export interface ApiDashboardTaskRow {
-  taskId: number;
+  taskId: string;
   taskNumber: string;
-  propertyId: number;
+  propertyId: string;
   propertyName: string;
   propertyAddress: string | null;
   jobTypeName: string;

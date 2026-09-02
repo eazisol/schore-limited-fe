@@ -123,7 +123,7 @@ function TasksList() {
       id: "view",
       label: "View",
       icon: <Eye className="h-4 w-4" />,
-      onClick: (task) => navigate({ to: "/tasks/$id", params: { id: String(task.id) } }),
+      onClick: (task) => navigate({ to: "/tasks/$id", params: { id: task.id } }),
     },
     ...(canModify
       ? [
@@ -134,7 +134,7 @@ function TasksList() {
             onClick: (task: ApiTask) =>
               navigate({
                 to: "/tasks/$id",
-                params: { id: String(task.id) },
+                params: { id: task.id },
                 search: { mode: "edit" },
               }),
           },

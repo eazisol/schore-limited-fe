@@ -3,7 +3,7 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiProductType {
-  id: number;
+  id: string;
   name: string;
   code: string;
   orderBy: number;

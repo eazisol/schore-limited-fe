@@ -3,7 +3,7 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiTrade {
-  id: number;
+  id: string;
   name: string;
   code: string;
   description: string | null;
@@ -75,7 +75,7 @@ export const tradesService = {
     );
     return { ...res, data: normalizePaged(res.data) };
   },
-  get: (id: number | string) =>
+  get: (id: string) =>
     http.get<ApiEnvelope<ApiTrade>>(`OperativesBuilder/trades/${id}`),
   /** Active trades for selects (operatives, etc.). */
   options: async (): Promise<ApiEnvelope<ApiTrade[]>> => {
@@ -87,8 +87,8 @@ export const tradesService = {
   },
   create: (payload: TradePayload) =>
     http.post<ApiEnvelope<ApiTrade>>("OperativesBuilder/trades", payload),
-  update: (id: number | string, payload: TradePayload) =>
+  update: (id: string, payload: TradePayload) =>
     http.put<ApiEnvelope<ApiTrade>>(`OperativesBuilder/trades/${id}`, payload),
-  remove: (id: number | string) =>
+  remove: (id: string) =>
     http.delete<ApiEnvelope<null>>(`OperativesBuilder/trades/${id}`),
 };

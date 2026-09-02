@@ -3,7 +3,7 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiUnit {
-  id: number;
+  id: string;
   name: string;
   code: string;
   orderBy: number;
@@ -22,7 +22,7 @@ export interface UnitPayload {
 }
 
 export interface ApiCategory {
-  id: number;
+  id: string;
   name: string;
   code: string;
   description: string | null;
@@ -64,11 +64,11 @@ const listQuery = (p: ListParams) => ({
 export const unitsService = {
   list: (params: ListParams) =>
     http.get<ApiEnvelope<PagedResult<ApiUnit>>>("Units", { params: listQuery(params) }),
-  get: (id: number | string) => http.get<ApiEnvelope<ApiUnit>>(`Units/${id}`),
+  get: (id: string) => http.get<ApiEnvelope<ApiUnit>>(`Units/${id}`),
   create: (payload: UnitPayload) => http.post<ApiEnvelope<ApiUnit>>("Units", payload),
-  update: (id: number | string, payload: UnitPayload) =>
+  update: (id: string, payload: UnitPayload) =>
     http.put<ApiEnvelope<ApiUnit>>(`Units/${id}`, payload),
-  remove: (id: number | string) => http.delete<ApiEnvelope<null>>(`Units/${id}`),
+  remove: (id: string) => http.delete<ApiEnvelope<null>>(`Units/${id}`),
 };
 
 export const categoriesService = {
@@ -76,10 +76,10 @@ export const categoriesService = {
     http.get<ApiEnvelope<PagedResult<ApiCategory>>>("Categories", {
       params: listQuery(params),
     }),
-  get: (id: number | string) => http.get<ApiEnvelope<ApiCategory>>(`Categories/${id}`),
+  get: (id: string) => http.get<ApiEnvelope<ApiCategory>>(`Categories/${id}`),
   create: (payload: CategoryPayload) =>
     http.post<ApiEnvelope<ApiCategory>>("Categories", payload),
-  update: (id: number | string, payload: CategoryPayload) =>
+  update: (id: string, payload: CategoryPayload) =>
     http.put<ApiEnvelope<ApiCategory>>(`Categories/${id}`, payload),
-  remove: (id: number | string) => http.delete<ApiEnvelope<null>>(`Categories/${id}`),
+  remove: (id: string) => http.delete<ApiEnvelope<null>>(`Categories/${id}`),
 };

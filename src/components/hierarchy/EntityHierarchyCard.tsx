@@ -108,7 +108,7 @@ function HierarchyEntityActions({
   returnContext,
 }: {
   to: "/sites/$id" | "/projects/$id" | "/properties/$id";
-  id: number;
+  id: string;
   canModify: boolean;
   returnContext: HierarchyReturnContext;
 }) {
@@ -486,8 +486,7 @@ function HierarchyTable({
 
 function useTasksForProperties(customerId: number, properties: { id: number }[]) {
   const enabled =
-    Number.isFinite(customerId) &&
-    customerId > 0 &&
+    Boolean(customerId?.trim()) &&
     properties.length > 0;
 
   return useQuery({
@@ -507,7 +506,7 @@ function useTasksForProperties(customerId: number, properties: { id: number }[])
 }
 
 function useCustomerHierarchyData(customerId: number) {
-  const enabled = Number.isFinite(customerId) && customerId > 0;
+  const enabled = Boolean(customerId?.trim());
 
   const sitesQuery = useQuery({
     queryKey: ["hierarchy", "customer", customerId, "sites"],
@@ -564,7 +563,7 @@ function useCustomerHierarchyData(customerId: number) {
 }
 
 function useSiteHierarchyData(siteId: number, customerId: number) {
-  const enabled = Number.isFinite(siteId) && siteId > 0;
+  const enabled = Boolean(siteId?.trim());
 
   const projectsQuery = useQuery({
     queryKey: ["hierarchy", "site", siteId, "projects"],
@@ -603,7 +602,7 @@ function useSiteHierarchyData(siteId: number, customerId: number) {
 }
 
 function useProjectHierarchyData(projectId: number, customerId: number) {
-  const enabled = Number.isFinite(projectId) && projectId > 0;
+  const enabled = Boolean(projectId?.trim());
 
   const propertiesQuery = useQuery({
     queryKey: ["hierarchy", "project", projectId, "properties"],

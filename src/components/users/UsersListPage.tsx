@@ -73,7 +73,7 @@ export function UsersListPage() {
   const canDelete = usePermission({ route: cfg.permissionRoute, action: "delete" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [roleId, setRoleId] = useState<number | undefined>(undefined);
+  const [roleId, setRoleId] = useState<string | undefined>(undefined);
   const [sortBy, setSortBy] = useState<UsersSortBy>("createdDate");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [confirmDel, setConfirmDel] = useState<ApiUser | null>(null);
@@ -360,7 +360,7 @@ export function UsersListPage() {
         label: "View",
         icon: <Eye className="h-4 w-4" />,
         onClick: (user) =>
-          navigate({ to: cfg.detailPath, params: { id: String(user.id) } }),
+          navigate({ to: cfg.detailPath, params: { id: user.id } }),
       },
       {
         id: "edit",
@@ -370,7 +370,7 @@ export function UsersListPage() {
         onClick: (user) =>
           navigate({
             to: cfg.detailPath,
-            params: { id: String(user.id) },
+            params: { id: user.id },
             search: { mode: "edit" },
           }),
       },
@@ -460,9 +460,9 @@ export function UsersListPage() {
         filters={
           cfg.hideAccessFields ? undefined : (
             <Select
-              value={roleId != null ? String(roleId) : "all"}
+              value={roleId ?? "all"}
               onValueChange={(value) => {
-                setRoleId(value === "all" ? undefined : Number(value));
+                setRoleId(value === "all" ? undefined : value);
                 setPage(1);
               }}
             >

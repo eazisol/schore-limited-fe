@@ -94,15 +94,14 @@ function Daily() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { propertyId: propertyIdSearch } = Route.useSearch();
-  const filterPropertyId = Number(propertyIdSearch);
-  const hasPropertyFilter =
-    Number.isFinite(filterPropertyId) && filterPropertyId > 0;
+  const filterPropertyId = propertyIdSearch?.trim() ?? "";
+  const hasPropertyFilter = filterPropertyId.length > 0;
   const canModifyDaily = usePermission({ route: DAILY_ROUTE, action: "modify" });
   const [date, setDate] = useState(todayIso);
   const [showHO, setShowHO] = useState(false);
   const [confirmRoll, setConfirmRoll] = useState(false);
   const [completedModal, setCompletedModal] = useState<{
-    taskId: number;
+    taskId: string;
     propertyName: string;
   } | null>(null);
   const [page, setPage] = useState(1);
@@ -110,8 +109,8 @@ function Daily() {
   const [propertyLabel, setPropertyLabel] = useState<string | null>(null);
   const [statusId, setStatusId] = useState("");
   const [statusLabel, setStatusLabel] = useState<string | null>(null);
-  const filterStatusId = Number(statusId);
-  const hasStatusFilter = Number.isFinite(filterStatusId) && filterStatusId > 0;
+  const filterStatusId = statusId.trim();
+  const hasStatusFilter = filterStatusId.length > 0;
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
     onPageReset: () => setPage(1),
   });
@@ -154,7 +153,7 @@ function Daily() {
   });
 
   const costByTaskId = useMemo(() => {
-    const map = new Map<number, ApiCostBudgetTask>();
+    const map = new Map<string, ApiCostBudgetTask>();
     for (const task of costQuery.data?.tasks ?? []) {
       map.set(task.taskId, task);
     }
@@ -565,7 +564,7 @@ function Daily() {
               Show handed-over
             </label>
             <SearchableSelect
-              value={hasPropertyFilter ? String(filterPropertyId) : ""}
+              value={hasPropertyFilter ? filterPropertyId : ""}
               onValueChange={(value) => {
                 if (!value) clearPropertyFilter();
               }}

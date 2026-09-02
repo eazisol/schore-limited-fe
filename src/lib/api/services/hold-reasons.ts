@@ -3,7 +3,7 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiHoldReason {
-  id: number;
+  id: string;
   name: string;
   description: string | null;
   orderBy: number;
@@ -38,10 +38,10 @@ export const holdReasonsService = {
     http.get<ApiEnvelope<PagedResult<ApiHoldReason>>>("HoldReasons", {
       params: listQuery(params),
     }),
-  get: (id: number | string) => http.get<ApiEnvelope<ApiHoldReason>>(`HoldReasons/${id}`),
+  get: (id: string) => http.get<ApiEnvelope<ApiHoldReason>>(`HoldReasons/${id}`),
   create: (payload: HoldReasonPayload) =>
     http.post<ApiEnvelope<ApiHoldReason>>("HoldReasons", payload),
-  update: (id: number | string, payload: HoldReasonPayload) =>
+  update: (id: string, payload: HoldReasonPayload) =>
     http.put<ApiEnvelope<ApiHoldReason>>(`HoldReasons/${id}`, payload),
-  remove: (id: number | string) => http.delete<ApiEnvelope<null>>(`HoldReasons/${id}`),
+  remove: (id: string) => http.delete<ApiEnvelope<null>>(`HoldReasons/${id}`),
 };

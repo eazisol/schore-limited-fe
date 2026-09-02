@@ -18,7 +18,7 @@ export function CustomerCostBudgetCard({ customerId }: { customerId: number }) {
   const costQuery = useQuery({
     queryKey: ["users", customerId, "cost-budget"],
     queryFn: async () => (await costBudgetService.getForCustomer(customerId)).data,
-    enabled: Number.isFinite(customerId) && customerId > 0,
+    enabled: Boolean(customerId?.trim()),
   });
 
   const summary = useMemo(() => {
@@ -104,7 +104,7 @@ export function CustomerRunningTasksCard({ customerId }: { customerId: number })
           pageSize: 50,
         })
       ).data,
-    enabled: Number.isFinite(customerId) && customerId > 0,
+    enabled: Boolean(customerId?.trim()),
   });
 
   const inProgressStatusId = useMemo(() => {
@@ -124,9 +124,7 @@ export function CustomerRunningTasksCard({ customerId }: { customerId: number })
           sortDir: "desc",
         })
       ).data,
-    enabled:
-      Number.isFinite(customerId) &&
-      customerId > 0 &&
+    enabled: Boolean(customerId?.trim()) &&
       inProgressStatusId != null,
   });
 

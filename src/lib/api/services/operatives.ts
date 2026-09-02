@@ -11,9 +11,9 @@ import {
 } from "./mock-crud";
 
 export interface ApiOperative {
-  id: number;
+  id: string;
   name: string;
-  tradeId: number;
+  tradeId: string;
   tradeName: string;
   cisRate: number;
   dailyRate: number;
@@ -29,7 +29,7 @@ export interface ApiOperative {
 
 export type OperativePayload = {
   name: string;
-  tradeId: number;
+  tradeId: string;
   tradeName: string;
   cisRate: number;
   dailyRate: number;
@@ -48,7 +48,7 @@ export interface OperativesListParams {
   page: number;
   pageSize: number;
   search?: string;
-  tradeId?: number;
+  tradeId?: string;
   sortBy?: OperativesSortBy;
   sortDir?: OperativesSortDir;
 }
@@ -214,7 +214,7 @@ export const operativesService = {
     await mockDelay();
     return mockOk(store.list({ ...params }));
   },
-  get: async (id: number | string): Promise<ApiEnvelope<ApiOperative>> => {
+  get: async (id: string): Promise<ApiEnvelope<ApiOperative>> => {
     await mockDelay();
     return mockOk(store.get(id));
   },
@@ -238,7 +238,7 @@ export const operativesService = {
     return mockOk(created, "Operative created");
   },
   update: async (
-    id: number | string,
+    id: string,
     payload: OperativePayload,
   ): Promise<ApiEnvelope<ApiOperative>> => {
     await mockDelay();
@@ -258,7 +258,7 @@ export const operativesService = {
     });
     return mockOk(updated, "Operative updated");
   },
-  remove: async (id: number | string): Promise<ApiEnvelope<null>> => {
+  remove: async (id: string): Promise<ApiEnvelope<null>> => {
     await mockDelay();
     store.remove(id);
     return mockOk(null, "Operative deleted");

@@ -3,17 +3,17 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiPayStatementSummary {
-  id: number;
-  operativeId: number;
+  id: string;
+  operativeId: string;
   operativeName: string;
   tradeName: string | null;
   customerNames: string | null;
   weekEnding: string;
   weekStart: string;
-  statusId: number;
+  statusId: string;
   statusCode: string;
   statusName: string;
-  paymentStatusId: number;
+  paymentStatusId: string;
   paymentStatusCode: string;
   paymentStatusName: string;
   gross: number;
@@ -28,7 +28,7 @@ export interface ApiPayStatementSummary {
 }
 
 export interface ApiPayStatementDay {
-  id: number;
+  id: string;
   workDate: string;
   priceWork: number;
   dailyRateApplied: number;
@@ -39,12 +39,12 @@ export interface ApiPayStatementDay {
 }
 
 export interface ApiPayStatementLine {
-  id: number;
-  taskItemId: number | null;
-  taskId: number | null;
-  propertyId: number | null;
+  id: string;
+  taskItemId: string | null;
+  taskId: string | null;
+  propertyId: string | null;
   propertyName: string | null;
-  customerId: number | null;
+  customerId: string | null;
   customerName: string | null;
   lineDate: string;
   description: string;
@@ -69,16 +69,16 @@ export interface ApiPayStatementDetail extends ApiPayStatementSummary {
 
 export interface PayStatementListParams {
   weekEnding?: string;
-  customerId?: number;
-  statusId?: number;
-  paymentStatusId?: number;
+  customerId?: string;
+  statusId?: string;
+  paymentStatusId?: string;
   page?: number;
   pageSize?: number;
 }
 
 export interface ApiPayStatementExportLine {
-  payStatementId: number;
-  operativeId: number;
+  payStatementId: string;
+  operativeId: string;
   operativeName: string;
   lineDate: string;
   propertyName: string | null;
@@ -88,7 +88,7 @@ export interface ApiPayStatementExportLine {
 }
 
 export interface ApiPayStatementExportBundle {
-  customerId: number;
+  customerId: string;
   customerName: string;
   weekEnding: string;
   weekStart: string;
@@ -116,13 +116,13 @@ export const payStatementsService = {
     http.get<ApiEnvelope<PagedResult<ApiPayStatementSummary>>>("pay-statements", {
       params: listQuery(params),
     }),
-  get: (id: number | string) =>
+  get: (id: string) =>
     http.get<ApiEnvelope<ApiPayStatementDetail>>(`pay-statements/${id}`),
-  send: (id: number | string) =>
+  send: (id: string) =>
     http.post<ApiEnvelope<ApiPayStatementDetail>>(`pay-statements/${id}/send`),
-  resend: (id: number | string) =>
+  resend: (id: string) =>
     http.post<ApiEnvelope<ApiPayStatementDetail>>(`pay-statements/${id}/resend`),
-  markPaid: (id: number | string, payload: { paidNote?: string; file?: File | null }) => {
+  markPaid: (id: string, payload: { paidNote?: string; file?: File | null }) => {
     const form = new FormData();
     if (payload.paidNote?.trim()) form.append("PaidNote", payload.paidNote.trim());
     if (payload.file) form.append("referenceFile", payload.file);
@@ -135,12 +135,12 @@ export const payStatementsService = {
         ...(params.customerId != null ? { CustomerId: params.customerId } : {}),
       },
     }),
-  respond: (id: number | string, payload: { accepted: boolean; reason?: string }) =>
+  respond: (id: string, payload: { accepted: boolean; reason?: string }) =>
     http.post<ApiEnvelope<ApiPayStatementDetail>>(`pay-statements/${id}/respond`, payload),
   listMine: (params: PayStatementListParams = {}) =>
     http.get<ApiEnvelope<PagedResult<ApiPayStatementSummary>>>("operatives/me/statements", {
       params: listQuery(params),
     }),
-  getMine: (id: number | string) =>
+  getMine: (id: string) =>
     http.get<ApiEnvelope<ApiPayStatementDetail>>(`operatives/me/statements/${id}`),
 };

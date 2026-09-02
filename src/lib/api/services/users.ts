@@ -2,7 +2,7 @@ import { API_BASE_URL, http } from "@/lib/api/axios";
 import type { ApiEnvelope } from "./auth";
 
 export interface ApiUser {
-  id: number;
+  id: string;
   username: string;
   email: string;
   firstName: string;
@@ -11,13 +11,13 @@ export interface ApiUser {
   phone?: string | null;
   profileImagePath?: string | null;
   isActive: boolean;
-  userTypeId: number;
+  userTypeId: string;
   userTypeName: string;
-  roleIds: number[];
+  roleIds: string[];
   roleNames: string[];
-  tradeId?: number | null;
+  tradeId?: string | null;
   tradeName?: string | null;
-  cisId?: number | null;
+  cisId?: string | null;
   cisName?: string | null;
   dailyRate?: number | null;
   isDailyRate?: boolean;
@@ -29,7 +29,7 @@ export interface ApiUser {
   city?: string | null;
   state?: string | null;
   country?: string | null;
-  contractorId?: number | null;
+  contractorId?: string | null;
   contractorName?: string | null;
   startDate?: string | null;
   endDate?: string | null;
@@ -71,10 +71,10 @@ export interface CreateUserPayload {
   dateOfBirth?: string | null;
   phone?: string | null;
   isActive: boolean;
-  userTypeId: number;
-  roleIds: number[] | null;
-  tradeId?: number | null;
-  cisId?: number | null;
+  userTypeId: string;
+  roleIds: string[] | null;
+  tradeId?: string | null;
+  cisId?: string | null;
   dailyRate?: number | null;
   isDailyRate?: boolean;
   contactName?: string | null;
@@ -85,7 +85,7 @@ export interface CreateUserPayload {
   city?: string | null;
   state?: string | null;
   country?: string | null;
-  contractorId?: number | null;
+  contractorId?: string | null;
   startDate?: string | null;
   endDate?: string | null;
 }
@@ -98,10 +98,10 @@ export interface UpdateUserPayload {
   phone?: string | null;
   password?: string | null;
   isActive: boolean;
-  userTypeId: number;
-  roleIds: number[] | null;
-  tradeId?: number | null;
-  cisId?: number | null;
+  userTypeId: string;
+  roleIds: string[] | null;
+  tradeId?: string | null;
+  cisId?: string | null;
   dailyRate?: number | null;
   isDailyRate?: boolean;
   contactName?: string | null;
@@ -112,7 +112,7 @@ export interface UpdateUserPayload {
   city?: string | null;
   state?: string | null;
   country?: string | null;
-  contractorId?: number | null;
+  contractorId?: string | null;
   startDate?: string | null;
   endDate?: string | null;
 }
@@ -127,8 +127,8 @@ export interface UsersListParams {
   page: number;
   pageSize: number;
   search?: string;
-  roleId?: number;
-  userTypeId?: number;
+  roleId?: string;
+  userTypeId?: string;
   sortBy?: UsersSortBy;
   sortDir?: UsersSortDir;
 }
@@ -153,7 +153,7 @@ export interface PagedResult<T> {
 }
 
 export interface UserDropdownOption {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -170,11 +170,11 @@ export const usersService = {
         ...(params.sortDir ? { SortDir: params.sortDir } : {}),
       },
     }),
-  get: (id: number | string) => http.get<ApiEnvelope<ApiUser>>(`Users/${id}`),
+  get: (id: string) => http.get<ApiEnvelope<ApiUser>>(`Users/${id}`),
   dropdown: (params: {
     search?: string;
-    userTypeId: number;
-    roleId?: number;
+    userTypeId: string;
+    roleId?: string;
     take?: number;
   }) =>
     http.get<ApiEnvelope<UserDropdownOption[]>>("Users/dropdown", {
@@ -187,10 +187,10 @@ export const usersService = {
     }),
   create: (payload: CreateUserPayload) =>
     http.post<ApiEnvelope<ApiUser>>("Users", toUserFormData(payload)),
-  update: (id: number | string, payload: UpdateUserPayload, file?: File | null) =>
+  update: (id: string, payload: UpdateUserPayload, file?: File | null) =>
     http.put<ApiEnvelope<ApiUser>>(`Users/${id}`, toUserFormData(payload, file)),
-  removeProfileImage: (id: number | string) =>
+  removeProfileImage: (id: string) =>
     http.delete<ApiEnvelope<null>>(`Users/${id}/profile-image`),
-  remove: (id: number | string) =>
+  remove: (id: string) =>
     http.delete<ApiEnvelope<null>>(`Users/${id}`),
 };

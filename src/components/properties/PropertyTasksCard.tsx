@@ -19,7 +19,7 @@ import { DAILY_ROUTE } from "@/lib/daily";
 import { tasksQueryKey } from "@/routes/tasks.index";
 
 type PropertyTasksCardProps = {
-  propertyId: number;
+  propertyId: string;
   propertyName: string;
 };
 
@@ -46,7 +46,7 @@ export function PropertyTasksCard({ propertyId, propertyName }: PropertyTasksCar
           sortDir: "desc",
         })
       ).data,
-    enabled: Number.isFinite(propertyId) && propertyId > 0,
+    enabled: Boolean(propertyId?.trim()),
     placeholderData: keepPreviousData,
   });
 
@@ -107,7 +107,7 @@ export function PropertyTasksCard({ propertyId, propertyName }: PropertyTasksCar
       onClick: (task) =>
         navigate({
           to: "/tasks/$id",
-          params: { id: String(task.id) },
+          params: { id: task.id },
           search: {
             mode: "view",
             from: "property",
@@ -124,7 +124,7 @@ export function PropertyTasksCard({ propertyId, propertyName }: PropertyTasksCar
             onClick: (task: ApiTask) =>
               navigate({
                 to: "/tasks/$id",
-                params: { id: String(task.id) },
+                params: { id: task.id },
                 search: {
                   mode: "edit",
                   from: "property",

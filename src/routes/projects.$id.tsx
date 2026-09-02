@@ -62,8 +62,7 @@ function ProjectDetail() {
   const search = Route.useSearch();
   const { mode } = search;
   const returnContext = parseHierarchyReturnSearch(search);
-  const numericId = Number(id);
-  const navigate = useNavigate();
+    const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canModify = usePermission({ route: PROJECTS_ROUTE, action: "modify" });
   const canDelete = usePermission({ route: PROJECTS_ROUTE, action: "delete" });
@@ -114,7 +113,7 @@ function ProjectDetail() {
 
   const updateMutation = useMutation({
     mutationFn: (payload: ReturnType<typeof toProjectPayload>) =>
-      projectsService.update(numericId, payload),
+      projectsService.update(id, payload),
     onSuccess: (res) => {
       toast.success(res.message || "Project updated");
       queryClient.setQueryData(["projects", id], res.data);
@@ -129,7 +128,7 @@ function ProjectDetail() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => projectsService.remove(numericId),
+    mutationFn: () => projectsService.remove(id),
     onSuccess: (res) => {
       toast.success(res.message || "Project deleted");
       queryClient.invalidateQueries({ queryKey: projectsQueryKey });

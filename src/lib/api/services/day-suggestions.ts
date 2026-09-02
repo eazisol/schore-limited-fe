@@ -3,11 +3,11 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiDaySuggestion {
-  id: number;
+  id: string;
   dayNumber: number;
   /** Derived from linked trade codes for display / Next Day. */
   codes: string;
-  tradeIds: number[];
+  tradeIds: string[];
   tradeCodes: string[];
   tradeNames: string[];
   description: string | null;
@@ -21,7 +21,7 @@ export interface ApiDaySuggestion {
 
 export interface DaySuggestionPayload {
   dayNumber: number;
-  tradeIds: number[];
+  tradeIds: string[];
   description?: string | null;
   orderBy: number;
   isActive: boolean;
@@ -44,12 +44,12 @@ export const daySuggestionsService = {
     http.get<ApiEnvelope<PagedResult<ApiDaySuggestion>>>("DaySuggestions", {
       params: listQuery(params),
     }),
-  get: (id: number | string) =>
+  get: (id: string) =>
     http.get<ApiEnvelope<ApiDaySuggestion>>(`DaySuggestions/${id}`),
   create: (payload: DaySuggestionPayload) =>
     http.post<ApiEnvelope<ApiDaySuggestion>>("DaySuggestions", payload),
-  update: (id: number | string, payload: DaySuggestionPayload) =>
+  update: (id: string, payload: DaySuggestionPayload) =>
     http.put<ApiEnvelope<ApiDaySuggestion>>(`DaySuggestions/${id}`, payload),
-  remove: (id: number | string) =>
+  remove: (id: string) =>
     http.delete<ApiEnvelope<null>>(`DaySuggestions/${id}`),
 };

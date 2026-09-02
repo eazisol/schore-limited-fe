@@ -2,7 +2,7 @@ import { http } from "@/lib/api/axios";
 import type { ApiEnvelope } from "./auth";
 
 export interface ApiCostBudgetCustomer {
-  customerId: number;
+  customerId: string;
   customerName: string;
   budget: number;
   spent: number;
@@ -11,11 +11,11 @@ export interface ApiCostBudgetCustomer {
 }
 
 export interface ApiCostBudgetTask {
-  taskId: number;
+  taskId: string;
   taskNumber: string;
-  propertyId: number;
+  propertyId: string;
   propertyName: string;
-  customerId: number;
+  customerId: string;
   customerName: string | null;
   budget: number | null;
   priceWork: number;
@@ -27,13 +27,13 @@ export interface ApiCostBudgetTask {
 
 export interface ApiCostBudgetLedgerLine {
   workDate: string;
-  operativeId: number;
+  operativeId: string;
   operativeName: string;
-  taskId: number;
+  taskId: string;
   taskNumber: string;
-  propertyId: number;
+  propertyId: string;
   propertyName: string;
-  customerId: number;
+  customerId: string;
   customerName: string | null;
   priceWork: number;
   topUpShare: number;

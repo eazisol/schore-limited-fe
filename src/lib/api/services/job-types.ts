@@ -3,7 +3,7 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiJobType {
-  id: number;
+  id: string;
   name: string;
   code: string;
   description: string | null;
@@ -38,9 +38,9 @@ const listQuery = (params: JobTypeListParams) => ({
 export const jobTypesService = {
   list: (params: JobTypeListParams = {}) =>
     http.get<ApiEnvelope<PagedResult<ApiJobType>>>("JobTypes", { params: listQuery(params) }),
-  get: (id: number | string) => http.get<ApiEnvelope<ApiJobType>>(`JobTypes/${id}`),
+  get: (id: string) => http.get<ApiEnvelope<ApiJobType>>(`JobTypes/${id}`),
   create: (payload: JobTypePayload) => http.post<ApiEnvelope<ApiJobType>>("JobTypes", payload),
-  update: (id: number | string, payload: JobTypePayload) =>
+  update: (id: string, payload: JobTypePayload) =>
     http.put<ApiEnvelope<ApiJobType>>(`JobTypes/${id}`, payload),
-  remove: (id: number | string) => http.delete<ApiEnvelope<null>>(`JobTypes/${id}`),
+  remove: (id: string) => http.delete<ApiEnvelope<null>>(`JobTypes/${id}`),
 };

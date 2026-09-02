@@ -116,7 +116,7 @@ export function toTradeGroupPayload(
   orderBy = 0,
 ): TradeGroupPayload {
   return {
-    tradeId: Number(values.tradeId),
+    tradeId: values.tradeId,
     name: values.name.trim(),
     code: values.code.trim().toUpperCase(),
     description: values.description.trim(),

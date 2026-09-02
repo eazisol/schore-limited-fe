@@ -9,7 +9,7 @@ export function TradeGroupRecordPanel({
   totalPrice,
   embedded = false,
 }: {
-  tradeGroupId?: number | null;
+  tradeGroupId?: string | null;
   createdDate?: string | null;
   editDate?: string | null;
   totalPrice: number;

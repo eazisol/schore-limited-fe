@@ -47,7 +47,7 @@ export function toSitePayload(values: SiteFormValues): SitePayload {
     state: values.state.trim() || null,
     country: values.country.trim() || null,
     zipCode: values.zipCode.trim() || null,
-    customerId: Number(values.customerId),
+    customerId: values.customerId,
     isActive: values.isActive,
   };
 }
@@ -61,7 +61,7 @@ export function siteToFormValues(row: {
   state?: string | null;
   country?: string | null;
   zipCode?: string | null;
-  customerId: number;
+  customerId: string;
   isActive: boolean;
 }): SiteFormValues {
   return {

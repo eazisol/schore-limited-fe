@@ -3,27 +3,27 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiTaskItem {
-  id: number;
-  taskId: number;
-  operativeId: number;
+  id: string;
+  taskId: string;
+  operativeId: string;
   operativeName: string;
   workDate: string;
-  tradeId: number;
+  tradeId: string;
   tradeName: string;
-  tradeGroupId: number | null;
+  tradeGroupId: string | null;
   tradeGroupName: string | null;
-  productId: number | null;
+  productId: string | null;
   productName: string | null;
   quantity: number;
   doneQty: number;
   remainingQty: number;
   rate: number;
   amount: number;
-  statusId: number | null;
+  statusId: string | null;
   statusName: string | null;
   isTicked: boolean;
   completedDate: string | null;
-  timeSlotId: number | null;
+  timeSlotId: string | null;
   timeSlotName: string | null;
   timeSlotCode: string | null;
   notes: string | null;
@@ -31,15 +31,15 @@ export interface ApiTaskItem {
 }
 
 export interface ApiTaskOperativeGroup {
-  operativeId: number;
+  operativeId: string;
   operativeName: string;
   items: ApiTaskItem[];
 }
 
 export interface ApiTask {
-  id: number;
+  id: string;
   taskNumber: string;
-  propertyId: number;
+  propertyId: string;
   propertyName: string;
   propertyAddress: string | null;
   /** Property customer — same source as Daily Programmer "Customer". */
@@ -49,13 +49,13 @@ export interface ApiTask {
   startDate: string;
   handOverDate: string | null;
   budget: number | null;
-  jobTypeId: number;
+  jobTypeId: string;
   jobTypeName: string;
   description: string | null;
-  statusId: number;
+  statusId: string;
   statusName: string;
   statusCode: string;
-  siteManagerId: number | null;
+  siteManagerId: string | null;
   siteManagerName: string | null;
   daysCount: number;
   heldDaysCount: number;
@@ -67,35 +67,35 @@ export interface ApiTask {
 }
 
 export type TaskItemPayload = {
-  id?: number | null;
-  operativeId: number;
+  id?: string | null;
+  operativeId: string;
   workDate: string;
-  tradeId: number;
-  tradeGroupId?: number | null;
-  productId?: number | null;
+  tradeId: string;
+  tradeGroupId?: string | null;
+  productId?: string | null;
   quantity: number;
   doneQty?: number;
   rate: number;
   applyRatePermanently?: boolean;
-  statusId?: number | null;
+  statusId?: string | null;
   isTicked?: boolean;
   completedDate?: string | null;
-  timeSlotId?: number | null;
+  timeSlotId?: string | null;
   notes?: string | null;
   imagePath?: string | null;
 };
 
 export type TaskPayload = {
-  propertyId: number;
+  propertyId: string;
   startDate: string;
   handOverDate?: string | null;
   budget?: number | null;
-  jobTypeId: number;
+  jobTypeId: string;
   description?: string | null;
-  statusId: number;
-  siteManagerId?: number | null;
+  statusId: string;
+  siteManagerId?: string | null;
   holdDate?: string | null;
-  holdReasonId?: number | null;
+  holdReasonId?: string | null;
   holdNotes?: string | null;
   items: TaskItemPayload[];
 };
@@ -104,10 +104,10 @@ export interface TaskListParams {
   page: number;
   pageSize: number;
   search?: string;
-  propertyId?: number;
-  statusId?: number;
-  jobTypeId?: number;
-  customerId?: number;
+  propertyId?: string;
+  statusId?: string;
+  jobTypeId?: string;
+  customerId?: string;
   sortBy?: string;
   sortDir?: "asc" | "desc";
 }
@@ -147,7 +147,7 @@ function normalizePaged(
 }
 
 export interface ApiTimeSlot {
-  id: number;
+  id: string;
   name: string;
   code: string;
   description: string | null;
@@ -162,10 +162,10 @@ export const tasksService = {
     });
     return { ...res, data: normalizePaged(res.data) };
   },
-  get: (id: number | string) => http.get<ApiEnvelope<ApiTask>>(`Tasks/${id}`),
+  get: (id: string) => http.get<ApiEnvelope<ApiTask>>(`Tasks/${id}`),
   create: (payload: TaskPayload) => http.post<ApiEnvelope<ApiTask>>("Tasks", payload),
-  update: (id: number | string, payload: TaskPayload) =>
+  update: (id: string, payload: TaskPayload) =>
     http.put<ApiEnvelope<ApiTask>>(`Tasks/${id}`, payload),
-  remove: (id: number | string) => http.delete<ApiEnvelope<null>>(`Tasks/${id}`),
+  remove: (id: string) => http.delete<ApiEnvelope<null>>(`Tasks/${id}`),
   timeSlots: () => http.get<ApiEnvelope<ApiTimeSlot[]>>("Tasks/time-slots"),
 };

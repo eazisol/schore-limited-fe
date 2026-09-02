@@ -3,13 +3,13 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiProject {
-  id: number;
+  id: string;
   name: string;
   code: string;
   description: string | null;
-  siteId: number;
+  siteId: string;
   siteName: string | null;
-  customerId: number;
+  customerId: string;
   customerName: string | null;
   isActive: boolean;
   createdBy?: number | null;
@@ -22,8 +22,8 @@ export type ProjectPayload = {
   name: string;
   code: string;
   description?: string | null;
-  customerId: number;
-  siteId: number;
+  customerId: string;
+  siteId: string;
   isActive: boolean;
 };
 
@@ -31,8 +31,8 @@ export interface ProjectListParams {
   page?: number;
   pageSize?: number;
   search?: string;
-  siteId?: number;
-  customerId?: number;
+  siteId?: string;
+  customerId?: string;
 }
 
 const listQuery = (params: ProjectListParams) => ({
@@ -70,9 +70,9 @@ export const projectsService = {
     });
     return { ...res, data: normalizePaged(res.data) };
   },
-  get: (id: number | string) => http.get<ApiEnvelope<ApiProject>>(`Projects/${id}`),
+  get: (id: string) => http.get<ApiEnvelope<ApiProject>>(`Projects/${id}`),
   create: (payload: ProjectPayload) => http.post<ApiEnvelope<ApiProject>>("Projects", payload),
-  update: (id: number | string, payload: ProjectPayload) =>
+  update: (id: string, payload: ProjectPayload) =>
     http.put<ApiEnvelope<ApiProject>>(`Projects/${id}`, payload),
-  remove: (id: number | string) => http.delete<ApiEnvelope<null>>(`Projects/${id}`),
+  remove: (id: string) => http.delete<ApiEnvelope<null>>(`Projects/${id}`),
 };

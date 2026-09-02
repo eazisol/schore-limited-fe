@@ -3,7 +3,7 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiHoliday {
-  id: number;
+  id: string;
   name: string;
   date: string;
   description: string | null;
@@ -46,12 +46,12 @@ const listQuery = (params: HolidayListParams) => ({
 export const holidaysService = {
   list: (params: HolidayListParams = {}) =>
     http.get<ApiEnvelope<PagedResult<ApiHoliday>>>("Holidays", { params: listQuery(params) }),
-  get: (id: number | string) => http.get<ApiEnvelope<ApiHoliday>>(`Holidays/${id}`),
+  get: (id: string) => http.get<ApiEnvelope<ApiHoliday>>(`Holidays/${id}`),
   getWeekend: () => http.get<ApiEnvelope<ApiWeekendDays>>("Holidays/weekend"),
   saveWeekend: (days: number[]) =>
     http.put<ApiEnvelope<ApiWeekendDays>>("Holidays/weekend", { days }),
   create: (payload: HolidayPayload) => http.post<ApiEnvelope<ApiHoliday>>("Holidays", payload),
-  update: (id: number | string, payload: HolidayPayload) =>
+  update: (id: string, payload: HolidayPayload) =>
     http.put<ApiEnvelope<ApiHoliday>>(`Holidays/${id}`, payload),
-  remove: (id: number | string) => http.delete<ApiEnvelope<null>>(`Holidays/${id}`),
+  remove: (id: string) => http.delete<ApiEnvelope<null>>(`Holidays/${id}`),
 };

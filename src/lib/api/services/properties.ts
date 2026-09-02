@@ -3,7 +3,7 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiProperty {
-  id: number;
+  id: string;
   reference: string | null;
   propertyName: string;
   contactName: string;
@@ -15,11 +15,11 @@ export interface ApiProperty {
   state: string | null;
   country: string | null;
   accessNotes: string | null;
-  customerId: number;
+  customerId: string;
   customerName: string | null;
-  projectId: number;
+  projectId: string;
   projectName: string | null;
-  siteId: number;
+  siteId: string;
   siteName: string | null;
   isActive: boolean;
   createdBy?: number | null;
@@ -40,9 +40,9 @@ export type PropertyPayload = {
   state: string | null;
   country: string | null;
   accessNotes: string | null;
-  customerId: number;
-  siteId: number;
-  projectId: number;
+  customerId: string;
+  siteId: string;
+  projectId: string;
   isActive: boolean;
 };
 
@@ -63,9 +63,9 @@ export interface PropertyListParams {
   page: number;
   pageSize: number;
   search?: string;
-  customerId?: number;
-  siteId?: number;
-  projectId?: number;
+  customerId?: string;
+  siteId?: string;
+  projectId?: string;
   sortBy?: PropertySortBy;
   sortDir?: PropertySortDir;
 }
@@ -110,10 +110,10 @@ export const propertiesService = {
     });
     return { ...res, data: normalizePaged(res.data) };
   },
-  get: (id: number | string) => http.get<ApiEnvelope<ApiProperty>>(`Properties/${id}`),
+  get: (id: string) => http.get<ApiEnvelope<ApiProperty>>(`Properties/${id}`),
   create: (payload: PropertyPayload) =>
     http.post<ApiEnvelope<ApiProperty>>("Properties", payload),
-  update: (id: number | string, payload: PropertyPayload) =>
+  update: (id: string, payload: PropertyPayload) =>
     http.put<ApiEnvelope<ApiProperty>>(`Properties/${id}`, payload),
-  remove: (id: number | string) => http.delete<ApiEnvelope<null>>(`Properties/${id}`),
+  remove: (id: string) => http.delete<ApiEnvelope<null>>(`Properties/${id}`),
 };

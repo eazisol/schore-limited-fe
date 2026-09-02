@@ -4,7 +4,7 @@ import type { PagedResult } from "./users";
 
 /** Shared lookup row for Categories / Units / ProductTypes dropdowns. */
 export interface ApiNamedLookup {
-  id: number;
+  id: string;
   name: string;
   code?: string | null;
   isActive?: boolean;

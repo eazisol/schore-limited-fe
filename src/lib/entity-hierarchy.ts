@@ -5,16 +5,16 @@ import type { ApiTask } from "@/lib/api/services/tasks";
 
 export type HierarchyJobNode = {
   kind: "job";
-  id: number;
+  id: string;
   taskNumber: string;
   jobTypeName: string;
   statusName: string;
-  propertyId: number;
+  propertyId: string;
 };
 
 export type HierarchyPropertyNode = {
   kind: "property";
-  id: number;
+  id: string;
   name: string;
   isActive: boolean;
   children: HierarchyJobNode[];
@@ -22,7 +22,7 @@ export type HierarchyPropertyNode = {
 
 export type HierarchyProjectNode = {
   kind: "project";
-  id: number;
+  id: string;
   name: string;
   code: string;
   isActive: boolean;
@@ -31,7 +31,7 @@ export type HierarchyProjectNode = {
 
 export type HierarchySiteNode = {
   kind: "site";
-  id: number;
+  id: string;
   name: string;
   code: string;
   isActive: boolean;

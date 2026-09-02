@@ -135,10 +135,8 @@ export const propertyFormDefaults: PropertyFormValues = {
   isActive: true,
 };
 
-function requiredId(value: string): number {
-  const trimmed = value.trim();
-  const n = Number(trimmed);
-  return Number.isFinite(n) ? n : 0;
+function requiredId(value: string): string {
+  return value.trim();
 }
 
 export function toPropertyPayload(values: PropertyFormValues): PropertyPayload {

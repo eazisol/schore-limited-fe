@@ -242,17 +242,17 @@ export function taskToFormValues(task: ApiTask): TaskFormValues {
 }
 
 export function toTaskPayload(values: TaskFormValues): TaskPayload {
-  const holdReasonId = values.holdReasonId.trim() ? Number(values.holdReasonId) : null;
+  const holdReasonId = values.holdReasonId.trim() ? values.holdReasonId : null;
   const parsedPrice = values.budget.trim() ? parsePriceInput(values.budget) : null;
   return {
-    propertyId: Number(values.propertyId),
+    propertyId: values.propertyId,
     startDate: values.startDate,
     handOverDate: values.handOverDate.trim() || null,
     budget: parsedPrice && !Number.isNaN(parsedPrice.min) ? parsedPrice.min : null,
-    jobTypeId: Number(values.jobTypeId),
+    jobTypeId: values.jobTypeId,
     description: values.description.trim() || null,
-    statusId: Number(values.statusId),
-    siteManagerId: values.siteManagerId.trim() ? Number(values.siteManagerId) : null,
+    statusId: values.statusId,
+    siteManagerId: values.siteManagerId.trim() ? values.siteManagerId : null,
     holdDate: values.holdDate.trim() || null,
     holdReasonId,
     holdNotes: values.holdNotes.trim() || null,

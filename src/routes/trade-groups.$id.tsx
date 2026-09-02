@@ -45,8 +45,7 @@ export const Route = createFileRoute("/trade-groups/$id")({
 function TradeGroupDetail() {
   const { id } = Route.useParams();
   const { mode } = Route.useSearch();
-  const numericId = Number(id);
-  const navigate = useNavigate();
+    const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canModify = usePermission({ route: TRADE_GROUPS_ROUTE, action: "modify" });
   const canDelete = usePermission({ route: TRADE_GROUPS_ROUTE, action: "delete" });
@@ -138,7 +137,7 @@ function TradeGroupDetail() {
 
   const updateMutation = useMutation({
     mutationFn: (payload: ReturnType<typeof toTradeGroupPayload>) =>
-      tradeGroupsService.update(numericId, payload),
+      tradeGroupsService.update(id, payload),
     onSuccess: (res) => {
       toast.success(res.message || "Trade group updated");
       queryClient.setQueryData(["trade-groups", id], res.data);
@@ -149,7 +148,7 @@ function TradeGroupDetail() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => tradeGroupsService.remove(numericId),
+    mutationFn: () => tradeGroupsService.remove(id),
     onSuccess: (res) => {
       toast.success(res.message || "Trade group deleted");
       queryClient.invalidateQueries({ queryKey: tradeGroupsQueryKey });

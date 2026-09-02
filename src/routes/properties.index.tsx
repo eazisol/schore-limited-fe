@@ -197,7 +197,7 @@ function PropertiesList() {
         label: "View",
         icon: <Eye className="h-4 w-4" />,
         onClick: (row) =>
-          navigate({ to: "/properties/$id", params: { id: String(row.id) } }),
+          navigate({ to: "/properties/$id", params: { id: row.id } }),
       },
       {
         id: "edit",
@@ -207,7 +207,7 @@ function PropertiesList() {
         onClick: (row) =>
           navigate({
             to: "/properties/$id",
-            params: { id: String(row.id) },
+            params: { id: row.id },
             search: { mode: "edit" },
           }),
       },

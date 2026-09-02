@@ -32,8 +32,7 @@ function ItemDetailLayout() {
 
 function ItemDetail() {
   const { id } = Route.useParams();
-  const numericId = Number(id);
-  const navigate = useNavigate();
+    const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canModify = usePermission({ route: ITEMS_ROUTE, action: "modify" });
   const canDelete = usePermission({ route: ITEMS_ROUTE, action: "delete" });
@@ -46,7 +45,7 @@ function ItemDetail() {
   const item = itemQuery.data;
 
   const deleteMutation = useMutation({
-    mutationFn: () => productsService.remove(numericId),
+    mutationFn: () => productsService.remove(id),
     onSuccess: (res) => {
       toast.success(res.message || "Item deleted");
       queryClient.invalidateQueries({ queryKey: itemsQueryKey });

@@ -35,8 +35,8 @@ export function toProjectPayload(values: ProjectFormValues): ProjectPayload {
     name: values.name.trim(),
     code: values.code.trim().toUpperCase(),
     description: values.description.trim() || null,
-    customerId: Number(values.customerId),
-    siteId: Number(values.siteId),
+    customerId: values.customerId,
+    siteId: values.siteId,
     isActive: values.isActive,
   };
 }
@@ -45,8 +45,8 @@ export function projectToFormValues(row: {
   name: string;
   code: string;
   description?: string | null;
-  customerId: number;
-  siteId: number;
+  customerId: string;
+  siteId: string;
   isActive: boolean;
 }): ProjectFormValues {
   return {

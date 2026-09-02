@@ -2,21 +2,21 @@ import { http } from "@/lib/api/axios";
 import type { ApiEnvelope } from "./auth";
 
 export interface ApiMenuDefinition {
-  id: number;
+  id: string;
   name: string | null;
   code: string | null;
   route: string | null;
   icon: string | null;
-  parentMenuId: number | null;
+  parentMenuId: string | null;
   orderBy: number;
   isActive: boolean;
   children?: ApiMenuDefinition[] | null;
 }
 
 export type MenuReorderItem = {
-  id: number;
+  id: string;
   orderBy: number;
-  parentMenuId: number | null;
+  parentMenuId: string | null;
 };
 
 export type MenuReorderPayload = {

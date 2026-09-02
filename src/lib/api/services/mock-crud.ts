@@ -85,7 +85,7 @@ export function createMockStore<T extends { id: number }>(options: StoreOptions<
     };
   }
 
-  function get(id: number | string): T {
+  function get(id: string): T {
     const numericId = Number(id);
     const found = items.find((i) => i.id === numericId);
     if (!found) mockFail("Record not found", 404);
@@ -98,7 +98,7 @@ export function createMockStore<T extends { id: number }>(options: StoreOptions<
     return structuredClone(row);
   }
 
-  function update(id: number | string, payload: Partial<T>): T {
+  function update(id: string, payload: Partial<T>): T {
     const numericId = Number(id);
     const index = items.findIndex((i) => i.id === numericId);
     if (index < 0) mockFail("Record not found", 404);
@@ -107,7 +107,7 @@ export function createMockStore<T extends { id: number }>(options: StoreOptions<
     return structuredClone(next);
   }
 
-  function remove(id: number | string): void {
+  function remove(id: string): void {
     const numericId = Number(id);
     const before = items.length;
     items = items.filter((i) => i.id !== numericId);

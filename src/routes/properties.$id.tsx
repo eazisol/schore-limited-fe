@@ -71,8 +71,7 @@ function PropertyDetail() {
   const search = Route.useSearch();
   const { mode } = search;
   const returnContext = parseHierarchyReturnSearch(search);
-  const numericId = Number(id);
-  const navigate = useNavigate();
+    const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canModify = usePermission({ route: PROPERTIES_ROUTE, action: "modify" });
   const canDelete = usePermission({ route: PROPERTIES_ROUTE, action: "delete" });
@@ -128,7 +127,7 @@ function PropertyDetail() {
 
   const updateMutation = useMutation({
     mutationFn: (payload: ReturnType<typeof toPropertyPayload>) =>
-      propertiesService.update(numericId, payload),
+      propertiesService.update(id, payload),
     onSuccess: (res) => {
       toast.success(res.message || "Property updated");
       queryClient.setQueryData(["properties", id], res.data);
@@ -143,7 +142,7 @@ function PropertyDetail() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => propertiesService.remove(numericId),
+    mutationFn: () => propertiesService.remove(id),
     onSuccess: (res) => {
       toast.success(res.message || "Property deleted");
       queryClient.invalidateQueries({ queryKey: propertiesQueryKey });

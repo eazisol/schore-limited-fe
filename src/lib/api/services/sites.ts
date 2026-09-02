@@ -3,7 +3,7 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiSite {
-  id: number;
+  id: string;
   name: string;
   code: string;
   description: string | null;
@@ -12,7 +12,7 @@ export interface ApiSite {
   city: string | null;
   state: string | null;
   country: string | null;
-  customerId: number;
+  customerId: string;
   customerName: string | null;
   isActive: boolean;
   createdBy?: number | null;
@@ -30,7 +30,7 @@ export type SitePayload = {
   city?: string | null;
   state?: string | null;
   country?: string | null;
-  customerId: number;
+  customerId: string;
   isActive: boolean;
 };
 
@@ -38,7 +38,7 @@ export interface SiteListParams {
   page?: number;
   pageSize?: number;
   search?: string;
-  customerId?: number;
+  customerId?: string;
 }
 
 const listQuery = (params: SiteListParams) => ({
@@ -73,9 +73,9 @@ export const sitesService = {
     });
     return { ...res, data: normalizePaged(res.data) };
   },
-  get: (id: number | string) => http.get<ApiEnvelope<ApiSite>>(`Sites/${id}`),
+  get: (id: string) => http.get<ApiEnvelope<ApiSite>>(`Sites/${id}`),
   create: (payload: SitePayload) => http.post<ApiEnvelope<ApiSite>>("Sites", payload),
-  update: (id: number | string, payload: SitePayload) =>
+  update: (id: string, payload: SitePayload) =>
     http.put<ApiEnvelope<ApiSite>>(`Sites/${id}`, payload),
-  remove: (id: number | string) => http.delete<ApiEnvelope<null>>(`Sites/${id}`),
+  remove: (id: string) => http.delete<ApiEnvelope<null>>(`Sites/${id}`),
 };

@@ -4,7 +4,7 @@ import type { ApiEnvelope } from "./auth";
 /* ─── Generic settings (kept for backwards compatibility) ─── */
 
 export interface ApiSetting {
-  id: number;
+  id: string;
   settingKey: string;
   settingValue: string;
   isActive: boolean;
@@ -40,7 +40,7 @@ export interface EmailSettingValue {
 /* ─── Dedicated Email settings API ─── */
 
 export interface EmailSettings {
-  id?: number;
+  id?: string;
   host: string;
   port: number;
   username: string;
@@ -68,13 +68,13 @@ export interface UpdateEmailSettingsPayload {
 
 export const settingsService = {
   list: () => http.get<ApiEnvelope<ApiSetting[]>>("Settings"),
-  get: (id: number | string) =>
+  get: (id: string) =>
     http.get<ApiEnvelope<ApiSetting>>(`Settings/${id}`),
   create: (payload: CreateSettingPayload) =>
     http.post<ApiEnvelope<ApiSetting>>("Settings", payload),
-  update: (id: number | string, payload: UpdateSettingPayload) =>
+  update: (id: string, payload: UpdateSettingPayload) =>
     http.put<ApiEnvelope<ApiSetting>>(`Settings/${id}`, payload),
-  remove: (id: number | string) =>
+  remove: (id: string) =>
     http.delete<ApiEnvelope<null>>(`Settings/${id}`),
 
   /** Dedicated email settings endpoints. */

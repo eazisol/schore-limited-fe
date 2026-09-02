@@ -289,7 +289,7 @@ function Dashboard() {
                               onClick={() =>
                                 navigate({
                                   to: "/tasks/$id",
-                                  params: { id: String(row.taskId) },
+                                  params: { id: row.taskId },
                                   search: { mode: "view" },
                                 })
                               }

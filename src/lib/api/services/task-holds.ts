@@ -3,21 +3,21 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiTaskHold {
-  id: number;
-  taskId: number;
+  id: string;
+  taskId: string;
   taskNumber: string | null;
   propertyName: string | null;
   holdDate: string;
-  holdReasonId: number;
+  holdReasonId: string;
   holdReasonName: string;
   notes: string | null;
   createdDate?: string | null;
 }
 
 export interface CreateTaskHoldPayload {
-  taskId: number;
+  taskId: string;
   holdDate: string;
-  holdReasonId: number;
+  holdReasonId: string;
   notes?: string | null;
 }
 
@@ -25,7 +25,7 @@ export interface TaskHoldListParams {
   page?: number;
   pageSize?: number;
   search?: string;
-  taskId?: number;
+  taskId?: string;
   dateFrom?: string;
   dateTo?: string;
 }
@@ -42,8 +42,8 @@ const listQuery = (params: TaskHoldListParams) => ({
 export const taskHoldsService = {
   list: (params: TaskHoldListParams = {}) =>
     http.get<ApiEnvelope<PagedResult<ApiTaskHold>>>("TaskHolds", { params: listQuery(params) }),
-  get: (id: number | string) => http.get<ApiEnvelope<ApiTaskHold>>(`TaskHolds/${id}`),
+  get: (id: string) => http.get<ApiEnvelope<ApiTaskHold>>(`TaskHolds/${id}`),
   create: (payload: CreateTaskHoldPayload) =>
     http.post<ApiEnvelope<ApiTaskHold>>("TaskHolds", payload),
-  remove: (id: number | string) => http.delete<ApiEnvelope<null>>(`TaskHolds/${id}`),
+  remove: (id: string) => http.delete<ApiEnvelope<null>>(`TaskHolds/${id}`),
 };

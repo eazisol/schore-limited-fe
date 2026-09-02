@@ -203,7 +203,7 @@ function ItemsList() {
         icon: <Pencil className="h-4 w-4" />,
         hidden: () => !canModify,
         onClick: (item) =>
-          navigate({ to: "/items/$id/edit", params: { id: String(item.id) } }),
+          navigate({ to: "/items/$id/edit", params: { id: item.id } }),
       },
       {
         id: "delete",

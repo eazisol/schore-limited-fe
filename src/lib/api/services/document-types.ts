@@ -4,7 +4,7 @@ import type { PagedResult } from "./users";
 import { DROPDOWN_FETCH_SIZE } from "@/lib/dropdown-fetch";
 
 export interface ApiDocumentType {
-  id: number;
+  id: string;
   name: string;
   code: string;
   description: string | null;

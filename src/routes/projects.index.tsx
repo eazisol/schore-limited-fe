@@ -124,7 +124,7 @@ function ProjectsList() {
           <button
             type="button"
             className="font-medium text-left hover:text-info hover:underline"
-            onClick={() => navigate({ to: "/projects/$id", params: { id: String(item.id) } })}
+            onClick={() => navigate({ to: "/projects/$id", params: { id: item.id } })}
           >
             {item.name}
           </button>
@@ -162,7 +162,7 @@ function ProjectsList() {
         id: "view",
         label: "View",
         icon: <Eye className="h-4 w-4" />,
-        onClick: (item) => navigate({ to: "/projects/$id", params: { id: String(item.id) } }),
+        onClick: (item) => navigate({ to: "/projects/$id", params: { id: item.id } }),
       },
       {
         id: "edit",
@@ -172,7 +172,7 @@ function ProjectsList() {
         onClick: (item) =>
           navigate({
             to: "/projects/$id",
-            params: { id: String(item.id) },
+            params: { id: item.id },
             search: { mode: "edit" },
           }),
       },

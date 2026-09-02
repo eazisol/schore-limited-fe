@@ -3,7 +3,7 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiRole {
-  id: number;
+  id: string;
   name: string;
   code: string;
   description: string | null;
@@ -11,7 +11,7 @@ export interface ApiRole {
 }
 
 export interface ApiUserType {
-  id: number;
+  id: string;
   name: string;
   code: string;
   isActive: boolean;
@@ -52,20 +52,20 @@ const listQuery = (p: ListParams) => ({
 export const rolesService = {
   list: (params: ListParams) =>
     http.get<ApiEnvelope<PagedResult<ApiRole>>>("Roles", { params: listQuery(params) }),
-  get: (id: number | string) => http.get<ApiEnvelope<ApiRole>>(`Roles/${id}`),
+  get: (id: string) => http.get<ApiEnvelope<ApiRole>>(`Roles/${id}`),
   create: (payload: RolePayload) => http.post<ApiEnvelope<ApiRole>>("Roles", payload),
-  update: (id: number | string, payload: RolePayload) =>
+  update: (id: string, payload: RolePayload) =>
     http.put<ApiEnvelope<ApiRole>>(`Roles/${id}`, payload),
-  remove: (id: number | string) => http.delete<ApiEnvelope<null>>(`Roles/${id}`),
+  remove: (id: string) => http.delete<ApiEnvelope<null>>(`Roles/${id}`),
 };
 
 export const userTypesService = {
   list: (params: ListParams) =>
     http.get<ApiEnvelope<PagedResult<ApiUserType>>>("UserTypes", { params: listQuery(params) }),
-  get: (id: number | string) => http.get<ApiEnvelope<ApiUserType>>(`UserTypes/${id}`),
+  get: (id: string) => http.get<ApiEnvelope<ApiUserType>>(`UserTypes/${id}`),
   create: (payload: UserTypePayload) =>
     http.post<ApiEnvelope<ApiUserType>>("UserTypes", payload),
-  update: (id: number | string, payload: UserTypePayload) =>
+  update: (id: string, payload: UserTypePayload) =>
     http.put<ApiEnvelope<ApiUserType>>(`UserTypes/${id}`, payload),
-  remove: (id: number | string) => http.delete<ApiEnvelope<null>>(`UserTypes/${id}`),
+  remove: (id: string) => http.delete<ApiEnvelope<null>>(`UserTypes/${id}`),
 };

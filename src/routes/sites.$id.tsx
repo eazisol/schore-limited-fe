@@ -68,8 +68,7 @@ function SiteDetail() {
   const search = Route.useSearch();
   const { mode } = search;
   const returnContext = parseHierarchyReturnSearch(search);
-  const numericId = Number(id);
-  const navigate = useNavigate();
+    const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canModify = usePermission({ route: SITES_ROUTE, action: "modify" });
   const canDelete = usePermission({ route: SITES_ROUTE, action: "delete" });
@@ -116,7 +115,7 @@ function SiteDetail() {
 
   const updateMutation = useMutation({
     mutationFn: (payload: ReturnType<typeof toSitePayload>) =>
-      sitesService.update(numericId, payload),
+      sitesService.update(id, payload),
     onSuccess: (res) => {
       toast.success(res.message || "Site updated");
       queryClient.setQueryData(["sites", id], res.data);
@@ -131,7 +130,7 @@ function SiteDetail() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => sitesService.remove(numericId),
+    mutationFn: () => sitesService.remove(id),
     onSuccess: (res) => {
       toast.success(res.message || "Site deleted");
       queryClient.invalidateQueries({ queryKey: sitesQueryKey });

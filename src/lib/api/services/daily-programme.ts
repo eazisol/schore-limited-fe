@@ -2,13 +2,13 @@ import { http } from "@/lib/api/axios";
 import type { ApiEnvelope } from "./auth";
 
 export interface ApiDailyAllocation {
-  itemId: number;
-  operativeId: number;
+  itemId: string;
+  operativeId: string;
   operativeName: string;
   displayName: string;
   tradeCode: string | null;
   tradeName: string | null;
-  timeSlotId: number | null;
+  timeSlotId: string | null;
   timeSlotName: string | null;
   timeSlotCode: string | null;
   notes: string | null;
@@ -17,11 +17,11 @@ export interface ApiDailyAllocation {
 }
 
 export interface ApiDailyAssignedItemLine {
-  itemId: number;
-  productId: number | null;
+  itemId: string;
+  productId: string | null;
   productName: string;
   quantity: number;
-  timeSlotId: number | null;
+  timeSlotId: string | null;
   timeSlotName: string | null;
   rate: number;
   amount: number;
@@ -31,28 +31,28 @@ export interface ApiDailyAssignedItemLine {
 }
 
 export interface ApiDailyAssignedPackageGroup {
-  tradeGroupId: number;
+  tradeGroupId: string;
   tradeGroupName: string;
   items: ApiDailyAssignedItemLine[];
 }
 
 export interface ApiDailyAssignedOperative {
-  operativeId: number;
+  operativeId: string;
   operativeName: string;
   packages: ApiDailyAssignedPackageGroup[];
   addOns: ApiDailyAssignedItemLine[];
 }
 
 export interface ApiDailyNameOperative {
-  operativeId: number;
+  operativeId: string;
   operativeName: string;
   items: ApiDailyAssignedItemLine[];
 }
 
 export interface ApiDailyAssignedPackage {
-  tradeGroupId: number;
+  tradeGroupId: string;
   tradeGroupName: string;
-  operativeId: number;
+  operativeId: string;
   operativeName: string;
   rate: number;
   isCarryOver: boolean;
@@ -60,15 +60,15 @@ export interface ApiDailyAssignedPackage {
 }
 
 export interface ApiDailyUnassignedPackage {
-  tradeGroupId: number;
+  tradeGroupId: string;
   tradeGroupName: string;
   tradeName: string | null;
 }
 
 export interface ApiDailyAssignedAddOn {
-  productId: number;
+  productId: string;
   productName: string;
-  operativeId: number;
+  operativeId: string;
   operativeName: string;
   rate: number;
   isCarryOver: boolean;
@@ -76,15 +76,15 @@ export interface ApiDailyAssignedAddOn {
 }
 
 export interface ApiDailyUnassignedAddOn {
-  productId: number;
+  productId: string;
   productName: string;
 }
 
 export interface ApiDailyRow {
   no: number;
-  taskId: number;
+  taskId: string;
   taskNumber: string;
-  propertyId: number;
+  propertyId: string;
   propertyName: string;
   propertyAddress: string | null;
   accessNotes: string | null;
@@ -134,29 +134,29 @@ export interface ApiDailyRollForward {
 
 export type DailyAssignPackagePayload = {
   date: string;
-  tradeGroupId: number;
-  operativeId: number;
+  tradeGroupId: string;
+  operativeId: string;
   rate: number;
   quantity: number;
-  timeSlotId?: number | null;
+  timeSlotId?: string | null;
   applyRatePermanently?: boolean;
 };
 
 export type DailyAssignAddOnPayload = {
   date: string;
-  productId: number;
-  operativeId: number;
+  productId: string;
+  operativeId: string;
   rate: number;
   quantity: number;
-  timeSlotId?: number | null;
+  timeSlotId?: string | null;
   applyRatePermanently?: boolean;
 };
 
 export interface DailyProgrammeListParams {
   date: string;
   showHandedOver?: boolean;
-  propertyId?: number;
-  statusId?: number;
+  propertyId?: string;
+  statusId?: string;
 }
 
 export const dailyProgrammeService = {

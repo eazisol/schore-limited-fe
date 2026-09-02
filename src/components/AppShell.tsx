@@ -142,7 +142,7 @@ function AppShellChrome({
   menus,
   onSignOut,
 }: {
-  userId: number;
+  userId: string;
   userName: string;
   userRole: UserRole;
   email: string;

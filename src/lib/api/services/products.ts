@@ -7,15 +7,15 @@ import type { PagedResult } from "./users";
  * Items UI consumes this service — swap endpoint later if a dedicated Items API appears.
  */
 export interface ApiProduct {
-  id: number;
+  id: string;
   name: string;
   description: string | null;
   sku: string;
-  productTypeId: number;
+  productTypeId: string;
   productTypeName: string | null;
-  categoryId: number;
+  categoryId: string;
   categoryName: string | null;
-  unitId: number;
+  unitId: string;
   unitName: string | null;
   salePrice: number;
   costPrice: number;
@@ -31,9 +31,9 @@ export type ProductPayload = {
   name: string;
   description?: string | null;
   sku: string;
-  productTypeId: number;
-  categoryId: number;
-  unitId: number;
+  productTypeId: string;
+  categoryId: string;
+  unitId: string;
   salePrice: number;
   costPrice: number;
   quantity: number;
@@ -124,12 +124,12 @@ export const productsService = {
       data: normalizePaged(res.data),
     };
   },
-  get: (id: number | string) => http.get<ApiEnvelope<ApiProduct>>(`Products/${id}`),
+  get: (id: string) => http.get<ApiEnvelope<ApiProduct>>(`Products/${id}`),
   create: (payload: ProductPayload, file?: File | null) =>
     http.post<ApiEnvelope<ApiProduct>>("Products", toProductFormData(payload, file)),
-  update: (id: number | string, payload: ProductPayload, file?: File | null) =>
+  update: (id: string, payload: ProductPayload, file?: File | null) =>
     http.put<ApiEnvelope<ApiProduct>>(`Products/${id}`, toProductFormData(payload, file)),
-  removeImage: (id: number | string) =>
+  removeImage: (id: string) =>
     http.delete<ApiEnvelope<null>>(`Products/${id}/image`),
-  remove: (id: number | string) => http.delete<ApiEnvelope<null>>(`Products/${id}`),
+  remove: (id: string) => http.delete<ApiEnvelope<null>>(`Products/${id}`),
 };

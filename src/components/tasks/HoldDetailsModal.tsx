@@ -21,7 +21,7 @@ type Values = z.infer<typeof schema>;
 
 export type HoldDetails = {
   holdDate: string;
-  holdReasonId: number;
+  holdReasonId: string;
   holdNotes?: string | null;
 };
 

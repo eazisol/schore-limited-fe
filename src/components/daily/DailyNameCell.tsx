@@ -88,7 +88,7 @@ function OperativeAvatarPopover({
   disabled,
 }: {
   operative: ApiDailyNameOperative;
-  taskId: number;
+  taskId: string;
   date: string;
   disabled: boolean;
 }) {
@@ -176,7 +176,7 @@ function ItemSection({
   items: ApiDailyAssignedItemLine[];
   completed?: boolean;
   disabled?: boolean;
-  completingItemId?: number;
+  completingItemId?: string;
   onComplete?: (itemId: number) => void;
 }) {
   return (

@@ -3,7 +3,7 @@ import type { ApiEnvelope } from "./auth";
 import type { PagedResult } from "./users";
 
 export interface ApiCisStatus {
-  id: number;
+  id: string;
   name: string;
   code: string;
   rate: number;
@@ -79,7 +79,7 @@ export const cisService = {
     );
     return { ...res, data: normalizePaged(res.data) };
   },
-  get: (id: number | string) =>
+  get: (id: string) =>
     http.get<ApiEnvelope<ApiCisStatus>>(`OperativesBuilder/cis/${id}`),
   /** Active CIS statuses for selects (operatives, etc.). */
   options: async (): Promise<ApiEnvelope<ApiCisStatus[]>> => {
@@ -91,8 +91,8 @@ export const cisService = {
   },
   create: (payload: CisStatusPayload) =>
     http.post<ApiEnvelope<ApiCisStatus>>("OperativesBuilder/cis", payload),
-  update: (id: number | string, payload: CisStatusPayload) =>
+  update: (id: string, payload: CisStatusPayload) =>
     http.put<ApiEnvelope<ApiCisStatus>>(`OperativesBuilder/cis/${id}`, payload),
-  remove: (id: number | string) =>
+  remove: (id: string) =>
     http.delete<ApiEnvelope<null>>(`OperativesBuilder/cis/${id}`),
 };

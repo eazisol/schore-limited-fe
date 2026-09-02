@@ -2,11 +2,11 @@ import { http } from "@/lib/api/axios";
 import type { ApiEnvelope } from "./auth";
 
 export interface ApiPermission {
-  id: number;
-  menuId: number;
+  id: string;
+  menuId: string;
   menuName: string | null;
   menuCode: string | null;
-  roleId: number;
+  roleId: string;
   roleName: string | null;
   read: boolean;
   modify: boolean;
@@ -18,19 +18,19 @@ export interface ApiPermission {
 }
 
 export interface UpsertPermission {
-  menuId: number;
+  menuId: string;
   read: boolean;
   modify: boolean;
   delete: boolean;
 }
 
 export interface AssignRolePermissionsPayload {
-  roleId: number;
+  roleId: string;
   permissions: UpsertPermission[];
 }
 
 export const permissionsService = {
-  getByRole: (roleId: number | string) =>
+  getByRole: (roleId: string) =>
     http.get<ApiEnvelope<ApiPermission[]>>(`Permissions/role/${roleId}`),
   assign: (payload: AssignRolePermissionsPayload) =>
     http.post<ApiEnvelope<ApiPermission[]>>("Permissions/assign", payload),

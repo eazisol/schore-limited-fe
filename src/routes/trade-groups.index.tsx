@@ -191,7 +191,7 @@ function TradeGroupsList() {
         label: "View",
         icon: <Eye className="h-4 w-4" />,
         onClick: (row) =>
-          navigate({ to: "/trade-groups/$id", params: { id: String(row.id) } }),
+          navigate({ to: "/trade-groups/$id", params: { id: row.id } }),
       },
       {
         id: "edit",
@@ -201,7 +201,7 @@ function TradeGroupsList() {
         onClick: (row) =>
           navigate({
             to: "/trade-groups/$id",
-            params: { id: String(row.id) },
+            params: { id: row.id },
             search: { mode: "edit" },
           }),
       },
