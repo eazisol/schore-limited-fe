@@ -19,7 +19,7 @@ import { formatGbp } from "@/lib/module-ui";
 import { ITEMS_ROUTE } from "@/lib/items";
 
 export const Route = createFileRoute("/items/$id")({
-  head: ({ params }) => ({ meta: [{ title: `Item #${params.id} | Schore` }] }),
+  head: () => ({ meta: [{ title: "Item | Schore" }] }),
   component: ItemDetailLayout,
 });
 

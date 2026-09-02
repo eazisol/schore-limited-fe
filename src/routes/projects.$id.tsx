@@ -44,7 +44,7 @@ const detailSearchSchema = z
   .merge(hierarchyReturnSearchSchema);
 
 export const Route = createFileRoute("/projects/$id")({
-  head: ({ params }) => ({ meta: [{ title: `Project #${params.id} | Schore` }] }),
+  head: () => ({ meta: [{ title: "Project | Schore" }] }),
   validateSearch: detailSearchSchema,
   component: ProjectDetail,
 });

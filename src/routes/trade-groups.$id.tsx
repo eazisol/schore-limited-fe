@@ -37,7 +37,7 @@ const detailSearchSchema = z.object({
 });
 
 export const Route = createFileRoute("/trade-groups/$id")({
-  head: ({ params }) => ({ meta: [{ title: `Trade Group #${params.id} | Schore` }] }),
+  head: () => ({ meta: [{ title: "Trade Group | Schore" }] }),
   validateSearch: detailSearchSchema,
   component: TradeGroupDetail,
 });

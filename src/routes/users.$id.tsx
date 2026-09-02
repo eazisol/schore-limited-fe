@@ -7,7 +7,7 @@ const detailSearchSchema = z.object({
 });
 
 export const Route = createFileRoute("/users/$id")({
-  head: ({ params }) => ({ meta: [{ title: `User #${params.id} | Schore` }] }),
+  head: () => ({ meta: [{ title: "User | Schore" }] }),
   validateSearch: detailSearchSchema,
   component: UserDetailPage,
 });

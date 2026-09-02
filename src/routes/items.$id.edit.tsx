@@ -25,7 +25,7 @@ import {
 import { ItemFormFields } from "@/components/items/ItemFormFields";
 
 export const Route = createFileRoute("/items/$id/edit")({
-  head: ({ params }) => ({ meta: [{ title: `Edit Item #${params.id} | Schore` }] }),
+  head: () => ({ meta: [{ title: "Item | Schore" }] }),
   component: EditItem,
 });
 
