@@ -17,12 +17,18 @@ import { useFormContext } from "react-hook-form";
 
 type ProjectFormFieldsProps = {
   disabled?: boolean;
+  /** When true, client cannot be changed (e.g. hierarchy wizard). */
+  lockCustomer?: boolean;
+  /** When true, site cannot be changed (e.g. hierarchy wizard). */
+  lockSite?: boolean;
   customerSelectedLabel?: string | null;
   siteSelectedLabel?: string | null;
 };
 
 export function ProjectFormFields({
   disabled,
+  lockCustomer,
+  lockSite,
   customerSelectedLabel,
   siteSelectedLabel,
 }: ProjectFormFieldsProps) {
@@ -50,8 +56,8 @@ export function ProjectFormFields({
   );
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         <CreatableSearchableSelectField<ProjectFormValues>
           name="customerId"
           label="Client"
@@ -61,9 +67,9 @@ export function ProjectFormFields({
           queryKey={["users", "customers", "dropdown", "project-form", customerId]}
           selectedLabel={customerLabel ?? customerSelectedLabel}
           fetchOptions={fetchCustomerOptions}
-          lookupType="customer"
+          lookupType={lockCustomer ? undefined : "customer"}
           onSelect={(option) => setCustomerLabel(option.label)}
-          disabled={disabled}
+          disabled={disabled || lockCustomer}
         />
         <CreatableSearchableSelectField<ProjectFormValues>
           name="siteId"
@@ -74,13 +80,13 @@ export function ProjectFormFields({
           queryKey={["sites", "dropdown", "project-form", customerId]}
           selectedLabel={siteLabel ?? siteSelectedLabel}
           fetchOptions={fetchSites}
-          lookupType="site"
+          lookupType={lockSite ? undefined : "site"}
           lookupContext={{ customerId, customerLabel: customerLabel ?? customerSelectedLabel ?? undefined }}
           onSelect={(option) => setSiteLabel(option.label)}
-          disabled={disabled || !customerId}
+          disabled={disabled || lockSite || !customerId}
         />
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <TextField<ProjectFormValues>
           name="name"
           label="Name"
@@ -101,7 +107,7 @@ export function ProjectFormFields({
       <TextareaField<ProjectFormValues>
         name="description"
         label="Description"
-        rows={3}
+        rows={2}
         maxLength={DESCRIPTION_MAX_LENGTH}
         disabled={disabled}
       />

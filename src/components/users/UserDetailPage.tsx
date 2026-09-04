@@ -19,6 +19,7 @@ import {
   CustomerRunningTasksCard,
 } from "@/components/users/CustomerDetailExtras";
 import { EntityHierarchyCard } from "@/components/hierarchy/EntityHierarchyCard";
+import { ClientEditModal } from "@/components/hierarchy/ClientEditModal";
 import { displayUserName } from "@/components/users/UsersListPage";
 import { CodeBadge, CodeWithLabel } from "@/components/CodeBadge";
 import {
@@ -34,6 +35,7 @@ import {
   editUserFormSchema,
   emptyUserFormValues,
   toUpdateUserPayload,
+  userToFormValues,
   type UserFormValues,
 } from "@/lib/user-form";
 
@@ -48,10 +50,26 @@ export function UserDetailPage() {
   const canModify = usePermission({ route: cfg.permissionRoute, action: "modify" });
   const canDelete = usePermission({ route: cfg.permissionRoute, action: "delete" });
   const [confirmDel, setConfirmDel] = useState(false);
-  const isEditing = search.mode === "edit" && canModify;
+  const [clientEditOpen, setClientEditOpen] = useState(false);
+  const isEditing = !cfg.isCustomer && search.mode === "edit" && canModify;
   const schema = editUserFormSchema(mode);
 
+  useEffect(() => {
+    if (!cfg.isCustomer || !canModify || search.mode !== "edit" || !id) return;
+    setClientEditOpen(true);
+    navigate({
+      to: cfg.detailPath,
+      params: { id },
+      search: {},
+      replace: true,
+    });
+  }, [canModify, cfg.detailPath, cfg.isCustomer, id, navigate, search.mode]);
+
   function openEdit() {
+    if (cfg.isCustomer) {
+      setClientEditOpen(true);
+      return;
+    }
     navigate({
       to: cfg.detailPath,
       params: { id },
@@ -76,40 +94,9 @@ export function UserDetailPage() {
   });
   const user = userQuery.data;
 
-  const resolvedRoleId =
-    user?.roleIds?.[0] ?? "";
-
   const defaults = useMemo<UserFormValues>(
-    () => ({
-      ...emptyUserFormValues,
-      firstName: user?.firstName ?? "",
-      lastName: user?.lastName ?? "",
-      email: user?.email ?? "",
-      phone: user?.phone ?? "",
-      dateOfBirth: toDateInputValue(user?.dateOfBirth),
-      roleId: resolvedRoleId,
-      isActive: user?.isActive ?? true,
-      password: "",
-      tradeId: user?.tradeId != null ? String(user.tradeId) : "",
-      cisId: user?.cisId != null ? String(user.cisId) : "",
-      dailyRate:
-        user?.dailyRate != null && !Number.isNaN(Number(user.dailyRate))
-          ? String(user.dailyRate)
-          : "",
-      isDailyRate: user?.isDailyRate ?? false,
-      contactName: user?.contactName ?? "",
-      companyName: user?.companyName ?? "",
-      clientCode: user?.clientCode ?? "",
-      address: user?.address ?? "",
-      zipCode: user?.zipCode ?? "",
-      city: user?.city ?? "",
-      state: user?.state ?? "",
-      country: user?.country ?? "",
-      contractorId: user?.contractorId != null ? String(user.contractorId) : "",
-      startDate: toDateInputValue(user?.startDate),
-      endDate: toDateInputValue(user?.endDate),
-    }),
-    [resolvedRoleId, user],
+    () => (user ? userToFormValues(user) : emptyUserFormValues),
+    [user],
   );
 
   const form = useForm<UserFormValues>({
@@ -395,6 +382,16 @@ export function UserDetailPage() {
           </div>
         </div>
       )}
+
+      {cfg.isCustomer && clientEditOpen ? (
+        <ClientEditModal
+          customerId={id}
+          onClose={() => {
+            setClientEditOpen(false);
+            queryClient.invalidateQueries({ queryKey: [...cfg.queryKey, id] });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

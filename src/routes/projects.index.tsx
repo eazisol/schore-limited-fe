@@ -123,7 +123,7 @@ function ProjectsList() {
         cell: (item) => (
           <button
             type="button"
-            className="font-medium text-left hover:text-info hover:underline"
+            className="font-medium text-left text-info underline underline-offset-2 cursor-pointer"
             onClick={() => navigate({ to: "/projects/$id", params: { id: item.id } })}
           >
             {item.name}

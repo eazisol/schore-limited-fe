@@ -1,0 +1,208 @@
+import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Modal } from "@/components/Modal";
+import {
+  ClientEntityForm,
+  HIERARCHY_STEPS,
+  HierarchyStepper,
+  ProjectEntityForm,
+  PropertyEntityForm,
+  SiteEntityForm,
+  type HierarchyStepId,
+} from "@/components/hierarchy/HierarchyEntityForms";
+import {
+  propertyFormDefaults,
+  type PropertyFormValues,
+} from "@/lib/property-form";
+import type { ProjectFormValues } from "@/lib/project-form";
+import type { SiteFormValues } from "@/lib/site-form";
+
+type HierarchyChain = {
+  customerId: string;
+  customerLabel: string;
+  siteId: string;
+  siteLabel: string;
+  projectId: string;
+  projectLabel: string;
+};
+
+const emptyChain: HierarchyChain = {
+  customerId: "",
+  customerLabel: "",
+  siteId: "",
+  siteLabel: "",
+  projectId: "",
+  projectLabel: "",
+};
+
+export function HierarchyCreateWizard({
+  onClose,
+  customersQueryKey,
+}: {
+  onClose: () => void;
+  customersQueryKey: readonly string[];
+}) {
+  const qc = useQueryClient();
+  const [step, setStep] = useState<HierarchyStepId>("client");
+  const [chain, setChain] = useState<HierarchyChain>(emptyChain);
+
+  const stepIndex = HIERARCHY_STEPS.findIndex((s) => s.id === step);
+
+  function invalidateHierarchy() {
+    qc.invalidateQueries({ queryKey: customersQueryKey });
+    qc.invalidateQueries({ queryKey: ["users", "customers"] });
+    qc.invalidateQueries({ queryKey: ["sites"] });
+    qc.invalidateQueries({ queryKey: ["projects"] });
+    qc.invalidateQueries({ queryKey: ["properties"] });
+    qc.invalidateQueries({ queryKey: ["lookups"] });
+    qc.invalidateQueries({ queryKey: ["hierarchy"] });
+  }
+
+  function handleClose() {
+    invalidateHierarchy();
+    onClose();
+  }
+
+  const titles = useMemo(
+    () =>
+      ({
+        client: "Add client",
+        site: "Add site",
+        project: "Add project",
+        property: "Add property",
+      }) as const,
+    [],
+  );
+
+  const siteDefaults = useMemo<SiteFormValues>(
+    () => ({
+      name: "",
+      code: "",
+      description: "",
+      address: "",
+      city: "",
+      state: "",
+      country: "",
+      zipCode: "",
+      customerId: chain.customerId,
+      isActive: true,
+    }),
+    [chain.customerId],
+  );
+
+  const projectDefaults = useMemo<ProjectFormValues>(
+    () => ({
+      name: "",
+      code: "",
+      description: "",
+      customerId: chain.customerId,
+      siteId: chain.siteId,
+      isActive: true,
+    }),
+    [chain.customerId, chain.siteId],
+  );
+
+  const propertyDefaults = useMemo<PropertyFormValues>(
+    () => ({
+      ...propertyFormDefaults,
+      customerId: chain.customerId,
+      siteId: chain.siteId,
+      projectId: chain.projectId,
+    }),
+    [chain.customerId, chain.siteId, chain.projectId],
+  );
+
+  return (
+    <Modal
+      open
+      onClose={handleClose}
+      title={titles[step]}
+      subtitle="Client → Site → Project → Property"
+      size="xl"
+      showCloseButton={false}
+    >
+      <div className="space-y-3">
+        <HierarchyStepper currentIndex={stepIndex} />
+
+        {step === "client" ? (
+          <ClientEntityForm
+            allowSaveAndClose
+            onCancel={handleClose}
+            onSaved={(next, action) => {
+              invalidateHierarchy();
+              if (action === "close") {
+                onClose();
+                return;
+              }
+              setChain((prev) => ({ ...prev, ...next }));
+              setStep("site");
+            }}
+          />
+        ) : null}
+
+        {step === "site" ? (
+          <SiteEntityForm
+            mode="create"
+            defaultValues={siteDefaults}
+            customerSelectedLabel={chain.customerLabel}
+            lockCustomer
+            allowSaveAndClose
+            submitLabel="Create & continue"
+            onCancel={handleClose}
+            onSaved={(next, action) => {
+              invalidateHierarchy();
+              if (action === "close") {
+                onClose();
+                return;
+              }
+              setChain((prev) => ({ ...prev, ...next }));
+              setStep("project");
+            }}
+          />
+        ) : null}
+
+        {step === "project" ? (
+          <ProjectEntityForm
+            mode="create"
+            defaultValues={projectDefaults}
+            customerSelectedLabel={chain.customerLabel}
+            siteSelectedLabel={chain.siteLabel}
+            lockCustomer
+            lockSite
+            allowSaveAndClose
+            submitLabel="Create & continue"
+            onCancel={handleClose}
+            onSaved={(next, action) => {
+              invalidateHierarchy();
+              if (action === "close") {
+                onClose();
+                return;
+              }
+              setChain((prev) => ({ ...prev, ...next }));
+              setStep("property");
+            }}
+          />
+        ) : null}
+
+        {step === "property" ? (
+          <PropertyEntityForm
+            mode="create"
+            defaultValues={propertyDefaults}
+            customerSelectedLabel={chain.customerLabel}
+            siteSelectedLabel={chain.siteLabel}
+            projectSelectedLabel={chain.projectLabel}
+            lockCustomer
+            lockSite
+            lockProject
+            submitLabel="Create property"
+            onCancel={handleClose}
+            onSaved={() => {
+              invalidateHierarchy();
+              onClose();
+            }}
+          />
+        ) : null}
+      </div>
+    </Modal>
+  );
+}

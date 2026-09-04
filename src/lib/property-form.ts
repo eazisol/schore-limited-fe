@@ -158,3 +158,37 @@ export function toPropertyPayload(values: PropertyFormValues): PropertyPayload {
     isActive: values.isActive,
   };
 }
+
+export function propertyToFormValues(row: {
+  propertyName: string;
+  contactName: string;
+  contactPhoneNo?: string | null;
+  contactEmail?: string | null;
+  address?: string | null;
+  zipCode?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  accessNotes?: string | null;
+  customerId: string;
+  siteId: string;
+  projectId: string;
+  isActive: boolean;
+}): PropertyFormValues {
+  return {
+    propertyName: row.propertyName,
+    contactName: row.contactName,
+    contactPhoneNo: row.contactPhoneNo ?? "",
+    contactEmail: row.contactEmail ?? "",
+    address: row.address ?? "",
+    zipCode: row.zipCode ?? "",
+    city: row.city ?? "",
+    state: row.state ?? "",
+    country: row.country ?? "",
+    accessNotes: row.accessNotes ?? "",
+    customerId: String(row.customerId),
+    siteId: String(row.siteId),
+    projectId: String(row.projectId),
+    isActive: row.isActive,
+  };
+}

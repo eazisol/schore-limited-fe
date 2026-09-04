@@ -36,6 +36,8 @@ import { TableImagePreview } from "@/components/TableImagePreview";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { formatDailyRate, truncateWithEllipsis } from "@/lib/module-ui";
 import { useUserModuleMode, userModuleConfig } from "@/lib/user-module";
+import { HierarchyCreateWizard } from "@/components/hierarchy/HierarchyCreateWizard";
+import { ClientEditModal } from "@/components/hierarchy/ClientEditModal";
 
 const ROLE_NAME_TO_KEY = Object.entries(ROLE_LABEL).reduce<Record<string, UserRole>>(
   (acc, [key, label]) => {
@@ -76,6 +78,8 @@ export function UsersListPage() {
   const [roleId, setRoleId] = useState<string | undefined>(undefined);
   const [sortBy, setSortBy] = useState<UsersSortBy>("createdDate");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editClientId, setEditClientId] = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState<ApiUser | null>(null);
   const [exporting, setExporting] = useState(false);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
@@ -226,25 +230,25 @@ export function UsersListPage() {
         cell: (user) => {
           const name = displayUserName(user);
           return (
-            <div className="flex min-w-0 items-start gap-3">
+            <div className="flex min-w-0 items-center gap-2.5">
               <div className="shrink-0">
                 <UserAvatar name={name} src={resolveProfileImageUrl(user.profileImagePath)} />
               </div>
-              <div className="min-w-0 flex-1 space-y-1.5">
+              <div className="min-w-0 flex-1 leading-tight">
                 <AppTooltip content={name} asChild align="start">
                   <Link
                     to={cfg.detailPath}
                     params={{ id: String(user.id) }}
-                    className="inline-block max-w-full font-medium hover:text-info hover:underline"
+                    className="inline-block max-w-full cursor-pointer font-medium text-info underline underline-offset-2"
                   >
                     {truncateWithEllipsis(name)}
                   </Link>
                 </AppTooltip>
-                {!cfg.isCustomer ? (
-                  <div className="flex min-w-0 items-start gap-2 text-[11px] leading-snug text-muted-foreground">
-                    <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                {user.email ? (
+                  <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <Mail className="h-3 w-3 shrink-0" />
                     <AppTooltip content={user.email} asChild align="start">
-                      <span className="min-w-0 flex-1 break-all line-clamp-2">{user.email}</span>
+                      <span className="min-w-0 flex-1 truncate">{user.email}</span>
                     </AppTooltip>
                   </div>
                 ) : null}
@@ -367,12 +371,17 @@ export function UsersListPage() {
         label: "Edit",
         icon: <Pencil className="h-4 w-4" />,
         hidden: () => !canModify,
-        onClick: (user) =>
+        onClick: (user) => {
+          if (cfg.isCustomer) {
+            setEditClientId(String(user.id));
+            return;
+          }
           navigate({
             to: cfg.detailPath,
             params: { id: user.id },
             search: { mode: "edit" },
-          }),
+          });
+        },
       },
       {
         id: "delete",
@@ -383,7 +392,7 @@ export function UsersListPage() {
         onClick: (user) => setConfirmDel(user),
       },
     ],
-    [canDelete, canModify, cfg.detailPath, navigate],
+    [canDelete, canModify, cfg.detailPath, cfg.isCustomer, navigate],
   );
 
   const activeSortColumn =
@@ -422,12 +431,19 @@ export function UsersListPage() {
               Export CSV
             </Button>
             <Can route={cfg.permissionRoute} action="modify">
-              <Button size="sm" asChild>
-                <Link to={cfg.newPath}>
+              {cfg.isCustomer ? (
+                <Button size="sm" onClick={() => setCreateOpen(true)}>
                   <Plus className="h-4 w-4" />
                   {cfg.labels.addButton}
-                </Link>
-              </Button>
+                </Button>
+              ) : (
+                <Button size="sm" asChild>
+                  <Link to={cfg.newPath}>
+                    <Plus className="h-4 w-4" />
+                    {cfg.labels.addButton}
+                  </Link>
+                </Button>
+              )}
             </Can>
           </>
         }
@@ -515,6 +531,17 @@ export function UsersListPage() {
           controlsAlign: "center",
         }}
       />
+
+      {createOpen && cfg.isCustomer ? (
+        <HierarchyCreateWizard
+          customersQueryKey={cfg.queryKey}
+          onClose={() => setCreateOpen(false)}
+        />
+      ) : null}
+
+      {editClientId && cfg.isCustomer ? (
+        <ClientEditModal customerId={editClientId} onClose={() => setEditClientId(null)} />
+      ) : null}
 
       {confirmDel && (
         <div

@@ -20,6 +20,7 @@ export function UserFormFields({
   variant,
   disabled = false,
   embedded = false,
+  showActiveInHeader = false,
   lookupsLoading = false,
   roleSelectedLabel,
   operativeSelectedLabels,
@@ -30,6 +31,8 @@ export function UserFormFields({
   variant: "create" | "edit";
   disabled?: boolean;
   embedded?: boolean;
+  /** Place Active switch on the Personal Information heading row (modals). */
+  showActiveInHeader?: boolean;
   lookupsLoading?: boolean;
   roleSelectedLabel?: string | null;
   operativeSelectedLabels?: {
@@ -46,19 +49,21 @@ export function UserFormFields({
   const isCustomer = mode === "customer";
   const isUser = mode === "user";
   const isContactModule = isContractor || isCustomer;
+  const activeToggle =
+    showActiveInHeader || !embedded ? (
+      <SwitchField<UserFormValues> name="isActive" label="Active" />
+    ) : undefined;
 
   return (
-    <fieldset className="space-y-3" disabled={disabled}>
+    <fieldset className="space-y-2" disabled={disabled}>
       <Section
         title="Personal Information"
         embedded={embedded}
-        headerAction={
-          embedded ? undefined : <SwitchField<UserFormValues> name="isActive" label="Active" />
-        }
+        headerAction={activeToggle}
       >
         {isContractor ? (
           <>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <TextField<UserFormValues>
                 name="companyName"
                 label="Company name"
@@ -72,7 +77,7 @@ export function UserFormFields({
                 maxLength={50}
               />
             </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <TextField<UserFormValues> name="lastName" label="Last name" required maxLength={50} />
               <TextField<UserFormValues>
                 name="email"
@@ -82,7 +87,7 @@ export function UserFormFields({
                 placeholder="name@schore.co.uk"
               />
             </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <PhoneNumberField<UserFormValues>
                 name="phone"
                 label="Phone"
@@ -94,7 +99,7 @@ export function UserFormFields({
                 maxLength={ADDRESS_MAX_LENGTH}
               />
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <TextField<UserFormValues> name="city" label="City" maxLength={100} />
               <TextField<UserFormValues> name="state" label="State" maxLength={100} />
               <TextField<UserFormValues> name="country" label="Country" maxLength={100} />
@@ -103,7 +108,7 @@ export function UserFormFields({
           </>
         ) : isCustomer ? (
           <>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <TextField<UserFormValues>
                 name="firstName"
                 label="First name"
@@ -113,7 +118,7 @@ export function UserFormFields({
               />
               <TextField<UserFormValues> name="lastName" label="Last name" required maxLength={50} />
             </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <TextField<UserFormValues> name="clientCode" label="Code" maxLength={100} />
               <TextField<UserFormValues>
                 name="email"
@@ -123,7 +128,7 @@ export function UserFormFields({
                 placeholder="name@schore.co.uk"
               />
             </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <PhoneNumberField<UserFormValues>
                 name="phone"
                 label="Phone"
@@ -135,7 +140,7 @@ export function UserFormFields({
                 maxLength={ADDRESS_MAX_LENGTH}
               />
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <TextField<UserFormValues> name="city" label="City" maxLength={100} />
               <TextField<UserFormValues> name="state" label="State" maxLength={100} />
               <TextField<UserFormValues> name="country" label="Country" maxLength={100} />
@@ -144,7 +149,7 @@ export function UserFormFields({
           </>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <TextField<UserFormValues>
                 name="firstName"
                 label="First name"
@@ -154,7 +159,7 @@ export function UserFormFields({
               />
               <TextField<UserFormValues> name="lastName" label="Last name" required maxLength={50} />
             </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <TextField<UserFormValues>
                 name="email"
                 label="Email"
@@ -170,8 +175,8 @@ export function UserFormFields({
             </div>
             {isOperative ? (
               <>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="space-y-2">
                     <PasswordField<UserFormValues>
                       name="password"
                       label="Password"
@@ -192,8 +197,8 @@ export function UserFormFields({
                 </div>
               </>
             ) : isUser ? (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="space-y-2">
                   <PasswordField<UserFormValues>
                     name="password"
                     label="Password"
@@ -216,7 +221,7 @@ export function UserFormFields({
 
       {!isOperative && !isContactModule ? (
         <Section title="Access" hint="Roles control what this user can see and edit." embedded={embedded} separated={embedded}>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             <CreatableSearchableSelectField<UserFormValues>
               name="roleId"
               label="Role"
@@ -235,7 +240,7 @@ export function UserFormFields({
 
       {isOperative ? (
         <Section title="Workforce" hint="Trade and CIS status used on wage sheets." embedded={embedded} separated={embedded}>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
             <CreatableSearchableSelectField<UserFormValues>
               name="tradeId"
               label="Trade"
@@ -297,10 +302,13 @@ function Section({
 }) {
   if (embedded) {
     return (
-      <div className={cn("space-y-3", separated && "border-t border-border pt-6")}>
-        <div className="min-w-0">
-          <h3 className="font-display text-base font-semibold">{title}</h3>
-          {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
+      <div className={cn("space-y-2", separated && "border-t border-border pt-3")}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h3 className="font-display text-sm font-semibold">{title}</h3>
+            {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
+          </div>
+          {headerAction}
         </div>
         {children}
       </div>
@@ -308,7 +316,7 @@ function Section({
   }
 
   return (
-    <div className="card-elevated space-y-3 p-4 sm:p-6">
+    <div className="card-elevated space-y-2 p-4 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h3 className="font-display font-semibold">{title}</h3>

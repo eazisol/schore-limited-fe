@@ -1,8 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/Modal";
 import { Can, usePermission } from "@/components/Permission";
 import {
   DataTable,
@@ -24,8 +27,15 @@ import { AppTooltip } from "@/components/AppTooltip";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { formatDateTime, truncateWithEllipsis } from "@/lib/module-ui";
 import { PROPERTIES_ROUTE } from "@/lib/properties";
-import { SearchableSelect } from "@/components/form";
+import { Form, SearchableSelect, SubmitButton, SwitchField } from "@/components/form";
 import { fetchCustomerOptions } from "@/lib/user-dropdowns";
+import {
+  propertyFormDefaults,
+  propertyFormSchema,
+  toPropertyPayload,
+  type PropertyFormValues,
+} from "@/lib/property-form";
+import { PropertyFormFields } from "@/components/properties/PropertyFormFields";
 
 export const Route = createFileRoute("/properties/")({
   head: () => ({ meta: [{ title: "Properties | Schore" }] }),
@@ -54,6 +64,7 @@ function PropertiesList() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [customerId, setCustomerId] = useState<string | undefined>(undefined);
   const [customerLabel, setCustomerLabel] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const [confirmDel, setConfirmDel] = useState<ApiProperty | null>(null);
   const [exporting, setExporting] = useState(false);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
@@ -137,7 +148,7 @@ function PropertiesList() {
             <Link
               to="/properties/$id"
               params={{ id: String(row.id) }}
-              className="inline-block max-w-full font-medium hover:text-info hover:underline"
+              className="inline-block max-w-full cursor-pointer font-medium text-info underline underline-offset-2"
             >
               {truncateWithEllipsis(row.propertyName)}
             </Link>
@@ -259,11 +270,9 @@ function PropertiesList() {
               Export CSV
             </Button>
             <Can route={PROPERTIES_ROUTE} action="modify">
-              <Button size="sm" asChild>
-                <Link to="/properties/new">
-                  <Plus className="h-4 w-4" />
-                  Add property
-                </Link>
+              <Button size="sm" onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Add property
               </Button>
             </Can>
           </>
@@ -349,6 +358,16 @@ function PropertiesList() {
         }}
       />
 
+      {createOpen ? (
+        <PropertyCreateModal
+          onClose={() => setCreateOpen(false)}
+          onSaved={() => {
+            setCreateOpen(false);
+            queryClient.invalidateQueries({ queryKey: propertiesQueryKey });
+          }}
+        />
+      ) : null}
+
       {confirmDel && (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
@@ -389,5 +408,58 @@ function PropertiesList() {
         </div>
       )}
     </div>
+  );
+}
+
+function PropertyCreateModal({
+  onClose,
+  onSaved,
+}: {
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const form = useForm<PropertyFormValues>({
+    resolver: zodResolver(propertyFormSchema),
+    mode: "onBlur",
+    reValidateMode: "onChange",
+    defaultValues: propertyFormDefaults,
+  });
+
+  const mutation = useMutation({
+    mutationFn: (payload: ReturnType<typeof toPropertyPayload>) => propertiesService.create(payload),
+    onSuccess: (res) => {
+      toast.success(res.message || "Property created");
+      onSaved();
+    },
+    onError: (err) => notifyApiError(err, "Failed to save property"),
+  });
+
+  return (
+    <Form
+      form={form}
+      onSubmit={(values) => mutation.mutateAsync(toPropertyPayload(values))}
+      className="contents"
+    >
+      <Modal
+        open
+        onClose={onClose}
+        title="Add property"
+        size="lg"
+        showCloseButton={false}
+        headerActions={<SwitchField<PropertyFormValues> name="isActive" label="Active" />}
+      >
+        <div className="space-y-3">
+          <PropertyFormFields embedded autoFocusPropertyName disabled={mutation.isPending} />
+          <div className="flex justify-end gap-2 border-t pt-2">
+            <Button type="button" variant="outline" size="sm" onClick={onClose}>
+              Cancel
+            </Button>
+            <SubmitButton size="sm" loadingText="Saving…">
+              Create property
+            </SubmitButton>
+          </div>
+        </div>
+      </Modal>
+    </Form>
   );
 }

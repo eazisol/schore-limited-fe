@@ -3,7 +3,8 @@ import { getPhoneLengthError } from "@/components/form/PhoneNumberField";
 import { newPasswordSchema } from "@/lib/password";
 import { emailSchema, userNameSchema } from "@/lib/user-validation";
 import { ADDRESS_MAX_LENGTH } from "@/lib/field-validation";
-import type { CreateUserPayload, UpdateUserPayload } from "@/lib/api/services/users";
+import type { ApiUser, CreateUserPayload, UpdateUserPayload } from "@/lib/api/services/users";
+import { toDateInputValue } from "@/lib/api/services/users";
 import type { UserModuleMode } from "@/lib/user-module";
 import { USER_TYPE_ID } from "@/lib/user-module";
 
@@ -120,6 +121,38 @@ export const emptyUserFormValues: UserFormValues = {
   startDate: "",
   endDate: "",
 };
+
+export function userToFormValues(user: ApiUser): UserFormValues {
+  return {
+    ...emptyUserFormValues,
+    firstName: user.firstName ?? "",
+    lastName: user.lastName ?? "",
+    email: user.email ?? "",
+    phone: user.phone ?? "",
+    dateOfBirth: toDateInputValue(user.dateOfBirth),
+    roleId: user.roleIds?.[0] ?? "",
+    isActive: user.isActive ?? true,
+    password: "",
+    tradeId: user.tradeId != null ? String(user.tradeId) : "",
+    cisId: user.cisId != null ? String(user.cisId) : "",
+    dailyRate:
+      user.dailyRate != null && !Number.isNaN(Number(user.dailyRate))
+        ? String(user.dailyRate)
+        : "",
+    isDailyRate: user.isDailyRate ?? false,
+    contactName: user.contactName ?? "",
+    companyName: user.companyName ?? "",
+    clientCode: user.clientCode ?? "",
+    address: user.address ?? "",
+    zipCode: user.zipCode ?? "",
+    city: user.city ?? "",
+    state: user.state ?? "",
+    country: user.country ?? "",
+    contractorId: user.contractorId != null ? String(user.contractorId) : "",
+    startDate: toDateInputValue(user.startDate),
+    endDate: toDateInputValue(user.endDate),
+  };
+}
 
 function operativeExtrasRefine(values: UserFormValues, ctx: z.RefinementCtx) {
   if (!values.tradeId.trim()) {

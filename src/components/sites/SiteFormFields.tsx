@@ -14,13 +14,19 @@ import type { SiteFormValues } from "@/lib/site-form";
 
 type SiteFormFieldsProps = {
   disabled?: boolean;
+  /** When true, client cannot be changed (e.g. hierarchy wizard). */
+  lockCustomer?: boolean;
   customerSelectedLabel?: string | null;
 };
 
-export function SiteFormFields({ disabled, customerSelectedLabel }: SiteFormFieldsProps) {
+export function SiteFormFields({
+  disabled,
+  lockCustomer,
+  customerSelectedLabel,
+}: SiteFormFieldsProps) {
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         <CreatableSearchableSelectField<SiteFormValues>
           name="customerId"
           label="Client"
@@ -30,8 +36,8 @@ export function SiteFormFields({ disabled, customerSelectedLabel }: SiteFormFiel
           queryKey={["users", "customers", "dropdown", "site-form"]}
           selectedLabel={customerSelectedLabel}
           fetchOptions={fetchCustomerOptions}
-          lookupType="customer"
-          disabled={disabled}
+          lookupType={lockCustomer ? undefined : "customer"}
+          disabled={disabled || lockCustomer}
         />
         <TextField<SiteFormValues>
           name="name"
@@ -41,7 +47,7 @@ export function SiteFormFields({ disabled, customerSelectedLabel }: SiteFormFiel
           disabled={disabled}
         />
       </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         <TextField<SiteFormValues>
           name="code"
           label="Code"
@@ -53,7 +59,7 @@ export function SiteFormFields({ disabled, customerSelectedLabel }: SiteFormFiel
         />
         <TextField<SiteFormValues> name="address" label="Address" maxLength={500} disabled={disabled} />
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <TextField<SiteFormValues> name="city" label="City" maxLength={100} disabled={disabled} />
         <TextField<SiteFormValues> name="state" label="State" maxLength={100} disabled={disabled} />
         <TextField<SiteFormValues> name="country" label="Country" maxLength={100} disabled={disabled} />
@@ -62,7 +68,7 @@ export function SiteFormFields({ disabled, customerSelectedLabel }: SiteFormFiel
       <TextareaField<SiteFormValues>
         name="description"
         label="Description"
-        rows={3}
+        rows={2}
         maxLength={DESCRIPTION_MAX_LENGTH}
         disabled={disabled}
       />

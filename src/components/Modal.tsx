@@ -17,7 +17,7 @@ export function Modal({
   subtitle?: string;
   headerActions?: ReactNode;
   children: ReactNode;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   /** When false, hides the header X button (Cancel still closes). Default true. */
   showCloseButton?: boolean;
 }) {
@@ -31,7 +31,14 @@ export function Modal({
   }, [open, onClose]);
 
   if (!open) return null;
-  const maxW = size === "sm" ? "max-w-md" : size === "lg" ? "max-w-3xl" : "max-w-xl";
+  const maxW =
+    size === "sm"
+      ? "max-w-md"
+      : size === "lg"
+        ? "max-w-3xl"
+        : size === "xl"
+          ? "max-w-4xl"
+          : "max-w-xl";
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50" onClick={onClose}>

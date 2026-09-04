@@ -71,6 +71,7 @@ export function DataTable<T>({
   loadingText = "Loading…",
   className,
   density = "compact",
+  embedded = false,
 }: DataTableProps<T>) {
   const cellPadding = density === "compact" ? "py-1.5" : "py-3";
   const headerPadding = density === "compact" ? "py-2" : "py-2.5";
@@ -81,6 +82,7 @@ export function DataTable<T>({
         ? () => rowActions
         : null;
   const tableMinWidthRem = estimateTableMinWidthRem(columns, Boolean(actions));
+  const statePadding = embedded ? "p-8" : "p-12";
 
   function handleSort(column: DataTableColumn<T>) {
     if (!column.sortable || !sort?.onSortChange) return;
@@ -90,8 +92,8 @@ export function DataTable<T>({
   }
 
   return (
-    <div className={cn("card-elevated", className)}>
-      {(search || filters || toolbarActions || fetching) && (
+    <div className={cn(!embedded && "card-elevated", className)}>
+      {(search || filters || toolbarActions) && (
         <DataTableToolbar
           search={search}
           filters={filters}
@@ -101,12 +103,12 @@ export function DataTable<T>({
       )}
 
       {loading ? (
-        <div className="grid place-items-center p-12 text-sm text-muted-foreground">
+        <div className={cn("grid place-items-center text-sm text-muted-foreground", statePadding)}>
           <Loader2 className="mb-2 h-5 w-5 animate-spin" />
           {loadingText}
         </div>
       ) : error ? (
-        <div className="p-12 text-center">
+        <div className={cn("text-center", statePadding)}>
           <AlertCircle className="mx-auto mb-2 h-5 w-5 text-destructive" />
           <div className="text-sm font-medium">{error.title}</div>
           {error.message && (
@@ -119,7 +121,7 @@ export function DataTable<T>({
           )}
         </div>
       ) : rows.length === 0 ? (
-        <div className="p-12 text-center">
+        <div className={cn("text-center", statePadding)}>
           <div className="text-sm font-medium">
             {emptyState?.title ?? "No data found"}
           </div>

@@ -194,4 +194,28 @@ export const dailyProgrammeService = {
     http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/assign-package`, payload),
   assignAddOn: (taskId: number, payload: DailyAssignAddOnPayload) =>
     http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/assign-addon`, payload),
+  unassignPackage: (taskId: number, payload: { date: string; tradeGroupId: string }) =>
+    http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/unassign-package`, payload),
+  unassignAddOn: (taskId: number, payload: { date: string; productId: string }) =>
+    http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/unassign-addon`, payload),
+  updatePackage: (
+    taskId: number,
+    payload: {
+      date: string;
+      tradeGroupId: string;
+      operativeId: string;
+      rate: number;
+      applyRatePermanently?: boolean;
+    },
+  ) => http.put<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/package`, payload),
+  updateAddOn: (
+    taskId: number,
+    payload: {
+      date: string;
+      productId: string;
+      operativeId: string;
+      rate: number;
+      applyRatePermanently?: boolean;
+    },
+  ) => http.put<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/addon`, payload),
 };

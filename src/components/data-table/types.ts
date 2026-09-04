@@ -88,6 +88,10 @@ export interface DataTableProps<T> {
   loadingText?: string;
   className?: string;
   density?: "compact" | "comfortable";
+  /**
+   * When true, skips the elevated card chrome so the table can sit inside a parent card.
+   */
+  embedded?: boolean;
 }
 
 /** Sensible defaults so common CRUD columns stay stable without per-page width hacks. */

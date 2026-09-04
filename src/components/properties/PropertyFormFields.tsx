@@ -18,6 +18,9 @@ const CONTACT_FIELD_MAX = 30;
 export function PropertyFormFields({
   disabled = false,
   embedded = false,
+  lockCustomer = false,
+  lockSite = false,
+  lockProject = false,
   customerSelectedLabel,
   siteSelectedLabel,
   projectSelectedLabel,
@@ -25,6 +28,12 @@ export function PropertyFormFields({
 }: {
   disabled?: boolean;
   embedded?: boolean;
+  /** When true, client cannot be changed (e.g. hierarchy wizard). */
+  lockCustomer?: boolean;
+  /** When true, site cannot be changed (e.g. hierarchy wizard). */
+  lockSite?: boolean;
+  /** When true, project cannot be changed (e.g. hierarchy wizard). */
+  lockProject?: boolean;
   customerSelectedLabel?: string | null;
   siteSelectedLabel?: string | null;
   projectSelectedLabel?: string | null;
@@ -82,14 +91,14 @@ export function PropertyFormFields({
   );
 
   return (
-    <fieldset className="space-y-3" disabled={disabled}>
+    <fieldset className="space-y-2" disabled={disabled}>
       <Section
         embedded={embedded}
         headerAction={
           embedded ? undefined : <SwitchField<PropertyFormValues> name="isActive" label="Active" />
         }
       >
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           <CreatableSearchableSelectField<PropertyFormValues>
             name="customerId"
             label="Client"
@@ -98,8 +107,9 @@ export function PropertyFormFields({
             queryKey={["users", "customers", "dropdown", customerId]}
             selectedLabel={customerSelectedLabel ?? customerLabel}
             fetchOptions={fetchCustomerOptions}
-            lookupType="customer"
+            lookupType={lockCustomer ? undefined : "customer"}
             onSelect={(option) => setCustomerLabel(option.label)}
+            disabled={lockCustomer}
           />
           <CreatableSearchableSelectField<PropertyFormValues>
             name="siteId"
@@ -110,13 +120,13 @@ export function PropertyFormFields({
             queryKey={["sites", "dropdown", customerId]}
             selectedLabel={siteSelectedLabel ?? siteLabel}
             fetchOptions={fetchSites}
-            disabled={!customerId}
-            lookupType="site"
+            disabled={lockSite || !customerId}
+            lookupType={lockSite ? undefined : "site"}
             lookupContext={{ customerId, customerLabel }}
             onSelect={(option) => setSiteLabel(option.label)}
           />
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           <CreatableSearchableSelectField<PropertyFormValues>
             name="projectId"
             label="Project"
@@ -126,8 +136,8 @@ export function PropertyFormFields({
             queryKey={["projects", "dropdown", siteId, customerId]}
             selectedLabel={projectSelectedLabel}
             fetchOptions={fetchProjects}
-            disabled={!siteId}
-            lookupType="project"
+            disabled={lockProject || !siteId}
+            lookupType={lockProject ? undefined : "project"}
             lookupContext={{ siteId, siteLabel, customerId }}
           />
           <TextField<PropertyFormValues>
@@ -138,7 +148,7 @@ export function PropertyFormFields({
             maxLength={NAME_MAX_LENGTH}
           />
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           <TextField<PropertyFormValues>
             name="accessNotes"
             label="Access notes"
@@ -148,7 +158,7 @@ export function PropertyFormFields({
       </Section>
 
       <Section title="Contact & address" embedded={embedded} separated={embedded}>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           <TextField<PropertyFormValues>
             name="contactName"
             label="Contact name"
@@ -161,7 +171,7 @@ export function PropertyFormFields({
             placeholder="07700 900000"
           />
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           <TextField<PropertyFormValues>
             name="contactEmail"
             label="Contact email"
@@ -175,7 +185,7 @@ export function PropertyFormFields({
             maxLength={ADDRESS_MAX_LENGTH}
           />
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <TextField<PropertyFormValues> name="city" label="City" maxLength={100} />
           <TextField<PropertyFormValues> name="state" label="State" maxLength={100} />
           <TextField<PropertyFormValues> name="country" label="Country" maxLength={100} />
@@ -201,8 +211,8 @@ function Section({
 }) {
   if (embedded) {
     return (
-      <div className={cn("space-y-3", separated && "border-t border-border pt-6")}>
-        {title ? <h3 className="font-display text-base font-semibold">{title}</h3> : null}
+      <div className={cn("space-y-2", separated && "border-t border-border pt-3")}>
+        {title ? <h3 className="font-display text-sm font-semibold">{title}</h3> : null}
         {children}
       </div>
     );
@@ -210,7 +220,7 @@ function Section({
 
   const showHeader = title || headerAction;
   return (
-    <div className="card-elevated space-y-3 p-4 sm:p-6">
+    <div className="card-elevated space-y-2 p-4 sm:p-6">
       {showHeader ? (
         <div
           className={
