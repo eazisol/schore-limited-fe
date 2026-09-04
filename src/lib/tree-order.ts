@@ -1,15 +1,15 @@
 import { arrayMove } from "@dnd-kit/sortable";
 
 export type OrderableTreeNode = {
-  id: number;
-  parentMenuId: number | null;
+  id: string;
+  parentMenuId: string | null;
   orderBy: number;
   children: OrderableTreeNode[];
 };
 
 export function getSiblingList<T extends OrderableTreeNode>(
   tree: T[],
-  parentMenuId: number | null,
+  parentMenuId: string | null,
 ): T[] | null {
   if (parentMenuId === null) return tree;
   for (const node of tree) {
@@ -23,8 +23,8 @@ export function getSiblingList<T extends OrderableTreeNode>(
 }
 
 export function canReorderSiblings(
-  draggedParentMenuId: number | null,
-  targetParentMenuId: number | null,
+  draggedParentMenuId: string | null,
+  targetParentMenuId: string | null,
 ): boolean {
   return draggedParentMenuId === targetParentMenuId;
 }
@@ -35,8 +35,8 @@ export function canReorderSiblings(
  */
 export function computeSiblingReorder<T extends OrderableTreeNode>(
   siblings: T[],
-  draggedId: number,
-  targetId: number,
+  draggedId: string,
+  targetId: string,
 ): { siblings: T[]; orderBy: number } | null {
   if (draggedId === targetId) return null;
 
@@ -58,7 +58,7 @@ export function computeSiblingReorder<T extends OrderableTreeNode>(
 
 function replaceSiblingList<T extends OrderableTreeNode>(
   tree: T[],
-  parentMenuId: number | null,
+  parentMenuId: string | null,
   nextSiblings: T[],
 ): T[] {
   if (parentMenuId === null) return nextSiblings;
@@ -78,9 +78,9 @@ function replaceSiblingList<T extends OrderableTreeNode>(
 /** Apply a sibling reorder within a nested tree. Returns null when invalid. */
 export function reorderTreeSiblings<T extends OrderableTreeNode>(
   tree: T[],
-  draggedId: number,
-  targetId: number,
-  parentMenuId: number | null,
+  draggedId: string,
+  targetId: string,
+  parentMenuId: string | null,
 ): { tree: T[]; orderBy: number } | null {
   const siblings = getSiblingList(tree, parentMenuId);
   if (!siblings) return null;

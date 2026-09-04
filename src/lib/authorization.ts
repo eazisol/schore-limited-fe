@@ -16,7 +16,7 @@ export function buildAuthorizedMenus(
   menuTree: ApiMenuDefinition[],
   rolePermissions: ApiPermission[][],
 ): ApiMenu[] {
-  const grants = new Map<number, Pick<ApiMenu, "read" | "modify" | "delete">>();
+  const grants = new Map<string, Pick<ApiMenu, "read" | "modify" | "delete">>();
 
   for (const permission of rolePermissions.flat()) {
     const current = grants.get(permission.menuId);
@@ -111,7 +111,7 @@ export function flattenMenus(menus: ApiMenu[]): ApiMenu[] {
 function rebuildSidebarTree(flat: ApiMenu[]): ApiMenu[] {
   const visible = flat.filter(isSidebarMenu);
   const visibleIds = new Set(visible.map((menu) => menu.id));
-  const nodes = new Map<number, ApiMenu & { children: ApiMenu[] }>();
+  const nodes = new Map<string, ApiMenu & { children: ApiMenu[] }>();
 
   for (const menu of visible) {
     nodes.set(menu.id, {

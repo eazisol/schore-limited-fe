@@ -50,10 +50,10 @@ export function TreeSortableProvider({
   children: ReactNode;
   disabled?: boolean;
   onReorder: (payload: TreeReorderPayload) => void;
-  renderOverlay?: (activeId: number) => ReactNode;
+  renderOverlay?: (activeId: string) => ReactNode;
 }) {
-  const [activeId, setActiveId] = useState<number | null>(null);
-  const [overId, setOverId] = useState<number | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -62,11 +62,11 @@ export function TreeSortableProvider({
   );
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveId(Number(event.active.id));
+    setActiveId(String(event.active.id));
   }, []);
 
   const handleDragOver = useCallback((event: { over: { id: string | number } | null }) => {
-    setOverId(event.over ? Number(event.over.id) : null);
+    setOverId(event.over ? String(event.over.id) : null);
   }, []);
 
   const handleDragEnd = useCallback(
@@ -79,10 +79,10 @@ export function TreeSortableProvider({
       if (!over || active.id === over.id) return;
 
       const activeData = active.data.current as
-        | { parentMenuId: number | null | undefined }
+        | { parentMenuId: string | null | undefined }
         | undefined;
       const overData = over.data.current as
-        | { parentMenuId: number | null | undefined }
+        | { parentMenuId: string | null | undefined }
         | undefined;
       if (!activeData || !overData) return;
 
@@ -91,8 +91,8 @@ export function TreeSortableProvider({
       if (!canReorderSiblings(draggedParent, targetParent)) return;
 
       onReorder({
-        draggedId: Number(active.id),
-        targetId: Number(over.id),
+        draggedId: String(active.id),
+        targetId: String(over.id),
         parentMenuId: draggedParent,
       });
     },
@@ -134,7 +134,7 @@ export function TreeSortableLevel({
   items,
   children,
 }: {
-  items: number[];
+  items: string[];
   children: ReactNode;
 }) {
   return (

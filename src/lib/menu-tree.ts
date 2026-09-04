@@ -48,7 +48,7 @@ export function findMenuDefinitionInTree(
  * Orphan nodes (parent missing or filtered out) become roots.
  */
 export function buildMenuTree(items: ApiMenuDefinition[]): ApiMenuDefinition[] {
-  const nodes = new Map<number, ApiMenuDefinition & { children: ApiMenuDefinition[] }>();
+  const nodes = new Map<string, ApiMenuDefinition & { children: ApiMenuDefinition[] }>();
 
   for (const item of items) {
     nodes.set(item.id, { ...item, children: [] });
@@ -76,8 +76,8 @@ export function buildMenuTree(items: ApiMenuDefinition[]): ApiMenuDefinition[] {
 
 function indexMenus(
   items: ApiMenuDefinition[],
-  out = new Map<number, ApiMenuDefinition>(),
-): Map<number, ApiMenuDefinition> {
+  out = new Map<string, ApiMenuDefinition>(),
+): Map<string, ApiMenuDefinition> {
   for (const item of items) {
     out.set(item.id, item);
     if (item.children?.length) indexMenus(item.children, out);
@@ -85,7 +85,12 @@ function indexMenus(
   return out;
 }
 
-function toOrderable(menu: ApiMenuDefinition) {
+function toOrderable(menu: ApiMenuDefinition): {
+  id: string;
+  parentMenuId: string | null;
+  orderBy: number;
+  children: ReturnType<typeof toOrderable>[];
+} {
   return {
     id: menu.id,
     parentMenuId: menu.parentMenuId,
@@ -96,7 +101,7 @@ function toOrderable(menu: ApiMenuDefinition) {
 
 function applyOrderableTree(
   orderable: ReturnType<typeof toOrderable>[],
-  sourceById: Map<number, ApiMenuDefinition>,
+  sourceById: Map<string, ApiMenuDefinition>,
 ): ApiMenuDefinition[] {
   const rebuild = (nodes: ReturnType<typeof toOrderable>[]): ApiMenuDefinition[] =>
     nodes.map((node) => {
@@ -117,9 +122,9 @@ function applyOrderableTree(
 /** Reorder siblings within a menu tree; only the dragged item's orderBy changes. */
 export function reorderMenuDefinitionTree(
   tree: ApiMenuDefinition[],
-  draggedId: number,
-  targetId: number,
-  parentMenuId: number | null,
+  draggedId: string,
+  targetId: string,
+  parentMenuId: string | null,
 ): { tree: ApiMenuDefinition[]; orderBy: number } | null {
   const sourceById = indexMenus(tree);
   const orderable = tree.map(toOrderable);
@@ -136,7 +141,7 @@ export function reorderMenuDefinitionTree(
 export function flattenMenuTreeForReorder(tree: ApiMenuDefinition[]): MenuReorderItem[] {
   const out: MenuReorderItem[] = [];
 
-  const walk = (nodes: ApiMenuDefinition[], parentMenuId: number | null) => {
+  const walk = (nodes: ApiMenuDefinition[], parentMenuId: string | null) => {
     for (const node of nodes) {
       out.push({
         id: node.id,

@@ -139,7 +139,7 @@ export function JobDayItemsEditor({
 
   const removeMutation = useMutation({
     mutationFn: (itemId: string) =>
-      dailyProgrammeService.removeItem(Number(itemId), date),
+      dailyProgrammeService.removeItem(itemId, date),
     onSuccess: (res) => {
       invalidateAll(res.data);
       setConfirmDeleteId(null);
@@ -450,32 +450,24 @@ function ItemFormCard({
         quantity: Number(qty) || 1,
         timeSlotId: timeSlotId || null,
       };
-      const tid = Number(taskId);
 
       if (isEdit && editLine) {
-        await dailyProgrammeService.removeItem(Number(editLine.itemId), date);
-        if (editLine.kind === "package" && editLine.tradeGroupId) {
-          return dailyProgrammeService.assignPackage(tid, {
-            ...payloadBase,
-            tradeGroupId: editLine.tradeGroupId,
-          });
-        }
-        if (editLine.productId) {
-          return dailyProgrammeService.assignAddOn(tid, {
-            ...payloadBase,
-            productId: editLine.productId,
-          });
-        }
-        throw new Error("Missing package/product for edit");
+        return dailyProgrammeService.updateItem(editLine.itemId, {
+          date,
+          operativeId,
+          rate: Number(rate) || 0,
+          quantity: Number(qty) || 1,
+          timeSlotId: timeSlotId || null,
+        });
       }
 
       if (catalogKind === "package") {
-        return dailyProgrammeService.assignPackage(tid, {
+        return dailyProgrammeService.assignPackage(taskId, {
           ...payloadBase,
           tradeGroupId: catalogId,
         });
       }
-      return dailyProgrammeService.assignAddOn(tid, {
+      return dailyProgrammeService.assignAddOn(taskId, {
         ...payloadBase,
         productId: catalogId,
       });

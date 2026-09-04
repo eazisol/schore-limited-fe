@@ -76,7 +76,7 @@ export function DailyAssignmentPanel({
   const qc = useQueryClient();
   const [unassignedSearch, setUnassignedSearch] = useState("");
   const [selectedKind, setSelectedKind] = useState<UnassignedKind | null>(null);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [assignOperativeId, setAssignOperativeId] = useState("");
   const [assignOperativeLabel, setAssignOperativeLabel] = useState("");
   const [assignRate, setAssignRate] = useState("");
@@ -88,7 +88,6 @@ export function DailyAssignmentPanel({
   const unassignedPackages = row.unassignedPackages ?? [];
   const unassignedAddOns = row.unassignedAddOns ?? [];
   const cellDisabled = disabled || row.isLocked;
-  const taskIdNum = Number(row.taskId);
 
   const timeSlotsQuery = useQuery({
     queryKey: ["tasks", "time-slots"],
@@ -167,15 +166,15 @@ export function DailyAssignmentPanel({
 
   const assignPayloadBase = () => ({
     date,
-    operativeId: Number(assignOperativeId),
+    operativeId: assignOperativeId,
     rate: Number(assignRate) || 0,
     quantity: Number(assignQty) || 1,
-    timeSlotId: assignTimeSlotId ? Number(assignTimeSlotId) : null,
+    timeSlotId: assignTimeSlotId || null,
   });
 
   const assignPackageMutation = useMutation({
-    mutationFn: (tradeGroupId: number) =>
-      dailyProgrammeService.assignPackage(taskIdNum, {
+    mutationFn: (tradeGroupId: string) =>
+      dailyProgrammeService.assignPackage(row.taskId, {
         ...assignPayloadBase(),
         tradeGroupId,
       }),
@@ -184,8 +183,8 @@ export function DailyAssignmentPanel({
   });
 
   const assignAddOnMutation = useMutation({
-    mutationFn: (productId: number) =>
-      dailyProgrammeService.assignAddOn(taskIdNum, {
+    mutationFn: (productId: string) =>
+      dailyProgrammeService.assignAddOn(row.taskId, {
         ...assignPayloadBase(),
         productId,
       }),
@@ -194,7 +193,7 @@ export function DailyAssignmentPanel({
   });
 
   const completeMutation = useMutation({
-    mutationFn: (itemId: number) => dailyProgrammeService.completeItem(itemId, date),
+    mutationFn: (itemId: string) => dailyProgrammeService.completeItem(itemId, date),
     onSuccess: (res) => {
       if (res.data) {
         mergeRowInCache(qc, row.taskId, res.data);
@@ -207,7 +206,7 @@ export function DailyAssignmentPanel({
   });
 
   const removeMutation = useMutation({
-    mutationFn: (itemId: number) => dailyProgrammeService.removeItem(itemId, date),
+    mutationFn: (itemId: string) => dailyProgrammeService.removeItem(itemId, date),
     onSuccess: (res) => {
       if (res.data) {
         mergeRowInCache(qc, row.taskId, res.data);
@@ -234,7 +233,7 @@ export function DailyAssignmentPanel({
     setAssignQty("1");
   }
 
-  function selectUnassigned(kind: UnassignedKind, id: number) {
+  function selectUnassigned(kind: UnassignedKind, id: string) {
     setSelectedKind(kind);
     setSelectedId(id);
     setAssignRate("");
@@ -484,10 +483,10 @@ function AssignedTree({
 }: {
   groups: ApiDailyAssignedOperative[];
   disabled: boolean;
-  completingItemId: number | undefined;
-  removingItemId: number | undefined;
-  onComplete: (itemId: number) => void;
-  onRemove: (itemId: number) => void;
+  completingItemId: string | undefined;
+  removingItemId: string | undefined;
+  onComplete: (itemId: string) => void;
+  onRemove: (itemId: string) => void;
 }) {
   return (
     <div className="flex min-h-0 flex-col">
@@ -522,10 +521,10 @@ function AssignedTree({
                         key={item.itemId}
                         item={item}
                         disabled={disabled}
-                        completing={Number(completingItemId) === Number(item.itemId)}
-                        removing={Number(removingItemId) === Number(item.itemId)}
-                        onComplete={() => onComplete(Number(item.itemId))}
-                        onRemove={() => onRemove(Number(item.itemId))}
+                        completing={completingItemId === item.itemId}
+                        removing={removingItemId === item.itemId}
+                        onComplete={() => onComplete(item.itemId)}
+                        onRemove={() => onRemove(item.itemId)}
                       />
                     ))}
                   </ul>
@@ -540,10 +539,10 @@ function AssignedTree({
                         key={item.itemId}
                         item={item}
                         disabled={disabled}
-                        completing={Number(completingItemId) === Number(item.itemId)}
-                        removing={Number(removingItemId) === Number(item.itemId)}
-                        onComplete={() => onComplete(Number(item.itemId))}
-                        onRemove={() => onRemove(Number(item.itemId))}
+                        completing={completingItemId === item.itemId}
+                        removing={removingItemId === item.itemId}
+                        onComplete={() => onComplete(item.itemId)}
+                        onRemove={() => onRemove(item.itemId)}
                       />
                     ))}
                   </ul>

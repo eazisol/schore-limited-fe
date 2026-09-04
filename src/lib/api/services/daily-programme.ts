@@ -178,28 +178,38 @@ export const dailyProgrammeService = {
     http.post<ApiEnvelope<ApiDailyRollForward>>("DailyProgramme/roll-forward", null, {
       params: { fromDate },
     }),
-  tick: (itemId: number, date: string) =>
+  tick: (itemId: string, date: string) =>
     http.post<ApiEnvelope<ApiDailyAllocation>>(`DailyProgramme/items/${itemId}/tick`, null, {
       params: { date },
     }),
-  completeItem: (itemId: number, date: string) =>
+  completeItem: (itemId: string, date: string) =>
     http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/items/${itemId}/complete`, null, {
       params: { date },
     }),
-  removeItem: (itemId: number, date: string) =>
+  removeItem: (itemId: string, date: string) =>
     http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/items/${itemId}/remove`, null, {
       params: { date },
     }),
-  assignPackage: (taskId: number, payload: DailyAssignPackagePayload) =>
+  updateItem: (
+    itemId: string,
+    payload: {
+      date: string;
+      operativeId: string;
+      rate: number;
+      quantity: number;
+      timeSlotId?: string | null;
+    },
+  ) => http.put<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/items/${itemId}`, payload),
+  assignPackage: (taskId: string, payload: DailyAssignPackagePayload) =>
     http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/assign-package`, payload),
-  assignAddOn: (taskId: number, payload: DailyAssignAddOnPayload) =>
+  assignAddOn: (taskId: string, payload: DailyAssignAddOnPayload) =>
     http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/assign-addon`, payload),
-  unassignPackage: (taskId: number, payload: { date: string; tradeGroupId: string }) =>
+  unassignPackage: (taskId: string, payload: { date: string; tradeGroupId: string }) =>
     http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/unassign-package`, payload),
-  unassignAddOn: (taskId: number, payload: { date: string; productId: string }) =>
+  unassignAddOn: (taskId: string, payload: { date: string; productId: string }) =>
     http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/unassign-addon`, payload),
   updatePackage: (
-    taskId: number,
+    taskId: string,
     payload: {
       date: string;
       tradeGroupId: string;
@@ -209,7 +219,7 @@ export const dailyProgrammeService = {
     },
   ) => http.put<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/package`, payload),
   updateAddOn: (
-    taskId: number,
+    taskId: string,
     payload: {
       date: string;
       productId: string;

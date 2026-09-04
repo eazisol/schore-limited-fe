@@ -99,7 +99,7 @@ function OperativeAvatarPopover({
   const complete = (operative.items ?? []).filter((i) => i.isTicked);
 
   const completeMutation = useMutation({
-    mutationFn: (itemId: number) => dailyProgrammeService.completeItem(itemId, date),
+    mutationFn: (itemId: string) => dailyProgrammeService.completeItem(itemId, date),
     onSuccess: (res) => {
       if (res.data) mergeRowInCache(qc, taskId, res.data);
       invalidateDailyQueries(qc, taskId);
@@ -177,7 +177,7 @@ function ItemSection({
   completed?: boolean;
   disabled?: boolean;
   completingItemId?: string;
-  onComplete?: (itemId: number) => void;
+  onComplete?: (itemId: string) => void;
 }) {
   return (
     <div className="mb-2 last:mb-0">
