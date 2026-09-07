@@ -24,6 +24,8 @@ import { CodeBadge, CodeWithLabel } from "@/components/CodeBadge";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { PROJECTS_ROUTE } from "@/lib/projects";
 import {
+  emptyProjectFormValues,
+  projectAssigneeLabels,
   projectFormSchema,
   projectToFormValues,
   toProjectPayload,
@@ -50,10 +52,15 @@ export const Route = createFileRoute("/projects/$id")({
 });
 
 function projectHighlights(row: ApiProject): DetailProfileHighlight[] {
+  const assigned = (row.assignedUsers ?? [])
+    .map((user) => user.name)
+    .filter(Boolean)
+    .join(", ");
   return [
     { label: "Code", value: <CodeBadge code={row.code} /> },
     { label: "Client", value: <CodeWithLabel combined={row.customerName} /> },
     { label: "Site", value: row.siteName?.trim() || "—" },
+    { label: "Assign To", value: assigned || "—" },
   ];
 }
 
@@ -91,13 +98,7 @@ function ProjectDetail() {
     () =>
       row
         ? projectToFormValues(row)
-        : projectToFormValues({
-            name: "",
-            code: "",
-            customerId: "",
-            siteId: "",
-            isActive: true,
-          }),
+        : emptyProjectFormValues,
     [row],
   );
 
@@ -232,6 +233,7 @@ function ProjectDetail() {
             <ProjectFormFields
               customerSelectedLabel={row.customerName}
               siteSelectedLabel={row.siteName}
+              assigneeSelectedLabels={projectAssigneeLabels(row.assignedUsers)}
             />
           </FormPageCard>
         </Form>

@@ -11,6 +11,8 @@ export interface ApiProject {
   siteName: string | null;
   customerId: string;
   customerName: string | null;
+  assignedUsers?: { id: string; name: string }[];
+  rateOverrides?: { id: string; productId: string; productName: string; rate: number; effectiveFrom: string }[];
   isActive: boolean;
   createdBy?: number | null;
   createdDate: string;
@@ -24,6 +26,13 @@ export type ProjectPayload = {
   description?: string | null;
   customerId: string;
   siteId: string;
+  assignedUserIds: string[];
+  rateOverrides?: {
+    productId: string;
+    rate: number;
+    effectiveFrom: string;
+  }[];
+  rateChangeReason?: string | null;
   isActive: boolean;
 };
 

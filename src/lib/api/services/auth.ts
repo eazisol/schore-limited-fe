@@ -1,4 +1,5 @@
 import { http } from "@/lib/api/axios";
+import type { ApiCurrentAccess } from "./access";
 
 export interface ApiMenu {
   id: string;
@@ -24,6 +25,7 @@ export interface ApiLoginData {
   lastName: string;
   roles: string[];
   menus: ApiMenu[];
+  access?: ApiCurrentAccess;
 }
 
 export interface ApiEnvelope<T> {

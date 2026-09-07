@@ -121,6 +121,19 @@ export interface ApiDailyProgramme {
   inProgressCount: number;
   onHoldCount: number;
   operativesOnSiteCount: number;
+  canSeeRates?: boolean;
+  canSelectRateItems?: boolean;
+  canViewWageTotals?: boolean;
+  separateProjectViews?: boolean;
+  requireProjectSelection?: boolean;
+  selectedProjectId?: string | null;
+  assignedProjects?: {
+    id: string;
+    name: string;
+    code: string;
+    siteName?: string | null;
+    customerName?: string | null;
+  }[];
   rows: ApiDailyRow[];
 }
 
@@ -157,6 +170,23 @@ export interface DailyProgrammeListParams {
   showHandedOver?: boolean;
   propertyId?: string;
   statusId?: string;
+  projectId?: string;
+}
+
+export interface ApiDailyResolvedRate {
+  rate: number;
+}
+
+export interface DailyResolveRateParams {
+  date: string;
+  productId?: string;
+  tradeGroupId?: string;
+  operativeId?: string;
+}
+
+export function formatResolvedRate(rate: number): string {
+  if (!Number.isFinite(rate)) return "";
+  return String(rate);
 }
 
 export const dailyProgrammeService = {
@@ -165,6 +195,7 @@ export const dailyProgrammeService = {
     showHandedOver = false,
     propertyId,
     statusId,
+    projectId,
   }: DailyProgrammeListParams) =>
     http.get<ApiEnvelope<ApiDailyProgramme>>("DailyProgramme", {
       params: {
@@ -172,6 +203,7 @@ export const dailyProgrammeService = {
         ShowHandedOver: showHandedOver,
         ...(propertyId != null ? { PropertyId: propertyId } : {}),
         ...(statusId != null ? { StatusId: statusId } : {}),
+        ...(projectId != null ? { ProjectId: projectId } : {}),
       },
     }),
   rollForward: (fromDate: string) =>
@@ -228,4 +260,13 @@ export const dailyProgrammeService = {
       applyRatePermanently?: boolean;
     },
   ) => http.put<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/addon`, payload),
+  resolveRate: (taskId: string, params: DailyResolveRateParams) =>
+    http.get<ApiEnvelope<ApiDailyResolvedRate>>(`DailyProgramme/tasks/${taskId}/resolve-rate`, {
+      params: {
+        Date: params.date,
+        ...(params.productId ? { ProductId: params.productId } : {}),
+        ...(params.tradeGroupId ? { TradeGroupId: params.tradeGroupId } : {}),
+        ...(params.operativeId ? { OperativeId: params.operativeId } : {}),
+      },
+    }),
 };

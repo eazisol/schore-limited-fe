@@ -7,6 +7,13 @@ import type { ApiUser, CreateUserPayload, UpdateUserPayload } from "@/lib/api/se
 import { toDateInputValue } from "@/lib/api/services/users";
 import type { UserModuleMode } from "@/lib/user-module";
 import { USER_TYPE_ID } from "@/lib/user-module";
+import {
+  rateOverrideRowSchema,
+  rateOverridesToFormValues,
+  refineRateOverrides,
+  toRateOverridePayload,
+  type RateOverrideFormValue,
+} from "@/lib/rate-overrides";
 
 function parseDobInput(value: string): Date | null {
   const v = value.trim();
@@ -94,6 +101,32 @@ export type UserFormValues = {
   contractorId: string;
   startDate: string;
   endDate: string;
+  assignments: UserAssignmentFormValue[];
+  capabilityOverrides: UserCapabilityOverrideFormValue[];
+  menuPermissionOverrides: UserMenuPermissionOverrideFormValue[];
+  rateOverrides: RateOverrideFormValue[];
+  rateChangeReason: string;
+};
+
+export type UserAssignmentFormValue = {
+  customerId: string;
+  siteId: string;
+  projectId: string;
+  customerLabel: string;
+  siteLabel: string;
+  projectLabel: string;
+};
+
+export type UserCapabilityOverrideFormValue = {
+  code: string;
+  isGranted: boolean;
+};
+
+export type UserMenuPermissionOverrideFormValue = {
+  menuId: string;
+  read: boolean;
+  modify: boolean;
+  delete: boolean;
 };
 
 export const emptyUserFormValues: UserFormValues = {
@@ -120,6 +153,11 @@ export const emptyUserFormValues: UserFormValues = {
   contractorId: "",
   startDate: "",
   endDate: "",
+  assignments: [],
+  capabilityOverrides: [],
+  menuPermissionOverrides: [],
+  rateOverrides: [],
+  rateChangeReason: "",
 };
 
 export function userToFormValues(user: ApiUser): UserFormValues {
@@ -151,6 +189,26 @@ export function userToFormValues(user: ApiUser): UserFormValues {
     contractorId: user.contractorId != null ? String(user.contractorId) : "",
     startDate: toDateInputValue(user.startDate),
     endDate: toDateInputValue(user.endDate),
+    assignments: (user.scopeAssignments ?? []).map((row) => ({
+      customerId: row.customerId ? String(row.customerId) : "",
+      siteId: row.siteId ? String(row.siteId) : "",
+      projectId: row.projectId ? String(row.projectId) : "",
+      customerLabel: row.customerName ?? "",
+      siteLabel: row.siteName ?? "",
+      projectLabel: row.projectName ?? "",
+    })),
+    capabilityOverrides: (user.capabilityOverrides ?? []).map((row) => ({
+      code: row.code,
+      isGranted: row.isGranted,
+    })),
+    menuPermissionOverrides: (user.menuPermissionOverrides ?? []).map((row) => ({
+      menuId: row.menuId,
+      read: row.read,
+      modify: row.modify,
+      delete: row.delete,
+    })),
+    rateOverrides: rateOverridesToFormValues(user.rateOverrides),
+    rateChangeReason: "",
   };
 }
 
@@ -247,6 +305,32 @@ const sharedFormFields = {
   contractorId: z.string(),
   startDate: z.string(),
   endDate: z.string(),
+  assignments: z.array(
+    z.object({
+      customerId: z.string(),
+      siteId: z.string(),
+      projectId: z.string(),
+      customerLabel: z.string(),
+      siteLabel: z.string(),
+      projectLabel: z.string(),
+    }),
+  ),
+  capabilityOverrides: z.array(
+    z.object({
+      code: z.string(),
+      isGranted: z.boolean(),
+    }),
+  ),
+  menuPermissionOverrides: z.array(
+    z.object({
+      menuId: z.string(),
+      read: z.boolean(),
+      modify: z.boolean(),
+      delete: z.boolean(),
+    }),
+  ),
+  rateOverrides: z.array(rateOverrideRowSchema),
+  rateChangeReason: z.string(),
 };
 
 function applyModeRefinements<T extends z.ZodTypeAny>(mode: UserModuleMode, schema: T) {
@@ -254,12 +338,16 @@ function applyModeRefinements<T extends z.ZodTypeAny>(mode: UserModuleMode, sche
     return schema.superRefine((values: UserFormValues, ctx) => {
       operativeExtrasRefine(values, ctx);
       employmentDatesRefine(values, ctx);
+      refineRateOverrides(values.rateOverrides, ctx);
     });
   }
 
   if (mode === "contractor" || mode === "customer") {
     return schema.superRefine((values: UserFormValues, ctx) => {
       contactModuleExtrasRefine(mode, values, ctx);
+      if (mode === "customer") {
+        refineRateOverrides(values.rateOverrides, ctx);
+      }
     });
   }
 
@@ -364,6 +452,24 @@ export function toCreateUserPayload(
     applyContactPayload(payload, values, mode);
   }
 
+  if (isUser) {
+    payload.capabilities = values.capabilityOverrides.map((row) => ({
+      code: row.code,
+      isGranted: row.isGranted,
+    }));
+    payload.menuPermissions = values.menuPermissionOverrides.map((row) => ({
+      menuId: row.menuId,
+      read: row.read,
+      modify: row.modify,
+      delete: row.delete,
+    }));
+  }
+
+  if (isCustomer || isOperative) {
+    payload.rateOverrides = toRateOverridePayload(values.rateOverrides);
+    payload.rateChangeReason = values.rateChangeReason.trim() || null;
+  }
+
   return payload;
 }
 
@@ -402,6 +508,23 @@ export function toUpdateUserPayload(
     applyContactPayload(payload, values, mode);
   }
 
+  if (isUser) {
+    payload.capabilities = values.capabilityOverrides.map((row) => ({
+      code: row.code,
+      isGranted: row.isGranted,
+    }));
+    payload.menuPermissions = values.menuPermissionOverrides.map((row) => ({
+      menuId: row.menuId,
+      read: row.read,
+      modify: row.modify,
+      delete: row.delete,
+    }));
+  }
+
+  if (isCustomer || isOperative) {
+    payload.rateOverrides = toRateOverridePayload(values.rateOverrides);
+    payload.rateChangeReason = values.rateChangeReason.trim() || null;
+  }
 
   return payload;
 }

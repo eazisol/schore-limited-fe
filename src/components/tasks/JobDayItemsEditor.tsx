@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { AppTooltip } from "@/components/AppTooltip";
@@ -8,14 +8,15 @@ import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/form";
 import {
   dailyProgrammeService,
+  formatResolvedRate,
   type ApiDailyRow,
 } from "@/lib/api/services/daily-programme";
 import type { ApiTask, ApiTaskItem } from "@/lib/api/services/tasks";
 import { tasksService } from "@/lib/api/services/tasks";
-import { tradeGroupsService } from "@/lib/api/services/trade-groups";
-import { productsService } from "@/lib/api/services/products";
 import { dailyQueryKey } from "@/routes/daily";
 import { tasksQueryKey } from "@/routes/tasks.index";
+import { usePermissions } from "@/contexts/PermissionContext";
+import { CAPABILITY_CODES } from "@/lib/access";
 import {
   fetchOperativeOptions,
   fetchPackageOptions,
@@ -382,6 +383,9 @@ function ItemFormCard({
 }) {
   const isEdit = mode.kind === "edit";
   const editLine = mode.kind === "edit" ? mode.line : null;
+  const { hasCapability } = usePermissions();
+  const canSeeRates = hasCapability(CAPABILITY_CODES.seeRates);
+  const rateTouchedRef = useRef(false);
 
   const [catalogKind, setCatalogKind] = useState<"package" | "addon">(
     editLine?.kind ?? "package",
@@ -401,35 +405,46 @@ function ItemFormCard({
   const [timeSlotId, setTimeSlotId] = useState(editLine?.timeSlotId ?? "");
   const [timeSlotLabel, setTimeSlotLabel] = useState(editLine?.timeSlotName ?? "");
 
-  useEffect(() => {
-    if (isEdit || !catalogId) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        if (catalogKind === "package") {
-          const group = (await tradeGroupsService.get(catalogId)).data;
-          if (cancelled || !group?.items?.length) return;
-          const firstPrice = group.items.find((item) => item.salePrice != null)?.salePrice;
-          if (firstPrice != null) setRate(String(firstPrice));
-        } else {
-          const product = (await productsService.get(catalogId)).data;
-          if (cancelled || product?.salePrice == null) return;
-          setRate(String(product.salePrice));
-        }
-      } catch {
-        /* optional */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [catalogId, catalogKind, isEdit]);
-
   const timeSlotsQuery = useQuery({
     queryKey: ["tasks", "time-slots"],
     queryFn: async () => (await tasksService.timeSlots()).data ?? [],
     staleTime: 60_000,
   });
+
+  const resolvedRateQuery = useQuery({
+    queryKey: [
+      "daily-programme",
+      "resolve-rate",
+      taskId,
+      date,
+      catalogKind,
+      catalogId,
+      operativeId || null,
+    ],
+    enabled: canSeeRates && !isEdit && Boolean(catalogId),
+    queryFn: async () => {
+      const res = await dailyProgrammeService.resolveRate(taskId, {
+        date,
+        productId: catalogKind === "addon" ? catalogId : undefined,
+        tradeGroupId: catalogKind === "package" ? catalogId : undefined,
+        operativeId: operativeId || undefined,
+      });
+      return res.data;
+    },
+    staleTime: 15_000,
+    retry: 1,
+  });
+
+  useEffect(() => {
+    if (isEdit) return;
+    rateTouchedRef.current = false;
+    setRate("");
+  }, [catalogKind, catalogId, isEdit]);
+
+  useEffect(() => {
+    if (isEdit || rateTouchedRef.current || resolvedRateQuery.data == null) return;
+    setRate(formatResolvedRate(resolvedRateQuery.data.rate));
+  }, [resolvedRateQuery.data, isEdit]);
 
   useEffect(() => {
     if (timeSlotId || !timeSlotsQuery.data?.length) return;
@@ -446,7 +461,7 @@ function ItemFormCard({
       const payloadBase = {
         date,
         operativeId,
-        rate: Number(rate) || 0,
+        rate: isEdit || rateTouchedRef.current ? Number(rate) || 0 : 0,
         quantity: Number(qty) || 1,
         timeSlotId: timeSlotId || null,
       };
@@ -521,6 +536,7 @@ function ItemFormCard({
                   setCatalogId("");
                   setCatalogLabel("");
                   setRate("");
+                  rateTouchedRef.current = false;
                 }}
               >
                 Package
@@ -538,6 +554,7 @@ function ItemFormCard({
                   setCatalogId("");
                   setCatalogLabel("");
                   setRate("");
+                  rateTouchedRef.current = false;
                 }}
               >
                 Add-on
@@ -645,6 +662,7 @@ function ItemFormCard({
           />
         </div>
 
+        {canSeeRates ? (
         <div className="col-span-2 min-w-0">
           <label className="mb-1 block text-[11px] text-muted-foreground">Rate (£)</label>
           <Input
@@ -652,11 +670,16 @@ function ItemFormCard({
             min={0}
             step="0.01"
             value={rate}
-            onChange={(e) => setRate(e.target.value)}
+            onChange={(e) => {
+              rateTouchedRef.current = true;
+              setRate(e.target.value);
+            }}
+            placeholder={!isEdit && resolvedRateQuery.isFetching ? "…" : "Auto"}
             className="h-9"
             disabled={disabled || saveMutation.isPending}
           />
         </div>
+        ) : null}
       </div>
 
       <div className="mt-3 flex justify-end gap-2">

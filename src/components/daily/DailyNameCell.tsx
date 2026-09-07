@@ -12,6 +12,8 @@ import {
   type ApiDailyRow,
 } from "@/lib/api/services/daily-programme";
 import { dailyQueryKey } from "@/routes/daily";
+import { usePermissions } from "@/contexts/PermissionContext";
+import { CAPABILITY_CODES } from "@/lib/access";
 import { notifyApiError } from "@/lib/api/axios";
 import { fmtGBP } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -56,6 +58,8 @@ function operativeInitials(name: string) {
 }
 
 export function DailyNameCell({ row, date, disabled = false }: DailyNameCellProps) {
+  const { hasCapability } = usePermissions();
+  const canSeeRates = hasCapability(CAPABILITY_CODES.seeRates);
   const operatives = row.nameOperatives ?? [];
   const cellDisabled = disabled || row.isLocked;
 
@@ -151,10 +155,11 @@ function OperativeAvatarPopover({
                     completeMutation.isPending ? completeMutation.variables : undefined
                   }
                   onComplete={(itemId) => completeMutation.mutate(itemId)}
+                  canSeeRates={canSeeRates}
                 />
               ) : null}
               {complete.length > 0 ? (
-                <ItemSection title="Completed" items={complete} completed />
+                <ItemSection title="Completed" items={complete} completed canSeeRates={canSeeRates} />
               ) : null}
             </>
           )}
@@ -171,6 +176,7 @@ function ItemSection({
   disabled = false,
   completingItemId,
   onComplete,
+  canSeeRates = false,
 }: {
   title: string;
   items: ApiDailyAssignedItemLine[];
@@ -178,6 +184,7 @@ function ItemSection({
   disabled?: boolean;
   completingItemId?: string;
   onComplete?: (itemId: string) => void;
+  canSeeRates?: boolean;
 }) {
   return (
     <div className="mb-2 last:mb-0">
@@ -189,7 +196,7 @@ function ItemSection({
           const meta = [
             `Qty ${item.quantity}`,
             item.timeSlotName ?? "—",
-            fmtGBP(item.rate),
+            canSeeRates ? fmtGBP(item.rate) : null,
             !item.isToday ? "carry-over" : null,
           ]
             .filter(Boolean)

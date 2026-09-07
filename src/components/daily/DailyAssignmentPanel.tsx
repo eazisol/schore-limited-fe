@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,15 +8,16 @@ import { SearchableSelect } from "@/components/form";
 import { AppTooltip } from "@/components/AppTooltip";
 import {
   dailyProgrammeService,
+  formatResolvedRate,
   type ApiDailyAssignedItemLine,
   type ApiDailyAssignedOperative,
   type ApiDailyProgramme,
   type ApiDailyRow,
 } from "@/lib/api/services/daily-programme";
-import { tradeGroupsService } from "@/lib/api/services/trade-groups";
-import { productsService } from "@/lib/api/services/products";
 import { tasksService } from "@/lib/api/services/tasks";
 import { dailyQueryKey } from "@/routes/daily";
+import { usePermissions } from "@/contexts/PermissionContext";
+import { CAPABILITY_CODES } from "@/lib/access";
 import { tasksQueryKey } from "@/routes/tasks.index";
 import {
   filterUnassignedAddOns,
@@ -74,6 +75,8 @@ export function DailyAssignmentPanel({
   onRowUpdated,
 }: DailyAssignmentPanelProps) {
   const qc = useQueryClient();
+  const { hasCapability } = usePermissions();
+  const canSeeRates = hasCapability(CAPABILITY_CODES.seeRates);
   const [unassignedSearch, setUnassignedSearch] = useState("");
   const [selectedKind, setSelectedKind] = useState<UnassignedKind | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -83,6 +86,7 @@ export function DailyAssignmentPanel({
   const [assignQty, setAssignQty] = useState("1");
   const [assignTimeSlotId, setAssignTimeSlotId] = useState("");
   const [assignTimeSlotLabel, setAssignTimeSlotLabel] = useState("");
+  const rateTouchedRef = useRef(false);
 
   const assignedByOperative = row.assignedByOperative ?? [];
   const unassignedPackages = row.unassignedPackages ?? [];
@@ -114,7 +118,37 @@ export function DailyAssignmentPanel({
     setAssignQty("1");
     setAssignTimeSlotId("");
     setAssignTimeSlotLabel("");
+    rateTouchedRef.current = false;
   }, [date, row.taskId]);
+
+  const resolvedRateQuery = useQuery({
+    queryKey: [
+      "daily-programme",
+      "resolve-rate",
+      row.taskId,
+      date,
+      selectedKind,
+      selectedId,
+      assignOperativeId || null,
+    ],
+    enabled: canSeeRates && selectedKind != null && selectedId != null,
+    queryFn: async () => {
+      const res = await dailyProgrammeService.resolveRate(row.taskId, {
+        date,
+        productId: selectedKind === "addon" ? selectedId ?? undefined : undefined,
+        tradeGroupId: selectedKind === "package" ? selectedId ?? undefined : undefined,
+        operativeId: assignOperativeId || undefined,
+      });
+      return res.data;
+    },
+    staleTime: 15_000,
+    retry: 1,
+  });
+
+  useEffect(() => {
+    if (rateTouchedRef.current || resolvedRateQuery.data == null) return;
+    setAssignRate(formatResolvedRate(resolvedRateQuery.data.rate));
+  }, [resolvedRateQuery.data]);
 
   useEffect(() => {
     if (assignTimeSlotId || !timeSlotsQuery.data?.length) return;
@@ -124,30 +158,6 @@ export function DailyAssignmentPanel({
       setAssignTimeSlotLabel(first.name);
     }
   }, [assignTimeSlotId, timeSlotsQuery.data]);
-
-  useEffect(() => {
-    if (!selectedKind || selectedId == null) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        if (selectedKind === "package") {
-          const group = (await tradeGroupsService.get(selectedId)).data;
-          if (cancelled || !group?.items?.length) return;
-          const firstPrice = group.items.find((item) => item.salePrice != null)?.salePrice;
-          if (firstPrice != null) setAssignRate(String(firstPrice));
-        } else {
-          const product = (await productsService.get(selectedId)).data;
-          if (cancelled || product?.salePrice == null) return;
-          setAssignRate(String(product.salePrice));
-        }
-      } catch {
-        /* optional default rate */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedKind, selectedId]);
 
   const applyUpdatedRow = (updatedRow: ApiDailyRow | null | undefined, message: string) => {
     if (updatedRow) {
@@ -161,13 +171,14 @@ export function DailyAssignmentPanel({
     setAssignOperativeLabel("");
     setAssignRate("");
     setAssignQty("1");
+    rateTouchedRef.current = false;
     toast.success(message);
   };
 
   const assignPayloadBase = () => ({
     date,
     operativeId: assignOperativeId,
-    rate: Number(assignRate) || 0,
+    rate: rateTouchedRef.current ? Number(assignRate) || 0 : 0,
     quantity: Number(assignQty) || 1,
     timeSlotId: assignTimeSlotId || null,
   });
@@ -231,6 +242,7 @@ export function DailyAssignmentPanel({
     setAssignOperativeLabel("");
     setAssignRate("");
     setAssignQty("1");
+    rateTouchedRef.current = false;
   }
 
   function selectUnassigned(kind: UnassignedKind, id: string) {
@@ -238,6 +250,7 @@ export function DailyAssignmentPanel({
     setSelectedId(id);
     setAssignRate("");
     setAssignQty("1");
+    rateTouchedRef.current = false;
   }
 
   function handleAssign() {
@@ -362,6 +375,7 @@ export function DailyAssignmentPanel({
                 />
               </div>
             </div>
+            {canSeeRates ? (
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">Rate (£)</label>
               <Input
@@ -369,12 +383,17 @@ export function DailyAssignmentPanel({
                 min={0}
                 step="0.01"
                 value={assignRate}
-                onChange={(e) => setAssignRate(e.target.value)}
+                onChange={(e) => {
+                  rateTouchedRef.current = true;
+                  setAssignRate(e.target.value);
+                }}
+                placeholder={resolvedRateQuery.isFetching ? "…" : "Auto"}
                 className="h-8 text-xs"
                 disabled={cellDisabled || pending}
                 aria-label="Rate"
               />
             </div>
+            ) : null}
             <Button
               type="button"
               size="sm"
@@ -571,11 +590,13 @@ function AssignedItemLine({
   onComplete: () => void;
   onRemove: () => void;
 }) {
+  const { hasCapability } = usePermissions();
+  const canSeeRates = hasCapability(CAPABILITY_CODES.seeRates);
   const lineBusy = completing || removing;
   const meta = [
     `Qty ${item.quantity}`,
     item.timeSlotName ?? "—",
-    fmtGBP(item.rate),
+    canSeeRates ? fmtGBP(item.rate) : null,
     !item.isToday ? "carry-over" : null,
   ]
     .filter(Boolean)

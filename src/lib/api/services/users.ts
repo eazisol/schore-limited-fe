@@ -1,6 +1,28 @@
 import { API_BASE_URL, http } from "@/lib/api/axios";
 import type { ApiEnvelope } from "./auth";
 
+export interface ApiUserScopeAssignment {
+  id: string;
+  customerId?: string | null;
+  customerName?: string | null;
+  siteId?: string | null;
+  siteName?: string | null;
+  projectId?: string | null;
+  projectName?: string | null;
+}
+
+export interface ApiCapabilityOverride {
+  code: string;
+  isGranted: boolean;
+}
+
+export interface ApiMenuPermissionOverride {
+  menuId: string;
+  read: boolean;
+  modify: boolean;
+  delete: boolean;
+}
+
 export interface ApiUser {
   id: string;
   username: string;
@@ -33,6 +55,10 @@ export interface ApiUser {
   contractorName?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  scopeAssignments?: ApiUserScopeAssignment[];
+  capabilityOverrides?: ApiCapabilityOverride[];
+  menuPermissionOverrides?: ApiMenuPermissionOverride[];
+  rateOverrides?: { id: string; productId: string; productName: string; rate: number; effectiveFrom: string }[];
   createdBy: number | null;
   createdDate: string;
   editBy: number | null;
@@ -88,6 +114,19 @@ export interface CreateUserPayload {
   contractorId?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  scopeAssignments?: {
+    customerId?: string | null;
+    siteId?: string | null;
+    projectId?: string | null;
+  }[];
+  capabilities?: ApiCapabilityOverride[];
+  menuPermissions?: ApiMenuPermissionOverride[];
+  rateOverrides?: {
+    productId: string;
+    rate: number;
+    effectiveFrom: string;
+  }[];
+  rateChangeReason?: string | null;
 }
 
 export interface UpdateUserPayload {
@@ -115,6 +154,19 @@ export interface UpdateUserPayload {
   contractorId?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  scopeAssignments?: {
+    customerId?: string | null;
+    siteId?: string | null;
+    projectId?: string | null;
+  }[];
+  capabilities?: ApiCapabilityOverride[];
+  menuPermissions?: ApiMenuPermissionOverride[];
+  rateOverrides?: {
+    productId: string;
+    rate: number;
+    effectiveFrom: string;
+  }[];
+  rateChangeReason?: string | null;
 }
 
 /** Normalise API date values for `<input type="date">`. */
@@ -173,15 +225,17 @@ export const usersService = {
   get: (id: string) => http.get<ApiEnvelope<ApiUser>>(`Users/${id}`),
   dropdown: (params: {
     search?: string;
-    userTypeId: number;
+    userTypeId?: number;
     roleId?: string;
+    roleCodes?: string;
     take?: number;
   }) =>
     http.get<ApiEnvelope<UserDropdownOption[]>>("Users/dropdown", {
       params: {
         Search: params.search ?? "",
-        UserTypeId: params.userTypeId,
+        ...(params.userTypeId != null ? { UserTypeId: params.userTypeId } : {}),
         ...(params.roleId != null ? { RoleId: params.roleId } : {}),
+        ...(params.roleCodes != null ? { RoleCodes: params.roleCodes } : {}),
         ...(params.take != null ? { Take: params.take } : {}),
       },
     }),

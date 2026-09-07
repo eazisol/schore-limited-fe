@@ -24,6 +24,7 @@ import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { SITES_ROUTE } from "@/lib/sites";
 import { fetchCustomerOptions } from "@/lib/user-dropdowns";
 import {
+  emptySiteFormValues,
   siteFormSchema,
   toSitePayload,
   type SiteFormValues,
@@ -344,18 +345,7 @@ function SiteCreateModal({
     resolver: zodResolver(siteFormSchema),
     mode: "onBlur",
     reValidateMode: "onChange",
-    defaultValues: {
-      name: "",
-      code: "",
-      description: "",
-      address: "",
-      city: "",
-      state: "",
-      country: "",
-      zipCode: "",
-      customerId: "",
-      isActive: true,
-    },
+    defaultValues: emptySiteFormValues,
   });
 
   const mutation = useMutation({

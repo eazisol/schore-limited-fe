@@ -14,8 +14,8 @@ import {
   propertyFormDefaults,
   type PropertyFormValues,
 } from "@/lib/property-form";
-import type { ProjectFormValues } from "@/lib/project-form";
-import type { SiteFormValues } from "@/lib/site-form";
+import { emptyProjectFormValues, type ProjectFormValues } from "@/lib/project-form";
+import { emptySiteFormValues, type SiteFormValues } from "@/lib/site-form";
 
 type HierarchyChain = {
   customerId: string;
@@ -76,28 +76,17 @@ export function HierarchyCreateWizard({
 
   const siteDefaults = useMemo<SiteFormValues>(
     () => ({
-      name: "",
-      code: "",
-      description: "",
-      address: "",
-      city: "",
-      state: "",
-      country: "",
-      zipCode: "",
+      ...emptySiteFormValues,
       customerId: chain.customerId,
-      isActive: true,
     }),
     [chain.customerId],
   );
 
   const projectDefaults = useMemo<ProjectFormValues>(
     () => ({
-      name: "",
-      code: "",
-      description: "",
+      ...emptyProjectFormValues,
       customerId: chain.customerId,
       siteId: chain.siteId,
-      isActive: true,
     }),
     [chain.customerId, chain.siteId],
   );

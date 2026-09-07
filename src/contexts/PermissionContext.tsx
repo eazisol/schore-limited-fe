@@ -15,17 +15,20 @@ import { menusService, type ApiMenuDefinition } from "@/lib/api/services/menus";
 import { permissionsService } from "@/lib/api/services/permissions";
 import { usersService } from "@/lib/api/services/users";
 import { buildAuthorizedMenus } from "@/lib/authorization";
+import { accessService, type ApiCurrentAccess } from "@/lib/api/services/access";
+import { hasCapability } from "@/lib/access";
 
 interface PermissionCache {
   userId: string | null;
-  roleIds: string[] | null;
   menuTree: ApiMenuDefinition[] | null;
 }
 
 interface PermissionContextValue {
   menus: ApiMenu[];
+  access: ApiCurrentAccess | null;
   isLoading: boolean;
   error: unknown;
+  hasCapability: (code: string) => boolean;
   refreshPermissions: (options?: {
     background?: boolean;
     /** When set, use this tree instead of the cached/fetched Menus/tree. */
@@ -43,11 +46,11 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, isHydrated } = useAuth();
   const queryClient = useQueryClient();
   const [menus, setMenus] = useState<ApiMenu[]>([]);
+  const [access, setAccess] = useState<ApiCurrentAccess | null>(null);
   const [isLoading, setLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const cacheRef = useRef<PermissionCache>({
     userId: null,
-    roleIds: null,
     menuTree: null,
   });
   const requestIdRef = useRef(0);
@@ -61,6 +64,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
   }) => {
     if (!isAuthenticated || userId == null) {
       setMenus([]);
+      setAccess(null);
       setError(null);
       return;
     }
@@ -75,17 +79,15 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
 
     try {
       if (cacheRef.current.userId !== userId) {
-        cacheRef.current = { userId, roleIds: null, menuTree: null };
+        cacheRef.current = { userId, menuTree: null };
       }
 
-      const [roleIds, menuTree] = await Promise.all([
-        cacheRef.current.roleIds != null
-          ? Promise.resolve(cacheRef.current.roleIds)
-          : queryClient.fetchQuery({
-              queryKey: ["users", userId],
-              queryFn: async () => (await usersService.get(userId)).data,
-              staleTime: 60_000,
-            }).then((apiUser) => apiUser.roleIds ?? []),
+      const [apiUser, menuTree, accessResponse] = await Promise.all([
+        queryClient.fetchQuery({
+          queryKey: ["users", userId],
+          queryFn: async () => (await usersService.get(userId)).data,
+          staleTime: 60_000,
+        }),
         options?.menuTree != null
           ? Promise.resolve(options.menuTree)
           : options?.forceMenuTree
@@ -93,18 +95,24 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
             : cacheRef.current.menuTree != null
               ? Promise.resolve(cacheRef.current.menuTree)
               : menusService.tree().then((response) => response.data ?? []),
+        accessService.me().then((response) => response.data ?? null),
       ]);
 
-      cacheRef.current = { userId, roleIds, menuTree };
+      const roleIds = apiUser.roleIds ?? [];
+      cacheRef.current = { userId, menuTree };
       const permissionResponses = await Promise.all(
         roleIds.map((roleId) => permissionsService.getByRole(roleId)),
       );
       const nextMenus = buildAuthorizedMenus(
         menuTree,
         permissionResponses.map((response) => response.data ?? []),
+        apiUser.menuPermissionOverrides,
       );
 
-      if (requestId === requestIdRef.current) setMenus(nextMenus);
+      if (requestId === requestIdRef.current) {
+        setMenus(nextMenus);
+        setAccess(accessResponse);
+      }
     } catch (nextError) {
       if (requestId === requestIdRef.current) {
         setError(nextError);
@@ -119,8 +127,9 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
     if (!isHydrated) return;
     if (!isAuthenticated || userId == null) {
       requestIdRef.current += 1;
-      cacheRef.current = { userId: null, roleIds: null, menuTree: null };
+      cacheRef.current = { userId: null, menuTree: null };
       setMenus([]);
+      setAccess(null);
       setError(null);
       setLoading(false);
       return;
@@ -164,8 +173,15 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
       error == null);
 
   const value = useMemo<PermissionContextValue>(
-    () => ({ menus, isLoading: permissionsLoading, error, refreshPermissions }),
-    [menus, permissionsLoading, error, refreshPermissions],
+    () => ({
+      menus,
+      access,
+      isLoading: permissionsLoading,
+      error,
+      hasCapability: (code: string) => hasCapability(access?.capabilities, code),
+      refreshPermissions,
+    }),
+    [menus, access, permissionsLoading, error, refreshPermissions],
   );
 
   return <PermissionContext.Provider value={value}>{children}</PermissionContext.Provider>;

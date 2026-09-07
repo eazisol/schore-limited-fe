@@ -79,3 +79,18 @@ export async function fetchCisOptions(search: string): Promise<SearchableSelectO
       label: `${row.name?.trim() || `CIS ${row.id}`} (${formatCisRate(row.rate)})`,
     }));
 }
+
+const PROJECT_ASSIGNABLE_ROLE_CODES = "CM,PM,SM";
+
+export async function fetchProjectAssigneeOptions(search: string): Promise<SearchableSelectOption[]> {
+  const res = await usersService.dropdown({
+    search,
+    userTypeId: USER_TYPE_ID.user,
+    roleCodes: PROJECT_ASSIGNABLE_ROLE_CODES,
+    take: DROPDOWN_FETCH_SIZE,
+  });
+  return (res.data ?? []).map((item) => ({
+    value: String(item.id),
+    label: item.name,
+  }));
+}

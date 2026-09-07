@@ -8,6 +8,13 @@ import {
   descriptionSchema,
   nameSchema,
 } from "@/lib/field-validation";
+import {
+  rateOverrideRowSchema,
+  rateOverridesToFormValues,
+  refineRateOverrides,
+  toRateOverridePayload,
+  type ApiRateOverride,
+} from "@/lib/rate-overrides";
 
 const optionalAddressField = (label: string, maxLength: number) =>
   z.string().trim().max(maxLength, `${label} must be ${maxLength} characters or fewer`);
@@ -24,6 +31,8 @@ export const siteFormSchema = z
     zipCode: optionalAddressField("ZIP Code", 20),
     customerId: z.string(),
     isActive: z.boolean(),
+    rateOverrides: z.array(rateOverrideRowSchema),
+    rateChangeReason: z.string(),
   })
   .superRefine((values, ctx) => {
     if (!values.customerId.trim()) {
@@ -33,9 +42,25 @@ export const siteFormSchema = z
         message: "Client is required",
       });
     }
+    refineRateOverrides(values.rateOverrides, ctx);
   });
 
 export type SiteFormValues = z.infer<typeof siteFormSchema>;
+
+export const emptySiteFormValues: SiteFormValues = {
+  name: "",
+  code: "",
+  description: "",
+  address: "",
+  city: "",
+  state: "",
+  country: "",
+  zipCode: "",
+  customerId: "",
+  isActive: true,
+  rateOverrides: [],
+  rateChangeReason: "",
+};
 
 export function toSitePayload(values: SiteFormValues): SitePayload {
   return {
@@ -49,6 +74,8 @@ export function toSitePayload(values: SiteFormValues): SitePayload {
     zipCode: values.zipCode.trim() || null,
     customerId: values.customerId,
     isActive: values.isActive,
+    rateOverrides: toRateOverridePayload(values.rateOverrides),
+    rateChangeReason: values.rateChangeReason.trim() || null,
   };
 }
 
@@ -63,6 +90,7 @@ export function siteToFormValues(row: {
   zipCode?: string | null;
   customerId: string;
   isActive: boolean;
+  rateOverrides?: ApiRateOverride[];
 }): SiteFormValues {
   return {
     name: row.name,
@@ -75,5 +103,7 @@ export function siteToFormValues(row: {
     zipCode: row.zipCode ?? "",
     customerId: String(row.customerId),
     isActive: row.isActive,
+    rateOverrides: rateOverridesToFormValues(row.rateOverrides),
+    rateChangeReason: "",
   };
 }

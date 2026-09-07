@@ -11,6 +11,7 @@ import {
   normalizeCodeInput,
 } from "@/lib/field-validation";
 import type { SiteFormValues } from "@/lib/site-form";
+import { RateOverrideFields } from "@/components/rates/RateOverrideFields";
 
 type SiteFormFieldsProps = {
   disabled?: boolean;
@@ -71,6 +72,11 @@ export function SiteFormFields({
         rows={2}
         maxLength={DESCRIPTION_MAX_LENGTH}
         disabled={disabled}
+      />
+      <RateOverrideFields
+        disabled={disabled}
+        title="Rate overrides"
+        hint="Leave empty to use the client’s rates, or the standard catalogue if the client has none. Changes go to Rate approvals until approved."
       />
     </div>
   );

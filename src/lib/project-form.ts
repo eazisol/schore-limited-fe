@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ProjectPayload } from "@/lib/api/services/projects";
+import type { ApiProject, ProjectPayload } from "@/lib/api/services/projects";
 import {
   CODE_MAX_LENGTH,
   DESCRIPTION_MAX_LENGTH,
@@ -8,6 +8,12 @@ import {
   descriptionSchema,
   nameSchema,
 } from "@/lib/field-validation";
+import {
+  rateOverrideRowSchema,
+  rateOverridesToFormValues,
+  refineRateOverrides,
+  toRateOverridePayload,
+} from "@/lib/rate-overrides";
 
 export const projectFormSchema = z
   .object({
@@ -16,7 +22,10 @@ export const projectFormSchema = z
     description: descriptionSchema(),
     customerId: z.string(),
     siteId: z.string().trim().min(1, "Site is required"),
+    assignedUserIds: z.array(z.string()),
     isActive: z.boolean(),
+    rateOverrides: z.array(rateOverrideRowSchema),
+    rateChangeReason: z.string(),
   })
   .superRefine((values, ctx) => {
     if (!values.customerId.trim()) {
@@ -26,9 +35,22 @@ export const projectFormSchema = z
         message: "Client is required",
       });
     }
+    refineRateOverrides(values.rateOverrides, ctx);
   });
 
 export type ProjectFormValues = z.infer<typeof projectFormSchema>;
+
+export const emptyProjectFormValues: ProjectFormValues = {
+  name: "",
+  code: "",
+  description: "",
+  customerId: "",
+  siteId: "",
+  assignedUserIds: [],
+  isActive: true,
+  rateOverrides: [],
+  rateChangeReason: "",
+};
 
 export function toProjectPayload(values: ProjectFormValues): ProjectPayload {
   return {
@@ -37,24 +59,37 @@ export function toProjectPayload(values: ProjectFormValues): ProjectPayload {
     description: values.description.trim() || null,
     customerId: values.customerId,
     siteId: values.siteId,
+    assignedUserIds: values.assignedUserIds.filter(Boolean),
+    rateOverrides: toRateOverridePayload(values.rateOverrides),
+    rateChangeReason: values.rateChangeReason.trim() || null,
     isActive: values.isActive,
   };
 }
 
-export function projectToFormValues(row: {
-  name: string;
-  code: string;
-  description?: string | null;
-  customerId: string;
-  siteId: string;
-  isActive: boolean;
-}): ProjectFormValues {
+export function projectToFormValues(
+  row: Pick<ApiProject, "name" | "code" | "description" | "customerId" | "siteId" | "isActive"> & {
+    assignedUsers?: ApiProject["assignedUsers"];
+    assignedUserIds?: string[];
+    rateOverrides?: ApiProject["rateOverrides"];
+  },
+): ProjectFormValues {
   return {
     name: row.name,
     code: row.code,
     description: row.description ?? "",
     customerId: String(row.customerId),
     siteId: String(row.siteId),
+    assignedUserIds:
+      row.assignedUserIds?.map(String) ??
+      (row.assignedUsers ?? []).map((user) => String(user.id)),
     isActive: row.isActive,
+    rateOverrides: rateOverridesToFormValues(row.rateOverrides),
+    rateChangeReason: "",
   };
+}
+
+export function projectAssigneeLabels(
+  assignedUsers: ApiProject["assignedUsers"] | undefined,
+): Record<string, string> {
+  return Object.fromEntries((assignedUsers ?? []).map((user) => [String(user.id), user.name]));
 }

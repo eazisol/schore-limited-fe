@@ -25,6 +25,7 @@ import { Route as RolesRouteImport } from './routes/roles'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RatesRouteImport } from './routes/rates'
+import { Route as RateApprovalsRouteImport } from './routes/rate-approvals'
 import { Route as PropertiesRouteImport } from './routes/properties'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -184,6 +185,11 @@ const ReportsRoute = ReportsRouteImport.update({
 const RatesRoute = RatesRouteImport.update({
   id: '/rates',
   path: '/rates',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RateApprovalsRoute = RateApprovalsRouteImport.update({
+  id: '/rate-approvals',
+  path: '/rate-approvals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PropertiesRoute = PropertiesRouteImport.update({
@@ -619,6 +625,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRouteWithChildren
   '/properties': typeof PropertiesRouteWithChildren
+  '/rate-approvals': typeof RateApprovalsRoute
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -708,6 +715,7 @@ export interface FileRoutesByTo {
   '/permissions': typeof PermissionsRoute
   '/prelims': typeof PrelimsRoute
   '/profile': typeof ProfileRoute
+  '/rate-approvals': typeof RateApprovalsRoute
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -799,6 +807,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRouteWithChildren
   '/properties': typeof PropertiesRouteWithChildren
+  '/rate-approvals': typeof RateApprovalsRoute
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -899,6 +908,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/projects'
     | '/properties'
+    | '/rate-approvals'
     | '/rates'
     | '/reports'
     | '/reset-password'
@@ -988,6 +998,7 @@ export interface FileRouteTypes {
     | '/permissions'
     | '/prelims'
     | '/profile'
+    | '/rate-approvals'
     | '/rates'
     | '/reports'
     | '/reset-password'
@@ -1078,6 +1089,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/projects'
     | '/properties'
+    | '/rate-approvals'
     | '/rates'
     | '/reports'
     | '/reset-password'
@@ -1177,6 +1189,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ProjectsRoute: typeof ProjectsRouteWithChildren
   PropertiesRoute: typeof PropertiesRouteWithChildren
+  RateApprovalsRoute: typeof RateApprovalsRoute
   RatesRoute: typeof RatesRoute
   ReportsRoute: typeof ReportsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -1307,6 +1320,13 @@ declare module '@tanstack/react-router' {
       path: '/rates'
       fullPath: '/rates'
       preLoaderRoute: typeof RatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rate-approvals': {
+      id: '/rate-approvals'
+      path: '/rate-approvals'
+      fullPath: '/rate-approvals'
+      preLoaderRoute: typeof RateApprovalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/properties': {
@@ -2169,6 +2189,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ProjectsRoute: ProjectsRouteWithChildren,
   PropertiesRoute: PropertiesRouteWithChildren,
+  RateApprovalsRoute: RateApprovalsRoute,
   RatesRoute: RatesRoute,
   ReportsRoute: ReportsRoute,
   ResetPasswordRoute: ResetPasswordRoute,

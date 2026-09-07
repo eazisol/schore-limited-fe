@@ -11,7 +11,7 @@ import { sitesService } from "@/lib/api/services/sites";
 import { projectsService } from "@/lib/api/services/projects";
 import { propertiesService } from "@/lib/api/services/properties";
 import { siteToFormValues } from "@/lib/site-form";
-import { projectToFormValues } from "@/lib/project-form";
+import { projectAssigneeLabels, projectToFormValues } from "@/lib/project-form";
 import { propertyToFormValues } from "@/lib/property-form";
 
 export type HierarchyEditTarget =
@@ -141,6 +141,7 @@ function ProjectEditBody({
       defaultValues={defaults}
       customerSelectedLabel={query.data.customerName}
       siteSelectedLabel={query.data.siteName}
+      assigneeSelectedLabels={projectAssigneeLabels(query.data.assignedUsers)}
       submitLabel="Save changes"
       onCancel={onCancel}
       onSaved={onSaved}

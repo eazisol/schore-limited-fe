@@ -15,6 +15,7 @@ export interface ApiSite {
   customerId: string;
   customerName: string | null;
   isActive: boolean;
+  rateOverrides?: { id: string; productId: string; productName: string; rate: number; effectiveFrom: string }[];
   createdBy?: number | null;
   createdDate: string;
   editBy?: number | null;
@@ -32,6 +33,12 @@ export type SitePayload = {
   country?: string | null;
   customerId: string;
   isActive: boolean;
+  rateOverrides?: {
+    productId: string;
+    rate: number;
+    effectiveFrom: string;
+  }[];
+  rateChangeReason?: string | null;
 };
 
 export interface SiteListParams {

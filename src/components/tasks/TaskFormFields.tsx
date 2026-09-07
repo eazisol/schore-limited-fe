@@ -279,7 +279,7 @@ export function TaskFormFields({
           tradeGroupId: String(group.id),
           productId,
           quantity: String(groupItem.quantity > 0 ? groupItem.quantity : 1),
-          rate: String(groupItem.salePrice ?? 0),
+          rate: "0",
           applyRatePermanently: false,
         };
       });
@@ -305,7 +305,7 @@ export function TaskFormFields({
       tradeGroupId: "",
       productId: addState.productId,
       quantity: "1",
-      rate: String(product.salePrice ?? 0),
+      rate: "0",
       applyRatePermanently: false,
     });
   }
@@ -612,6 +612,8 @@ export function TaskFormFields({
               onSelect={handleStatusSelect}
               lookupType="status"
             />
+            {/* Temporarily hidden: Site Manager is assigned from the project Assign To field */}
+            {false && (
             <CreatableSearchableSelectField<TaskFormValues>
               name="siteManagerId"
               label="Site Manager"
@@ -623,6 +625,7 @@ export function TaskFormFields({
               emptyOption={{ value: "", label: "None" }}
               lookupType="siteManager"
             />
+            )}
           </div>
           <TextareaField<TaskFormValues>
             name="description"

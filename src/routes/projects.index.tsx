@@ -24,6 +24,7 @@ import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { PROJECTS_ROUTE } from "@/lib/projects";
 import { fetchCustomerOptions } from "@/lib/user-dropdowns";
 import {
+  emptyProjectFormValues,
   projectFormSchema,
   toProjectPayload,
   type ProjectFormValues,
@@ -352,14 +353,7 @@ function ProjectCreateModal({
     resolver: zodResolver(projectFormSchema),
     mode: "onBlur",
     reValidateMode: "onChange",
-    defaultValues: {
-      name: "",
-      code: "",
-      description: "",
-      customerId: "",
-      siteId: "",
-      isActive: true,
-    },
+    defaultValues: emptyProjectFormValues,
   });
 
   const mutation = useMutation({

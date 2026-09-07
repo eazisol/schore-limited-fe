@@ -852,6 +852,7 @@ function ProjectQuickCreateModal({
         description: values.description.trim() || null,
         customerId: isNonEmptyId(lockedCustomerId) ? lockedCustomerId : "",
         siteId: values.siteId.trim(),
+        assignedUserIds: [],
         isActive: true,
       }),
     onSuccess: (res) => {

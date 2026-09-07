@@ -14,6 +14,11 @@ import type { UserFormValues } from "@/lib/user-form";
 import { type UserModuleMode } from "@/lib/user-module";
 import { fetchCisOptions, fetchRoleOptions, fetchTradeOptions } from "@/lib/user-dropdowns";
 import { ADDRESS_MAX_LENGTH } from "@/lib/field-validation";
+import { UserCapabilityFields } from "@/components/users/UserCapabilityFields";
+import { UserMenuPermissionFields } from "@/components/users/UserMenuPermissionFields";
+import { RateOverrideFields } from "@/components/rates/RateOverrideFields";
+import { usePermissions } from "@/contexts/PermissionContext";
+import { CAPABILITY_CODES } from "@/lib/access";
 
 export function UserFormFields({
   mode,
@@ -26,6 +31,7 @@ export function UserFormFields({
   operativeSelectedLabels,
   contractorSelectedLabel,
   autoFocusFirstName = false,
+  capabilityResetKey,
 }: {
   mode: UserModuleMode;
   variant: "create" | "edit";
@@ -41,14 +47,18 @@ export function UserFormFields({
   };
   contractorSelectedLabel?: string | null;
   autoFocusFirstName?: boolean;
+  capabilityResetKey?: string;
 }) {
   const { watch } = useFormContext<UserFormValues>();
+  const { hasCapability } = usePermissions();
   const password = watch("password");
   const isOperative = mode === "operative";
   const isContractor = mode === "contractor";
   const isCustomer = mode === "customer";
   const isUser = mode === "user";
   const isContactModule = isContractor || isCustomer;
+  const canSeeRates =
+    hasCapability(CAPABILITY_CODES.seeRates) || hasCapability(CAPABILITY_CODES.editTaskPrices);
   const activeToggle =
     showActiveInHeader || !embedded ? (
       <SwitchField<UserFormValues> name="isActive" label="Active" />
@@ -219,8 +229,19 @@ export function UserFormFields({
         )}
       </Section>
 
+      {isCustomer && canSeeRates ? (
+        <Section
+          title="Rate overrides"
+          hint="Leave empty to use standard catalogue rates. Changes go to Rate approvals until approved."
+          embedded={embedded}
+          separated={embedded}
+        >
+          <RateOverrideFields disabled={disabled} />
+        </Section>
+      ) : null}
+
       {!isOperative && !isContactModule ? (
-        <Section title="Access" hint="Roles control what this user can see and edit." embedded={embedded} separated={embedded}>
+        <Section title="Access" hint="Roles control screens. Assignments control which projects this user can see." embedded={embedded} separated={embedded}>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             <CreatableSearchableSelectField<UserFormValues>
               name="roleId"
@@ -235,6 +256,28 @@ export function UserFormFields({
               lookupType="role"
             />
           </div>
+        </Section>
+      ) : null}
+
+      {!isOperative && !isContactModule ? (
+        <Section
+          title="Menu access"
+          hint="Override which screens this user can read, change, or delete. Leave the role defaults unless this person needs different access."
+          embedded={embedded}
+          separated={embedded}
+        >
+          <UserMenuPermissionFields disabled={disabled} resetKey={capabilityResetKey} />
+        </Section>
+      ) : null}
+
+      {!isOperative && !isContactModule ? (
+        <Section
+          title="Rates & commercial"
+          hint="Select extra commercial permissions for this user, or remove ones the role would grant."
+          embedded={embedded}
+          separated={embedded}
+        >
+          <UserCapabilityFields disabled={disabled} resetKey={capabilityResetKey} />
         </Section>
       ) : null}
 
@@ -279,6 +322,17 @@ export function UserFormFields({
             name="isDailyRate"
             label="Use daily rate for pay (MAX price vs daily)"
           />
+        </Section>
+      ) : null}
+
+      {isOperative && canSeeRates ? (
+        <Section
+          title="Rate overrides"
+          hint="Agreed item rates for this operative. Changes go to Rate approvals. Cannot exceed the catalogue budget cap without override."
+          embedded={embedded}
+          separated={embedded}
+        >
+          <RateOverrideFields disabled={disabled} />
         </Section>
       ) : null}
     </fieldset>

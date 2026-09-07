@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CreatableSearchableSelectField,
+  SearchableMultiSelectField,
   TextField,
   TextareaField,
 } from "@/components/form";
-import { fetchCustomerOptions } from "@/lib/user-dropdowns";
+import { fetchCustomerOptions, fetchProjectAssigneeOptions } from "@/lib/user-dropdowns";
 import { fetchSiteOptions } from "@/lib/site-dropdowns";
 import {
   CODE_MAX_LENGTH,
@@ -14,6 +15,7 @@ import {
 } from "@/lib/field-validation";
 import type { ProjectFormValues } from "@/lib/project-form";
 import { useFormContext } from "react-hook-form";
+import { RateOverrideFields } from "@/components/rates/RateOverrideFields";
 
 type ProjectFormFieldsProps = {
   disabled?: boolean;
@@ -23,6 +25,7 @@ type ProjectFormFieldsProps = {
   lockSite?: boolean;
   customerSelectedLabel?: string | null;
   siteSelectedLabel?: string | null;
+  assigneeSelectedLabels?: Record<string, string>;
 };
 
 export function ProjectFormFields({
@@ -31,6 +34,7 @@ export function ProjectFormFields({
   lockSite,
   customerSelectedLabel,
   siteSelectedLabel,
+  assigneeSelectedLabels,
 }: ProjectFormFieldsProps) {
   const form = useFormContext<ProjectFormValues>();
   const customerId = form.watch("customerId");
@@ -53,6 +57,11 @@ export function ProjectFormFields({
   const fetchSites = useCallback(
     (search: string) => fetchSiteOptions(search, customerId),
     [customerId],
+  );
+
+  const selectedAssigneeLabels = useMemo(
+    () => assigneeSelectedLabels ?? {},
+    [assigneeSelectedLabels],
   );
 
   return (
@@ -104,12 +113,27 @@ export function ProjectFormFields({
           disabled={disabled}
         />
       </div>
+      <SearchableMultiSelectField<ProjectFormValues>
+        name="assignedUserIds"
+        label="Assign To"
+        placeholder="Select CM, PM, or SM"
+        searchPlaceholder="Search staff…"
+        queryKey={["users", "project-assignees", "dropdown"]}
+        fetchOptions={fetchProjectAssigneeOptions}
+        selectedLabels={selectedAssigneeLabels}
+        disabled={disabled}
+      />
       <TextareaField<ProjectFormValues>
         name="description"
         label="Description"
         rows={2}
         maxLength={DESCRIPTION_MAX_LENGTH}
         disabled={disabled}
+      />
+      <RateOverrideFields
+        disabled={disabled}
+        title="Rate overrides"
+        hint="Leave empty to inherit from the site (then client, then standard catalogue). Changes go to Rate approvals until approved."
       />
     </div>
   );

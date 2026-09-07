@@ -27,6 +27,8 @@ import { tasksService, type ApiTaskItem } from "@/lib/api/services/tasks";
 import { propertiesService } from "@/lib/api/services/properties";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { usePermission } from "@/components/Permission";
+import { usePermissions } from "@/contexts/PermissionContext";
+import { CAPABILITY_CODES } from "@/lib/access";
 import { DAILY_ROUTE } from "@/lib/daily";
 import { truncateWithEllipsis } from "@/lib/module-ui";
 import { fmtGBP } from "@/lib/data";
@@ -42,6 +44,7 @@ import {
 
 const dailySearchSchema = z.object({
   propertyId: z.string().optional(),
+  projectId: z.string().optional(),
 });
 
 export const Route = createFileRoute("/daily")({
@@ -93,9 +96,11 @@ function matchesSearch(row: ApiDailyRow, search: string) {
 function Daily() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { propertyId: propertyIdSearch } = Route.useSearch();
+  const { propertyId: propertyIdSearch, projectId: projectIdSearch } = Route.useSearch();
   const filterPropertyId = propertyIdSearch?.trim() ?? "";
   const hasPropertyFilter = filterPropertyId.length > 0;
+  const { hasCapability } = usePermissions();
+  const canSeeRates = hasCapability(CAPABILITY_CODES.seeRates);
   const canModifyDaily = usePermission({ route: DAILY_ROUTE, action: "modify" });
   const [date, setDate] = useState(todayIso);
   const [showHO, setShowHO] = useState(false);
@@ -126,6 +131,7 @@ function Daily() {
       showHO,
       hasPropertyFilter ? filterPropertyId : null,
       hasStatusFilter ? filterStatusId : null,
+      projectIdSearch ?? null,
     ],
     queryFn: async () =>
       (
@@ -134,6 +140,7 @@ function Daily() {
           showHandedOver: showHO,
           propertyId: hasPropertyFilter ? filterPropertyId : undefined,
           statusId: hasStatusFilter ? filterStatusId : undefined,
+          projectId: projectIdSearch || undefined,
         })
       ).data,
     placeholderData: keepPreviousData,
@@ -150,6 +157,7 @@ function Daily() {
     queryKey: ["daily-programme", "cost-budget"],
     queryFn: async () => (await costBudgetService.getForDaily()).data,
     placeholderData: keepPreviousData,
+    enabled: canSeeRates,
   });
 
   const costByTaskId = useMemo(() => {
@@ -265,7 +273,8 @@ function Daily() {
   );
 
   const columns = useMemo<DataTableColumn<ApiDailyRow>[]>(
-    () => [
+    () => {
+      const cols: DataTableColumn<ApiDailyRow>[] = [
       {
         id: "no",
         header: "No.",
@@ -487,12 +496,44 @@ function Daily() {
           );
         },
       },
-    ],
-    [canModifyDaily, costByTaskId, date],
-  );
+    ];
+    return canSeeRates ? cols : cols.filter((column) => column.id !== "cost");
+  }, [canModifyDaily, costByTaskId, date, canSeeRates]);
+
+  const assignedProjects = query.data?.assignedProjects ?? [];
+  const showProjectSwitcher = (query.data?.separateProjectViews ?? false) && assignedProjects.length > 0;
 
   return (
     <div className="space-y-4">
+      {showProjectSwitcher ? (
+        <div className="flex flex-wrap gap-2">
+          {assignedProjects.map((project) => {
+            const selected =
+              (projectIdSearch || query.data?.selectedProjectId || "") === project.id;
+            return (
+              <Button
+                key={project.id}
+                type="button"
+                size="sm"
+                variant={selected ? "default" : "outline"}
+                onClick={() =>
+                  navigate({
+                    to: "/daily",
+                    search: (prev) => ({ ...prev, projectId: project.id }),
+                  })
+                }
+              >
+                {project.code} · {project.name}
+              </Button>
+            );
+          })}
+        </div>
+      ) : null}
+      {query.data?.requireProjectSelection && !projectIdSearch ? (
+        <p className="text-sm text-muted-foreground">
+          Select a project to see its properties. Site Managers do not get a merged view across projects.
+        </p>
+      ) : null}
       <PageHeader
         title="Daily Programmer"
         actions={

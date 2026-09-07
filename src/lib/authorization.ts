@@ -1,6 +1,6 @@
 import type { ApiMenu } from "@/lib/api/services/auth";
 import type { ApiMenuDefinition } from "@/lib/api/services/menus";
-import type { ApiPermission } from "@/lib/api/services/permissions";
+import type { ApiPermission, UpsertPermission } from "@/lib/api/services/permissions";
 import { buildMenuTree, flattenMenuDefinitions } from "@/lib/menu-tree";
 
 export type MenuAction = "read" | "modify" | "delete";
@@ -11,10 +11,11 @@ export const PERMISSION_EXEMPT_PATHS = ["/forbidden", "/profile"] as const;
 /** Unauthenticated / full-screen auth routes. */
 export const PUBLIC_PATHS = ["/signin", "/forgot-password", "/reset-password"] as const;
 
-/** Build one authorized menu tree by unioning grants from every assigned role. */
+/** Build one authorized menu tree by unioning grants from every assigned role, then user overrides. */
 export function buildAuthorizedMenus(
   menuTree: ApiMenuDefinition[],
   rolePermissions: ApiPermission[][],
+  userOverrides?: UpsertPermission[] | null,
 ): ApiMenu[] {
   const grants = new Map<string, Pick<ApiMenu, "read" | "modify" | "delete">>();
 
@@ -24,6 +25,14 @@ export function buildAuthorizedMenus(
       read: Boolean(current?.read || permission.read),
       modify: Boolean(current?.modify || permission.modify),
       delete: Boolean(current?.delete || permission.delete),
+    });
+  }
+
+  for (const override of userOverrides ?? []) {
+    grants.set(override.menuId, {
+      read: Boolean(override.read),
+      modify: Boolean(override.modify),
+      delete: Boolean(override.delete),
     });
   }
 

@@ -79,6 +79,7 @@ export function UserCreatePage() {
             variant="create"
             disabled={createMutation.isPending}
             autoFocusFirstName
+            capabilityResetKey="create"
           />
         </FormPageCard>
       </Form>

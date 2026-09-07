@@ -31,6 +31,11 @@ import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { formatDailyRate, formatDetailAddress, formatDateTime, namesLookSimilar } from "@/lib/module-ui";
 import { useUserModuleMode, userModuleConfig } from "@/lib/user-module";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  PERMISSION_UPDATED_STORAGE_KEY,
+  usePermissions,
+} from "@/contexts/PermissionContext";
 import {
   editUserFormSchema,
   emptyUserFormValues,
@@ -47,6 +52,8 @@ export function UserDetailPage() {
   const id = String(params.id ?? "");
     const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user: sessionUser } = useAuth();
+  const { refreshPermissions } = usePermissions();
   const canModify = usePermission({ route: cfg.permissionRoute, action: "modify" });
   const canDelete = usePermission({ route: cfg.permissionRoute, action: "delete" });
   const [confirmDel, setConfirmDel] = useState(false);
@@ -115,6 +122,10 @@ export function UserDetailPage() {
       toast.success(res.message || `${cfg.labels.entityTitle} updated`);
       queryClient.setQueryData([...cfg.queryKey, id], res.data);
       queryClient.invalidateQueries({ queryKey: cfg.queryKey });
+      if (mode === "user" && sessionUser?.id === id) {
+        window.localStorage.setItem(PERMISSION_UPDATED_STORAGE_KEY, String(Date.now()));
+        void refreshPermissions();
+      }
       navigate({ to: cfg.listPath });
     },
     onError: (err) => notifyApiError(err, `Failed to update ${cfg.labels.entity}`),
@@ -284,6 +295,7 @@ export function UserDetailPage() {
                   cis: user.cisName,
                 }}
                 contractorSelectedLabel={user.contractorName}
+                capabilityResetKey={id}
               />
             </FormPageCard>
           </Form>

@@ -313,6 +313,7 @@ export function ProjectEntityForm({
   defaultValues,
   customerSelectedLabel,
   siteSelectedLabel,
+  assigneeSelectedLabels,
   lockCustomer = false,
   lockSite = false,
   submitLabel,
@@ -325,6 +326,7 @@ export function ProjectEntityForm({
   defaultValues: ProjectFormValues;
   customerSelectedLabel?: string | null;
   siteSelectedLabel?: string | null;
+  assigneeSelectedLabels?: Record<string, string>;
   lockCustomer?: boolean;
   lockSite?: boolean;
   submitLabel: string;
@@ -384,6 +386,7 @@ export function ProjectEntityForm({
         lockSite={lockSite}
         customerSelectedLabel={customerSelectedLabel}
         siteSelectedLabel={siteSelectedLabel}
+        assigneeSelectedLabels={assigneeSelectedLabels}
         disabled={mutation.isPending}
       />
       <HierarchyFormFooter

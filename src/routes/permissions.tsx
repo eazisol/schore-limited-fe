@@ -34,6 +34,8 @@ import {
   type UpsertPermission,
 } from "@/lib/api/services/permissions";
 import { notifyApiError } from "@/lib/api/axios";
+import { SearchableMultiSelect } from "@/components/form";
+import { capabilitiesService, type ApiCapabilityDefinition } from "@/lib/api/services/access";
 import { Can, usePermission } from "@/components/Permission";
 import {
   PERMISSION_UPDATED_STORAGE_KEY,
@@ -77,6 +79,7 @@ function PermissionsPage() {
   const { refreshPermissions } = usePermissions();
   const [roleId, setRoleId] = useState<string | null>(roleIdFromSearch ?? null);
   const [draft, setDraft] = useState<PermissionTreeNode[]>([]);
+  const [capabilityDraft, setCapabilityDraft] = useState<ApiCapabilityDefinition[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [confirmSaveOrder, setConfirmSaveOrder] = useState(false);
 
@@ -112,6 +115,13 @@ function PermissionsPage() {
     if (firstActive) setRoleId(firstActive.id);
   }, [roles, roleId]);
 
+  const capQuery = useQuery({
+    queryKey: ["permissions", "capabilities", "role", roleId],
+    queryFn: async () => (await capabilitiesService.getByRole(roleId!)).data,
+    enabled: roleId != null,
+    refetchOnWindowFocus: false,
+  });
+
   const permsQuery = useQuery({
     queryKey: ["permissions", "role", roleId],
     queryFn: async () => (await permissionsService.getByRole(roleId!)).data ?? [],
@@ -130,17 +140,41 @@ function PermissionsPage() {
   }, [menusQuery.isSuccess, menusQuery.data, permsQuery.isSuccess, permsQuery.data]);
 
   const saveMutation = useMutation({
-    mutationFn: (payload: { roleId: string; permissions: UpsertPermission[] }) =>
-      permissionsService.assign(payload),
-    onSuccess: async (res, vars) => {
-      toast.success(res.message || "Permissions saved");
-      const next = res.data ?? [];
-      qc.setQueryData(["permissions", "role", vars.roleId], next);
-      const merged = mergePermissions(
-        buildPermissionTree(menusQuery.data ?? []),
-        next,
-      );
-      setDraft(merged);
+    mutationFn: async (payload: {
+      roleId: string;
+      permissions: UpsertPermission[];
+      capabilities: { code: string; isGranted: boolean }[];
+      saveMenus: boolean;
+      saveCapabilities: boolean;
+    }) => {
+      const [menusRes, capRes] = await Promise.all([
+        payload.saveMenus
+          ? permissionsService.assign({
+              roleId: payload.roleId,
+              permissions: payload.permissions,
+            })
+          : Promise.resolve(null),
+        payload.saveCapabilities
+          ? capabilitiesService.assignForRole(payload.roleId, payload.capabilities)
+          : Promise.resolve(null),
+      ]);
+      return { menusRes, capRes, roleId: payload.roleId };
+    },
+    onSuccess: async (res) => {
+      toast.success("Permissions saved");
+      if (res.menusRes) {
+        const next = res.menusRes.data ?? [];
+        qc.setQueryData(["permissions", "role", res.roleId], next);
+        const merged = mergePermissions(
+          buildPermissionTree(menusQuery.data ?? []),
+          next,
+        );
+        setDraft(merged);
+      }
+      if (res.capRes?.data) {
+        qc.setQueryData(["permissions", "capabilities", "role", res.roleId], res.capRes.data);
+        setCapabilityDraft(res.capRes.data.capabilities ?? []);
+      }
       try {
         window.localStorage.setItem(PERMISSION_UPDATED_STORAGE_KEY, String(Date.now()));
       } catch {
@@ -188,6 +222,7 @@ function PermissionsPage() {
   useEffect(() => {
     resetToBaseline();
     setDraft([]);
+    setCapabilityDraft([]);
     setExpandedIds(new Set());
   }, [roleId, resetToBaseline]);
 
@@ -199,7 +234,18 @@ function PermissionsPage() {
     }
   }, [serverTree, isOrderDirty]);
 
+  useEffect(() => {
+    const next = capQuery.data?.capabilities ?? [];
+    if (next.length === 0) return;
+    setCapabilityDraft(next);
+  }, [capQuery.data]);
+
   const isDirty = draft.length > 0 && !samePermissionTree(draft, serverTree);
+  const serverCapabilities = capQuery.data?.capabilities ?? [];
+  const isCapabilityDirty =
+    capabilityDraft.length > 0 &&
+    (capabilityDraft.length !== serverCapabilities.length ||
+      capabilityDraft.some((item, index) => item.isGranted !== serverCapabilities[index]?.isGranted));
 
   const canReorderMenus =
     canModify && !saveMutation.isPending && !saveOrderMutation.isPending;
@@ -217,10 +263,17 @@ function PermissionsPage() {
   }
 
   function handleSave() {
-    if (roleId == null || !isDirty || saveMutation.isPending) return;
+    if (roleId == null || saveMutation.isPending) return;
+    if (!isDirty && !isCapabilityDirty) return;
     saveMutation.mutate({
       roleId,
       permissions: flattenTreeForSave(draft),
+      capabilities: capabilityDraft.map((item) => ({
+        code: item.code,
+        isGranted: item.isGranted,
+      })),
+      saveMenus: isDirty,
+      saveCapabilities: isCapabilityDirty,
     });
   }
 
@@ -321,7 +374,7 @@ function PermissionsPage() {
               <Button
                 size="sm"
                 onClick={handleSave}
-                disabled={!isDirty || saving || roleId == null || draft.length === 0}
+                disabled={(!isDirty && !isCapabilityDirty) || saving || roleId == null}
               >
                 {savingPermissions ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -407,6 +460,55 @@ function PermissionsPage() {
           </TreeSortableProvider>
         </div>
       )}
+
+      {roleId != null && capabilityDraft.length > 0 ? (
+        <div className="card-elevated space-y-3 p-4">
+          <div>
+            <h3 className="font-display text-sm font-semibold">Rates &amp; commercial</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Grant independently of menu access. Selected flags apply to every user with this role
+              unless a user has their own override.
+            </p>
+          </div>
+          <SearchableMultiSelect
+            value={capabilityDraft.filter((item) => item.isGranted).map((item) => item.code)}
+            onValueChange={(codes) => {
+              const granted = new Set(codes.map((code) => code.toUpperCase()));
+              setCapabilityDraft((prev) =>
+                prev.map((row) => ({
+                  ...row,
+                  isGranted: granted.has(row.code.toUpperCase()),
+                })),
+              );
+            }}
+            placeholder="Select commercial permissions…"
+            searchPlaceholder="Search permissions…"
+            disabled={!canModify || saving}
+            queryKey={["permissions", "capability-options", roleId]}
+            fetchOptions={async (search) => {
+              const query = search.trim().toLowerCase();
+              return capabilityDraft
+                .filter((item) => {
+                  if (!query) return true;
+                  return (
+                    item.label.toLowerCase().includes(query) ||
+                    item.description.toLowerCase().includes(query) ||
+                    item.code.toLowerCase().includes(query)
+                  );
+                })
+                .map((item) => ({
+                  value: item.code,
+                  label: item.label,
+                  description: item.description,
+                }));
+            }}
+            selectedLabels={Object.fromEntries(
+              capabilityDraft.map((item) => [item.code, item.label]),
+            )}
+            aria-label="Rates and commercial permissions"
+          />
+        </div>
+      ) : null}
 
       {confirmSaveOrder ? (
         <div
