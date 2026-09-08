@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { productsService } from "@/lib/api/services/products";
 
 export type RateOverrideFormValue = {
   productId: string;
@@ -100,4 +101,38 @@ export function rateOverridesToFormValues(
         : "",
     effectiveFrom: String(row.effectiveFrom ?? "").slice(0, 10) || todayInputDate(),
   }));
+}
+
+/** Rows that are new or changed vs the last saved overrides (removals ignored). */
+export function getChangedRateOverrides(
+  current: RateOverridePayload[],
+  baseline: RateOverridePayload[] = [],
+): RateOverridePayload[] {
+  const baseMap = new Map(baseline.map((row) => [row.productId, row]));
+  return current.filter((row) => {
+    const prev = baseMap.get(row.productId);
+    if (!prev) return true;
+    return prev.rate !== row.rate || prev.effectiveFrom !== row.effectiveFrom;
+  });
+}
+
+/** True when any set rate is above that product's catalogue sale price. */
+export async function hasRatesExceedingCatalogueCap(
+  rows: RateOverridePayload[],
+): Promise<boolean> {
+  const unique = [...new Map(rows.map((row) => [row.productId, row])).values()];
+  if (unique.length === 0) return false;
+
+  const results = await Promise.all(
+    unique.map(async (row) => {
+      try {
+        const res = await productsService.get(row.productId);
+        const cap = Number(res.data?.salePrice ?? 0);
+        return Number.isFinite(row.rate) && row.rate > cap;
+      } catch {
+        return false;
+      }
+    }),
+  );
+  return results.some(Boolean);
 }

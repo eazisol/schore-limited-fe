@@ -8,6 +8,7 @@ import {
   CheckboxField,
   PhoneNumberField,
   CreatableSearchableSelectField,
+  SearchableMultiSelectField,
 } from "@/components/form";
 import { PasswordRequirements } from "@/lib/password";
 import type { UserFormValues } from "@/lib/user-form";
@@ -17,6 +18,7 @@ import { ADDRESS_MAX_LENGTH } from "@/lib/field-validation";
 import { UserCapabilityFields } from "@/components/users/UserCapabilityFields";
 import { UserMenuPermissionFields } from "@/components/users/UserMenuPermissionFields";
 import { RateOverrideFields } from "@/components/rates/RateOverrideFields";
+import { OperativeCertificationFields } from "@/components/users/OperativeCertificationFields";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { CAPABILITY_CODES } from "@/lib/access";
 
@@ -42,7 +44,7 @@ export function UserFormFields({
   lookupsLoading?: boolean;
   roleSelectedLabel?: string | null;
   operativeSelectedLabels?: {
-    trade?: string | null;
+    trades?: Record<string, string>;
     cis?: string | null;
   };
   contractorSelectedLabel?: string | null;
@@ -232,7 +234,7 @@ export function UserFormFields({
       {isCustomer && canSeeRates ? (
         <Section
           title="Rate overrides"
-          hint="Leave empty to use standard catalogue rates. Changes go to Rate approvals until approved."
+          hint="Leave empty to use standard catalogue rates. Within parent budget saves immediately; above needs reason + Rate approvals."
           embedded={embedded}
           separated={embedded}
         >
@@ -283,19 +285,18 @@ export function UserFormFields({
 
       {isOperative ? (
         <Section title="Workforce" hint="Trade and CIS status used on wage sheets." embedded={embedded} separated={embedded}>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-            <CreatableSearchableSelectField<UserFormValues>
-              name="tradeId"
-              label="Trade"
-              required
-              placeholder="Select trade"
-              searchPlaceholder="Search trades…"
-              disabled={disabled}
-              queryKey={["lookups", "trades"]}
-              selectedLabel={operativeSelectedLabels?.trade}
-              fetchOptions={fetchTradeOptions}
-              lookupType="trade"
-            />
+          <SearchableMultiSelectField<UserFormValues>
+            name="tradeIds"
+            label="Trades"
+            required
+            placeholder="Select trades…"
+            searchPlaceholder="Search trades…"
+            disabled={disabled}
+            queryKey={["lookups", "trades"]}
+            selectedLabels={operativeSelectedLabels?.trades}
+            fetchOptions={fetchTradeOptions}
+          />
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             <TextField<UserFormValues>
               name="dailyRate"
               label="Daily rate (£)"
@@ -325,10 +326,57 @@ export function UserFormFields({
         </Section>
       ) : null}
 
+      {isOperative ? (
+        <Section
+          title="Bank details"
+          hint="UK bank account used for wage payments."
+          embedded={embedded}
+          separated={embedded}
+        >
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <TextField<UserFormValues>
+              name="accountHolderName"
+              label="Account holder name"
+              placeholder="Name on the account"
+              maxLength={120}
+            />
+            <TextField<UserFormValues>
+              name="bankName"
+              label="Bank name"
+              placeholder="Optional"
+              maxLength={100}
+            />
+            <TextField<UserFormValues>
+              name="sortCode"
+              label="Sort code"
+              placeholder="12-34-56"
+              maxLength={10}
+            />
+            <TextField<UserFormValues>
+              name="accountNumber"
+              label="Account number"
+              placeholder="8 digits"
+              maxLength={20}
+            />
+          </div>
+        </Section>
+      ) : null}
+
+      {isOperative ? (
+        <Section
+          title="Certifications"
+          hint="CSCS, asbestos, training and other accreditations with start and expiry dates."
+          embedded={embedded}
+          separated={embedded}
+        >
+          <OperativeCertificationFields disabled={disabled} />
+        </Section>
+      ) : null}
+
       {isOperative && canSeeRates ? (
         <Section
           title="Rate overrides"
-          hint="Agreed item rates for this operative. Changes go to Rate approvals. Cannot exceed the catalogue budget cap without override."
+          hint="Agreed item rates for this operative. Within parent budget saves immediately; above needs reason + Rate approvals."
           embedded={embedded}
           separated={embedded}
         >

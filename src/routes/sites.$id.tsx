@@ -30,6 +30,7 @@ import {
   toSitePayload,
   type SiteFormValues,
 } from "@/lib/site-form";
+import { useRateCapReasonGate } from "@/components/rates/useRateCapReasonGate";
 
 import {
   hierarchyBackLabel,
@@ -74,6 +75,7 @@ function SiteDetail() {
   const canDelete = usePermission({ route: SITES_ROUTE, action: "delete" });
   const [confirmDel, setConfirmDel] = useState(false);
   const isEditing = mode === "edit" && canModify;
+  const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
 
   const backLabel = hierarchyBackLabel(returnContext, "Back to sites");
   const goBack = () => navigate(hierarchyBackNavigation(returnContext, "/sites"));
@@ -126,7 +128,6 @@ function SiteDetail() {
       }
       navigate({ to: "/sites/$id", params: { id } });
     },
-    onError: (err) => notifyApiError(err, "Failed to update site"),
   });
 
   const deleteMutation = useMutation({
@@ -140,7 +141,11 @@ function SiteDetail() {
   });
 
   async function save(values: SiteFormValues) {
-    await updateMutation.mutateAsync(toSitePayload(values));
+    try {
+      await runWithCapReason(values, (next) => updateMutation.mutateAsync(toSitePayload(next)));
+    } catch (err) {
+      notifyApiError(err, "Failed to update site");
+    }
   }
 
   if (siteQuery.isLoading) {
@@ -292,6 +297,7 @@ function SiteDetail() {
           </div>
         </div>
       )}
+      {capReasonModal}
     </div>
   );
 }

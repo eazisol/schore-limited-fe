@@ -10,6 +10,7 @@ import { UserFormFields } from "@/components/users/UserFormFields";
 import { SiteFormFields } from "@/components/sites/SiteFormFields";
 import { ProjectFormFields } from "@/components/projects/ProjectFormFields";
 import { PropertyFormFields } from "@/components/properties/PropertyFormFields";
+import { useRateCapReasonGate } from "@/components/rates/useRateCapReasonGate";
 import { usersService } from "@/lib/api/services/users";
 import { sitesService } from "@/lib/api/services/sites";
 import { projectsService } from "@/lib/api/services/projects";
@@ -152,6 +153,7 @@ export function ClientEntityForm({
   const resolvedSubmitLabel =
     submitLabel ?? (isEdit ? "Save changes" : "Create & continue");
   const saveActionRef = useRef<HierarchySaveAction>("continue");
+  const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
   const form = useForm<UserFormValues>({
     resolver: zodResolver(isEdit ? editUserFormSchema("customer") : createUserFormSchema("customer")),
     mode: "onBlur",
@@ -183,14 +185,18 @@ export function ClientEntityForm({
         isEdit ? "close" : saveActionRef.current,
       );
     },
-    onError: (err) => notifyApiError(err, "Failed to save client"),
   });
 
   return (
+    <>
     <Form
       form={form}
       onSubmit={async (values) => {
-        await mutation.mutateAsync(values);
+        try {
+          await runWithCapReason(values, (next) => mutation.mutateAsync(next));
+        } catch (err) {
+          notifyApiError(err, "Failed to save client");
+        }
       }}
       className="space-y-2"
     >
@@ -215,6 +221,8 @@ export function ClientEntityForm({
         }}
       />
     </Form>
+    {capReasonModal}
+    </>
   );
 }
 
@@ -243,6 +251,7 @@ export function SiteEntityForm({
   ) => void;
 }) {
   const saveActionRef = useRef<HierarchySaveAction>("continue");
+  const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
   const form = useForm<SiteFormValues>({
     resolver: zodResolver(siteFormSchema),
     mode: "onBlur",
@@ -271,14 +280,18 @@ export function SiteEntityForm({
         mode === "edit" ? "close" : saveActionRef.current,
       );
     },
-    onError: (err) => notifyApiError(err, "Failed to save site"),
   });
 
   return (
+    <>
     <Form
       form={form}
       onSubmit={async (values) => {
-        await mutation.mutateAsync(toSitePayload(values));
+        try {
+          await runWithCapReason(values, (next) => mutation.mutateAsync(toSitePayload(next)));
+        } catch (err) {
+          notifyApiError(err, "Failed to save site");
+        }
       }}
       className="space-y-2"
     >
@@ -304,6 +317,8 @@ export function SiteEntityForm({
         }}
       />
     </Form>
+    {capReasonModal}
+    </>
   );
 }
 
@@ -338,6 +353,7 @@ export function ProjectEntityForm({
   ) => void;
 }) {
   const saveActionRef = useRef<HierarchySaveAction>("continue");
+  const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectFormSchema),
     mode: "onBlur",
@@ -366,14 +382,18 @@ export function ProjectEntityForm({
         mode === "edit" ? "close" : saveActionRef.current,
       );
     },
-    onError: (err) => notifyApiError(err, "Failed to save project"),
   });
 
   return (
+    <>
     <Form
       form={form}
       onSubmit={async (values) => {
-        await mutation.mutateAsync(toProjectPayload(values));
+        try {
+          await runWithCapReason(values, (next) => mutation.mutateAsync(toProjectPayload(next)));
+        } catch (err) {
+          notifyApiError(err, "Failed to save project");
+        }
       }}
       className="space-y-2"
     >
@@ -402,6 +422,8 @@ export function ProjectEntityForm({
         }}
       />
     </Form>
+    {capReasonModal}
+    </>
   );
 }
 

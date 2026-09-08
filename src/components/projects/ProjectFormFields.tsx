@@ -133,7 +133,7 @@ export function ProjectFormFields({
       <RateOverrideFields
         disabled={disabled}
         title="Rate overrides"
-        hint="Leave empty to inherit from the site (then client, then standard catalogue). Changes go to Rate approvals until approved."
+        hint="Leave empty to inherit from the site (then client, then catalogue). Within parent budget saves immediately; above needs reason + Rate approvals."
       />
     </div>
   );

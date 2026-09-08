@@ -206,7 +206,7 @@ function RateApprovals() {
     <div>
       <PageHeader
         title="Rate approvals"
-        subtitle="Pending rate changes wait here. Approve or reject with a reason — live rates do not change until approved."
+        subtitle="Pending rates above the parent budget wait here. Approve or reject — live rates only change after approval."
       />
 
       <div className="mb-3 flex flex-wrap gap-1">

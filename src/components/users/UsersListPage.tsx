@@ -144,7 +144,7 @@ export function UsersListPage() {
     setExporting(true);
     try {
       const headers = cfg.isOperative
-        ? ["Name", "Email", "Phone", "Trade", "CIS", "Daily rate", "Status"]
+        ? ["Name", "Email", "Phone", "Trades", "CIS", "Daily rate", "Status"]
         : cfg.isContractor
           ? ["Name", "Company name", "Email", "Phone", "Address", "City", "State", "Country", "ZIP Code", "Status"]
           : cfg.isCustomer
@@ -263,7 +263,7 @@ export function UsersListPage() {
       cols.push(
         {
           id: "trade",
-          header: "Trade",
+          header: "Trades",
           sortable: true,
           cell: (user) => user.tradeName || "—",
         },

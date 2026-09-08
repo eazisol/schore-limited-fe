@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -18,6 +18,12 @@ import {
   type DataTableColumn,
   type DataTableRowAction,
 } from "@/components/data-table";
+import {
+  JobTypeTemplateSequenceFields,
+  jobTypeTemplateItemSchema,
+  mapApiTemplateItems,
+  toTemplateItemPayload,
+} from "@/components/job-types/JobTypeTemplateSequenceFields";
 import {
   jobTypesService,
   type ApiJobType,
@@ -50,7 +56,9 @@ const schema = z.object({
   name: nameSchema("Name", JOB_TYPE_NAME_MAX_LENGTH),
   code: codeSchema("Code", JOB_TYPE_CODE_MAX_LENGTH),
   description: descriptionSchema(),
+  durationWorkingDays: z.coerce.number().int().min(0).max(365),
   isActive: z.boolean(),
+  templateItems: z.array(jobTypeTemplateItemSchema),
 });
 type Values = z.infer<typeof schema>;
 
@@ -147,6 +155,11 @@ function JobTypesPage() {
         cell: (item) => (
           <code className="rounded bg-secondary px-1.5 py-0.5 text-xs font-mono">{item.code}</code>
         ),
+      },
+      {
+        id: "duration",
+        header: "Days",
+        cell: (item) => item.durationWorkingDays || "—",
       },
       {
         id: "status",
@@ -327,18 +340,38 @@ function JobTypeFormModal({
 }) {
   const isView = mode.kind === "view";
   const existing = mode.kind === "create" ? null : mode.item;
+  const detailQuery = useQuery({
+    queryKey: [...jobTypesQueryKey, "detail", existing?.id],
+    queryFn: async () => (await jobTypesService.get(existing!.id)).data,
+    enabled: Boolean(existing?.id),
+  });
+  const detail = detailQuery.data ?? existing;
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     mode: "onBlur",
     reValidateMode: "onChange",
     defaultValues: {
-      name: existing?.name ?? "",
-      code: existing?.code ?? "",
-      description: existing?.description ?? "",
-      isActive: existing?.isActive ?? true,
+      name: "",
+      code: "",
+      description: "",
+      durationWorkingDays: 0,
+      isActive: true,
+      templateItems: [],
     },
   });
+
+  useEffect(() => {
+    if (!detail) return;
+    form.reset({
+      name: detail.name ?? "",
+      code: detail.code ?? "",
+      description: detail.description ?? "",
+      durationWorkingDays: detail.durationWorkingDays ?? 0,
+      isActive: detail.isActive ?? true,
+      templateItems: mapApiTemplateItems(detail.templateItems),
+    });
+  }, [detail, form]);
 
   const mutation = useMutation({
     mutationFn: async (payload: JobTypePayload) => {
@@ -359,8 +392,10 @@ function JobTypeFormModal({
       name: values.name.trim(),
       code: values.code.trim().toUpperCase(),
       description: values.description.trim() || null,
+      durationWorkingDays: values.durationWorkingDays,
       orderBy: existing?.orderBy ?? 0,
       isActive: values.isActive,
+      templateItems: toTemplateItemPayload(values.templateItems),
     });
   }
 
@@ -377,7 +412,7 @@ function JobTypeFormModal({
         open
         onClose={onClose}
         title={title}
-        size="md"
+        size="lg"
         showCloseButton={false}
         headerActions={<SwitchField<Values> name="isActive" label="Active" disabled={isView} />}
       >
@@ -400,12 +435,20 @@ function JobTypeFormModal({
                 inputClassName="uppercase"
               />
             </div>
+            <TextField<Values>
+              name="durationWorkingDays"
+              label="Duration (working days)"
+              type="number"
+              required
+            />
             <TextareaField<Values>
               name="description"
               label="Description"
-              rows={3}
+              rows={2}
               maxLength={DESCRIPTION_MAX_LENGTH}
             />
+
+            <JobTypeTemplateSequenceFields form={form} isView={isView} />
           </fieldset>
           <div className="flex justify-end gap-2 border-t pt-2">
             <Button type="button" variant="outline" size="sm" onClick={onClose}>

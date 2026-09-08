@@ -22,13 +22,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { dailyProgrammeService, type ApiDailyRow } from "@/lib/api/services/daily-programme";
-import { costBudgetService, type ApiCostBudgetTask } from "@/lib/api/services/cost-budget";
 import { tasksService, type ApiTaskItem } from "@/lib/api/services/tasks";
 import { propertiesService } from "@/lib/api/services/properties";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { usePermission } from "@/components/Permission";
-import { usePermissions } from "@/contexts/PermissionContext";
-import { CAPABILITY_CODES } from "@/lib/access";
 import { DAILY_ROUTE } from "@/lib/daily";
 import { truncateWithEllipsis } from "@/lib/module-ui";
 import { fmtGBP } from "@/lib/data";
@@ -99,8 +96,6 @@ function Daily() {
   const { propertyId: propertyIdSearch, projectId: projectIdSearch } = Route.useSearch();
   const filterPropertyId = propertyIdSearch?.trim() ?? "";
   const hasPropertyFilter = filterPropertyId.length > 0;
-  const { hasCapability } = usePermissions();
-  const canSeeRates = hasCapability(CAPABILITY_CODES.seeRates);
   const canModifyDaily = usePermission({ route: DAILY_ROUTE, action: "modify" });
   const [date, setDate] = useState(todayIso);
   const [showHO, setShowHO] = useState(false);
@@ -152,21 +147,6 @@ function Daily() {
     enabled: hasPropertyFilter && !propertyLabel?.trim(),
     staleTime: 60_000,
   });
-
-  const costQuery = useQuery({
-    queryKey: ["daily-programme", "cost-budget"],
-    queryFn: async () => (await costBudgetService.getForDaily()).data,
-    placeholderData: keepPreviousData,
-    enabled: canSeeRates,
-  });
-
-  const costByTaskId = useMemo(() => {
-    const map = new Map<string, ApiCostBudgetTask>();
-    for (const task of costQuery.data?.tasks ?? []) {
-      map.set(task.taskId, task);
-    }
-    return map;
-  }, [costQuery.data]);
 
   const completedItemsQuery = useQuery({
     queryKey: ["tasks", completedModal?.taskId, "completed-items"],
@@ -441,64 +421,9 @@ function Daily() {
         width: "6rem",
         accessor: (row) => row.timeDisplay || "—",
       },
-      {
-        id: "cost",
-        header: "Cost",
-        width: "8.5rem",
-        truncate: false,
-        accessor: (row) => {
-          const cost = costByTaskId.get(row.taskId);
-          return cost ? fmtGBP(cost.spent) : fmtGBP(0);
-        },
-        cell: (row) => {
-          const cost = costByTaskId.get(row.taskId);
-          const spent = cost?.spent ?? 0;
-          const budget = cost?.budget ?? null;
-          const pct =
-            budget != null && budget > 0 ? Math.round((spent / budget) * 100) : 0;
-          const tooltip =
-            budget != null
-              ? `${fmtGBP(spent)} of ${fmtGBP(budget)} (${pct}%)`
-              : `${fmtGBP(spent)} spent · no budget set`;
-
-          return (
-            <div className="min-w-0 space-y-1.5">
-              <div className="flex items-baseline justify-between gap-2">
-                <div className="font-mono text-xs tabular-nums">{fmtGBP(spent)}</div>
-                <div className="shrink-0 text-[10px] font-medium tabular-nums text-muted-foreground">
-                  {budget != null && budget > 0 ? `${pct}%` : "—"}
-                </div>
-              </div>
-              <AppTooltip content={tooltip} asChild>
-                <button
-                  type="button"
-                  className="block w-full cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={`View completed items for ${row.propertyName}. ${tooltip}`}
-                  onClick={() =>
-                    setCompletedModal({
-                      taskId: row.taskId,
-                      propertyName: row.propertyName,
-                    })
-                  }
-                >
-                  <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                    <div
-                      className={cn(
-                        "h-full transition-[width]",
-                        pct > 90 ? "bg-destructive" : "bg-accent",
-                      )}
-                      style={{ width: `${Math.min(Math.max(pct, 0), 100)}%` }}
-                    />
-                  </div>
-                </button>
-              </AppTooltip>
-            </div>
-          );
-        },
-      },
     ];
-    return canSeeRates ? cols : cols.filter((column) => column.id !== "cost");
-  }, [canModifyDaily, costByTaskId, date, canSeeRates]);
+    return cols;
+  }, [canModifyDaily, date]);
 
   const assignedProjects = query.data?.assignedProjects ?? [];
   const showProjectSwitcher = (query.data?.separateProjectViews ?? false) && assignedProjects.length > 0;

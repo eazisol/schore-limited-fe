@@ -54,6 +54,8 @@ import { Route as ContractsRouteImport } from './routes/contracts'
 import { Route as ContractorsRouteImport } from './routes/contractors'
 import { Route as ConfirmationRouteImport } from './routes/confirmation'
 import { Route as CisManagementRouteImport } from './routes/cis-management'
+import { Route as CertificationTypesRouteImport } from './routes/certification-types'
+import { Route as CertificationLevelsRouteImport } from './routes/certification-levels'
 import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as AllocationRouteImport } from './routes/allocation'
 import { Route as IndexRouteImport } from './routes/index'
@@ -332,6 +334,16 @@ const CisManagementRoute = CisManagementRouteImport.update({
   path: '/cis-management',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CertificationTypesRoute = CertificationTypesRouteImport.update({
+  id: '/certification-types',
+  path: '/certification-types',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CertificationLevelsRoute = CertificationLevelsRouteImport.update({
+  id: '/certification-levels',
+  path: '/certification-levels',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CategoriesRoute = CategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
@@ -597,6 +609,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/allocation': typeof AllocationRoute
   '/categories': typeof CategoriesRoute
+  '/certification-levels': typeof CertificationLevelsRoute
+  '/certification-types': typeof CertificationTypesRoute
   '/cis-management': typeof CisManagementRouteWithChildren
   '/confirmation': typeof ConfirmationRoute
   '/contractors': typeof ContractorsRouteWithChildren
@@ -696,6 +710,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/allocation': typeof AllocationRoute
   '/categories': typeof CategoriesRoute
+  '/certification-levels': typeof CertificationLevelsRoute
+  '/certification-types': typeof CertificationTypesRoute
   '/confirmation': typeof ConfirmationRoute
   '/contracts': typeof ContractsRoute
   '/cost-budget': typeof CostBudgetRoute
@@ -779,6 +795,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/allocation': typeof AllocationRoute
   '/categories': typeof CategoriesRoute
+  '/certification-levels': typeof CertificationLevelsRoute
+  '/certification-types': typeof CertificationTypesRoute
   '/cis-management': typeof CisManagementRouteWithChildren
   '/confirmation': typeof ConfirmationRoute
   '/contractors': typeof ContractorsRouteWithChildren
@@ -880,6 +898,8 @@ export interface FileRouteTypes {
     | '/'
     | '/allocation'
     | '/categories'
+    | '/certification-levels'
+    | '/certification-types'
     | '/cis-management'
     | '/confirmation'
     | '/contractors'
@@ -979,6 +999,8 @@ export interface FileRouteTypes {
     | '/'
     | '/allocation'
     | '/categories'
+    | '/certification-levels'
+    | '/certification-types'
     | '/confirmation'
     | '/contracts'
     | '/cost-budget'
@@ -1061,6 +1083,8 @@ export interface FileRouteTypes {
     | '/'
     | '/allocation'
     | '/categories'
+    | '/certification-levels'
+    | '/certification-types'
     | '/cis-management'
     | '/confirmation'
     | '/contractors'
@@ -1161,6 +1185,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AllocationRoute: typeof AllocationRoute
   CategoriesRoute: typeof CategoriesRoute
+  CertificationLevelsRoute: typeof CertificationLevelsRoute
+  CertificationTypesRoute: typeof CertificationTypesRoute
   CisManagementRoute: typeof CisManagementRouteWithChildren
   ConfirmationRoute: typeof ConfirmationRoute
   ContractorsRoute: typeof ContractorsRouteWithChildren
@@ -1523,6 +1549,20 @@ declare module '@tanstack/react-router' {
       path: '/cis-management'
       fullPath: '/cis-management'
       preLoaderRoute: typeof CisManagementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/certification-types': {
+      id: '/certification-types'
+      path: '/certification-types'
+      fullPath: '/certification-types'
+      preLoaderRoute: typeof CertificationTypesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/certification-levels': {
+      id: '/certification-levels'
+      path: '/certification-levels'
+      fullPath: '/certification-levels'
+      preLoaderRoute: typeof CertificationLevelsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/categories': {
@@ -2161,6 +2201,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AllocationRoute: AllocationRoute,
   CategoriesRoute: CategoriesRoute,
+  CertificationLevelsRoute: CertificationLevelsRoute,
+  CertificationTypesRoute: CertificationTypesRoute,
   CisManagementRoute: CisManagementRouteWithChildren,
   ConfirmationRoute: ConfirmationRoute,
   ContractorsRoute: ContractorsRouteWithChildren,

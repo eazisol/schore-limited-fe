@@ -30,6 +30,7 @@ const STATUS_TONE_BY_LABEL: Record<string, StatusTone> = {
   Approved: "info",
   Refused: "destructive",
   Rejected: "destructive",
+  "Not Applicable": "muted",
   Unpaid: "muted",
   Paid: "success",
 
@@ -57,6 +58,7 @@ const STATUS_TONE_BY_CODE: Record<string, StatusTone> = {
   APPROVED: "info",
   REFUSED: "destructive",
   REJECTED: "destructive",
+  NOT_APPLICABLE: "muted",
   UNPAID: "muted",
   PAID: "success",
   ACTIVE: "success",

@@ -8,6 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Form, TextField, TextareaField, SwitchField, SubmitButton } from "@/components/form";
 import { useDebouncedSearch } from "@/components/data-table";
 import {
+  JobTypeTemplateSequenceFields,
+  jobTypeTemplateItemSchema,
+  mapApiTemplateItems,
+  toTemplateItemPayload,
+} from "@/components/job-types/JobTypeTemplateSequenceFields";
+import {
   jobTypesService,
   type ApiJobType,
   type JobTypePayload,
@@ -42,7 +48,9 @@ const schema = z.object({
   name: nameSchema("Name", JOB_TYPE_NAME_MAX_LENGTH),
   code: codeSchema("Code", JOB_TYPE_CODE_MAX_LENGTH),
   description: descriptionSchema(),
+  durationWorkingDays: z.coerce.number().int().min(0).max(365),
   isActive: z.boolean(),
+  templateItems: z.array(jobTypeTemplateItemSchema),
 });
 type Values = z.infer<typeof schema>;
 
@@ -80,7 +88,7 @@ export function JobTypesColumn() {
   }, [query.isFetching, page, totalPages]);
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => jobTypesService.remove(id),
+    mutationFn: (id: string) => jobTypesService.remove(id),
     onSuccess: (res) => {
       toast.success(res.message || "Job type deleted");
       setConfirmDel(null);
@@ -204,17 +212,49 @@ function JobTypeFormPanel({
   const isView = mode.kind === "view";
   const existing = mode.kind === "create" ? null : mode.item;
 
+  const detailQuery = useQuery({
+    queryKey: [...jobTypesQueryKey, "detail", existing?.id],
+    queryFn: async () => (await jobTypesService.get(existing!.id)).data,
+    enabled: Boolean(existing?.id),
+  });
+  const detail = detailQuery.data ?? existing;
+
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     mode: "onSubmit",
     reValidateMode: "onChange",
     defaultValues: {
-      name: existing?.name ?? "",
-      code: existing?.code ?? "",
-      description: existing?.description ?? "",
-      isActive: existing?.isActive ?? true,
+      name: "",
+      code: "",
+      description: "",
+      durationWorkingDays: 0,
+      isActive: true,
+      templateItems: [],
     },
   });
+
+  useEffect(() => {
+    if (mode.kind === "create") {
+      form.reset({
+        name: "",
+        code: "",
+        description: "",
+        durationWorkingDays: 0,
+        isActive: true,
+        templateItems: [],
+      });
+      return;
+    }
+    if (!detail) return;
+    form.reset({
+      name: detail.name ?? "",
+      code: detail.code ?? "",
+      description: detail.description ?? "",
+      durationWorkingDays: detail.durationWorkingDays ?? 0,
+      isActive: detail.isActive ?? true,
+      templateItems: mapApiTemplateItems(detail.templateItems),
+    });
+  }, [detail, form, mode.kind]);
 
   const mutation = useMutation({
     mutationFn: async (payload: JobTypePayload) => {
@@ -235,8 +275,10 @@ function JobTypeFormPanel({
       name: values.name.trim(),
       code: values.code.trim().toUpperCase(),
       description: values.description.trim() || null,
+      durationWorkingDays: values.durationWorkingDays,
       orderBy: existing?.orderBy ?? 0,
       isActive: values.isActive,
+      templateItems: toTemplateItemPayload(values.templateItems),
     });
   }
 
@@ -287,14 +329,22 @@ function JobTypeFormPanel({
               transformValue={normalizeCodeInput}
               inputClassName="uppercase"
             />
+            <TextField<Values>
+              name="durationWorkingDays"
+              label="Duration (working days)"
+              type="number"
+              required
+            />
             <TextareaField<Values>
               name="description"
               label="Description"
-              rows={3}
+              rows={2}
               maxLength={DESCRIPTION_MAX_LENGTH}
               className="sm:col-span-2"
             />
           </div>
+
+          <JobTypeTemplateSequenceFields form={form} isView={isView} />
         </fieldset>
       </LookupFormPanel>
     </Form>

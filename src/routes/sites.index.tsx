@@ -29,6 +29,7 @@ import {
   toSitePayload,
   type SiteFormValues,
 } from "@/lib/site-form";
+import { useRateCapReasonGate } from "@/components/rates/useRateCapReasonGate";
 
 export const Route = createFileRoute("/sites/")({
   head: () => ({ meta: [{ title: "Sites | Schore" }] }),
@@ -341,6 +342,7 @@ function SiteCreateModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
   const form = useForm<SiteFormValues>({
     resolver: zodResolver(siteFormSchema),
     mode: "onBlur",
@@ -354,11 +356,21 @@ function SiteCreateModal({
       toast.success(res.message || "Site created");
       onSaved();
     },
-    onError: (err) => notifyApiError(err, "Failed to save site"),
   });
 
   return (
-    <Form form={form} onSubmit={(values) => mutation.mutateAsync(toSitePayload(values))} className="contents">
+    <>
+    <Form
+      form={form}
+      onSubmit={async (values) => {
+        try {
+          await runWithCapReason(values, (next) => mutation.mutateAsync(toSitePayload(next)));
+        } catch (err) {
+          notifyApiError(err, "Failed to save site");
+        }
+      }}
+      className="contents"
+    >
       <Modal
         open
         onClose={onClose}
@@ -380,5 +392,7 @@ function SiteCreateModal({
         </div>
       </Modal>
     </Form>
+    {capReasonModal}
+    </>
   );
 }

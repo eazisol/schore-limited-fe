@@ -39,6 +39,8 @@ export interface ApiUser {
   roleNames: string[];
   tradeId?: string | null;
   tradeName?: string | null;
+  tradeIds?: string[];
+  tradeNames?: string[];
   cisId?: string | null;
   cisName?: string | null;
   dailyRate?: number | null;
@@ -59,6 +61,28 @@ export interface ApiUser {
   capabilityOverrides?: ApiCapabilityOverride[];
   menuPermissionOverrides?: ApiMenuPermissionOverride[];
   rateOverrides?: { id: string; productId: string; productName: string; rate: number; effectiveFrom: string }[];
+  accountHolderName?: string | null;
+  sortCode?: string | null;
+  accountNumber?: string | null;
+  bankName?: string | null;
+  certifications?: {
+    id?: string;
+    clientKey?: string | null;
+    certificationTypeId: string;
+    certificationTypeName?: string | null;
+    certificationLevelId?: string | null;
+    certificationLevelName?: string | null;
+    startDate: string;
+    expiryDate: string;
+    notes?: string | null;
+    files?: {
+      id: string;
+      fileName: string;
+      filePath: string;
+      contentType?: string | null;
+      fileSizeBytes?: number;
+    }[];
+  }[];
   createdBy: number | null;
   createdDate: string;
   editBy: number | null;
@@ -100,6 +124,7 @@ export interface CreateUserPayload {
   userTypeId: number;
   roleIds: string[] | null;
   tradeId?: string | null;
+  tradeIds?: string[] | null;
   cisId?: string | null;
   dailyRate?: number | null;
   isDailyRate?: boolean;
@@ -127,6 +152,20 @@ export interface CreateUserPayload {
     effectiveFrom: string;
   }[];
   rateChangeReason?: string | null;
+  accountHolderName?: string | null;
+  sortCode?: string | null;
+  accountNumber?: string | null;
+  bankName?: string | null;
+  certifications?: {
+    id?: string | null;
+    clientKey?: string | null;
+    certificationTypeId: string;
+    certificationLevelId?: string | null;
+    startDate: string;
+    expiryDate: string;
+    notes?: string | null;
+    removedFileIds?: string[] | null;
+  }[];
 }
 
 export interface UpdateUserPayload {
@@ -140,6 +179,7 @@ export interface UpdateUserPayload {
   userTypeId: number;
   roleIds: string[] | null;
   tradeId?: string | null;
+  tradeIds?: string[] | null;
   cisId?: string | null;
   dailyRate?: number | null;
   isDailyRate?: boolean;
@@ -167,6 +207,20 @@ export interface UpdateUserPayload {
     effectiveFrom: string;
   }[];
   rateChangeReason?: string | null;
+  accountHolderName?: string | null;
+  sortCode?: string | null;
+  accountNumber?: string | null;
+  bankName?: string | null;
+  certifications?: {
+    id?: string | null;
+    clientKey?: string | null;
+    certificationTypeId: string;
+    certificationLevelId?: string | null;
+    startDate: string;
+    expiryDate: string;
+    notes?: string | null;
+    removedFileIds?: string[] | null;
+  }[];
 }
 
 /** Normalise API date values for `<input type="date">`. */
@@ -243,6 +297,20 @@ export const usersService = {
     http.post<ApiEnvelope<ApiUser>>("Users", toUserFormData(payload)),
   update: (id: string, payload: UpdateUserPayload, file?: File | null) =>
     http.put<ApiEnvelope<ApiUser>>(`Users/${id}`, toUserFormData(payload, file)),
+  uploadCertificationFiles: (userId: string, certificationId: string, files: File[]) => {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append("files", file);
+    }
+    return http.post<ApiEnvelope<{ id: string; fileName: string; filePath: string }[]>>(
+      `Users/${userId}/certifications/${certificationId}/files`,
+      formData,
+    );
+  },
+  removeCertificationFile: (userId: string, certificationId: string, fileId: string) =>
+    http.delete<ApiEnvelope<null>>(
+      `Users/${userId}/certifications/${certificationId}/files/${fileId}`,
+    ),
   removeProfileImage: (id: string) =>
     http.delete<ApiEnvelope<null>>(`Users/${id}/profile-image`),
   remove: (id: string) =>

@@ -26,6 +26,7 @@ import {
   resolveProfileImageUrl,
   usersService,
   toDateInputValue,
+  type ApiUser,
 } from "@/lib/api/services/users";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
@@ -43,6 +44,8 @@ import {
   userToFormValues,
   type UserFormValues,
 } from "@/lib/user-form";
+import { uploadPendingCertificationFiles } from "@/lib/upload-certification-files";
+import { useRateCapReasonGate } from "@/components/rates/useRateCapReasonGate";
 
 export function UserDetailPage() {
   const mode = useUserModuleMode();
@@ -58,6 +61,7 @@ export function UserDetailPage() {
   const canDelete = usePermission({ route: cfg.permissionRoute, action: "delete" });
   const [confirmDel, setConfirmDel] = useState(false);
   const [clientEditOpen, setClientEditOpen] = useState(false);
+  const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
   const isEditing = !cfg.isCustomer && search.mode === "edit" && canModify;
   const schema = editUserFormSchema(mode);
 
@@ -116,8 +120,13 @@ export function UserDetailPage() {
   }, [user, defaults, form]);
 
   const updateMutation = useMutation({
-    mutationFn: (payload: ReturnType<typeof toUpdateUserPayload>) =>
-      usersService.update(id, payload),
+    mutationFn: async (values: UserFormValues) => {
+      const res = await usersService.update(id, toUpdateUserPayload(values, mode));
+      if (mode === "operative" && res.data?.id) {
+        await uploadPendingCertificationFiles(String(res.data.id), values.certifications, res.data);
+      }
+      return res;
+    },
     onSuccess: (res) => {
       toast.success(res.message || `${cfg.labels.entityTitle} updated`);
       queryClient.setQueryData([...cfg.queryKey, id], res.data);
@@ -128,7 +137,6 @@ export function UserDetailPage() {
       }
       navigate({ to: cfg.listPath });
     },
-    onError: (err) => notifyApiError(err, `Failed to update ${cfg.labels.entity}`),
   });
 
   const deleteMutation = useMutation({
@@ -142,7 +150,11 @@ export function UserDetailPage() {
   });
 
   async function save(values: UserFormValues) {
-    await updateMutation.mutateAsync(toUpdateUserPayload(values, mode));
+    try {
+      await runWithCapReason(values, (next) => updateMutation.mutateAsync(next));
+    } catch (err) {
+      notifyApiError(err, `Failed to update ${cfg.labels.entity}`);
+    }
   }
 
   if (userQuery.isLoading) {
@@ -213,6 +225,14 @@ export function UserDetailPage() {
         { label: "Daily rate", value: formatDailyRate(user.dailyRate) },
         { label: "CIS", value: user.cisName?.trim() || "—" },
         { label: "Is daily rate", value: user.isDailyRate ? "Yes" : "No" },
+        {
+          label: "Bank",
+          value: user.bankName?.trim()
+            || user.accountHolderName?.trim()
+            || (user.sortCode && user.accountNumber
+              ? `${user.sortCode} / ${user.accountNumber}`
+              : "—"),
+        },
       ];
     }
     if (mode === "user") {
@@ -291,7 +311,23 @@ export function UserDetailPage() {
                 disabled={updateMutation.isPending}
                 roleSelectedLabel={user.roleNames?.[0]}
                 operativeSelectedLabels={{
-                  trade: user.tradeName,
+                  trades: (() => {
+                    const ids = user.tradeIds?.length
+                      ? user.tradeIds
+                      : user.tradeId != null
+                        ? [String(user.tradeId)]
+                        : [];
+                    const names = user.tradeNames?.length
+                      ? user.tradeNames
+                      : user.tradeName
+                        ? user.tradeName.split(",").map((n) => n.trim())
+                        : [];
+                    const map: Record<string, string> = {};
+                    ids.forEach((id, i) => {
+                      map[String(id)] = names[i] ?? String(id);
+                    });
+                    return map;
+                  })(),
                   cis: user.cisName,
                 }}
                 contractorSelectedLabel={user.contractorName}
@@ -342,6 +378,53 @@ export function UserDetailPage() {
             location={profileHeroLocation}
             highlights={profileHeroHighlights}
           />
+
+          {cfg.isOperative && (user.certifications?.length ?? 0) > 0 ? (
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="font-display text-sm font-semibold">Certifications</h3>
+              <ul className="mt-3 divide-y divide-border">
+                {user.certifications!.map((cert: NonNullable<ApiUser["certifications"]>[number]) => (
+                  <li
+                    key={cert.id ?? `${cert.certificationTypeId}-${cert.startDate}`}
+                    className="flex flex-col gap-1 py-2 text-sm"
+                  >
+                    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="font-medium">
+                          {cert.certificationTypeName || "Certification"}
+                          {cert.certificationLevelName
+                            ? ` · ${cert.certificationLevelName}`
+                            : ""}
+                        </p>
+                        {cert.notes?.trim() ? (
+                          <p className="text-xs text-muted-foreground">{cert.notes}</p>
+                        ) : null}
+                      </div>
+                      <p className="shrink-0 text-xs text-muted-foreground">
+                        {toDateInputValue(cert.startDate)} → {toDateInputValue(cert.expiryDate)}
+                      </p>
+                    </div>
+                    {(cert.files?.length ?? 0) > 0 ? (
+                      <ul className="flex flex-wrap gap-2">
+                        {cert.files!.map((file) => (
+                          <li key={file.id}>
+                            <a
+                              href={resolveProfileImageUrl(file.filePath)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs text-info hover:underline"
+                            >
+                              {file.fileName}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           {cfg.isCustomer ? (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
@@ -404,6 +487,8 @@ export function UserDetailPage() {
           }}
         />
       ) : null}
+
+      {capReasonModal}
     </div>
   );
 }

@@ -31,6 +31,7 @@ import {
   toProjectPayload,
   type ProjectFormValues,
 } from "@/lib/project-form";
+import { useRateCapReasonGate } from "@/components/rates/useRateCapReasonGate";
 import {
   hierarchyBackLabel,
   hierarchyBackNavigation,
@@ -75,6 +76,7 @@ function ProjectDetail() {
   const canDelete = usePermission({ route: PROJECTS_ROUTE, action: "delete" });
   const [confirmDel, setConfirmDel] = useState(false);
   const isEditing = mode === "edit" && canModify;
+  const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
 
   const backLabel = hierarchyBackLabel(returnContext, "Back to projects");
   const goBack = () => navigate(hierarchyBackNavigation(returnContext, "/projects"));
@@ -125,7 +127,6 @@ function ProjectDetail() {
       }
       navigate({ to: "/projects/$id", params: { id } });
     },
-    onError: (err) => notifyApiError(err, "Failed to update project"),
   });
 
   const deleteMutation = useMutation({
@@ -139,7 +140,11 @@ function ProjectDetail() {
   });
 
   async function save(values: ProjectFormValues) {
-    await updateMutation.mutateAsync(toProjectPayload(values));
+    try {
+      await runWithCapReason(values, (next) => updateMutation.mutateAsync(toProjectPayload(next)));
+    } catch (err) {
+      notifyApiError(err, "Failed to update project");
+    }
   }
 
   if (projectQuery.isLoading) {
@@ -297,6 +302,7 @@ function ProjectDetail() {
           </div>
         </div>
       )}
+      {capReasonModal}
     </div>
   );
 }

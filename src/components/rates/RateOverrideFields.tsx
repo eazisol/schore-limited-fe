@@ -1,7 +1,7 @@
 import { useFieldArray, useFormContext } from "react-hook-form";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SearchableSelectField, TextField, TextareaField } from "@/components/form";
+import { SearchableSelectField, TextField } from "@/components/form";
 import { cn } from "@/lib/utils";
 import { fetchProductOptions } from "@/lib/task-dropdowns";
 import { emptyRateOverride, type RateOverrideFormValue } from "@/lib/rate-overrides";
@@ -17,10 +17,13 @@ export function RateOverrideFields({
   disabled = false,
   title,
   hint,
+  enforceCatalogueCap = false,
 }: {
   disabled?: boolean;
   title?: string;
   hint?: string;
+  /** @deprecated Cap applies on all scopes via parent waterfall; kept for call-site compatibility. */
+  enforceCatalogueCap?: boolean;
 }) {
   const { hasCapability } = usePermissions();
   const canSee = hasCapability(CAPABILITY_CODES.seeRates) || hasCapability(CAPABILITY_CODES.editTaskPrices);
@@ -36,14 +39,14 @@ export function RateOverrideFields({
   }
 
   const locked = disabled || !canEdit;
+  const defaultHint =
+    "Rates within the parent budget save immediately. Above the parent cap needs a reason and Rate approvals.";
 
   return (
     <div className="space-y-2">
       {title ? <h3 className="font-display text-sm font-semibold">{title}</h3> : null}
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : (
-        <p className="text-xs text-muted-foreground">
-          Changes go to Rate approvals. Live rates stay until someone else approves (unless you can override).
-        </p>
+        <p className="text-xs text-muted-foreground">{defaultHint}</p>
       )}
       {fields.length === 0 ? (
         <p className="text-xs text-muted-foreground">No overrides. Standard / parent rates apply.</p>
@@ -104,15 +107,6 @@ export function RateOverrideFields({
           ))}
         </div>
       )}
-      {!locked ? (
-        <TextareaField<RateOverrideForm>
-          name="rateChangeReason"
-          label="Reason for rate change"
-          description="Required when you add, change, or remove an override. Recorded with your name and the date."
-          rows={2}
-          maxLength={500}
-        />
-      ) : null}
       {!locked ? (
         <Button
           type="button"

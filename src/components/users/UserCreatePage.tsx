@@ -18,6 +18,8 @@ import {
   toCreateUserPayload,
   type UserFormValues,
 } from "@/lib/user-form";
+import { uploadPendingCertificationFiles } from "@/lib/upload-certification-files";
+import { useRateCapReasonGate } from "@/components/rates/useRateCapReasonGate";
 
 export function UserCreatePage() {
   const mode = useUserModuleMode();
@@ -25,6 +27,7 @@ export function UserCreatePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const schema = createUserFormSchema(mode);
+  const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(schema),
@@ -32,7 +35,13 @@ export function UserCreatePage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (payload: ReturnType<typeof toCreateUserPayload>) => usersService.create(payload),
+    mutationFn: async (values: UserFormValues) => {
+      const res = await usersService.create(toCreateUserPayload(values, mode));
+      if (mode === "operative" && res.data?.id) {
+        await uploadPendingCertificationFiles(String(res.data.id), values.certifications, res.data);
+      }
+      return res;
+    },
     onSuccess: (res) => {
       toast.success(
         res.message ||
@@ -41,11 +50,14 @@ export function UserCreatePage() {
       queryClient.invalidateQueries({ queryKey: cfg.queryKey });
       navigate({ to: cfg.listPath });
     },
-    onError: (err) => notifyApiError(err, `Failed to create ${cfg.labels.entity}`),
   });
 
   async function submit(values: UserFormValues) {
-    await createMutation.mutateAsync(toCreateUserPayload(values, mode));
+    try {
+      await runWithCapReason(values, (next) => createMutation.mutateAsync(next));
+    } catch (err) {
+      notifyApiError(err, `Failed to create ${cfg.labels.entity}`);
+    }
   }
 
   return (
@@ -83,6 +95,8 @@ export function UserCreatePage() {
           />
         </FormPageCard>
       </Form>
+
+      {capReasonModal}
     </RequirePermission>
   );
 }

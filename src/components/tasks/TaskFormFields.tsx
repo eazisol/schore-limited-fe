@@ -34,12 +34,16 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { HoldDetailsModal, type HoldDetails } from "@/components/tasks/HoldDetailsModal";
 import { getTaskStatusCode, isHoldStatusCode } from "@/lib/task-hold";
+import { jobTypesService } from "@/lib/api/services/job-types";
 import { tasksService } from "@/lib/api/services/tasks";
 
 const ADD_AS_OPTIONS: SearchableSelectOption[] = [
   { value: "tradeGroup", label: "Package" },
   { value: "product", label: "Add-on" },
 ];
+
+/** Form grouping key for template lines that have no operative yet. */
+const UNASSIGNED_OPERATIVE_KEY = "__unassigned";
 
 async function fetchAddAsOptions(search: string): Promise<SearchableSelectOption[]> {
   const q = search.trim().toLowerCase();
@@ -96,8 +100,11 @@ export function TaskFormFields({
   itemSelectedLabels?: Record<string, TaskItemSelectedLabels>;
 }) {
   const { control, setValue, getValues } = useFormContext<TaskFormValues>();
-  const { fields, append, remove } = useFieldArray({ control, name: "items" });
+  const { fields, append, remove, replace } = useFieldArray({ control, name: "items" });
   const addControlsDisabled = disabled || itemsLocked;
+  const jobTypeId = useWatch({ control, name: "jobTypeId" });
+  const startDate = useWatch({ control, name: "startDate" });
+  const templateSeededRef = useRef<string>("");
   const [activeOperativeId, setActiveOperativeId] = useState<string>("");
   const [activeOperativeLabel, setActiveOperativeLabel] = useState<string>("");
   const [operativeLabels, setOperativeLabels] = useState<Record<string, string>>({});
@@ -113,10 +120,73 @@ export function TaskFormFields({
     nextRate: string;
   } | null>(null);
   const [holdOpen, setHoldOpen] = useState(false);
+  /** Pending operative pick for assigning a package / add-on block (unassigned template lines). */
+  const [assignPick, setAssignPick] = useState<Record<string, { id: string; label: string }>>({});
   const previousStatusIdRef = useRef(getValues("statusId") || "");
   const statusBeforeHoldRef = useRef(getValues("statusId") || "");
 
   const items = useWatch({ control, name: "items" }) ?? [];
+
+  useEffect(() => {
+    if (disabled || !jobTypeId || !startDate) return;
+    const key = `${jobTypeId}|${startDate}`;
+    if (templateSeededRef.current === key) return;
+
+    const existing = getValues("items") ?? [];
+    const hasPersisted = existing.some((item) => String(item.id || "").trim());
+    if (hasPersisted) {
+      templateSeededRef.current = key;
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const preview = (await jobTypesService.preview(jobTypeId, startDate)).data;
+        if (cancelled || !preview) return;
+        templateSeededRef.current = key;
+        if (preview.handOverDate) {
+          setValue("handOverDate", preview.handOverDate.slice(0, 10), { shouldDirty: true });
+        }
+        const nextTradeLabels: Record<string, string> = {};
+        const nextProductLabels: Record<string, string> = {};
+        const rows: TaskItemFormValues[] = (preview.items ?? []).map((line) => {
+          const tradeGroupId = line.tradeGroupId ? String(line.tradeGroupId) : "";
+          const productId = line.productId ? String(line.productId) : "";
+          if (tradeGroupId && line.tradeGroupName) {
+            nextTradeLabels[tradeGroupId] = line.tradeGroupName;
+          }
+          if (productId && line.productName) {
+            nextProductLabels[productId] = line.productName;
+          }
+          return {
+            ...emptyTaskItem(),
+            operativeId: "",
+            workDate: line.workDate.slice(0, 10),
+            tradeId: String(line.tradeId),
+            itemKind: line.tradeGroupId ? "tradeGroup" : "product",
+            tradeGroupId,
+            productId,
+            quantity: String(line.quantity || 1),
+            rate: String(line.rate || 0),
+          };
+        });
+        if (Object.keys(nextTradeLabels).length > 0) {
+          setTradeGroupLabels((prev) => ({ ...prev, ...nextTradeLabels }));
+        }
+        if (Object.keys(nextProductLabels).length > 0) {
+          setProductLabels((prev) => ({ ...prev, ...nextProductLabels }));
+        }
+        replace(rows);
+      } catch {
+        // Preview is best-effort; backend still generates on create.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [disabled, getValues, jobTypeId, replace, setValue, startDate]);
 
   useEffect(() => {
     const current = getValues("statusId") || "";
@@ -193,7 +263,7 @@ export function TaskFormFields({
   const grouped = useMemo(() => {
     const map = new Map<string, { name: string; indexes: number[] }>();
     items.forEach((item, index) => {
-      const key = item.operativeId || `__unassigned_${index}`;
+      const key = item.operativeId || UNASSIGNED_OPERATIVE_KEY;
       const name = item.operativeId
         ? operativeLabels[item.operativeId] ||
           (activeOperativeId === item.operativeId && activeOperativeLabel
@@ -330,6 +400,82 @@ export function TaskFormFields({
     }
     ensureOperativeMetaOnly();
     await addForOperative(activeOperativeId);
+  }
+
+  async function assignItemsToOperative(
+    indexes: number[],
+    operativeId: string,
+    operativeLabel: string,
+  ) {
+    if (itemsLocked) {
+      toast.warning("This job is locked. Tick previous-day work before assigning items.");
+      return;
+    }
+    if (!operativeId) {
+      toast.warning("Select an operative first.");
+      return;
+    }
+    if (indexes.length === 0) return;
+
+    setOperativeLabels((prev) => ({
+      ...prev,
+      [operativeId]: operativeLabel || prev[operativeId] || operativeId,
+    }));
+    await ensureOperativeMeta(operativeId, operativeLabel);
+
+    for (const index of indexes) {
+      setValue(`items.${index}.operativeId`, operativeId, { shouldDirty: true });
+    }
+  }
+
+  function renderAssignOperativeControls(pickKey: string, indexes: number[]) {
+    const pick = assignPick[pickKey] ?? { id: "", label: "" };
+    return (
+      <div className="flex min-w-0 flex-wrap items-end gap-2">
+        <div className="w-[180px] shrink-0">
+          <label className="mb-1 block text-xs text-muted-foreground">Operative</label>
+          <SearchableSelect
+            value={pick.id}
+            onValueChange={(value) =>
+              setAssignPick((prev) => ({
+                ...prev,
+                [pickKey]: { id: value, label: prev[pickKey]?.label ?? "" },
+              }))
+            }
+            onSelect={(opt) =>
+              setAssignPick((prev) => ({
+                ...prev,
+                [pickKey]: { id: opt.value, label: opt.label },
+              }))
+            }
+            placeholder="Select operative"
+            searchPlaceholder="Search operatives…"
+            queryKey={["lookups", "operatives", "assign", pickKey]}
+            fetchOptions={fetchOperativeOptions}
+            selectedLabel={pick.label || null}
+            disabled={addControlsDisabled}
+          />
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          className="shrink-0"
+          disabled={!pick.id || addControlsDisabled}
+          onClick={() => {
+            void (async () => {
+              await assignItemsToOperative(indexes, pick.id, pick.label);
+              setAssignPick((prev) => {
+                const next = { ...prev };
+                delete next[pickKey];
+                return next;
+              });
+            })();
+          }}
+        >
+          Assign
+        </Button>
+      </div>
+    );
   }
 
   function renderAddControls(
@@ -471,9 +617,16 @@ export function TaskFormFields({
 
   const operativeCards = useMemo(() => {
     const ids: string[] = [];
+    let hasUnassigned = false;
     for (const [key] of grouped) {
-      if (!key.startsWith("__unassigned_")) ids.push(key);
+      if (key === UNASSIGNED_OPERATIVE_KEY) {
+        hasUnassigned = true;
+        continue;
+      }
+      ids.push(key);
     }
+    // Template-seeded lines (no operative yet) still need a visible card.
+    if (hasUnassigned) ids.unshift(UNASSIGNED_OPERATIVE_KEY);
     return ids;
   }, [grouped]);
 
@@ -584,11 +737,14 @@ export function TaskFormFields({
             />
             <TextField<TaskFormValues>
               name="handOverDate"
-              label="Hand over date"
+              label="Hand over date (auto from job type)"
               type="date"
               className="min-w-0"
               inputClassName="h-10 min-w-0"
+              disabled
             />
+            {/* Temporarily hidden: Budget — re-enable when needed */}
+            {false && (
             <TextField<TaskFormValues>
               name="budget"
               label="Budget"
@@ -600,6 +756,7 @@ export function TaskFormFields({
                 <span className={cn(className, "text-sm font-semibold leading-none")}>£</span>
               )}
             />
+            )}
             <CreatableSearchableSelectField<TaskFormValues>
               name="statusId"
               label="Status"
@@ -635,8 +792,7 @@ export function TaskFormFields({
           />
         </div>
 
-        {/* Temporarily hidden: Active operative / package items section */}
-        {false && (
+        {/* Job items — auto-filled from JobType template; SM can edit */}
         <div className={embedded ? "min-w-0 space-y-3 border-t border-border pt-6" : "min-w-0 space-y-3"}>
           <div className="min-w-0 space-y-3">
             {itemsLocked ? (
@@ -654,18 +810,21 @@ export function TaskFormFields({
 
           {operativeCards.length === 0 ? (
             <div className="card-elevated p-6 text-sm text-muted-foreground">
-              No job items yet. Choose an operative, then add a package or add-on from the top bar.
+              No job items yet. Select a job type with a template, or choose an operative and add a
+              package / add-on.
             </div>
           ) : null}
 
           {operativeCards.map((operativeId) => {
+            const isUnassigned = operativeId === UNASSIGNED_OPERATIVE_KEY;
             const groupEntry = grouped.find(([key]) => key === operativeId);
             const indexes = groupEntry?.[1].indexes ?? [];
-            const name =
-              operativeLabels[operativeId] ||
-              (operativeId === activeOperativeId
-                ? activeOperativeLabel
-                : `Operative #${operativeId}`);
+            const name = isUnassigned
+              ? "Unassigned"
+              : operativeLabels[operativeId] ||
+                (operativeId === activeOperativeId
+                  ? activeOperativeLabel
+                  : `Operative #${operativeId}`);
             const { packages, addOns } = packageGroupsForOperative(indexes);
             const operativeTotal = indexes.reduce((sum, index) => {
               const qty = Number(items[index]?.quantity || 0);
@@ -681,7 +840,13 @@ export function TaskFormFields({
               >
                 <div className="min-w-0 space-y-3">
                   <h4 className="font-medium">{name}</h4>
-                  {renderAddControls(operativeId)}
+                  {isUnassigned ? (
+                    <p className="text-xs text-muted-foreground">
+                      Assign an operative on each package or add-on.
+                    </p>
+                  ) : (
+                    renderAddControls(operativeId)
+                  )}
                 </div>
 
                 {indexes.length === 0 ? (
@@ -692,12 +857,17 @@ export function TaskFormFields({
 
                 {packages.map(([packageId, pkg]) => (
                   <div key={`${operativeId}-pkg-${packageId}`} className="min-w-0 space-y-2">
-                    <div className="flex min-w-0 items-center">
-                      <span className="inline-flex max-w-full items-center rounded-full border border-border bg-secondary px-2.5 py-0.5 text-[11px] font-medium leading-none text-secondary-foreground">
-                        <AppTooltip content={`Package: ${pkg.name}`} asChild align="start">
-                          <span className="truncate">Package: {pkg.name}</span>
-                        </AppTooltip>
-                      </span>
+                    <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
+                      <div className="flex min-w-0 items-center">
+                        <span className="inline-flex max-w-full items-center rounded-full border border-border bg-secondary px-2.5 py-0.5 text-[11px] font-medium leading-none text-secondary-foreground">
+                          <AppTooltip content={`Package: ${pkg.name}`} asChild align="start">
+                            <span className="truncate">Package: {pkg.name}</span>
+                          </AppTooltip>
+                        </span>
+                      </div>
+                      {isUnassigned
+                        ? renderAssignOperativeControls(`pkg-${packageId}`, pkg.indexes)
+                        : null}
                     </div>
                     <ProductLinesTable
                       indexes={pkg.indexes}
@@ -716,26 +886,62 @@ export function TaskFormFields({
                 ))}
 
                 {addOns.length > 0 ? (
-                  <div className="min-w-0 space-y-2">
-                    <div className="flex min-w-0 items-center">
-                      <span className="inline-flex max-w-full items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[11px] font-medium leading-none text-muted-foreground">
-                        Add-ons
-                      </span>
+                  isUnassigned ? (
+                    addOns.map((index) => {
+                      const productId = items[index]?.productId ?? "";
+                      const productName =
+                        (productId && productLabels[productId]) ||
+                        (productId ? `Product #${productId}` : "Add-on");
+                      return (
+                        <div key={`${operativeId}-addon-${index}`} className="min-w-0 space-y-2">
+                          <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
+                            <div className="flex min-w-0 items-center">
+                              <span className="inline-flex max-w-full items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[11px] font-medium leading-none text-muted-foreground">
+                                <AppTooltip content={`Add-on: ${productName}`} asChild align="start">
+                                  <span className="truncate">Add-on: {productName}</span>
+                                </AppTooltip>
+                              </span>
+                            </div>
+                            {renderAssignOperativeControls(`addon-${index}`, [index])}
+                          </div>
+                          <ProductLinesTable
+                            indexes={[index]}
+                            fields={fields}
+                            items={items}
+                            productLabels={productLabels}
+                            onRemove={remove}
+                            onRateCommit={(lineIndex, previousRate, nextRate) => {
+                              if (previousRate === nextRate) return;
+                              setValue(`items.${lineIndex}.rate`, nextRate);
+                              setRatePrompt({ index: lineIndex, previousRate, nextRate });
+                            }}
+                            getValues={getValues}
+                          />
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="min-w-0 space-y-2">
+                      <div className="flex min-w-0 items-center">
+                        <span className="inline-flex max-w-full items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[11px] font-medium leading-none text-muted-foreground">
+                          Add-ons
+                        </span>
+                      </div>
+                      <ProductLinesTable
+                        indexes={addOns}
+                        fields={fields}
+                        items={items}
+                        productLabels={productLabels}
+                        onRemove={remove}
+                        onRateCommit={(index, previousRate, nextRate) => {
+                          if (previousRate === nextRate) return;
+                          setValue(`items.${index}.rate`, nextRate);
+                          setRatePrompt({ index, previousRate, nextRate });
+                        }}
+                        getValues={getValues}
+                      />
                     </div>
-                    <ProductLinesTable
-                      indexes={addOns}
-                      fields={fields}
-                      items={items}
-                      productLabels={productLabels}
-                      onRemove={remove}
-                      onRateCommit={(index, previousRate, nextRate) => {
-                        if (previousRate === nextRate) return;
-                        setValue(`items.${index}.rate`, nextRate);
-                        setRatePrompt({ index, previousRate, nextRate });
-                      }}
-                      getValues={getValues}
-                    />
-                  </div>
+                  )
                 ) : null}
 
                 {indexes.length > 0 ? (
@@ -762,7 +968,6 @@ export function TaskFormFields({
             );
           })}
         </div>
-        )}
 
         {ratePrompt ? (
           <Modal

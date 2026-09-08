@@ -76,7 +76,7 @@ export function SiteFormFields({
       <RateOverrideFields
         disabled={disabled}
         title="Rate overrides"
-        hint="Leave empty to use the client’s rates, or the standard catalogue if the client has none. Changes go to Rate approvals until approved."
+        hint="Leave empty to use the client’s rates, or the catalogue if none. Within parent budget saves immediately; above needs reason + Rate approvals."
       />
     </div>
   );

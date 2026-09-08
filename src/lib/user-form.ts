@@ -14,6 +14,13 @@ import {
   toRateOverridePayload,
   type RateOverrideFormValue,
 } from "@/lib/rate-overrides";
+import {
+  certificationRowSchema,
+  certificationsToFormValues,
+  refineCertifications,
+  toCertificationPayload,
+  type CertificationFormValue,
+} from "@/lib/operative-certifications";
 
 function parseDobInput(value: string): Date | null {
   const v = value.trim();
@@ -87,6 +94,7 @@ export type UserFormValues = {
   roleId: string;
   isActive: boolean;
   tradeId: string;
+  tradeIds: string[];
   cisId: string;
   dailyRate: string;
   isDailyRate: boolean;
@@ -106,6 +114,11 @@ export type UserFormValues = {
   menuPermissionOverrides: UserMenuPermissionOverrideFormValue[];
   rateOverrides: RateOverrideFormValue[];
   rateChangeReason: string;
+  accountHolderName: string;
+  sortCode: string;
+  accountNumber: string;
+  bankName: string;
+  certifications: CertificationFormValue[];
 };
 
 export type UserAssignmentFormValue = {
@@ -139,6 +152,7 @@ export const emptyUserFormValues: UserFormValues = {
   roleId: "",
   isActive: true,
   tradeId: "",
+  tradeIds: [],
   cisId: "",
   dailyRate: "",
   isDailyRate: false,
@@ -158,6 +172,11 @@ export const emptyUserFormValues: UserFormValues = {
   menuPermissionOverrides: [],
   rateOverrides: [],
   rateChangeReason: "",
+  accountHolderName: "",
+  sortCode: "",
+  accountNumber: "",
+  bankName: "",
+  certifications: [],
 };
 
 export function userToFormValues(user: ApiUser): UserFormValues {
@@ -172,6 +191,11 @@ export function userToFormValues(user: ApiUser): UserFormValues {
     isActive: user.isActive ?? true,
     password: "",
     tradeId: user.tradeId != null ? String(user.tradeId) : "",
+    tradeIds: (() => {
+      const ids = (user.tradeIds ?? []).map(String).filter(Boolean);
+      if (ids.length > 0) return ids;
+      return user.tradeId != null ? [String(user.tradeId)] : [];
+    })(),
     cisId: user.cisId != null ? String(user.cisId) : "",
     dailyRate:
       user.dailyRate != null && !Number.isNaN(Number(user.dailyRate))
@@ -209,12 +233,17 @@ export function userToFormValues(user: ApiUser): UserFormValues {
     })),
     rateOverrides: rateOverridesToFormValues(user.rateOverrides),
     rateChangeReason: "",
+    accountHolderName: user.accountHolderName ?? "",
+    sortCode: user.sortCode ?? "",
+    accountNumber: user.accountNumber ?? "",
+    bankName: user.bankName ?? "",
+    certifications: certificationsToFormValues(user.certifications),
   };
 }
 
 function operativeExtrasRefine(values: UserFormValues, ctx: z.RefinementCtx) {
-  if (!values.tradeId.trim()) {
-    ctx.addIssue({ code: "custom", path: ["tradeId"], message: "Trade is required" });
+  if (!values.tradeIds.some((id) => id.trim().length > 0)) {
+    ctx.addIssue({ code: "custom", path: ["tradeIds"], message: "Select at least one trade" });
   }
   if (!values.cisId.trim()) {
     ctx.addIssue({ code: "custom", path: ["cisId"], message: "CIS is required" });
@@ -291,6 +320,7 @@ const sharedFormFields = {
   dateOfBirth: dateOfBirthField,
   isActive: z.boolean(),
   tradeId: z.string(),
+  tradeIds: z.array(z.string()),
   cisId: z.string(),
   dailyRate: z.string(),
   isDailyRate: z.boolean(),
@@ -331,6 +361,11 @@ const sharedFormFields = {
   ),
   rateOverrides: z.array(rateOverrideRowSchema),
   rateChangeReason: z.string(),
+  accountHolderName: z.string(),
+  sortCode: z.string(),
+  accountNumber: z.string(),
+  bankName: z.string(),
+  certifications: z.array(certificationRowSchema),
 };
 
 function applyModeRefinements<T extends z.ZodTypeAny>(mode: UserModuleMode, schema: T) {
@@ -339,6 +374,8 @@ function applyModeRefinements<T extends z.ZodTypeAny>(mode: UserModuleMode, sche
       operativeExtrasRefine(values, ctx);
       employmentDatesRefine(values, ctx);
       refineRateOverrides(values.rateOverrides, ctx);
+      refineCertifications(values.certifications, ctx);
+      refineBankDetails(values, ctx);
     });
   }
 
@@ -388,6 +425,44 @@ export function editUserFormSchema(mode: UserModuleMode) {
   });
 
   return applyModeRefinements(mode, schema);
+}
+
+function refineBankDetails(values: UserFormValues, ctx: z.RefinementCtx) {
+  const holder = values.accountHolderName.trim();
+  const sort = values.sortCode.trim();
+  const account = values.accountNumber.trim();
+  const bank = values.bankName.trim();
+  const anyFilled = Boolean(holder || sort || account || bank);
+  if (!anyFilled) return;
+
+  if (holder.length > 120) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["accountHolderName"],
+      message: "Account holder name must be 120 characters or fewer",
+    });
+  }
+  if (sort && !/^\d{2}-?\d{2}-?\d{2}$/.test(sort)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["sortCode"],
+      message: "Enter a valid UK sort code (e.g. 12-34-56)",
+    });
+  }
+  if (account && !/^\d{6,10}$/.test(account)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["accountNumber"],
+      message: "Enter a valid account number (6–10 digits)",
+    });
+  }
+  if (bank.length > 100) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["bankName"],
+      message: "Bank name must be 100 characters or fewer",
+    });
+  }
 }
 
 function parseDailyRate(value: string): number {
@@ -442,10 +517,17 @@ export function toCreateUserPayload(
   };
 
   if (isOperative) {
-    payload.tradeId = values.tradeId;
+    const tradeIds = values.tradeIds.map((id) => id.trim()).filter((id) => id.length > 0);
+    payload.tradeIds = tradeIds;
+    payload.tradeId = tradeIds[0] ?? null;
     payload.cisId = values.cisId;
     payload.dailyRate = parseDailyRate(values.dailyRate);
     payload.isDailyRate = values.isDailyRate;
+    payload.accountHolderName = values.accountHolderName.trim() || null;
+    payload.sortCode = values.sortCode.trim() || null;
+    payload.accountNumber = values.accountNumber.trim() || null;
+    payload.bankName = values.bankName.trim() || null;
+    payload.certifications = toCertificationPayload(values.certifications);
   }
 
   if (isContactModule) {
@@ -498,10 +580,17 @@ export function toUpdateUserPayload(
   };
 
   if (isOperative) {
-    payload.tradeId = values.tradeId;
+    const tradeIds = values.tradeIds.map((id) => id.trim()).filter((id) => id.length > 0);
+    payload.tradeIds = tradeIds;
+    payload.tradeId = tradeIds[0] ?? null;
     payload.cisId = values.cisId;
     payload.dailyRate = parseDailyRate(values.dailyRate);
     payload.isDailyRate = values.isDailyRate;
+    payload.accountHolderName = values.accountHolderName.trim() || null;
+    payload.sortCode = values.sortCode.trim() || null;
+    payload.accountNumber = values.accountNumber.trim() || null;
+    payload.bankName = values.bankName.trim() || null;
+    payload.certifications = toCertificationPayload(values.certifications);
   }
 
   if (isContactModule) {

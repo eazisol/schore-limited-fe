@@ -29,6 +29,7 @@ import {
   toProjectPayload,
   type ProjectFormValues,
 } from "@/lib/project-form";
+import { useRateCapReasonGate } from "@/components/rates/useRateCapReasonGate";
 
 export const Route = createFileRoute("/projects/")({
   head: () => ({ meta: [{ title: "Projects | Schore" }] }),
@@ -349,6 +350,7 @@ function ProjectCreateModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectFormSchema),
     mode: "onBlur",
@@ -362,13 +364,19 @@ function ProjectCreateModal({
       toast.success(res.message || "Project created");
       onSaved();
     },
-    onError: (err) => notifyApiError(err, "Failed to save project"),
   });
 
   return (
+    <>
     <Form
       form={form}
-      onSubmit={(values) => mutation.mutateAsync(toProjectPayload(values))}
+      onSubmit={async (values) => {
+        try {
+          await runWithCapReason(values, (next) => mutation.mutateAsync(toProjectPayload(next)));
+        } catch (err) {
+          notifyApiError(err, "Failed to save project");
+        }
+      }}
       className="contents"
     >
       <Modal
@@ -392,5 +400,7 @@ function ProjectCreateModal({
         </div>
       </Modal>
     </Form>
+    {capReasonModal}
+    </>
   );
 }

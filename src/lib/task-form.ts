@@ -113,7 +113,7 @@ export function formatPriceDisplay(budget: number | null | undefined): string {
 const taskItemSchema = z
   .object({
     id: z.string(),
-    operativeId: z.string().min(1, "Operative is required"),
+    operativeId: z.string(),
     workDate: z.string().min(1, "Work date is required"),
     tradeId: z.string().min(1, "Trade is required"),
     itemKind: z.enum(["tradeGroup", "product"]),
@@ -219,7 +219,7 @@ export function taskToFormValues(task: ApiTask): TaskFormValues {
     holdNotes: "",
     items: (task.items ?? []).map((item) => ({
       id: String(item.id),
-      operativeId: String(item.operativeId),
+      operativeId: item.operativeId != null ? String(item.operativeId) : "",
       workDate: toDateInputValue(item.workDate),
       tradeId: String(item.tradeId),
       itemKind:
@@ -258,7 +258,7 @@ export function toTaskPayload(values: TaskFormValues): TaskPayload {
     holdNotes: values.holdNotes.trim() || null,
     items: values.items.map((item) => ({
       id: item.id.trim() ? Number(item.id) : null,
-      operativeId: Number(item.operativeId),
+      operativeId: item.operativeId.trim() ? Number(item.operativeId) : null,
       workDate: item.workDate,
       tradeId: Number(item.tradeId),
       tradeGroupId: item.tradeGroupId.trim() ? Number(item.tradeGroupId) : null,

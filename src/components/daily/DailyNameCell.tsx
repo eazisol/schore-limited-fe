@@ -77,6 +77,7 @@ export function DailyNameCell({ row, date, disabled = false }: DailyNameCellProp
               taskId={row.taskId}
               date={date}
               disabled={cellDisabled}
+              canSeeRates={canSeeRates}
             />
           </li>
         ))}
@@ -90,11 +91,13 @@ function OperativeAvatarPopover({
   taskId,
   date,
   disabled,
+  canSeeRates,
 }: {
   operative: ApiDailyNameOperative;
   taskId: string;
   date: string;
   disabled: boolean;
+  canSeeRates: boolean;
 }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);

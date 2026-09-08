@@ -5,7 +5,7 @@ import type { PagedResult } from "./users";
 export interface ApiTaskItem {
   id: string;
   taskId: string;
-  operativeId: string;
+  operativeId: string | null;
   operativeName: string;
   workDate: string;
   tradeId: string;
@@ -31,7 +31,7 @@ export interface ApiTaskItem {
 }
 
 export interface ApiTaskOperativeGroup {
-  operativeId: string;
+  operativeId: string | null;
   operativeName: string;
   items: ApiTaskItem[];
 }
@@ -68,7 +68,7 @@ export interface ApiTask {
 
 export type TaskItemPayload = {
   id?: string | null;
-  operativeId: string;
+  operativeId: string | null;
   workDate: string;
   tradeId: string;
   tradeGroupId?: string | null;
