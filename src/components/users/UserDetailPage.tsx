@@ -18,6 +18,7 @@ import {
   CustomerCostBudgetCard,
   CustomerRunningTasksCard,
 } from "@/components/users/CustomerDetailExtras";
+import { OperativeDetailExtras } from "@/components/users/OperativeDetailExtras";
 import { EntityHierarchyCard } from "@/components/hierarchy/EntityHierarchyCard";
 import { ClientEditModal } from "@/components/hierarchy/ClientEditModal";
 import { displayUserName } from "@/components/users/UsersListPage";
@@ -26,7 +27,6 @@ import {
   resolveProfileImageUrl,
   usersService,
   toDateInputValue,
-  type ApiUser,
 } from "@/lib/api/services/users";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
@@ -379,52 +379,7 @@ export function UserDetailPage() {
             highlights={profileHeroHighlights}
           />
 
-          {cfg.isOperative && (user.certifications?.length ?? 0) > 0 ? (
-            <div className="rounded-lg border bg-card p-4">
-              <h3 className="font-display text-sm font-semibold">Certifications</h3>
-              <ul className="mt-3 divide-y divide-border">
-                {user.certifications!.map((cert: NonNullable<ApiUser["certifications"]>[number]) => (
-                  <li
-                    key={cert.id ?? `${cert.certificationTypeId}-${cert.startDate}`}
-                    className="flex flex-col gap-1 py-2 text-sm"
-                  >
-                    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="font-medium">
-                          {cert.certificationTypeName || "Certification"}
-                          {cert.certificationLevelName
-                            ? ` · ${cert.certificationLevelName}`
-                            : ""}
-                        </p>
-                        {cert.notes?.trim() ? (
-                          <p className="text-xs text-muted-foreground">{cert.notes}</p>
-                        ) : null}
-                      </div>
-                      <p className="shrink-0 text-xs text-muted-foreground">
-                        {toDateInputValue(cert.startDate)} → {toDateInputValue(cert.expiryDate)}
-                      </p>
-                    </div>
-                    {(cert.files?.length ?? 0) > 0 ? (
-                      <ul className="flex flex-wrap gap-2">
-                        {cert.files!.map((file) => (
-                          <li key={file.id}>
-                            <a
-                              href={resolveProfileImageUrl(file.filePath)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-info hover:underline"
-                            >
-                              {file.fileName}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+          {cfg.isOperative ? <OperativeDetailExtras user={user} /> : null}
 
           {cfg.isCustomer ? (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">

@@ -8,7 +8,7 @@ export interface ApiTaskItem {
   operativeId: string | null;
   operativeName: string;
   workDate: string;
-  tradeId: string;
+  tradeId: string | null;
   tradeName: string;
   tradeGroupId: string | null;
   tradeGroupName: string | null;
@@ -70,7 +70,7 @@ export type TaskItemPayload = {
   id?: string | null;
   operativeId: string | null;
   workDate: string;
-  tradeId: string;
+  tradeId: string | null;
   tradeGroupId?: string | null;
   productId?: string | null;
   quantity: number;
@@ -108,6 +108,7 @@ export interface TaskListParams {
   statusId?: string;
   jobTypeId?: string;
   customerId?: string;
+  operativeId?: string;
   sortBy?: string;
   sortDir?: "asc" | "desc";
 }
@@ -121,6 +122,7 @@ function listQuery(params: TaskListParams) {
     ...(params.statusId != null ? { StatusId: params.statusId } : {}),
     ...(params.jobTypeId != null ? { JobTypeId: params.jobTypeId } : {}),
     ...(params.customerId != null ? { CustomerId: params.customerId } : {}),
+    ...(params.operativeId != null ? { OperativeId: params.operativeId } : {}),
     ...(params.sortBy ? { SortBy: params.sortBy } : {}),
     ...(params.sortDir ? { SortDir: params.sortDir } : {}),
   };

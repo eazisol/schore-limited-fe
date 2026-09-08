@@ -87,7 +87,7 @@ export function SearchableMultiSelect({
   }
 
   return (
-    <div className={className}>
+    <div className={cn("min-w-0 w-full max-w-full", className)}>
       <Popover
         open={open}
         onOpenChange={(next) => {
@@ -105,7 +105,7 @@ export function SearchableMultiSelect({
             disabled={disabled}
             className={cn(
               searchableSelectTriggerClassName,
-              "min-h-9 h-auto",
+              "min-h-9 h-auto min-w-0 w-full",
               selected.length === 0 && "text-muted-foreground",
               invalid && "border-destructive focus-visible:ring-destructive",
               triggerClassName,
@@ -114,7 +114,9 @@ export function SearchableMultiSelect({
             <span className="min-w-0 flex-1 truncate text-left">
               {selected.length === 0
                 ? placeholder
-                : selected.map(resolveLabel).join(", ")}
+                : selected.length === 1
+                  ? resolveLabel(selected[0])
+                  : `${selected.length} selected`}
             </span>
             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </button>
@@ -164,17 +166,17 @@ export function SearchableMultiSelect({
       </Popover>
 
       {selected.length > 0 ? (
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-2 flex max-w-full flex-wrap gap-1.5 overflow-hidden">
           {selected.map((optionValue) => (
             <span
               key={optionValue}
-              className="inline-flex items-center gap-1 rounded-md border bg-secondary px-2 py-0.5 text-xs"
+              className="inline-flex max-w-full items-center gap-1 rounded-md border bg-secondary px-2 py-0.5 text-xs"
             >
-              {resolveLabel(optionValue)}
+              <span className="min-w-0 truncate">{resolveLabel(optionValue)}</span>
               {!disabled ? (
                 <button
                   type="button"
-                  className="rounded p-0.5 hover:bg-background"
+                  className="shrink-0 rounded p-0.5 hover:bg-background"
                   aria-label={`Remove ${resolveLabel(optionValue)}`}
                   onClick={() => remove(optionValue)}
                 >

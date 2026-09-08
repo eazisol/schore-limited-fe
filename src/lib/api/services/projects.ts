@@ -31,6 +31,7 @@ export type ProjectPayload = {
     productId: string;
     rate: number;
     effectiveFrom: string;
+    reason?: string | null;
   }[];
   rateChangeReason?: string | null;
   isActive: boolean;

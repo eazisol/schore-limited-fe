@@ -35,7 +35,7 @@ function dateTooltipLabel(value: string): string {
 
 export function TextField<T extends FieldValues>({
   name, label, description, required, leftIcon: Icon, rightSlot,
-  className, inputClassName, disabled, type, transformValue, ...rest
+  className, inputClassName, disabled, type, transformValue, onBlur, onChange, ...rest
 }: TextFieldProps<T>) {
   const { control, formState } = useFormContext<T>();
   const submitting = formState.isSubmitting;
@@ -63,13 +63,17 @@ export function TextField<T extends FieldValues>({
                   {...rest}
                   type={type}
                   name={field.name}
-                  onBlur={field.onBlur}
+                  onBlur={(event) => {
+                    field.onBlur();
+                    onBlur?.(event);
+                  }}
                   onChange={(event) => {
                     if (transformValue && type !== "number") {
                       field.onChange(transformValue(event.target.value));
-                      return;
+                    } else {
+                      field.onChange(event);
                     }
-                    field.onChange(event);
+                    onChange?.(event);
                   }}
                   value={field.value ?? ""}
                   ref={(el) => {

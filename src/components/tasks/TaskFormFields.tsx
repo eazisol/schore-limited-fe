@@ -124,8 +124,44 @@ export function TaskFormFields({
   const [assignPick, setAssignPick] = useState<Record<string, { id: string; label: string }>>({});
   const previousStatusIdRef = useRef(getValues("statusId") || "");
   const statusBeforeHoldRef = useRef(getValues("statusId") || "");
+  const defaultedPendingStatusRef = useRef(false);
 
   const items = useWatch({ control, name: "items" }) ?? [];
+
+  useEffect(() => {
+    if (defaultedPendingStatusRef.current) return;
+    const current = getValues("statusId")?.trim() ?? "";
+    if (current) {
+      defaultedPendingStatusRef.current = true;
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const options = await fetchTaskStatusOptions("");
+        if (cancelled) return;
+        const pending =
+          options.find((option) => option.code?.toUpperCase() === "PENDING") ??
+          options.find((option) => option.label.trim().toLowerCase() === "pending");
+        if (!pending?.value) return;
+        if (getValues("statusId")?.trim()) {
+          defaultedPendingStatusRef.current = true;
+          return;
+        }
+        setValue("statusId", pending.value, { shouldDirty: false });
+        previousStatusIdRef.current = pending.value;
+        statusBeforeHoldRef.current = pending.value;
+        defaultedPendingStatusRef.current = true;
+      } catch {
+        // Status default is best-effort; user can still pick manually.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getValues, setValue]);
 
   useEffect(() => {
     if (disabled || !jobTypeId || !startDate) return;

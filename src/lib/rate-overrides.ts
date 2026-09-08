@@ -6,12 +6,15 @@ export type RateOverrideFormValue = {
   productLabel: string;
   rate: string;
   effectiveFrom: string;
+  /** Required when this row's rate exceeds the parent/catalogue cap. */
+  reason: string;
 };
 
 export type RateOverridePayload = {
   productId: string;
   rate: number;
   effectiveFrom: string;
+  reason?: string | null;
 };
 
 export type ApiRateOverride = {
@@ -35,6 +38,7 @@ export function emptyRateOverride(): RateOverrideFormValue {
     productLabel: "",
     rate: "",
     effectiveFrom: todayInputDate(),
+    reason: "",
   };
 }
 
@@ -43,6 +47,7 @@ export const rateOverrideRowSchema = z.object({
   productLabel: z.string(),
   rate: z.string(),
   effectiveFrom: z.string(),
+  reason: z.string(),
 });
 
 export function refineRateOverrides(
@@ -86,6 +91,7 @@ export function toRateOverridePayload(rows: RateOverrideFormValue[]): RateOverri
       productId: row.productId,
       rate: Number(row.rate),
       effectiveFrom: row.effectiveFrom.trim() || todayInputDate(),
+      reason: row.reason.trim() || null,
     }));
 }
 
@@ -100,6 +106,7 @@ export function rateOverridesToFormValues(
         ? String(row.rate)
         : "",
     effectiveFrom: String(row.effectiveFrom ?? "").slice(0, 10) || todayInputDate(),
+    reason: "",
   }));
 }
 
@@ -135,4 +142,16 @@ export async function hasRatesExceedingCatalogueCap(
     }),
   );
   return results.some(Boolean);
+}
+
+/** Catalogue sale price used as the parent budget when no higher waterfall rate applies. */
+export async function getCatalogueCap(productId: string): Promise<number | null> {
+  if (!productId.trim()) return null;
+  try {
+    const res = await productsService.get(productId);
+    const cap = Number(res.data?.salePrice ?? 0);
+    return Number.isFinite(cap) ? cap : null;
+  } catch {
+    return null;
+  }
 }

@@ -150,6 +150,7 @@ export interface CreateUserPayload {
     productId: string;
     rate: number;
     effectiveFrom: string;
+    reason?: string | null;
   }[];
   rateChangeReason?: string | null;
   accountHolderName?: string | null;
@@ -205,6 +206,7 @@ export interface UpdateUserPayload {
     productId: string;
     rate: number;
     effectiveFrom: string;
+    reason?: string | null;
   }[];
   rateChangeReason?: string | null;
   accountHolderName?: string | null;

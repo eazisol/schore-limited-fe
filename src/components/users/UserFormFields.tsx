@@ -234,7 +234,7 @@ export function UserFormFields({
       {isCustomer && canSeeRates ? (
         <Section
           title="Rate overrides"
-          hint="Leave empty to use standard catalogue rates. Within parent budget saves immediately; above needs reason + Rate approvals."
+          hint="Leave empty to use standard catalogue rates. Within parent budget saves immediately; above needs a per-item reason + Rate approvals."
           embedded={embedded}
           separated={embedded}
         >
@@ -279,7 +279,9 @@ export function UserFormFields({
           embedded={embedded}
           separated={embedded}
         >
-          <UserCapabilityFields disabled={disabled} resetKey={capabilityResetKey} />
+          <div className="min-w-0 max-w-full overflow-hidden">
+            <UserCapabilityFields disabled={disabled} resetKey={capabilityResetKey} />
+          </div>
         </Section>
       ) : null}
 
@@ -376,7 +378,7 @@ export function UserFormFields({
       {isOperative && canSeeRates ? (
         <Section
           title="Rate overrides"
-          hint="Agreed item rates for this operative. Within parent budget saves immediately; above needs reason + Rate approvals."
+          hint="Agreed item rates for this operative. Within parent budget saves immediately; above needs a per-item reason + Rate approvals."
           embedded={embedded}
           separated={embedded}
         >

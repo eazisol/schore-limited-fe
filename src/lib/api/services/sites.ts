@@ -37,6 +37,7 @@ export type SitePayload = {
     productId: string;
     rate: number;
     effectiveFrom: string;
+    reason?: string | null;
   }[];
   rateChangeReason?: string | null;
 };

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertCircle, ArrowLeft, ChevronRight, Loader2, Save } from "lucide-react";
+import { AlertCircle, ArrowLeft, ChevronRight, Info, Loader2, Save } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { AppTooltip } from "@/components/AppTooltip";
 import { Button } from "@/components/ui/button";
@@ -300,7 +300,7 @@ function PermissionsPage() {
   const showTree = roleId != null && draft.length > 0 && !loadingTree && !loadError;
 
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="max-w-6xl space-y-4">
       <PageHeader
         title="Permissions"
         leading={
@@ -320,7 +320,7 @@ function PermissionsPage() {
 
       <div className="card-elevated px-4 py-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="w-full sm:w-64">
+          <div className="w-fit max-w-full">
             {rolesQuery.isLoading ? (
               <div className="flex h-9 items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading roles…
@@ -340,7 +340,11 @@ function PermissionsPage() {
                 onValueChange={(v) => setRoleId(v)}
                 disabled={saving}
               >
-                <SelectTrigger id="permissions-role" className="bg-background" aria-label="Role">
+                <SelectTrigger
+                  id="permissions-role"
+                  className="w-fit max-w-[16rem] bg-background [&>span]:flex-none"
+                  aria-label="Role"
+                >
                   <SelectValue placeholder="Select a role…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -388,127 +392,142 @@ function PermissionsPage() {
         </div>
       </div>
 
-      {roleId == null ? (
-        <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
-          Select a role to manage its permissions.
-        </div>
-      ) : loadingTree ? (
-        <div className="card-elevated grid place-items-center p-8 text-sm text-muted-foreground">
-          <Loader2 className="mb-2 h-5 w-5 animate-spin" />
-          Loading permissions…
-        </div>
-      ) : loadError ? (
-        <div className="card-elevated p-8 text-center">
-          <AlertCircle className="mx-auto mb-2 h-5 w-5 text-destructive" />
-          <div className="text-sm font-medium">Unable to load permissions</div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-4"
-            onClick={() => {
-              void menusQuery.refetch();
-              void permsQuery.refetch();
-            }}
-          >
-            Retry
-          </Button>
-        </div>
-      ) : !showTree ? (
-        <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
-          No permissions found for this role.
-        </div>
-      ) : (
-        <div className="card-elevated overflow-x-auto">
-          <div className={cn(permissionGridClass, "gap-0 border-b bg-muted/50 text-xs text-muted-foreground")}>
-            <div className="px-4 py-2 font-medium">Menu</div>
-            <div className="px-3 py-2 text-center font-medium">Read</div>
-            <div className="px-3 py-2 text-center font-medium">Modify</div>
-            <div className="px-3 py-2 text-center font-medium">Delete</div>
-          </div>
-          <TreeSortableProvider
-            disabled={!canReorderMenus}
-            onReorder={reorderMenus}
-            renderOverlay={(activeId) => {
-              const activeNode = findPermissionNode(draft, activeId);
-              return (
-                <div className={cn(permissionGridClass, "items-center rounded-md border bg-card px-4 py-2 shadow-lg")}>
-                  <div className="truncate text-xs font-medium text-foreground">
-                    {activeNode?.menuName ?? `Menu #${activeId}`}
-                  </div>
-                </div>
-              );
-            }}
-          >
-            <TreeSortableLevel items={draft.map((node) => node.menuId)}>
-              <div className="divide-y">
-                {draft.map((node) => (
-                  <PermissionTreeRow
-                    key={node.menuId}
-                    node={node}
-                    depth={0}
-                    tree={draft}
-                    expandedIds={expandedIds}
-                    onToggleExpanded={toggleExpanded}
-                    onToggleFlag={toggle}
-                    canModify={canModify}
-                    canReorder={canReorderMenus}
-                    saving={saving}
-                  />
-                ))}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div className="min-w-0 flex-1">
+          {roleId == null ? (
+            <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
+              Select a role to manage its permissions.
+            </div>
+          ) : loadingTree ? (
+            <div className="card-elevated grid place-items-center p-8 text-sm text-muted-foreground">
+              <Loader2 className="mb-2 h-5 w-5 animate-spin" />
+              Loading permissions…
+            </div>
+          ) : loadError ? (
+            <div className="card-elevated p-8 text-center">
+              <AlertCircle className="mx-auto mb-2 h-5 w-5 text-destructive" />
+              <div className="text-sm font-medium">Unable to load permissions</div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => {
+                  void menusQuery.refetch();
+                  void permsQuery.refetch();
+                }}
+              >
+                Retry
+              </Button>
+            </div>
+          ) : !showTree ? (
+            <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
+              No permissions found for this role.
+            </div>
+          ) : (
+            <div className="card-elevated overflow-x-auto">
+              <div className={cn(permissionGridClass, "gap-0 border-b bg-muted/50 text-xs text-muted-foreground")}>
+                <div className="px-4 py-2 font-medium">Menu</div>
+                <div className="px-3 py-2 text-center font-medium">Read</div>
+                <div className="px-3 py-2 text-center font-medium">Modify</div>
+                <div className="px-3 py-2 text-center font-medium">Delete</div>
               </div>
-            </TreeSortableLevel>
-          </TreeSortableProvider>
-        </div>
-      )}
-
-      {roleId != null && capabilityDraft.length > 0 ? (
-        <div className="card-elevated space-y-3 p-4">
-          <div>
-            <h3 className="font-display text-sm font-semibold">Rates &amp; commercial</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Grant independently of menu access. Selected flags apply to every user with this role
-              unless a user has their own override.
-            </p>
-          </div>
-          <SearchableMultiSelect
-            value={capabilityDraft.filter((item) => item.isGranted).map((item) => item.code)}
-            onValueChange={(codes) => {
-              const granted = new Set(codes.map((code) => code.toUpperCase()));
-              setCapabilityDraft((prev) =>
-                prev.map((row) => ({
-                  ...row,
-                  isGranted: granted.has(row.code.toUpperCase()),
-                })),
-              );
-            }}
-            placeholder="Select commercial permissions…"
-            searchPlaceholder="Search permissions…"
-            disabled={!canModify || saving}
-            queryKey={["permissions", "capability-options", roleId]}
-            fetchOptions={async (search) => {
-              const query = search.trim().toLowerCase();
-              return capabilityDraft
-                .filter((item) => {
-                  if (!query) return true;
+              <TreeSortableProvider
+                disabled={!canReorderMenus}
+                onReorder={reorderMenus}
+                renderOverlay={(activeId) => {
+                  const activeNode = findPermissionNode(draft, activeId);
                   return (
-                    item.label.toLowerCase().includes(query) ||
-                    item.description.toLowerCase().includes(query) ||
-                    item.code.toLowerCase().includes(query)
+                    <div className={cn(permissionGridClass, "items-center rounded-md border bg-card px-4 py-2 shadow-lg")}>
+                      <div className="truncate text-xs font-medium text-foreground">
+                        {activeNode?.menuName ?? `Menu #${activeId}`}
+                      </div>
+                    </div>
                   );
-                })
-                .map((item) => ({
-                  value: item.code,
-                  label: item.label,
-                  description: item.description,
-                }));
-            }}
-            selectedLabels={Object.fromEntries(
-              capabilityDraft.map((item) => [item.code, item.label]),
-            )}
-            aria-label="Rates and commercial permissions"
-          />
+                }}
+              >
+                <TreeSortableLevel items={draft.map((node) => node.menuId)}>
+                  <div className="divide-y">
+                    {draft.map((node) => (
+                      <PermissionTreeRow
+                        key={node.menuId}
+                        node={node}
+                        depth={0}
+                        tree={draft}
+                        expandedIds={expandedIds}
+                        onToggleExpanded={toggleExpanded}
+                        onToggleFlag={toggle}
+                        canModify={canModify}
+                        canReorder={canReorderMenus}
+                        saving={saving}
+                      />
+                    ))}
+                  </div>
+                </TreeSortableLevel>
+              </TreeSortableProvider>
+            </div>
+          )}
         </div>
-      ) : null}
+
+        {roleId != null && capabilityDraft.length > 0 ? (
+          <aside className="card-elevated w-full shrink-0 space-y-3 p-4 lg:w-80">
+            <div className="flex items-center gap-1.5">
+              <h3 className="font-display text-sm font-semibold">Rates &amp; commercial</h3>
+              <AppTooltip
+                content="Grant independently of menu access. Selected flags apply to every user with this role unless a user has their own override."
+                side="top"
+                align="start"
+                contentClassName="max-w-xs text-xs"
+              >
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label="Grant independently of menu access. Selected flags apply to every user with this role unless a user has their own override."
+                >
+                  <Info className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </AppTooltip>
+            </div>
+            <SearchableMultiSelect
+              value={capabilityDraft.filter((item) => item.isGranted).map((item) => item.code)}
+              onValueChange={(codes) => {
+                const granted = new Set(codes.map((code) => code.toUpperCase()));
+                setCapabilityDraft((prev) =>
+                  prev.map((row) => ({
+                    ...row,
+                    isGranted: granted.has(row.code.toUpperCase()),
+                  })),
+                );
+              }}
+              placeholder="Select commercial permissions…"
+              searchPlaceholder="Search permissions…"
+              disabled={!canModify || saving}
+              queryKey={["permissions", "capability-options", roleId]}
+              fetchOptions={async (search) => {
+                const query = search.trim().toLowerCase();
+                return capabilityDraft
+                  .filter((item) => {
+                    if (!query) return true;
+                    return (
+                      item.label.toLowerCase().includes(query) ||
+                      item.description.toLowerCase().includes(query) ||
+                      item.code.toLowerCase().includes(query)
+                    );
+                  })
+                  .map((item) => ({
+                    value: item.code,
+                    label: item.label,
+                    description: item.description,
+                  }));
+              }}
+              selectedLabels={Object.fromEntries(
+                capabilityDraft.map((item) => [item.code, item.label]),
+              )}
+              aria-label="Rates and commercial permissions"
+            />
+          </aside>
+        ) : null}
+      </div>
 
       {confirmSaveOrder ? (
         <div

@@ -118,7 +118,7 @@ function NavSidebarMenuNode({
     const triggerContent = (
       <>
         {Icon ? <Icon /> : null}
-        <span>{menu.name}</span>
+        <span className="min-w-0 flex-1 truncate whitespace-nowrap">{menu.name}</span>
         <ChevronRight
           className={cn(
             "ml-auto h-4 w-4 shrink-0 transition-transform duration-200",
@@ -182,7 +182,7 @@ function NavSidebarMenuNode({
         >
           <Link to={to} onClick={onNavigate}>
             {Icon ? <Icon /> : null}
-            <span>{menu.name}</span>
+            <span className="min-w-0 flex-1 truncate whitespace-nowrap">{menu.name}</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -194,7 +194,7 @@ function NavSidebarMenuNode({
       <SidebarMenuSubButton asChild isActive={active}>
         <Link to={to} onClick={onNavigate}>
           {Icon ? <Icon /> : null}
-          <span>{menu.name}</span>
+          <span className="min-w-0 flex-1 truncate whitespace-nowrap">{menu.name}</span>
         </Link>
       </SidebarMenuSubButton>
     </SidebarMenuSubItem>
