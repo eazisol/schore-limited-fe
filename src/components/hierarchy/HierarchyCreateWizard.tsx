@@ -107,7 +107,7 @@ export function HierarchyCreateWizard({
       onClose={handleClose}
       title={titles[step]}
       subtitle="Client → Site → Project → Property"
-      size="xl"
+      size="lg"
       showCloseButton={false}
     >
       <div className="space-y-3">

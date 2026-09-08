@@ -238,7 +238,7 @@ function WagesList() {
                     <Link
                       to="/wages/$id"
                       params={{ id: String(w.id) }}
-                      className="font-mono text-xs font-medium hover:text-info hover:underline"
+                      className="font-mono text-xs font-medium hover:text-info"
                     >
                       {invoiceNo(w.id)}
                     </Link>

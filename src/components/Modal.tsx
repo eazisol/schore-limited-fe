@@ -8,6 +8,7 @@ export function Modal({
   subtitle,
   headerActions,
   children,
+  footer,
   size = "md",
   showCloseButton = true,
 }: {
@@ -17,6 +18,7 @@ export function Modal({
   subtitle?: string;
   headerActions?: ReactNode;
   children: ReactNode;
+  footer?: ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
   /** When false, hides the header X button (Cancel still closes). Default true. */
   showCloseButton?: boolean;
@@ -35,7 +37,7 @@ export function Modal({
     size === "sm"
       ? "max-w-md"
       : size === "lg"
-        ? "max-w-3xl"
+        ? "max-w-2xl"
         : size === "xl"
           ? "max-w-4xl"
           : "max-w-xl";
@@ -67,6 +69,7 @@ export function Modal({
             </div>
           </div>
           <div className="p-5">{children}</div>
+          {footer ? <div className="border-t px-5 py-3">{footer}</div> : null}
         </div>
       </div>
     </div>

@@ -38,7 +38,7 @@ export function ClientEditModal({
       open
       onClose={onClose}
       title="Edit client"
-      size="xl"
+      size="lg"
       showCloseButton={false}
     >
       {query.isLoading || !defaults ? (

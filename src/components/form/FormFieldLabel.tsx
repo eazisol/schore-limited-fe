@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Info } from "lucide-react";
-import { FormLabel, FormDescription } from "@/components/ui/form";
+import { FormLabel } from "@/components/ui/form";
 import { AppTooltip } from "@/components/AppTooltip";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +25,7 @@ export function FormFieldHint({ description }: { description: ReactNode }) {
           <Info className="h-3.5 w-3.5" aria-hidden />
         </button>
       </AppTooltip>
-      <FormDescription className="sr-only">{description}</FormDescription>
+      <span className="sr-only">{description}</span>
     </>
   );
 }

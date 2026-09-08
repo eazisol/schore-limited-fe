@@ -140,7 +140,7 @@ function TradeGroupsList() {
             <Link
               to="/trade-groups/$id"
               params={{ id: String(row.id) }}
-              className="inline-block max-w-full font-medium hover:text-info hover:underline"
+              className="inline-block max-w-full font-medium hover:text-info"
             >
               {truncateWithEllipsis(row.name)}
             </Link>

@@ -120,7 +120,7 @@ function HoldReasonsPage() {
         cell: (item) => (
           <button
             type="button"
-            className="font-medium text-left hover:text-info hover:underline"
+            className="font-medium text-left hover:text-info"
             onClick={() => setMode({ kind: "view", item })}
           >
             {item.name}

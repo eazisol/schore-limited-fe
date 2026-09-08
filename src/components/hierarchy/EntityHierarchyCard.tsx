@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Eye, Loader2, Pencil, Search, Trash2, X } from "lucide-react";
+import { Eye, Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CodeBadge } from "@/components/CodeBadge";
-import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { ActiveStatusBadge, StatusBadge } from "@/components/StatusBadge";
 import { usePermission } from "@/components/Permission";
 import {
   DataTable,
@@ -15,54 +15,119 @@ import {
   type DataTableRowAction,
 } from "@/components/data-table";
 import {
+  HierarchyEntityCreateModal,
+  type HierarchyCreateTarget,
+} from "@/components/hierarchy/HierarchyEntityCreateModal";
+import {
   HierarchyEntityEditModal,
   type HierarchyEditTarget,
 } from "@/components/hierarchy/HierarchyEntityEditModal";
 import { sitesService, type ApiSite } from "@/lib/api/services/sites";
 import { projectsService, type ApiProject } from "@/lib/api/services/projects";
 import { propertiesService, type ApiProperty } from "@/lib/api/services/properties";
+import { tasksService, type ApiTask } from "@/lib/api/services/tasks";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { SITES_ROUTE } from "@/lib/sites";
 import { PROJECTS_ROUTE } from "@/lib/projects";
 import { PROPERTIES_ROUTE } from "@/lib/properties";
+import { TASKS_ROUTE } from "@/lib/tasks";
 import {
   hierarchyReturnContextFromCardScope,
   hierarchyReturnSearch,
 } from "@/lib/hierarchy-navigation";
 import { asIdString, isNonEmptyId } from "@/lib/ids";
-import { truncateWithEllipsis } from "@/lib/module-ui";
+import { formatDailyRate, truncateWithEllipsis } from "@/lib/module-ui";
 import { AppTooltip } from "@/components/AppTooltip";
 
-type WorkTab = "sites" | "projects" | "properties";
+type WorkTab = "tasks" | "rates" | "sites" | "projects" | "properties";
 
 type NamedFilter = { id: string; name: string };
 
+type RateOverrideRow = {
+  id: string;
+  productId: string;
+  productName: string;
+  rate: number;
+  effectiveFrom: string;
+};
+
 type HierarchyWorkTabsProps =
-  | { scope: "customer"; customerId: string; title?: string }
-  | { scope: "site"; siteId: string; customerId: string; title?: string }
-  | { scope: "project"; projectId: string; customerId: string; title?: string };
+  | {
+      scope: "customer";
+      customerId: string;
+      customerLabel?: string;
+      title?: string;
+      embedded?: boolean;
+      /** Include Tasks + Rates tabs alongside Sites / Projects / Properties. */
+      includeJobTabs?: boolean;
+      rateOverrides?: RateOverrideRow[];
+      onAddRates?: () => void;
+    }
+  | {
+      scope: "site";
+      siteId: string;
+      siteLabel?: string;
+      customerId: string;
+      customerLabel?: string;
+      title?: string;
+      embedded?: boolean;
+    }
+  | {
+      scope: "project";
+      projectId: string;
+      projectLabel?: string;
+      siteId?: string;
+      siteLabel?: string;
+      customerId: string;
+      customerLabel?: string;
+      title?: string;
+      embedded?: boolean;
+    };
 
 type DeleteTarget =
   | { kind: "site"; row: ApiSite }
   | { kind: "project"; row: ApiProject }
   | { kind: "property"; row: ApiProperty };
 
-function defaultTabForScope(scope: HierarchyWorkTabsProps["scope"]): WorkTab {
-  if (scope === "customer") return "sites";
+function defaultTabForScope(
+  scope: HierarchyWorkTabsProps["scope"],
+  includeJobTabs?: boolean,
+): WorkTab {
+  if (scope === "customer") return includeJobTabs ? "tasks" : "sites";
   if (scope === "site") return "projects";
   return "properties";
 }
 
-function tabsForScope(scope: HierarchyWorkTabsProps["scope"]): WorkTab[] {
-  if (scope === "customer") return ["sites", "projects", "properties"];
+function tabsForScope(
+  scope: HierarchyWorkTabsProps["scope"],
+  includeJobTabs?: boolean,
+): WorkTab[] {
+  if (scope === "customer") {
+    return includeJobTabs
+      ? ["tasks", "rates", "sites", "projects", "properties"]
+      : ["sites", "projects", "properties"];
+  }
   if (scope === "site") return ["projects", "properties"];
   return ["properties"];
 }
 
 const TAB_LABEL: Record<WorkTab, string> = {
+  tasks: "Tasks",
+  rates: "Rates",
   sites: "Sites",
   projects: "Projects",
   properties: "Properties",
+};
+
+const TAB_TRIGGER_CLASS =
+  "h-auto rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 py-2 shadow-none data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-primary";
+
+const ADD_LABEL: Record<WorkTab, string> = {
+  tasks: "Add task",
+  rates: "Add rate",
+  sites: "Add site",
+  projects: "Add project",
+  properties: "Add property",
 };
 
 /** Client / site / project work locations — tabbed DataTables with drill-down filters. */
@@ -78,9 +143,16 @@ export function EntityHierarchyCard(props: HierarchyWorkTabsProps) {
   const customerId = asIdString(props.customerId);
   const scopeSiteId = props.scope === "site" ? asIdString(props.siteId) : "";
   const scopeProjectId = props.scope === "project" ? asIdString(props.projectId) : "";
+  const includeJobTabs = props.scope === "customer" && Boolean(props.includeJobTabs);
+  const rateOverrides =
+    props.scope === "customer" ? (props.rateOverrides ?? []) : [];
+  const onAddRates = props.scope === "customer" ? props.onAddRates : undefined;
 
-  const availableTabs = tabsForScope(props.scope);
-  const [tab, setTab] = useState<WorkTab>(() => defaultTabForScope(props.scope));
+  const availableTabs = tabsForScope(props.scope, includeJobTabs);
+  const [tab, setTab] = useState<WorkTab>(() =>
+    defaultTabForScope(props.scope, includeJobTabs),
+  );
+  const navigate = useNavigate();
   const [siteFilter, setSiteFilter] = useState<NamedFilter | null>(
     props.scope === "site"
       ? { id: asIdString(props.siteId), name: "" }
@@ -92,8 +164,82 @@ export function EntityHierarchyCard(props: HierarchyWorkTabsProps) {
       : null,
   );
   const [editTarget, setEditTarget] = useState<HierarchyEditTarget | null>(null);
+  const [createTarget, setCreateTarget] = useState<HierarchyCreateTarget | null>(null);
   const [confirmDel, setConfirmDel] = useState<DeleteTarget | null>(null);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch();
+  const canAddSite = usePermission({ route: SITES_ROUTE, action: "modify" });
+  const canAddProject = usePermission({ route: PROJECTS_ROUTE, action: "modify" });
+  const canAddProperty = usePermission({ route: PROPERTIES_ROUTE, action: "modify" });
+  const canAddTask = usePermission({ route: TASKS_ROUTE, action: "modify" });
+  const canAddCurrent =
+    tab === "tasks"
+      ? canAddTask
+      : tab === "rates"
+        ? Boolean(onAddRates)
+        : tab === "sites"
+          ? canAddSite
+          : tab === "projects"
+            ? canAddProject
+            : canAddProperty;
+
+  function openCreate(kind: WorkTab) {
+    if (kind === "tasks") {
+      navigate({ to: "/tasks/new" });
+      return;
+    }
+    if (kind === "rates") {
+      onAddRates?.();
+      return;
+    }
+    const customerLabel = props.customerLabel;
+    if (kind === "sites") {
+      setCreateTarget({ kind: "site", customerId, customerLabel });
+      return;
+    }
+    if (kind === "projects") {
+      const siteId =
+        props.scope === "site" ? scopeSiteId : siteFilter?.id || undefined;
+      const siteLabel =
+        props.scope === "site"
+          ? props.siteLabel || siteFilter?.name
+          : siteFilter?.name;
+      setCreateTarget({
+        kind: "project",
+        customerId,
+        customerLabel,
+        siteId,
+        siteLabel,
+      });
+      return;
+    }
+    const siteId =
+      props.scope === "site"
+        ? scopeSiteId
+        : props.scope === "project"
+          ? props.siteId
+          : siteFilter?.id || undefined;
+    const siteLabel =
+      props.scope === "site"
+        ? props.siteLabel || siteFilter?.name
+        : props.scope === "project"
+          ? props.siteLabel
+          : siteFilter?.name;
+    const projectId =
+      props.scope === "project" ? scopeProjectId : projectFilter?.id || undefined;
+    const projectLabel =
+      props.scope === "project"
+        ? props.projectLabel || projectFilter?.name
+        : projectFilter?.name;
+    setCreateTarget({
+      kind: "property",
+      customerId,
+      customerLabel,
+      siteId,
+      siteLabel,
+      projectId,
+      projectLabel,
+    });
+  }
 
   const returnContext = hierarchyReturnContextFromCardScope(props);
   const qc = useQueryClient();
@@ -105,6 +251,7 @@ export function EntityHierarchyCard(props: HierarchyWorkTabsProps) {
     qc.invalidateQueries({ queryKey: ["lookups"] });
     qc.invalidateQueries({ queryKey: ["hierarchy"] });
     qc.invalidateQueries({ queryKey: ["customer-work"] });
+    qc.invalidateQueries({ queryKey: ["tasks"] });
   }
 
   function handleTabChange(next: string) {
@@ -189,24 +336,63 @@ export function EntityHierarchyCard(props: HierarchyWorkTabsProps) {
   }
 
   const searchPlaceholder =
-    tab === "sites"
-      ? "Search sites…"
-      : tab === "projects"
-        ? "Search projects…"
-        : "Search properties…";
+    tab === "tasks"
+      ? "Search tasks…"
+      : tab === "rates"
+        ? "Search rates…"
+        : tab === "sites"
+          ? "Search sites…"
+          : tab === "projects"
+            ? "Search projects…"
+            : "Search properties…";
 
-  const toolbar = (
-    <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-      <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-background px-3 sm:max-w-xs">
-        <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <input
-          value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
-          placeholder={searchPlaceholder}
-          className="w-full min-w-0 bg-transparent text-sm outline-none"
-          aria-label={searchPlaceholder}
-        />
+  const showSearch = tab !== "rates";
+
+  const addButton = canAddCurrent ? (
+    <Button size="sm" onClick={() => openCreate(tab)}>
+      <Plus className="h-4 w-4" />
+      {ADD_LABEL[tab]}
+    </Button>
+  ) : null;
+
+  const searchField = showSearch ? (
+    <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-background px-3 sm:max-w-xs">
+      <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <input
+        value={searchInput}
+        onChange={(event) => setSearchInput(event.target.value)}
+        placeholder={searchPlaceholder}
+        className="w-full min-w-0 bg-transparent text-sm outline-none"
+        aria-label={searchPlaceholder}
+      />
+    </div>
+  ) : null;
+
+  /** Operative-style underline tabs (used on client detail with job tabs). */
+  const underlineTabs = availableTabs.length > 1 ? (
+    <div className="flex flex-wrap items-center gap-2 border-b px-3 pt-1 sm:px-4">
+      <div className="min-w-0 flex-1 overflow-x-auto">
+        <TabsList className="inline-flex h-auto w-max min-w-full flex-row items-start justify-start gap-1 rounded-none bg-transparent p-0 pb-0 sm:gap-2">
+          {availableTabs.map((id) => (
+            <TabsTrigger key={id} value={id} className={TAB_TRIGGER_CLASS}>
+              {TAB_LABEL[id]}
+            </TabsTrigger>
+          ))}
+        </TabsList>
       </div>
+      {includeJobTabs ? addButton : null}
+    </div>
+  ) : null;
+
+  const toolbar = includeJobTabs ? (
+    showSearch ? (
+      <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+        {searchField}
+      </div>
+    ) : null
+  ) : (
+    <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+      {searchField ?? <div className="min-w-0 flex-1" />}
       {availableTabs.length > 1 ? (
         <TabsList className="ml-auto h-9 shrink-0">
           {availableTabs.map((id) => (
@@ -220,7 +406,19 @@ export function EntityHierarchyCard(props: HierarchyWorkTabsProps) {
   );
 
   const tableBody =
-    tab === "sites" && availableTabs.includes("sites") ? (
+    tab === "tasks" && availableTabs.includes("tasks") ? (
+      <CustomerTasksWorkTable
+        customerId={customerId}
+        search={search}
+        onAdd={canAddTask ? () => openCreate("tasks") : undefined}
+        onClearSearch={clearSearch}
+      />
+    ) : tab === "rates" && availableTabs.includes("rates") ? (
+      <CustomerRatesWorkTable
+        rows={rateOverrides}
+        onAdd={onAddRates}
+      />
+    ) : tab === "sites" && availableTabs.includes("sites") ? (
       <SitesWorkTable
         customerId={customerId}
         search={search}
@@ -228,6 +426,7 @@ export function EntityHierarchyCard(props: HierarchyWorkTabsProps) {
         onDrillSite={drillIntoSite}
         onEdit={(id) => setEditTarget({ kind: "site", id })}
         onDelete={(row) => setConfirmDel({ kind: "site", row })}
+        onAdd={canAddSite ? () => openCreate("sites") : undefined}
         onClearSearch={clearSearch}
       />
     ) : tab === "projects" && availableTabs.includes("projects") ? (
@@ -244,6 +443,7 @@ export function EntityHierarchyCard(props: HierarchyWorkTabsProps) {
           onDrillProject={drillIntoProject}
           onEdit={(id) => setEditTarget({ kind: "project", id })}
           onDelete={(row) => setConfirmDel({ kind: "project", row })}
+          onAdd={canAddProject ? () => openCreate("projects") : undefined}
           onClearSearch={clearSearch}
         />
       </>
@@ -265,19 +465,24 @@ export function EntityHierarchyCard(props: HierarchyWorkTabsProps) {
           returnContext={returnContext}
           onEdit={(id) => setEditTarget({ kind: "property", id })}
           onDelete={(row) => setConfirmDel({ kind: "property", row })}
+          onAdd={canAddProperty ? () => openCreate("properties") : undefined}
           onClearSearch={clearSearch}
         />
       </>
     );
 
   return (
-    <div className="card-elevated overflow-hidden">
-      <div className="border-b px-4 py-2.5 font-display text-base font-semibold tracking-tight">
-        {title}
-      </div>
+    <div className={props.embedded ? "overflow-hidden" : "card-elevated overflow-hidden"}>
+      {includeJobTabs ? null : (
+        <div className="flex items-center justify-between gap-2 border-b px-4 py-2.5">
+          <div className="font-display text-base font-semibold tracking-tight">{title}</div>
+          {addButton}
+        </div>
+      )}
 
       {availableTabs.length > 1 ? (
         <Tabs value={tab} onValueChange={handleTabChange}>
+          {includeJobTabs ? underlineTabs : null}
           {toolbar}
           {tableBody}
         </Tabs>
@@ -287,6 +492,16 @@ export function EntityHierarchyCard(props: HierarchyWorkTabsProps) {
           {tableBody}
         </>
       )}
+
+      {createTarget ? (
+        <HierarchyEntityCreateModal
+          target={createTarget}
+          onClose={() => {
+            setCreateTarget(null);
+            invalidateAll();
+          }}
+        />
+      ) : null}
 
       {editTarget ? (
         <HierarchyEntityEditModal
@@ -376,6 +591,187 @@ function DeleteConfirmDialog({
   );
 }
 
+function formatShortDate(value: string | null | undefined) {
+  if (!value) return "—";
+  return value.slice(0, 10);
+}
+
+function CustomerTasksWorkTable({
+  customerId,
+  search,
+  onAdd,
+  onClearSearch,
+}: {
+  customerId: string;
+  search: string;
+  onAdd?: () => void;
+  onClearSearch: () => void;
+}) {
+  const tasksQuery = useQuery({
+    queryKey: ["tasks", "customer-work", customerId, search],
+    queryFn: async () =>
+      (
+        await tasksService.list({
+          page: 1,
+          pageSize: 50,
+          customerId,
+          search: search || undefined,
+          sortBy: "startdate",
+          sortDir: "desc",
+        })
+      ).data,
+    enabled: isNonEmptyId(customerId),
+    placeholderData: keepPreviousData,
+  });
+
+  const rows = tasksQuery.data?.items ?? [];
+
+  if (tasksQuery.isLoading) {
+    return (
+      <div className="flex items-center justify-center gap-2 px-5 py-12 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading tasks…
+      </div>
+    );
+  }
+
+  if (tasksQuery.isError) {
+    return (
+      <p className="px-5 py-10 text-center text-sm text-muted-foreground">
+        Unable to load tasks.
+      </p>
+    );
+  }
+
+  if (rows.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 px-5 py-12 text-center">
+        <p className="text-sm text-muted-foreground">
+          {search ? "No tasks match your search." : "No tasks for this client."}
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {search ? (
+            <Button variant="outline" size="sm" onClick={onClearSearch}>
+              Clear search
+            </Button>
+          ) : null}
+          {onAdd ? (
+            <Button size="sm" onClick={onAdd}>
+              <Plus className="h-4 w-4" />
+              Add task
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th className="px-4 py-2.5 text-left font-medium">Job</th>
+            <th className="px-3 py-2.5 text-left font-medium">Property</th>
+            <th className="px-3 py-2.5 text-left font-medium">Type</th>
+            <th className="px-3 py-2.5 text-left font-medium">Start</th>
+            <th className="px-3 py-2.5 text-left font-medium">Status</th>
+            <th className="px-4 py-2.5 text-right font-medium" />
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {rows.map((task: ApiTask) => (
+            <tr key={task.id} className="hover:bg-muted/30">
+              <td className="px-4 py-2.5 font-mono text-xs tabular-nums">
+                {task.taskNumber}
+              </td>
+              <td className="max-w-[14rem] truncate px-3 py-2.5 font-medium">
+                {task.propertyName}
+              </td>
+              <td className="px-3 py-2.5 text-muted-foreground">
+                {task.jobTypeName || "—"}
+              </td>
+              <td className="px-3 py-2.5 tabular-nums text-muted-foreground">
+                {formatShortDate(task.startDate)}
+              </td>
+              <td className="px-3 py-2.5">
+                <StatusBadge status={task.statusName || task.statusCode} />
+              </td>
+              <td className="px-4 py-2.5 text-right">
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                  <Link
+                    to="/tasks/$id"
+                    params={{ id: String(task.id) }}
+                    search={{
+                      mode: "view",
+                      from: "customer",
+                      customerId: String(customerId),
+                    }}
+                    aria-label={`View ${task.taskNumber}`}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function CustomerRatesWorkTable({
+  rows,
+  onAdd,
+}: {
+  rows: RateOverrideRow[];
+  onAdd?: () => void;
+}) {
+  if (rows.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 px-5 py-12 text-center">
+        <p className="text-sm text-muted-foreground">
+          No agreed rate overrides. Catalogue rates apply.
+        </p>
+        {onAdd ? (
+          <Button size="sm" onClick={onAdd}>
+            <Plus className="h-4 w-4" />
+            Add rate
+          </Button>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th className="px-4 py-2.5 text-left font-medium">Product</th>
+            <th className="px-3 py-2.5 text-right font-medium">Rate</th>
+            <th className="px-4 py-2.5 text-left font-medium">Effective from</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {rows.map((row) => (
+            <tr key={row.id} className="hover:bg-muted/30">
+              <td className="px-4 py-2.5 font-medium">{row.productName || "—"}</td>
+              <td className="px-3 py-2.5 text-right font-mono tabular-nums">
+                {formatDailyRate(row.rate)}
+              </td>
+              <td className="px-4 py-2.5 text-muted-foreground">
+                {formatShortDate(row.effectiveFrom)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function SitesWorkTable({
   customerId,
   search,
@@ -383,6 +779,7 @@ function SitesWorkTable({
   onDrillSite,
   onEdit,
   onDelete,
+  onAdd,
   onClearSearch,
 }: {
   customerId: string;
@@ -391,6 +788,7 @@ function SitesWorkTable({
   onDrillSite: (site: ApiSite) => void;
   onEdit: (id: string) => void;
   onDelete: (row: ApiSite) => void;
+  onAdd?: () => void;
   onClearSearch: () => void;
 }) {
   const navigate = useNavigate();
@@ -423,7 +821,7 @@ function SitesWorkTable({
           <AppTooltip content={`${item.name} — view projects`} asChild align="start">
             <button
               type="button"
-              className="inline-block max-w-full cursor-pointer truncate text-left font-medium text-info underline underline-offset-2"
+              className="inline-block max-w-full cursor-pointer truncate text-left font-medium text-info"
               onClick={() => onDrillSite(item)}
             >
               {truncateWithEllipsis(item.name)}
@@ -505,6 +903,11 @@ function SitesWorkTable({
           <Button variant="outline" size="sm" onClick={onClearSearch}>
             Clear search
           </Button>
+        ) : onAdd ? (
+          <Button size="sm" onClick={onAdd}>
+            <Plus className="h-4 w-4" />
+            Add site
+          </Button>
         ) : undefined,
       }}
       rowActions={rowActions}
@@ -534,6 +937,7 @@ function ProjectsWorkTable({
   onDrillProject,
   onEdit,
   onDelete,
+  onAdd,
   onClearSearch,
 }: {
   customerId: string;
@@ -543,6 +947,7 @@ function ProjectsWorkTable({
   onDrillProject: (project: ApiProject) => void;
   onEdit: (id: string) => void;
   onDelete: (row: ApiProject) => void;
+  onAdd?: () => void;
   onClearSearch: () => void;
 }) {
   const navigate = useNavigate();
@@ -588,7 +993,7 @@ function ProjectsWorkTable({
           <AppTooltip content={`${item.name} — view properties`} asChild align="start">
             <button
               type="button"
-              className="inline-block max-w-full cursor-pointer truncate text-left font-medium text-info underline underline-offset-2"
+              className="inline-block max-w-full cursor-pointer truncate text-left font-medium text-info"
               onClick={() => onDrillProject(item)}
             >
               {truncateWithEllipsis(item.name)}
@@ -675,6 +1080,11 @@ function ProjectsWorkTable({
           <Button variant="outline" size="sm" onClick={onClearSearch}>
             Clear search
           </Button>
+        ) : onAdd ? (
+          <Button size="sm" onClick={onAdd}>
+            <Plus className="h-4 w-4" />
+            Add project
+          </Button>
         ) : undefined,
       }}
       rowActions={rowActions}
@@ -704,6 +1114,7 @@ function PropertiesWorkTable({
   returnContext,
   onEdit,
   onDelete,
+  onAdd,
   onClearSearch,
 }: {
   customerId: string;
@@ -713,6 +1124,7 @@ function PropertiesWorkTable({
   returnContext: ReturnType<typeof hierarchyReturnContextFromCardScope>;
   onEdit: (id: string) => void;
   onDelete: (row: ApiProperty) => void;
+  onAdd?: () => void;
   onClearSearch: () => void;
 }) {
   const navigate = useNavigate();
@@ -761,7 +1173,7 @@ function PropertiesWorkTable({
           <AppTooltip content={item.propertyName} asChild align="start">
             <button
               type="button"
-              className="inline-block max-w-full cursor-pointer truncate text-left font-medium text-info underline underline-offset-2"
+              className="inline-block max-w-full cursor-pointer truncate text-left font-medium text-info"
               onClick={() =>
                 navigate({
                   to: "/properties/$id",
@@ -859,6 +1271,11 @@ function PropertiesWorkTable({
         action: search ? (
           <Button variant="outline" size="sm" onClick={onClearSearch}>
             Clear search
+          </Button>
+        ) : onAdd ? (
+          <Button size="sm" onClick={onAdd}>
+            <Plus className="h-4 w-4" />
+            Add property
           </Button>
         ) : undefined,
       }}

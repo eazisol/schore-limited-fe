@@ -62,11 +62,12 @@ export function UserCreatePage() {
 
   return (
     <RequirePermission route={cfg.permissionRoute} action="modify">
-      <Form form={form} onSubmit={submit} className="max-w-3xl">
+      <Form form={form} onSubmit={submit} className="w-full max-w-3xl">
         <FormPageCard
           title={cfg.labels.addTitle}
           back={{ to: cfg.listPath, label: cfg.labels.backLabel }}
           headerActions={<SwitchField<UserFormValues> name="isActive" label="Active" />}
+          maxWidth="w-full max-w-3xl"
           footer={
             <div className="flex w-full flex-wrap items-center justify-end gap-2">
               <Button

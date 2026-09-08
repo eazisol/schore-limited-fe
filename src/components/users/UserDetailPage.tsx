@@ -14,15 +14,11 @@ import { toast } from "sonner";
 import { Form, SubmitButton, SwitchField } from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
 import { UserFormFields } from "@/components/users/UserFormFields";
-import {
-  CustomerCostBudgetCard,
-  CustomerRunningTasksCard,
-} from "@/components/users/CustomerDetailExtras";
 import { OperativeDetailExtras } from "@/components/users/OperativeDetailExtras";
-import { EntityHierarchyCard } from "@/components/hierarchy/EntityHierarchyCard";
+import { CustomerDetailExtrasPanel } from "@/components/users/CustomerDetailPanels";
+import { UserDetailExtras } from "@/components/users/UserDetailExtras";
 import { ClientEditModal } from "@/components/hierarchy/ClientEditModal";
 import { displayUserName } from "@/components/users/UsersListPage";
-import { CodeBadge, CodeWithLabel } from "@/components/CodeBadge";
 import {
   resolveProfileImageUrl,
   usersService,
@@ -197,10 +193,6 @@ export function UserDetailPage() {
         "Client"
       : name;
 
-  const profileHeroName = cfg.isCustomer
-    ? <CodeWithLabel code={user.clientCode} label={profileHeroNameText} />
-    : profileHeroNameText;
-
   const contactPersonName = [user.firstName, user.lastName].filter(Boolean).join(" ");
 
   const profileHeroSubtitle = cfg.isContractor
@@ -272,72 +264,68 @@ export function UserDetailPage() {
   return (
     <div className="space-y-6">
       {isEditing ? (
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <Form form={form} onSubmit={save} className="lg:col-span-2">
-            <FormPageCard
-              title={cfg.labels.editTitle}
-              back={{ to: cfg.listPath, label: cfg.labels.backLabel }}
-              headerActions={<SwitchField<UserFormValues> name="isActive" label="Active" />}
-              maxWidth="w-full max-w-none"
-              footer={
-                <>
-                  <span className="text-xs text-muted-foreground sm:mr-auto">
-                    {dirty ? "Unsaved changes" : "All changes saved"}
-                  </span>
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={updateMutation.isPending}
-                      onClick={() => {
-                        form.reset(defaults);
-                        openView();
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <SubmitButton size="sm" disabled={!dirty} loadingText="Saving…">
-                      Save changes
-                    </SubmitButton>
-                  </div>
-                </>
-              }
-            >
-              <UserFormFields
-                embedded
-                mode={mode}
-                variant="edit"
-                disabled={updateMutation.isPending}
-                roleSelectedLabel={user.roleNames?.[0]}
-                operativeSelectedLabels={{
-                  trades: (() => {
-                    const ids = user.tradeIds?.length
-                      ? user.tradeIds
-                      : user.tradeId != null
-                        ? [String(user.tradeId)]
-                        : [];
-                    const names = user.tradeNames?.length
-                      ? user.tradeNames
-                      : user.tradeName
-                        ? user.tradeName.split(",").map((n) => n.trim())
-                        : [];
-                    const map: Record<string, string> = {};
-                    ids.forEach((id, i) => {
-                      map[String(id)] = names[i] ?? String(id);
-                    });
-                    return map;
-                  })(),
-                  cis: user.cisName,
-                }}
-                contractorSelectedLabel={user.contractorName}
-                capabilityResetKey={id}
-              />
-            </FormPageCard>
-          </Form>
-
-        {cfg.isCustomer ? <CustomerCostBudgetCard customerId={id} /> : null}
-      </div>
+        <Form form={form} onSubmit={save} className="w-full max-w-3xl">
+          <FormPageCard
+            title={cfg.labels.editTitle}
+            back={{ to: cfg.listPath, label: cfg.labels.backLabel }}
+            headerActions={<SwitchField<UserFormValues> name="isActive" label="Active" />}
+            maxWidth="w-full max-w-3xl"
+            footer={
+              <>
+                <span className="text-xs text-muted-foreground sm:mr-auto">
+                  {dirty ? "Unsaved changes" : "All changes saved"}
+                </span>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={updateMutation.isPending}
+                    onClick={() => {
+                      form.reset(defaults);
+                      openView();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <SubmitButton size="sm" disabled={!dirty} loadingText="Saving…">
+                    Save changes
+                  </SubmitButton>
+                </div>
+              </>
+            }
+          >
+            <UserFormFields
+              embedded
+              mode={mode}
+              variant="edit"
+              disabled={updateMutation.isPending}
+              roleSelectedLabel={user.roleNames?.[0]}
+              operativeSelectedLabels={{
+                trades: (() => {
+                  const ids = user.tradeIds?.length
+                    ? user.tradeIds
+                    : user.tradeId != null
+                      ? [String(user.tradeId)]
+                      : [];
+                  const names = user.tradeNames?.length
+                    ? user.tradeNames
+                    : user.tradeName
+                      ? user.tradeName.split(",").map((n) => n.trim())
+                      : [];
+                  const map: Record<string, string> = {};
+                  ids.forEach((id, i) => {
+                    map[String(id)] = names[i] ?? String(id);
+                  });
+                  return map;
+                })(),
+                cis: user.cisName,
+              }}
+              contractorSelectedLabel={user.contractorName}
+              capabilityResetKey={id}
+            />
+          </FormPageCard>
+        </Form>
       ) : (
         <>
           <DetailProfileHero
@@ -366,7 +354,7 @@ export function UserDetailPage() {
                 </Can>
               </>
             }
-            name={profileHeroName}
+            name={profileHeroNameText}
             subtitle={profileHeroSubtitle}
             imageUrl={profileImageUrl || undefined}
             imageAlt={`${cfg.labels.entityTitle} profile`}
@@ -379,18 +367,29 @@ export function UserDetailPage() {
             highlights={profileHeroHighlights}
           />
 
-          {cfg.isOperative ? <OperativeDetailExtras user={user} /> : null}
+          {cfg.isOperative ? (
+            <OperativeDetailExtras
+              user={user}
+              canEdit={canModify}
+              onEdit={openEdit}
+            />
+          ) : null}
+
+          {mode === "user" ? (
+            <UserDetailExtras
+              user={user}
+              canEdit={canModify}
+              onEdit={openEdit}
+            />
+          ) : null}
 
           {cfg.isCustomer ? (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
-              <div className="min-w-0 space-y-6 lg:col-span-2">
-                <EntityHierarchyCard scope="customer" customerId={id} />
-                <CustomerRunningTasksCard customerId={id} />
-              </div>
-              <div className="self-start">
-                <CustomerCostBudgetCard customerId={id} />
-              </div>
-            </div>
+            <CustomerDetailExtrasPanel
+              user={user}
+              customerId={id}
+              customerLabel={profileHeroNameText}
+              onAddRates={canModify ? () => setClientEditOpen(true) : undefined}
+            />
           ) : null}
         </>
       )}

@@ -46,7 +46,7 @@ export function HierarchyEntityEditModal({
         : "Edit property";
 
   return (
-    <Modal open onClose={onClose} title={title} size="xl" showCloseButton={false}>
+    <Modal open onClose={onClose} title={title} size="lg" showCloseButton={false}>
       {target.kind === "site" ? (
         <SiteEditBody id={target.id} onCancel={onClose} onSaved={handleSaved} />
       ) : null}

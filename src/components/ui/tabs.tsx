@@ -50,4 +50,11 @@ const TabsContent = React.forwardRef<
 ));
 TabsContent.displayName = TabsPrimitive.Content.displayName;
 
+/** Underline tab triggers used on hierarchy / operative detail cards. */
+export const underlineTabTriggerClass =
+  "h-auto rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 py-2 shadow-none data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-primary";
+
+export const underlineTabListClass =
+  "inline-flex h-auto w-max min-w-full flex-row items-start justify-start gap-1 rounded-none bg-transparent p-0 pb-0 sm:gap-2";
+
 export { Tabs, TabsList, TabsTrigger, TabsContent };

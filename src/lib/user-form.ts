@@ -118,6 +118,9 @@ export type UserFormValues = {
   sortCode: string;
   accountNumber: string;
   bankName: string;
+  cardHolderName: string;
+  cardNumber: string;
+  cardExpiry: string;
   certifications: CertificationFormValue[];
 };
 
@@ -176,6 +179,9 @@ export const emptyUserFormValues: UserFormValues = {
   sortCode: "",
   accountNumber: "",
   bankName: "",
+  cardHolderName: "",
+  cardNumber: "",
+  cardExpiry: "",
   certifications: [],
 };
 
@@ -237,6 +243,9 @@ export function userToFormValues(user: ApiUser): UserFormValues {
     sortCode: user.sortCode ?? "",
     accountNumber: user.accountNumber ?? "",
     bankName: user.bankName ?? "",
+    cardHolderName: user.cardHolderName ?? "",
+    cardNumber: user.cardNumber ?? "",
+    cardExpiry: user.cardExpiry ?? "",
     certifications: certificationsToFormValues(user.certifications),
   };
 }
@@ -365,6 +374,9 @@ const sharedFormFields = {
   sortCode: z.string(),
   accountNumber: z.string(),
   bankName: z.string(),
+  cardHolderName: z.string(),
+  cardNumber: z.string(),
+  cardExpiry: z.string(),
   certifications: z.array(certificationRowSchema),
 };
 
@@ -376,6 +388,7 @@ function applyModeRefinements<T extends z.ZodTypeAny>(mode: UserModuleMode, sche
       refineRateOverrides(values.rateOverrides, ctx);
       refineCertifications(values.certifications, ctx);
       refineBankDetails(values, ctx);
+      refineCardDetails(values, ctx);
     });
   }
 
@@ -465,6 +478,36 @@ function refineBankDetails(values: UserFormValues, ctx: z.RefinementCtx) {
   }
 }
 
+function refineCardDetails(values: UserFormValues, ctx: z.RefinementCtx) {
+  const holder = values.cardHolderName.trim();
+  const number = values.cardNumber.replace(/\s+/g, "");
+  const expiry = values.cardExpiry.trim();
+  const anyFilled = Boolean(holder || number || expiry);
+  if (!anyFilled) return;
+
+  if (holder.length > 120) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["cardHolderName"],
+      message: "Cardholder name must be 120 characters or fewer",
+    });
+  }
+  if (number && !/^\d{13,19}$/.test(number)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["cardNumber"],
+      message: "Enter a valid card number (13–19 digits)",
+    });
+  }
+  if (expiry && !/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["cardExpiry"],
+      message: "Enter expiry as MM/YY",
+    });
+  }
+}
+
 function parseDailyRate(value: string): number {
   const parsed = dailyRateSchema.safeParse(value.trim());
   return parsed.success ? parsed.data : 0;
@@ -527,6 +570,9 @@ export function toCreateUserPayload(
     payload.sortCode = values.sortCode.trim() || null;
     payload.accountNumber = values.accountNumber.trim() || null;
     payload.bankName = values.bankName.trim() || null;
+    payload.cardHolderName = values.cardHolderName.trim() || null;
+    payload.cardNumber = values.cardNumber.replace(/\s+/g, "").trim() || null;
+    payload.cardExpiry = values.cardExpiry.trim() || null;
     payload.certifications = toCertificationPayload(values.certifications);
   }
 
@@ -590,6 +636,9 @@ export function toUpdateUserPayload(
     payload.sortCode = values.sortCode.trim() || null;
     payload.accountNumber = values.accountNumber.trim() || null;
     payload.bankName = values.bankName.trim() || null;
+    payload.cardHolderName = values.cardHolderName.trim() || null;
+    payload.cardNumber = values.cardNumber.replace(/\s+/g, "").trim() || null;
+    payload.cardExpiry = values.cardExpiry.trim() || null;
     payload.certifications = toCertificationPayload(values.certifications);
   }
 

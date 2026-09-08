@@ -153,12 +153,12 @@ export function LookupFormPanel({
   footer?: ReactNode;
 }) {
   return (
-    <section className="flex w-full min-w-0 flex-col rounded-xl border bg-card shadow-sm">
+    <section className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3">
         <h2 className="font-display text-base font-semibold tracking-tight">{title}</h2>
         {headerActions ? <div className="flex items-center gap-2">{headerActions}</div> : null}
       </div>
-      <div className="p-4">{children}</div>
+      <div className="scrollbar-elegant min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
       {footer ? <div className="shrink-0 border-t px-4 py-3">{footer}</div> : null}
     </section>
   );

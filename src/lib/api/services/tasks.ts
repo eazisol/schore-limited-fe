@@ -148,6 +148,73 @@ function normalizePaged(
   return { items, totalCount, page, pageSize, totalPages };
 }
 
+export interface ApiTaskItemListRow {
+  id: string;
+  taskId: string;
+  taskNumber: string;
+  propertyName: string;
+  jobTypeName: string | null;
+  workDate: string;
+  tradeId: string | null;
+  tradeName: string;
+  tradeGroupId: string | null;
+  tradeGroupName: string | null;
+  productId: string | null;
+  productName: string | null;
+  quantity: number;
+  doneQty: number;
+  rate: number;
+  amount: number;
+  statusId: string | null;
+  statusName: string | null;
+  statusCode: string | null;
+  isTicked: boolean;
+  timeSlotName: string | null;
+}
+
+export interface TaskItemListParams {
+  page: number;
+  pageSize: number;
+  operativeId?: string;
+  statusId?: string;
+  /** TASK_ITEM code; PENDING maps server-side to Draft / unset. */
+  statusCode?: string;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+}
+
+function itemListQuery(params: TaskItemListParams) {
+  return {
+    Page: params.page,
+    PageSize: params.pageSize,
+    ...(params.operativeId != null ? { OperativeId: params.operativeId } : {}),
+    ...(params.statusId != null ? { StatusId: params.statusId } : {}),
+    ...(params.statusCode ? { StatusCode: params.statusCode } : {}),
+    ...(params.sortBy ? { SortBy: params.sortBy } : {}),
+    ...(params.sortDir ? { SortDir: params.sortDir } : {}),
+  };
+}
+
+function normalizeItemPaged(
+  data: PagedResult<ApiTaskItemListRow> | ApiTaskItemListRow[] | null | undefined,
+): PagedResult<ApiTaskItemListRow> {
+  if (Array.isArray(data)) {
+    return {
+      items: data,
+      totalCount: data.length,
+      page: 1,
+      pageSize: data.length || 10,
+      totalPages: 1,
+    };
+  }
+  const items = data?.items ?? [];
+  const page = data?.page ?? 1;
+  const pageSize = data?.pageSize ?? 10;
+  const totalCount = data?.totalCount ?? items.length;
+  const totalPages = data?.totalPages ?? Math.max(1, Math.ceil(totalCount / pageSize));
+  return { items, totalCount, page, pageSize, totalPages };
+}
+
 export interface ApiTimeSlot {
   id: string;
   name: string;
@@ -163,6 +230,14 @@ export const tasksService = {
       params: listQuery(params),
     });
     return { ...res, data: normalizePaged(res.data) };
+  },
+  listItems: async (params: TaskItemListParams) => {
+    const res = await http.get<
+      ApiEnvelope<PagedResult<ApiTaskItemListRow> | ApiTaskItemListRow[]>
+    >("Tasks/items", {
+      params: itemListQuery(params),
+    });
+    return { ...res, data: normalizeItemPaged(res.data) };
   },
   get: (id: string) => http.get<ApiEnvelope<ApiTask>>(`Tasks/${id}`),
   create: (payload: TaskPayload) => http.post<ApiEnvelope<ApiTask>>("Tasks", payload),

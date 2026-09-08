@@ -38,6 +38,12 @@ const STATUS_TONE_BY_LABEL: Record<string, StatusTone> = {
   Active: "success",
   Inactive: "destructive",
 
+  // Certification expiry
+  Valid: "success",
+  Invalid: "destructive",
+  Expired: "destructive",
+  "Expiring soon": "warning",
+
   // Task flags
   Ticked: "success",
   Planned: "info",
@@ -63,6 +69,10 @@ const STATUS_TONE_BY_CODE: Record<string, StatusTone> = {
   PAID: "success",
   ACTIVE: "success",
   INACTIVE: "destructive",
+  VALID: "success",
+  INVALID: "destructive",
+  EXPIRED: "destructive",
+  EXPIRING_SOON: "warning",
   TICKED: "success",
   PLANNED: "info",
   LOCKED: "warning",

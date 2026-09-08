@@ -60,11 +60,20 @@ export interface ApiUser {
   scopeAssignments?: ApiUserScopeAssignment[];
   capabilityOverrides?: ApiCapabilityOverride[];
   menuPermissionOverrides?: ApiMenuPermissionOverride[];
-  rateOverrides?: { id: string; productId: string; productName: string; rate: number; effectiveFrom: string }[];
+  rateOverrides?: {
+    id: string;
+    productId: string;
+    productName: string;
+    rate: number;
+    effectiveFrom: string;
+  }[];
   accountHolderName?: string | null;
   sortCode?: string | null;
   accountNumber?: string | null;
   bankName?: string | null;
+  cardHolderName?: string | null;
+  cardNumber?: string | null;
+  cardExpiry?: string | null;
   certifications?: {
     id?: string;
     clientKey?: string | null;
@@ -72,6 +81,7 @@ export interface ApiUser {
     certificationTypeName?: string | null;
     certificationLevelId?: string | null;
     certificationLevelName?: string | null;
+    documentNumber?: string | null;
     startDate: string;
     expiryDate: string;
     notes?: string | null;
@@ -157,11 +167,15 @@ export interface CreateUserPayload {
   sortCode?: string | null;
   accountNumber?: string | null;
   bankName?: string | null;
+  cardHolderName?: string | null;
+  cardNumber?: string | null;
+  cardExpiry?: string | null;
   certifications?: {
     id?: string | null;
     clientKey?: string | null;
     certificationTypeId: string;
     certificationLevelId?: string | null;
+    documentNumber?: string | null;
     startDate: string;
     expiryDate: string;
     notes?: string | null;
@@ -213,11 +227,15 @@ export interface UpdateUserPayload {
   sortCode?: string | null;
   accountNumber?: string | null;
   bankName?: string | null;
+  cardHolderName?: string | null;
+  cardNumber?: string | null;
+  cardExpiry?: string | null;
   certifications?: {
     id?: string | null;
     clientKey?: string | null;
     certificationTypeId: string;
     certificationLevelId?: string | null;
+    documentNumber?: string | null;
     startDate: string;
     expiryDate: string;
     notes?: string | null;
@@ -242,14 +260,7 @@ export interface UsersListParams {
 }
 
 export type UsersSortBy =
-  | "name"
-  | "roles"
-  | "usertype"
-  | "status"
-  | "trade"
-  | "cis"
-  | "dailyrate"
-  | "createdDate";
+  "name" | "roles" | "usertype" | "status" | "trade" | "cis" | "dailyrate" | "createdDate";
 export type UsersSortDir = "asc" | "desc";
 
 export interface PagedResult<T> {
@@ -313,8 +324,6 @@ export const usersService = {
     http.delete<ApiEnvelope<null>>(
       `Users/${userId}/certifications/${certificationId}/files/${fileId}`,
     ),
-  removeProfileImage: (id: string) =>
-    http.delete<ApiEnvelope<null>>(`Users/${id}/profile-image`),
-  remove: (id: string) =>
-    http.delete<ApiEnvelope<null>>(`Users/${id}`),
+  removeProfileImage: (id: string) => http.delete<ApiEnvelope<null>>(`Users/${id}/profile-image`),
+  remove: (id: string) => http.delete<ApiEnvelope<null>>(`Users/${id}`),
 };

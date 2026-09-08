@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
-import { FileUp, Plus, Trash2, X } from "lucide-react";
+import { FileUp, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchableSelectField, TextField } from "@/components/form";
 import type { SearchableSelectOption } from "@/components/form";
-import { emptyCertification, type CertificationFormValue } from "@/lib/operative-certifications";
+import { FormFieldHint } from "@/components/form/FormFieldLabel";
+import { StatusBadge } from "@/components/StatusBadge";
+import {
+  certificationStatusFromExpiry,
+  emptyCertification,
+  type CertificationFormValue,
+} from "@/lib/operative-certifications";
 import { certificationTypesService } from "@/lib/api/services/certification-types";
 import { certificationLevelsService } from "@/lib/api/services/certification-levels";
 import { DROPDOWN_FETCH_SIZE } from "@/lib/dropdown-fetch";
@@ -48,18 +54,13 @@ function makeLevelFetcher(typeId: string) {
   };
 }
 
-function CertificationRow({
-  index,
-  locked,
-  onRemove,
-}: {
-  index: number;
-  locked: boolean;
-  onRemove: () => void;
-}) {
+function CertificationRow({ index, locked }: { index: number; locked: boolean }) {
   const form = useFormContext<CertificationForm>();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const typeId = useWatch({ control: form.control, name: `certifications.${index}.certificationTypeId` });
+  const typeId = useWatch({
+    control: form.control,
+    name: `certifications.${index}.certificationTypeId`,
+  });
   const typeLabel = useWatch({
     control: form.control,
     name: `certifications.${index}.certificationTypeLabel`,
@@ -67,6 +68,10 @@ function CertificationRow({
   const levelLabel = useWatch({
     control: form.control,
     name: `certifications.${index}.certificationLevelLabel`,
+  });
+  const expiryDate = useWatch({
+    control: form.control,
+    name: `certifications.${index}.expiryDate`,
   });
   const existingFiles = useWatch({
     control: form.control,
@@ -80,6 +85,8 @@ function CertificationRow({
     control: form.control,
     name: `certifications.${index}.removedFileIds`,
   });
+
+  const expiryStatus = useMemo(() => certificationStatusFromExpiry(expiryDate), [expiryDate]);
 
   const levelFetcher = useMemo(() => makeLevelFetcher(typeId?.trim() || ""), [typeId]);
   const levelsQuery = useMemo(
@@ -147,7 +154,9 @@ function CertificationRow({
             form.setValue(`certifications.${index}.certificationTypeLabel`, option.label, {
               shouldDirty: true,
             });
-            form.setValue(`certifications.${index}.certificationLevelId`, "", { shouldDirty: true });
+            form.setValue(`certifications.${index}.certificationLevelId`, "", {
+              shouldDirty: true,
+            });
             form.setValue(`certifications.${index}.certificationLevelLabel`, "", {
               shouldDirty: true,
             });
@@ -170,7 +179,14 @@ function CertificationRow({
           disabled={locked || !typeId}
         />
       </div>
-      <div className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[1fr_1fr_auto]">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <TextField<CertificationForm>
+          name={`certifications.${index}.documentNumber`}
+          label="Number"
+          placeholder="e.g. card / cert ID"
+          maxLength={100}
+          disabled={locked}
+        />
         <TextField<CertificationForm>
           name={`certifications.${index}.startDate`}
           label="Start date"
@@ -178,6 +194,8 @@ function CertificationRow({
           required
           disabled={locked}
         />
+      </div>
+      <div className="grid grid-cols-1 items-end gap-2 md:grid-cols-2">
         <TextField<CertificationForm>
           name={`certifications.${index}.expiryDate`}
           label="Expiry date"
@@ -185,20 +203,19 @@ function CertificationRow({
           required
           disabled={locked}
         />
-        {!locked ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 shrink-0 text-destructive hover:text-destructive"
-            aria-label="Remove certification"
-            onClick={onRemove}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        ) : (
-          <span className="h-9 w-9" />
-        )}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-medium leading-none">Status</p>
+            <FormFieldHint description="Valid until the expiry date; Invalid after it." />
+          </div>
+          <div className="flex h-9 items-center">
+            {expiryStatus ? (
+              <StatusBadge status={expiryStatus} />
+            ) : (
+              <span className="text-sm text-muted-foreground">Set expiry date</span>
+            )}
+          </div>
+        </div>
       </div>
       <TextField<CertificationForm>
         name={`certifications.${index}.notes`}
@@ -307,25 +324,34 @@ export function OperativeCertificationFields({ disabled = false }: { disabled?: 
       ) : (
         <div className="space-y-2">
           {fields.map((field, index) => (
-            <CertificationRow
-              key={field.id}
-              index={index}
-              locked={disabled}
-              onRemove={() => remove(index)}
-            />
+            <CertificationRow key={field.id} index={index} locked={disabled} />
           ))}
         </div>
       )}
       {!disabled ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => append(emptyCertification())}
-        >
-          <Plus className="h-4 w-4" />
-          Add certification
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => append(emptyCertification())}
+          >
+            <Plus className="h-4 w-4" />
+            Add certification
+          </Button>
+          {fields.length > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-destructive"
+              onClick={() => remove(fields.length - 1)}
+            >
+              <X className="h-4 w-4" />
+              Remove
+            </Button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

@@ -303,7 +303,7 @@ function Daily() {
                     mode: canModifyDaily ? "edit" : "view",
                     from: "daily",
                   }}
-                  className="inline-block max-w-full truncate font-medium hover:text-info hover:underline"
+                  className="inline-block max-w-full truncate font-medium hover:text-info"
                 >
                   {truncateWithEllipsis(row.propertyName, 36)}
                 </Link>

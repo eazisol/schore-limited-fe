@@ -208,7 +208,6 @@ function SiteDetail() {
                 : { to: "/sites/$id", params: { id }, label: "Back to site" }
             }
             headerActions={<SwitchField<SiteFormValues> name="isActive" label="Active" />}
-            maxWidth="w-full max-w-none"
             footer={
               <>
                 <span className="text-xs text-muted-foreground sm:mr-auto">
@@ -264,7 +263,13 @@ function SiteDetail() {
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
             <div className="min-w-0 lg:col-span-2">
-              <EntityHierarchyCard scope="site" siteId={row.id} customerId={row.customerId} />
+              <EntityHierarchyCard
+                scope="site"
+                siteId={row.id}
+                siteLabel={row.name}
+                customerId={row.customerId}
+                customerLabel={row.customerName ?? undefined}
+              />
             </div>
           </div>
         </>

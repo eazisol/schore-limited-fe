@@ -3,6 +3,7 @@ import { useFieldArray, useFormContext } from "react-hook-form";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchableSelectField, TextField } from "@/components/form";
+import { FormFieldHint } from "@/components/form/FormFieldLabel";
 import { cn } from "@/lib/utils";
 import { fetchProductOptions } from "@/lib/task-dropdowns";
 import {
@@ -102,6 +103,7 @@ export function RateOverrideFields({
 
   const defaultHint =
     "Rates within the parent budget save immediately. Above the parent cap needs a per-item reason and Rate approvals.";
+  const resolvedHint = hint?.trim() || (title ? defaultHint : "");
 
   function confirmCapReason(reason: string) {
     if (!capPrompt) return;
@@ -127,12 +129,12 @@ export function RateOverrideFields({
 
   return (
     <div className="min-w-0 space-y-2">
-      {title ? <h3 className="font-display text-sm font-semibold">{title}</h3> : null}
-      {hint ? (
-        <p className="text-xs text-muted-foreground">{hint}</p>
-      ) : (
-        <p className="text-xs text-muted-foreground">{defaultHint}</p>
-      )}
+      {title ? (
+        <div className="flex items-center gap-1.5">
+          <h3 className="font-display text-sm font-semibold">{title}</h3>
+          {resolvedHint ? <FormFieldHint description={resolvedHint} /> : null}
+        </div>
+      ) : null}
       {fields.length === 0 ? (
         <p className="text-xs text-muted-foreground">No overrides. Standard / parent rates apply.</p>
       ) : (

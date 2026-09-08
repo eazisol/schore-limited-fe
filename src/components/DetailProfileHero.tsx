@@ -65,7 +65,7 @@ export function DetailProfileHero({
   phone?: string | null;
   dateOfBirth?: string | null;
   joiningDate?: string | null;
-  /** Multi-line address shown below contact details with a map pin icon. */
+  /** Single-line address shown with contact details. */
   location?: string | null;
   /** Multi-line description shown below contact details. */
   description?: string | null;
@@ -80,8 +80,11 @@ export function DetailProfileHero({
   const trimmedDob = dateOfBirth?.trim();
   const trimmedJoiningDate = joiningDate?.trim();
   const trimmedLocation = location?.trim();
+  const locationLine = trimmedLocation?.replace(/\s*\n+\s*/g, ", ");
   const trimmedDescription = description?.trim();
-  const hasContact = Boolean(trimmedEmail || trimmedPhone || trimmedDob || trimmedJoiningDate);
+  const hasMeta = Boolean(
+    trimmedEmail || trimmedPhone || trimmedDob || trimmedJoiningDate || locationLine,
+  );
   const hasHighlights = Boolean(highlights?.length);
   const hasToolbar = Boolean(title || backTo || onBack || headerActions);
 
@@ -155,38 +158,48 @@ export function DetailProfileHero({
               {subtitle ? (
                 <p className="mt-0.5 break-words text-xs text-muted-foreground sm:text-sm">{subtitle}</p>
               ) : null}
-              {hasContact ? (
-                <div className="mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 sm:justify-start">
-                  {trimmedEmail ? (
-                    <span className="inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
-                      <Mail className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
-                      <span className="break-all leading-none">{trimmedEmail}</span>
-                    </span>
+              {hasMeta ? (
+                <div className="mt-1.5 flex flex-col items-center gap-1 sm:items-start">
+                  {trimmedEmail || trimmedPhone || trimmedDob ? (
+                    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:justify-start">
+                      {trimmedEmail ? (
+                        <span className="inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
+                          <Mail className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
+                          <span className="break-all leading-none">{trimmedEmail}</span>
+                        </span>
+                      ) : null}
+                      {trimmedPhone ? (
+                        <span className="inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
+                          <Phone className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
+                          <span className="break-all leading-none">{trimmedPhone}</span>
+                        </span>
+                      ) : null}
+                      {trimmedDob ? (
+                        <span className="inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
+                          <Calendar className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
+                          <span className="leading-none">{trimmedDob}</span>
+                        </span>
+                      ) : null}
+                    </div>
                   ) : null}
-                  {trimmedPhone ? (
-                    <span className="inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
-                      <Phone className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
-                      <span className="break-all leading-none">{trimmedPhone}</span>
-                    </span>
+                  {trimmedJoiningDate || locationLine ? (
+                    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:justify-start">
+                      {trimmedJoiningDate ? (
+                        <span className="inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
+                          <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
+                          <span className="leading-none">Joined {trimmedJoiningDate}</span>
+                        </span>
+                      ) : null}
+                      {locationLine ? (
+                        <AppTooltip content={locationLine} asChild>
+                          <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-xs text-muted-foreground sm:max-w-md sm:text-sm lg:max-w-lg">
+                            <MapPin className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
+                            <span className="truncate leading-none">{locationLine}</span>
+                          </span>
+                        </AppTooltip>
+                      ) : null}
+                    </div>
                   ) : null}
-                  {trimmedDob ? (
-                    <span className="inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
-                      <Calendar className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
-                      <span className="leading-none">{trimmedDob}</span>
-                    </span>
-                  ) : null}
-                  {trimmedJoiningDate ? (
-                    <span className="inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
-                      <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
-                      <span className="leading-none">Joined {trimmedJoiningDate}</span>
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
-              {trimmedLocation ? (
-                <div className="mt-1 flex items-start justify-center gap-1.5 text-xs text-muted-foreground sm:justify-start sm:text-sm">
-                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
-                  <span className="break-words whitespace-pre-line leading-relaxed">{trimmedLocation}</span>
                 </div>
               ) : null}
               {trimmedDescription ? (

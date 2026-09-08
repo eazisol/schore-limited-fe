@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { FormFieldHint } from "@/components/form/FormFieldLabel";
 import {
   Collapsible,
   CollapsibleContent,
@@ -139,12 +140,14 @@ export function UserMenuPermissionFields({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="text-xs text-muted-foreground">
-          {ceo
-            ? "CEO always has every screen. Menu access cannot be narrowed here."
-            : "Role defaults are pre-checked. Change a box to override this user only."}
-        </p>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <FormFieldHint
+          description={
+            ceo
+              ? "CEO always has every screen. Menu access cannot be narrowed here."
+              : "Role defaults are pre-checked. Change a box to override this user only."
+          }
+        />
         {!ceo && overrides.length > 0 ? (
           <Button
             type="button"

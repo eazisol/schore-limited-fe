@@ -8,6 +8,7 @@ import {
 } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { SearchableSelectField, TextField } from "@/components/form";
 import type { ApiJobTypeTemplateItem, JobTypeTemplateItemPayload } from "@/lib/api/services/job-types";
 import { fetchPackageOptions, fetchProductOptions } from "@/lib/task-dropdowns";
@@ -125,7 +126,7 @@ export function JobTypeTemplateSequenceFields<T extends FieldValues>({
       {fields.length === 0 ? (
         <p className="text-sm text-muted-foreground">No template lines yet.</p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {fields.map((field, index) => {
             const kindPath = `templateItems.${index}.itemKind` as Path<T>;
             const tradePath = `templateItems.${index}.tradeGroupId` as Path<T>;
@@ -139,17 +140,18 @@ export function JobTypeTemplateSequenceFields<T extends FieldValues>({
             return (
               <div
                 key={field.id}
-                className="grid grid-cols-1 gap-2 rounded border p-2 sm:grid-cols-[4.5rem_7rem_1fr_4.5rem_auto]"
+                className="grid grid-cols-1 items-end gap-x-2 gap-y-2 rounded border p-2.5 sm:grid-cols-[4.25rem_7.25rem_minmax(0,1fr)_4.25rem_2rem]"
               >
                 <TextField
                   name={`templateItems.${index}.dayOffset` as Path<T>}
                   label="Day"
                   type="number"
+                  className="min-w-0"
                 />
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Type</label>
+                <div className="min-w-0 space-y-1">
+                  <Label>Type</Label>
                   <select
-                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                    className="flex h-9 w-full items-center rounded-md border border-input bg-card px-3 text-sm shadow-none"
                     disabled={isView}
                     value={itemKind}
                     onChange={(e) => {
@@ -179,6 +181,7 @@ export function JobTypeTemplateSequenceFields<T extends FieldValues>({
                     fetchOptions={fetchProductOptions}
                     selectedLabel={productLabel || null}
                     disabled={isView}
+                    className="min-w-0"
                     onSelect={(option) =>
                       form.setValue(productLabelPath, option.label as never, {
                         shouldDirty: true,
@@ -196,6 +199,7 @@ export function JobTypeTemplateSequenceFields<T extends FieldValues>({
                     fetchOptions={fetchPackageOptions}
                     selectedLabel={tradeLabel || null}
                     disabled={isView}
+                    className="min-w-0"
                     onSelect={(option) =>
                       form.setValue(tradeLabelPath, option.label as never, {
                         shouldDirty: true,
@@ -207,19 +211,21 @@ export function JobTypeTemplateSequenceFields<T extends FieldValues>({
                   name={`templateItems.${index}.quantity` as Path<T>}
                   label="Qty"
                   type="number"
+                  className="min-w-0"
                 />
                 {!isView ? (
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
-                    className="mt-5 text-destructive"
+                    size="icon"
+                    className="h-9 w-8 shrink-0 text-destructive"
                     onClick={() => remove(index)}
+                    aria-label={`Remove template line ${index + 1}`}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 ) : (
-                  <span />
+                  <span className="h-9" />
                 )}
               </div>
             );

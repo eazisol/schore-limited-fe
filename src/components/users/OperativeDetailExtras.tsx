@@ -1,8 +1,8 @@
-import { Link } from "@tanstack/react-router";
-import { useMemo, type ReactNode } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Cell, Label, Pie, PieChart } from "recharts";
-import { CheckCircle2, ClipboardList, Clock, Eye, Loader2 } from "lucide-react";
+import { CheckCircle2, ClipboardList, Clock, Eye, Loader2, Plus } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,23 +13,26 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  resolveProfileImageUrl,
-  toDateInputValue,
-  type ApiUser,
-} from "@/lib/api/services/users";
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  underlineTabListClass,
+  underlineTabTriggerClass,
+} from "@/components/ui/tabs";
+import { usePermission } from "@/components/Permission";
+import { resolveProfileImageUrl, toDateInputValue, type ApiUser } from "@/lib/api/services/users";
 import { tasksService } from "@/lib/api/services/tasks";
 import { formatDailyRate } from "@/lib/module-ui";
 import { IN_PROGRESS_STATUS_CODE } from "@/lib/hold";
 import { isNonEmptyId } from "@/lib/ids";
+import { certificationStatusFromExpiry } from "@/lib/operative-certifications";
+import { TASKS_ROUTE } from "@/lib/tasks";
 import { cn } from "@/lib/utils";
 
 const PENDING_STATUS_CODE = "PENDING";
 const COMPLETED_STATUS_CODE = "COMPLETED";
-
-const TAB_TRIGGER_CLASS =
-  "h-auto rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 py-2 shadow-none data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-primary";
 
 const taskStatusChartConfig = {
   pending: { label: "Pending", color: "var(--warning)" },
@@ -46,10 +49,15 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
+function maskCardNumber(value: string | null | undefined): string | undefined {
+  const digits = (value ?? "").replace(/\D/g, "");
+  if (!digits) return undefined;
+  if (digits.length <= 4) return digits;
+  return `•••• •••• •••• ${digits.slice(-4)}`;
+}
+
 function EmptyPanel({ message }: { message: string }) {
-  return (
-    <p className="px-1 py-8 text-center text-sm text-muted-foreground">{message}</p>
-  );
+  return <p className="px-1 py-8 text-center text-sm text-muted-foreground">{message}</p>;
 }
 
 function formatShortDate(value: string | null | undefined) {
@@ -57,43 +65,77 @@ function formatShortDate(value: string | null | undefined) {
   return value.slice(0, 10);
 }
 
-export function OperativeDetailExtras({ user }: { user: ApiUser }) {
-  const operativeId = String(user.id);
+function itemStatusLabel(
+  statusName: string | null | undefined,
+  statusCode: string | null | undefined,
+) {
+  const code = (statusCode ?? "").toUpperCase();
+  if (!code || code === "DRAFT") return "Pending";
+  return statusName || statusCode || "Pending";
+}
 
-  const tasksQuery = useQuery({
-    queryKey: ["tasks", "operative", operativeId],
+async function countOperativeItems(operativeId: string, statusCode?: string) {
+  const data = (
+    await tasksService.listItems({
+      page: 1,
+      pageSize: 1,
+      operativeId,
+      ...(statusCode ? { statusCode } : {}),
+    })
+  ).data;
+  return data.totalCount;
+}
+
+export function OperativeDetailExtras({
+  user,
+  canEdit,
+  onEdit,
+}: {
+  user: ApiUser;
+  canEdit?: boolean;
+  onEdit?: () => void;
+}) {
+  const operativeId = String(user.id);
+  const navigate = useNavigate();
+  const canAddTask = usePermission({ route: TASKS_ROUTE, action: "modify" });
+  const [tab, setTab] = useState("tasks");
+
+  const itemsQuery = useQuery({
+    queryKey: ["task-items", "operative", operativeId],
     queryFn: async () =>
       (
-        await tasksService.list({
+        await tasksService.listItems({
           page: 1,
-          pageSize: 100,
+          pageSize: 50,
           operativeId,
-          sortBy: "startdate",
+          sortBy: "workdate",
           sortDir: "desc",
         })
       ).data,
     enabled: isNonEmptyId(operativeId),
   });
 
-  const tasks = tasksQuery.data?.items ?? [];
+  const countsQuery = useQuery({
+    queryKey: ["task-items", "operative-counts", operativeId],
+    queryFn: async () => {
+      const [total, pending, inProgress, completed] = await Promise.all([
+        countOperativeItems(operativeId),
+        countOperativeItems(operativeId, PENDING_STATUS_CODE),
+        countOperativeItems(operativeId, IN_PROGRESS_STATUS_CODE),
+        countOperativeItems(operativeId, COMPLETED_STATUS_CODE),
+      ]);
+      return { total, pending, inProgress, completed };
+    },
+    enabled: isNonEmptyId(operativeId),
+  });
 
-  const statusCounts = useMemo(() => {
-    let pending = 0;
-    let inProgress = 0;
-    let completed = 0;
-    for (const task of tasks) {
-      const code = (task.statusCode ?? "").toUpperCase();
-      if (code === PENDING_STATUS_CODE) pending += 1;
-      else if (code === IN_PROGRESS_STATUS_CODE) inProgress += 1;
-      else if (code === COMPLETED_STATUS_CODE) completed += 1;
-    }
-    return {
-      total: tasksQuery.data?.totalCount ?? tasks.length,
-      pending,
-      inProgress,
-      completed,
-    };
-  }, [tasks, tasksQuery.data?.totalCount]);
+  const items = itemsQuery.data?.items ?? [];
+  const statusCounts = countsQuery.data ?? {
+    total: itemsQuery.data?.totalCount ?? 0,
+    pending: 0,
+    inProgress: 0,
+    completed: 0,
+  };
 
   const statusPieData = useMemo(
     () =>
@@ -120,13 +162,16 @@ export function OperativeDetailExtras({ user }: { user: ApiUser }) {
     [statusCounts],
   );
 
-  const pieTotal =
-    statusCounts.pending + statusCounts.inProgress + statusCounts.completed;
+  const pieTotal = statusCounts.pending + statusCounts.inProgress + statusCounts.completed;
+  const chartLoading = countsQuery.isLoading;
 
   const tradeNames = useMemo(() => {
     if (user.tradeNames?.length) return user.tradeNames.filter(Boolean);
     if (user.tradeName?.trim()) {
-      return user.tradeName.split(",").map((n) => n.trim()).filter(Boolean);
+      return user.tradeName
+        .split(",")
+        .map((n) => n.trim())
+        .filter(Boolean);
     }
     return [];
   }, [user.tradeName, user.tradeNames]);
@@ -134,78 +179,124 @@ export function OperativeDetailExtras({ user }: { user: ApiUser }) {
   const certifications = user.certifications ?? [];
   const rateOverrides = user.rateOverrides ?? [];
 
+  const addLabel =
+    tab === "tasks"
+      ? "Add task"
+      : tab === "bank"
+        ? "Edit payment details"
+        : tab === "certificates"
+          ? "Edit certificates"
+          : tab === "trades"
+            ? "Edit trades"
+            : "Edit rates";
+
+  const showAdd = tab === "tasks" ? canAddTask : Boolean(canEdit && onEdit);
+
+  function handleAdd() {
+    if (tab === "tasks") {
+      navigate({ to: "/tasks/new" });
+      return;
+    }
+    onEdit?.();
+  }
+
   return (
     <div className="grid gap-4 lg:grid-cols-12 lg:items-start">
       <section className="card-elevated min-w-0 overflow-hidden lg:col-span-8">
-        <Tabs defaultValue="tasks" className="flex min-w-0 flex-col">
-          <div className="overflow-x-auto border-b px-3 pt-1 sm:px-4">
-            <TabsList className="inline-flex h-auto w-max min-w-full flex-row items-start justify-start gap-1 rounded-none bg-transparent p-0 pb-0 sm:gap-2">
-              <TabsTrigger value="tasks" className={TAB_TRIGGER_CLASS}>
-                Tasks
-              </TabsTrigger>
-              <TabsTrigger value="bank" className={TAB_TRIGGER_CLASS}>
-                Bank details
-              </TabsTrigger>
-              <TabsTrigger value="certificates" className={TAB_TRIGGER_CLASS}>
-                Certificates
-              </TabsTrigger>
-              <TabsTrigger value="trades" className={TAB_TRIGGER_CLASS}>
-                Trades
-              </TabsTrigger>
-              <TabsTrigger value="rates" className={TAB_TRIGGER_CLASS}>
-                Rates
-              </TabsTrigger>
-            </TabsList>
+        <Tabs value={tab} onValueChange={setTab} className="flex min-w-0 flex-col">
+          <div className="flex flex-wrap items-center gap-2 border-b px-3 pt-1 sm:px-4">
+            <div className="min-w-0 flex-1 overflow-x-auto">
+              <TabsList className={underlineTabListClass}>
+                <TabsTrigger value="tasks" className={underlineTabTriggerClass}>
+                  Tasks
+                </TabsTrigger>
+                <TabsTrigger value="bank" className={underlineTabTriggerClass}>
+                  Bank & card
+                </TabsTrigger>
+                <TabsTrigger value="certificates" className={underlineTabTriggerClass}>
+                  Certificates
+                </TabsTrigger>
+                <TabsTrigger value="trades" className={underlineTabTriggerClass}>
+                  Trades
+                </TabsTrigger>
+                <TabsTrigger value="rates" className={underlineTabTriggerClass}>
+                  Rates
+                </TabsTrigger>
+              </TabsList>
+            </div>
+            {showAdd ? (
+              <Button size="sm" className="mb-1 shrink-0" onClick={handleAdd}>
+                <Plus className="h-4 w-4" />
+                {addLabel}
+              </Button>
+            ) : null}
           </div>
 
           <TabsContent value="tasks" className="mt-0 focus-visible:outline-none">
-            {tasksQuery.isLoading ? (
+            {itemsQuery.isLoading ? (
               <div className="flex items-center justify-center gap-2 px-5 py-12 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading tasks…
+                Loading task items…
               </div>
-            ) : tasksQuery.isError ? (
-              <EmptyPanel message="Unable to load tasks for this operative." />
-            ) : tasks.length === 0 ? (
-              <EmptyPanel message="No tasks assigned to this operative." />
+            ) : itemsQuery.isError ? (
+              <EmptyPanel message="Unable to load task items for this operative." />
+            ) : items.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-3 px-5 py-12 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No task items assigned to this operative.
+                </p>
+                {canAddTask ? (
+                  <Button size="sm" onClick={() => navigate({ to: "/tasks/new" })}>
+                    <Plus className="h-4 w-4" />
+                    Add task
+                  </Button>
+                ) : null}
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
                       <th className="px-4 py-2.5 text-left font-medium">Job</th>
+                      <th className="px-3 py-2.5 text-left font-medium">Task</th>
                       <th className="px-3 py-2.5 text-left font-medium">Property</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Type</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Start</th>
+                      <th className="px-3 py-2.5 text-left font-medium">Work date</th>
                       <th className="px-3 py-2.5 text-left font-medium">Status</th>
                       <th className="px-4 py-2.5 text-right font-medium" />
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {tasks.map((task) => (
-                      <tr key={task.id} className="hover:bg-muted/30">
+                    {items.map((item) => (
+                      <tr key={item.id} className="hover:bg-muted/30">
                         <td className="px-4 py-2.5 font-mono text-xs tabular-nums">
-                          {task.taskNumber}
+                          {item.taskNumber}
                         </td>
-                        <td className="max-w-[14rem] truncate px-3 py-2.5 font-medium">
-                          {task.propertyName}
+                        <td className="max-w-[12rem] px-3 py-2.5">
+                          <div className="truncate font-medium">
+                            {item.productName || item.tradeGroupName || "—"}
+                          </div>
+                          {item.tradeName ? (
+                            <div className="truncate text-xs text-muted-foreground">
+                              {item.tradeName}
+                            </div>
+                          ) : null}
                         </td>
-                        <td className="px-3 py-2.5 text-muted-foreground">
-                          {task.jobTypeName || "—"}
+                        <td className="max-w-[12rem] truncate px-3 py-2.5 text-muted-foreground">
+                          {item.propertyName}
                         </td>
                         <td className="px-3 py-2.5 tabular-nums text-muted-foreground">
-                          {formatShortDate(task.startDate)}
+                          {formatShortDate(item.workDate)}
                         </td>
                         <td className="px-3 py-2.5">
-                          <StatusBadge status={task.statusName || task.statusCode} />
+                          <StatusBadge status={itemStatusLabel(item.statusName, item.statusCode)} />
                         </td>
                         <td className="px-4 py-2.5 text-right">
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
                             <Link
                               to="/tasks/$id"
-                              params={{ id: String(task.id) }}
+                              params={{ id: String(item.taskId) }}
                               search={{ mode: "view" }}
-                              aria-label={`View ${task.taskNumber}`}
+                              aria-label={`View ${item.taskNumber}`}
                             >
                               <Eye className="h-4 w-4" />
                             </Link>
@@ -220,12 +311,29 @@ export function OperativeDetailExtras({ user }: { user: ApiUser }) {
           </TabsContent>
 
           <TabsContent value="bank" className="mt-0 px-4 py-3 focus-visible:outline-none sm:px-5">
-            <dl className="divide-y divide-border">
-              <DetailRow label="Account holder" value={user.accountHolderName?.trim()} />
-              <DetailRow label="Bank name" value={user.bankName?.trim()} />
-              <DetailRow label="Sort code" value={user.sortCode?.trim()} />
-              <DetailRow label="Account number" value={user.accountNumber?.trim()} />
-            </dl>
+            <div className="space-y-4">
+              <div>
+                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Bank details
+                </p>
+                <dl className="divide-y divide-border">
+                  <DetailRow label="Account holder" value={user.accountHolderName?.trim()} />
+                  <DetailRow label="Bank name" value={user.bankName?.trim()} />
+                  <DetailRow label="Sort code" value={user.sortCode?.trim()} />
+                  <DetailRow label="Account number" value={user.accountNumber?.trim()} />
+                </dl>
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Card details
+                </p>
+                <dl className="divide-y divide-border">
+                  <DetailRow label="Cardholder" value={user.cardHolderName?.trim()} />
+                  <DetailRow label="Card number" value={maskCardNumber(user.cardNumber)} />
+                  <DetailRow label="Expiry" value={user.cardExpiry?.trim()} />
+                </dl>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent
@@ -236,81 +344,82 @@ export function OperativeDetailExtras({ user }: { user: ApiUser }) {
               <EmptyPanel message="No certificates on file." />
             ) : (
               <ul className="divide-y divide-border">
-                {certifications.map((cert) => (
-                  <li
-                    key={cert.id ?? `${cert.certificationTypeId}-${cert.startDate}`}
-                    className="flex flex-col gap-1 py-2.5 text-sm"
-                  >
-                    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="font-medium">
-                          {cert.certificationTypeName || "Certification"}
-                          {cert.certificationLevelName
-                            ? ` · ${cert.certificationLevelName}`
-                            : ""}
+                {certifications.map((cert) => {
+                  const status = certificationStatusFromExpiry(cert.expiryDate);
+                  return (
+                    <li
+                      key={cert.id ?? `${cert.certificationTypeId}-${cert.startDate}`}
+                      className="flex flex-col gap-1 py-2.5 text-sm"
+                    >
+                      <div className="flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium">
+                              {cert.certificationTypeName || "Certification"}
+                              {cert.certificationLevelName
+                                ? ` · ${cert.certificationLevelName}`
+                                : ""}
+                            </p>
+                            {status ? <StatusBadge status={status} /> : null}
+                          </div>
+                          {cert.documentNumber?.trim() ? (
+                            <p className="text-xs text-muted-foreground">
+                              No. {cert.documentNumber.trim()}
+                            </p>
+                          ) : null}
+                          {cert.notes?.trim() ? (
+                            <p className="text-xs text-muted-foreground">{cert.notes}</p>
+                          ) : null}
+                        </div>
+                        <p className="shrink-0 text-xs text-muted-foreground">
+                          {toDateInputValue(cert.startDate)} → {toDateInputValue(cert.expiryDate)}
                         </p>
-                        {cert.notes?.trim() ? (
-                          <p className="text-xs text-muted-foreground">{cert.notes}</p>
-                        ) : null}
                       </div>
-                      <p className="shrink-0 text-xs text-muted-foreground">
-                        {toDateInputValue(cert.startDate)} → {toDateInputValue(cert.expiryDate)}
-                      </p>
-                    </div>
-                    {(cert.files?.length ?? 0) > 0 ? (
-                      <ul className="flex flex-wrap gap-2">
-                        {cert.files!.map((file) => (
-                          <li key={file.id}>
-                            <a
-                              href={resolveProfileImageUrl(file.filePath)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-info hover:underline"
-                            >
-                              {file.fileName}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
+                      {(cert.files?.length ?? 0) > 0 ? (
+                        <ul className="flex flex-wrap gap-2">
+                          {cert.files!.map((file) => (
+                            <li key={file.id}>
+                              <a
+                                href={resolveProfileImageUrl(file.filePath)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs text-info hover:underline"
+                              >
+                                {file.fileName}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </TabsContent>
+
+          <TabsContent value="trades" className="mt-0 px-4 py-3 focus-visible:outline-none sm:px-5">
+            {tradeNames.length === 0 ? (
+              <EmptyPanel message="No trades assigned." />
+            ) : (
+              <ul className="flex flex-wrap gap-1.5 py-1">
+                {tradeNames.map((name) => (
+                  <li
+                    key={name}
+                    className="rounded-md border bg-muted/40 px-2 py-0.5 text-xs font-medium"
+                  >
+                    {name}
                   </li>
                 ))}
               </ul>
             )}
           </TabsContent>
 
-          <TabsContent value="trades" className="mt-0 px-4 py-3 focus-visible:outline-none sm:px-5">
-            <dl className="divide-y divide-border">
-              <DetailRow
-                label="Trades"
-                value={
-                  tradeNames.length > 0 ? (
-                    <ul className="flex flex-wrap gap-1.5">
-                      {tradeNames.map((name) => (
-                        <li
-                          key={name}
-                          className="rounded-md border bg-muted/40 px-2 py-0.5 text-xs font-medium"
-                        >
-                          {name}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    "—"
-                  )
-                }
-              />
-              <DetailRow label="CIS" value={user.cisName?.trim()} />
-              <DetailRow
-                label="Is daily rate"
-                value={user.isDailyRate ? "Yes" : "No"}
-              />
-            </dl>
-          </TabsContent>
-
           <TabsContent value="rates" className="mt-0 px-4 py-3 focus-visible:outline-none sm:px-5">
             <dl className="mb-3 divide-y divide-border">
               <DetailRow label="Daily rate" value={formatDailyRate(user.dailyRate)} />
+              <DetailRow label="CIS" value={user.cisName?.trim()} />
+              <DetailRow label="Is daily rate" value={user.isDailyRate ? "Yes" : "No"} />
             </dl>
             {rateOverrides.length === 0 ? (
               <EmptyPanel message="No agreed rate overrides. Catalogue rates apply." />
@@ -349,19 +458,26 @@ export function OperativeDetailExtras({ user }: { user: ApiUser }) {
           <div className="border-b px-4 py-3 sm:px-5">
             <h2 className="font-display font-semibold">Task status</h2>
             <p className="text-xs text-muted-foreground">
-              Pending, in progress and completed for this operative
+              Assigned task items — pending, in progress and completed
             </p>
           </div>
 
           <div className="px-4 pb-2 pt-4 sm:px-5">
-            {tasksQuery.isLoading ? (
+            {chartLoading ? (
               <div className="flex h-[220px] items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading…
               </div>
-            ) : pieTotal === 0 ? (
+            ) : pieTotal === 0 && statusCounts.total === 0 ? (
               <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
-                No task status data yet.
+                No task item status data yet.
+              </div>
+            ) : pieTotal === 0 ? (
+              <div className="flex h-[220px] flex-col items-center justify-center gap-1 text-center text-sm text-muted-foreground">
+                <span className="font-display text-2xl font-semibold text-foreground">
+                  {statusCounts.total}
+                </span>
+                <span>Total items (none pending / in progress / completed)</span>
               </div>
             ) : (
               <ChartContainer

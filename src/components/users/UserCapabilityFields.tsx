@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchableMultiSelect } from "@/components/form";
+import { FormFieldHint } from "@/components/form/FormFieldLabel";
 import type { SearchableSelectOption } from "@/components/form/SearchableSelect";
 import { capabilitiesService } from "@/lib/api/services/access";
 import type { UserFormValues } from "@/lib/user-form";
@@ -121,14 +122,14 @@ export function UserCapabilityFields({
     );
   }
 
+  const helpText = ceo
+    ? "CEO always has every commercial permission. This list cannot be narrowed here."
+    : "Selected flags are granted. Role defaults stay selected until you change them.";
+
   return (
     <div className="min-w-0 max-w-full space-y-2">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="text-xs text-muted-foreground">
-          {ceo
-            ? "CEO always has every commercial permission. This list cannot be narrowed here."
-            : "Selected flags are granted. Role defaults stay selected until you change them."}
-        </p>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <FormFieldHint description={helpText} />
         {!ceo && overrides.length > 0 ? (
           <Button
             type="button"

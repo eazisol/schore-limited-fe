@@ -12,7 +12,7 @@ import {
   type DataTableColumn,
   type DataTableRowAction,
 } from "@/components/data-table";
-import { Plus, Eye, Pencil, Trash2, Mail, Loader2, Download, User } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Loader2, Download, User } from "lucide-react";
 import { toast } from "sonner";
 import {
   usersService,
@@ -239,16 +239,15 @@ export function UsersListPage() {
                   <Link
                     to={cfg.detailPath}
                     params={{ id: String(user.id) }}
-                    className="inline-block max-w-full cursor-pointer font-medium text-info underline underline-offset-2"
+                    className="inline-block max-w-full cursor-pointer font-medium text-info"
                   >
                     {truncateWithEllipsis(name)}
                   </Link>
                 </AppTooltip>
                 {user.email ? (
-                  <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <Mail className="h-3 w-3 shrink-0" />
+                  <div className="mt-0.5 min-w-0 text-[11px] text-muted-foreground">
                     <AppTooltip content={user.email} asChild align="start">
-                      <span className="min-w-0 flex-1 truncate">{user.email}</span>
+                      <span className="block min-w-0 truncate">{user.email}</span>
                     </AppTooltip>
                   </div>
                 ) : null}

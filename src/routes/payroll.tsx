@@ -236,7 +236,7 @@ function Payroll() {
                         to="/wages/$id"
                         params={{ id: String(row.id) }}
                         search={{ from: "payroll" }}
-                        className="text-xs text-info hover:underline"
+                        className="text-xs text-info"
                       >
                         {invoiceNo(row.id)}
                       </Link>

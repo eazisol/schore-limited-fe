@@ -219,14 +219,12 @@ export function JobDayItemsEditor({
                   </div>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[40rem] text-sm">
+                  <table className="w-full min-w-[34rem] text-sm">
                     <thead>
                       <tr className="border-b bg-muted/20 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                         <th className="px-3 py-1.5">Package</th>
                         <th className="px-3 py-1.5">Time</th>
                         <th className="px-3 py-1.5 text-center">Qty</th>
-                        <th className="px-3 py-1.5 text-center">Done</th>
-                        <th className="px-3 py-1.5 text-center">Rem</th>
                         <th className="px-3 py-1.5 text-right">Rate</th>
                         <th className="px-3 py-1.5 text-right">Amount</th>
                         <th className="px-3 py-1.5">Status</th>
@@ -256,16 +254,6 @@ export function JobDayItemsEditor({
                             <td className="px-3 py-2 text-center tabular-nums font-medium">
                               <AppTooltip content="Qty" asChild>
                                 <span className="cursor-default">{line.quantity}</span>
-                              </AppTooltip>
-                            </td>
-                            <td className="px-3 py-2 text-center tabular-nums font-medium">
-                              <AppTooltip content="Done" asChild>
-                                <span className="cursor-default">{line.doneQty}</span>
-                              </AppTooltip>
-                            </td>
-                            <td className="px-3 py-2 text-center tabular-nums font-medium">
-                              <AppTooltip content="Remaining" asChild>
-                                <span className="cursor-default">{line.remaining}</span>
                               </AppTooltip>
                             </td>
                             <td className="px-3 py-2 text-right tabular-nums">

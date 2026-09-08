@@ -148,7 +148,7 @@ function PropertiesList() {
             <Link
               to="/properties/$id"
               params={{ id: String(row.id) }}
-              className="inline-block max-w-full cursor-pointer font-medium text-info underline underline-offset-2"
+              className="inline-block max-w-full cursor-pointer font-medium text-info"
             >
               {truncateWithEllipsis(row.propertyName)}
             </Link>

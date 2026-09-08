@@ -13,6 +13,7 @@ export type CertificationFormValue = {
   certificationTypeLabel: string;
   certificationLevelId: string;
   certificationLevelLabel: string;
+  documentNumber: string;
   startDate: string;
   expiryDate: string;
   notes: string;
@@ -27,6 +28,7 @@ export type CertificationPayload = {
   clientKey?: string | null;
   certificationTypeId: string;
   certificationLevelId?: string | null;
+  documentNumber?: string | null;
   startDate: string;
   expiryDate: string;
   notes?: string | null;
@@ -48,11 +50,14 @@ export type ApiOperativeCertification = {
   certificationTypeName?: string | null;
   certificationLevelId?: string | null;
   certificationLevelName?: string | null;
+  documentNumber?: string | null;
   startDate: string;
   expiryDate: string;
   notes?: string | null;
   files?: ApiOperativeCertificationFile[];
 };
+
+export type CertificationExpiryStatus = "Valid" | "Invalid";
 
 export function newClientKey(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -69,6 +74,7 @@ export function emptyCertification(): CertificationFormValue {
     certificationTypeLabel: "",
     certificationLevelId: "",
     certificationLevelLabel: "",
+    documentNumber: "",
     startDate: "",
     expiryDate: "",
     notes: "",
@@ -85,6 +91,7 @@ export const certificationRowSchema = z.object({
   certificationTypeLabel: z.string(),
   certificationLevelId: z.string(),
   certificationLevelLabel: z.string(),
+  documentNumber: z.string(),
   startDate: z.string(),
   expiryDate: z.string(),
   notes: z.string(),
@@ -106,6 +113,22 @@ function parseDate(value: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function startOfToday(): Date {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
+
+/** Derive display status from expiry date (client-side). */
+export function certificationStatusFromExpiry(
+  expiryDate: string | null | undefined,
+  now: Date = startOfToday(),
+): CertificationExpiryStatus | null {
+  const expiry = parseDate((expiryDate ?? "").toString().slice(0, 10));
+  if (!expiry) return null;
+  return expiry.getTime() >= now.getTime() ? "Valid" : "Invalid";
+}
+
 export function refineCertifications(
   rows: CertificationFormValue[],
   ctx: z.RefinementCtx,
@@ -115,7 +138,12 @@ export function refineCertifications(
     const typeId = row.certificationTypeId.trim();
     const start = row.startDate.trim();
     const expiry = row.expiryDate.trim();
-    const isBlank = !typeId && !start && !expiry && !row.certificationLevelId.trim();
+    const isBlank =
+      !typeId &&
+      !start &&
+      !expiry &&
+      !row.certificationLevelId.trim() &&
+      !row.documentNumber.trim();
     if (isBlank) return;
 
     if (!typeId) {
@@ -137,6 +165,13 @@ export function refineCertifications(
         code: "custom",
         path: [...path, index, "expiryDate"],
         message: "Expiry date is required",
+      });
+    }
+    if (row.documentNumber.trim().length > 100) {
+      ctx.addIssue({
+        code: "custom",
+        path: [...path, index, "documentNumber"],
+        message: "Number must be 100 characters or fewer",
       });
     }
     const startDate = parseDate(start);
@@ -173,6 +208,7 @@ export function toCertificationPayload(rows: CertificationFormValue[]): Certific
       clientKey: row.clientKey.trim() || null,
       certificationTypeId: row.certificationTypeId.trim(),
       certificationLevelId: row.certificationLevelId.trim() || null,
+      documentNumber: row.documentNumber.trim() || null,
       startDate: row.startDate.trim(),
       expiryDate: row.expiryDate.trim(),
       notes: row.notes.trim() || null,
@@ -190,6 +226,7 @@ export function certificationsToFormValues(
     certificationTypeLabel: row.certificationTypeName?.trim() || "",
     certificationLevelId: row.certificationLevelId != null ? String(row.certificationLevelId) : "",
     certificationLevelLabel: row.certificationLevelName?.trim() || "",
+    documentNumber: row.documentNumber?.trim() || "",
     startDate: (row.startDate ?? "").toString().slice(0, 10),
     expiryDate: (row.expiryDate ?? "").toString().slice(0, 10),
     notes: row.notes?.trim() || "",
@@ -215,8 +252,7 @@ export function resolveCertificationIdsForUpload(
     if (!row.pendingFiles?.length) continue;
 
     let certId =
-      (row.clientKey &&
-        saved.find((c) => c.clientKey && c.clientKey === row.clientKey)?.id) ||
+      (row.clientKey && saved.find((c) => c.clientKey && c.clientKey === row.clientKey)?.id) ||
       (row.id && saved.find((c) => String(c.id) === row.id)?.id) ||
       null;
 
