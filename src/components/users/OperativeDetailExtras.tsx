@@ -2,9 +2,12 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Cell, Label, Pie, PieChart } from "recharts";
-import { CheckCircle2, ClipboardList, Clock, Eye, Loader2, Plus } from "lucide-react";
+import { CheckCircle2, ChevronDown, ClipboardList, Clock, Database, Eye, FileText, Loader2, Percent, Plus, PoundSterling } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { AppTooltip } from "@/components/AppTooltip";
+import { CodeBadge } from "@/components/CodeBadge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   ChartContainer,
   ChartLegend,
@@ -22,9 +25,11 @@ import {
   underlineTabTriggerClass,
 } from "@/components/ui/tabs";
 import { usePermission } from "@/components/Permission";
-import { resolveProfileImageUrl, toDateInputValue, type ApiUser } from "@/lib/api/services/users";
+import { resolveProfileImageUrl, type ApiUser } from "@/lib/api/services/users";
 import { tasksService } from "@/lib/api/services/tasks";
 import { formatDailyRate } from "@/lib/module-ui";
+import { formatUkDate } from "@/lib/week-ending";
+import { formatSortCodeInput } from "@/lib/user-form";
 import { IN_PROGRESS_STATUS_CODE } from "@/lib/hold";
 import { isNonEmptyId } from "@/lib/ids";
 import { certificationStatusFromExpiry } from "@/lib/operative-certifications";
@@ -49,20 +54,180 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function maskCardNumber(value: string | null | undefined): string | undefined {
-  const digits = (value ?? "").replace(/\D/g, "");
-  if (!digits) return undefined;
-  if (digits.length <= 4) return digits;
-  return `•••• •••• •••• ${digits.slice(-4)}`;
-}
-
 function EmptyPanel({ message }: { message: string }) {
   return <p className="px-1 py-8 text-center text-sm text-muted-foreground">{message}</p>;
 }
 
 function formatShortDate(value: string | null | undefined) {
-  if (!value) return "—";
-  return value.slice(0, 10);
+  return formatUkDate(value);
+}
+
+function formatDisplayDate(value: string | null | undefined) {
+  const raw = (value ?? "").trim().slice(0, 10);
+  if (!raw) return "—";
+  const d = new Date(`${raw}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return formatUkDate(raw);
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function RatesSummaryCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className="flex min-w-[10.5rem] flex-1 items-center gap-3 rounded-lg border border-border bg-background px-3 py-3">
+      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent/10 text-accent">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="truncate text-sm font-semibold">{value || "—"}</p>
+      </div>
+    </div>
+  );
+}
+
+function OperativeRatesPanel({
+  dailyRate,
+  cisName,
+  isDailyRate,
+  rateOverrides,
+}: {
+  dailyRate: string;
+  cisName: string;
+  isDailyRate: boolean;
+  rateOverrides: NonNullable<ApiUser["rateOverrides"]>;
+}) {
+  const [summaryOpen, setSummaryOpen] = useState(true);
+  const [overridesOpen, setOverridesOpen] = useState(true);
+  const overrideCount = rateOverrides.length;
+
+  return (
+    <div className="space-y-4">
+      <Collapsible open={summaryOpen} onOpenChange={setSummaryOpen}>
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent/10 text-accent">
+            <Database className="h-4 w-4" aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex w-full items-start justify-between gap-2 text-left"
+              >
+                <div>
+                  <h3 className="font-display text-base font-semibold">Rates</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Manage daily rate, CIS status and product-specific overrides for this operative.
+                  </p>
+                </div>
+                <ChevronDown
+                  className={cn(
+                    "mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                    summaryOpen && "rotate-180",
+                  )}
+                  aria-hidden
+                />
+              </button>
+            </CollapsibleTrigger>
+          </div>
+        </div>
+
+        <CollapsibleContent className="mt-3">
+          <div className="flex flex-wrap gap-2">
+            <RatesSummaryCard
+              icon={<PoundSterling className="h-4 w-4" aria-hidden />}
+              label="Daily rate"
+              value={dailyRate}
+            />
+            <RatesSummaryCard
+              icon={<Percent className="h-4 w-4" aria-hidden />}
+              label="CIS"
+              value={cisName}
+            />
+            {isDailyRate ? (
+              <RatesSummaryCard
+                icon={<CheckCircle2 className="h-4 w-4" aria-hidden />}
+                label="Daily rate pay"
+                value="Enabled"
+              />
+            ) : null}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <Collapsible open={overridesOpen} onOpenChange={setOverridesOpen}>
+        <div className="rounded-lg border border-border">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-start justify-between gap-2 px-3 py-3 text-left sm:px-4"
+            >
+              <div>
+                <h4 className="text-sm font-semibold">
+                  Rate overrides{overrideCount > 0 ? ` (${overrideCount})` : ""}
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  These product/item rates override the catalogue rate when applicable.
+                </p>
+              </div>
+              <ChevronDown
+                className={cn(
+                  "mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                  overridesOpen && "rotate-180",
+                )}
+                aria-hidden
+              />
+            </button>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent>
+            {overrideCount === 0 ? (
+              <p className="border-t px-3 py-6 text-center text-sm text-muted-foreground sm:px-4">
+                No agreed rate overrides. Catalogue rates apply.
+              </p>
+            ) : (
+              <div className="overflow-x-auto border-t">
+                <table className="w-full min-w-[28rem] text-sm">
+                  <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2.5 text-left font-medium sm:px-4">Item / Product</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Rate</th>
+                      <th className="px-3 py-2.5 text-left font-medium sm:px-4">Effective from</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {rateOverrides.map((row) => (
+                      <tr key={row.id} className="hover:bg-muted/20">
+                        <td className="px-3 py-2.5 font-medium sm:px-4">
+                          {row.productName || "—"}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono tabular-nums">
+                          {formatDailyRate(row.rate)}
+                        </td>
+                        <td className="px-3 py-2.5 tabular-nums text-muted-foreground sm:px-4">
+                          {formatDisplayDate(row.effectiveFrom)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+    </div>
+  );
 }
 
 function itemStatusLabel(
@@ -211,7 +376,7 @@ export function OperativeDetailExtras({
                   Tasks
                 </TabsTrigger>
                 <TabsTrigger value="bank" className={underlineTabTriggerClass}>
-                  Bank & card
+                  Bank
                 </TabsTrigger>
                 <TabsTrigger value="certificates" className={underlineTabTriggerClass}>
                   Certificates
@@ -311,82 +476,96 @@ export function OperativeDetailExtras({
           </TabsContent>
 
           <TabsContent value="bank" className="mt-0 px-4 py-3 focus-visible:outline-none sm:px-5">
-            <div className="space-y-4">
-              <div>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Bank details
-                </p>
-                <dl className="divide-y divide-border">
-                  <DetailRow label="Account holder" value={user.accountHolderName?.trim()} />
-                  <DetailRow label="Bank name" value={user.bankName?.trim()} />
-                  <DetailRow label="Sort code" value={user.sortCode?.trim()} />
-                  <DetailRow label="Account number" value={user.accountNumber?.trim()} />
-                </dl>
-              </div>
-              <div>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Card details
-                </p>
-                <dl className="divide-y divide-border">
-                  <DetailRow label="Cardholder" value={user.cardHolderName?.trim()} />
-                  <DetailRow label="Card number" value={maskCardNumber(user.cardNumber)} />
-                  <DetailRow label="Expiry" value={user.cardExpiry?.trim()} />
-                </dl>
-              </div>
-            </div>
+            <dl className="divide-y divide-border">
+              <DetailRow label="Account holder" value={user.accountHolderName?.trim()} />
+              <DetailRow label="Bank name" value={user.bankName?.trim()} />
+              <DetailRow
+                label="Sort code"
+                value={
+                  user.sortCode?.trim() ? (
+                    <CodeBadge code={formatSortCodeInput(user.sortCode)} />
+                  ) : undefined
+                }
+              />
+              <DetailRow
+                label="Account number"
+                value={
+                  user.accountNumber?.trim() ? (
+                    <CodeBadge code={user.accountNumber.replace(/\D/g, "")} />
+                  ) : undefined
+                }
+              />
+            </dl>
           </TabsContent>
 
           <TabsContent
             value="certificates"
-            className="mt-0 px-4 py-3 focus-visible:outline-none sm:px-5"
+            className="mt-0 px-3 py-3 focus-visible:outline-none sm:px-4"
           >
             {certifications.length === 0 ? (
               <EmptyPanel message="No certificates on file." />
             ) : (
-              <ul className="divide-y divide-border">
+              <ul className="space-y-2.5">
                 {certifications.map((cert) => {
                   const status = certificationStatusFromExpiry(cert.expiryDate);
+                  const files = cert.files ?? [];
+                  const typeName = cert.certificationTypeName?.trim() || "Certification";
+                  const levelName = cert.certificationLevelName?.trim();
+                  const number = cert.documentNumber?.trim();
+                  const notes = cert.notes?.trim();
                   return (
                     <li
                       key={cert.id ?? `${cert.certificationTypeId}-${cert.startDate}`}
-                      className="flex flex-col gap-1 py-2.5 text-sm"
+                      className="rounded-lg border border-border bg-background px-4 py-3"
                     >
-                      <div className="flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-                        <div className="min-w-0">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0 space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium">
-                              {cert.certificationTypeName || "Certification"}
-                              {cert.certificationLevelName
-                                ? ` · ${cert.certificationLevelName}`
-                                : ""}
-                            </p>
+                            <p className="text-sm font-semibold">{typeName}</p>
+                            {levelName ? (
+                              <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                                {levelName}
+                              </span>
+                            ) : null}
                             {status ? <StatusBadge status={status} /> : null}
                           </div>
-                          {cert.documentNumber?.trim() ? (
-                            <p className="text-xs text-muted-foreground">
-                              No. {cert.documentNumber.trim()}
-                            </p>
-                          ) : null}
-                          {cert.notes?.trim() ? (
-                            <p className="text-xs text-muted-foreground">{cert.notes}</p>
-                          ) : null}
+                          {number ? <CodeBadge code={number} /> : null}
                         </div>
-                        <p className="shrink-0 text-xs text-muted-foreground">
-                          {toDateInputValue(cert.startDate)} → {toDateInputValue(cert.expiryDate)}
-                        </p>
+                        <div className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                          <p>
+                            <span className="text-[10px] uppercase tracking-wide">Issue</span>{" "}
+                            <span className="font-medium text-foreground">
+                              {formatUkDate(cert.startDate)}
+                            </span>
+                          </p>
+                          <p className="mt-0.5">
+                            <span className="text-[10px] uppercase tracking-wide">Expiry</span>{" "}
+                            <span className="font-medium text-foreground">
+                              {formatUkDate(cert.expiryDate)}
+                            </span>
+                          </p>
+                        </div>
                       </div>
-                      {(cert.files?.length ?? 0) > 0 ? (
-                        <ul className="flex flex-wrap gap-2">
-                          {cert.files!.map((file) => (
+
+                      {notes ? (
+                        <p className="mt-2 text-sm text-muted-foreground">{notes}</p>
+                      ) : null}
+
+                      {files.length > 0 ? (
+                        <ul className="mt-2 flex flex-wrap gap-2 border-t border-border/70 pt-2">
+                          {files.map((file) => (
                             <li key={file.id}>
-                              <a
-                                href={resolveProfileImageUrl(file.filePath)}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-xs text-info hover:underline"
-                              >
-                                {file.fileName}
-                              </a>
+                              <AppTooltip content={file.fileName} asChild>
+                                <a
+                                  href={resolveProfileImageUrl(file.filePath)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex max-w-[14rem] items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-info hover:bg-muted"
+                                >
+                                  <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                  <span className="truncate">{file.fileName}</span>
+                                </a>
+                              </AppTooltip>
                             </li>
                           ))}
                         </ul>
@@ -415,40 +594,13 @@ export function OperativeDetailExtras({
             )}
           </TabsContent>
 
-          <TabsContent value="rates" className="mt-0 px-4 py-3 focus-visible:outline-none sm:px-5">
-            <dl className="mb-3 divide-y divide-border">
-              <DetailRow label="Daily rate" value={formatDailyRate(user.dailyRate)} />
-              <DetailRow label="CIS" value={user.cisName?.trim()} />
-              <DetailRow label="Is daily rate" value={user.isDailyRate ? "Yes" : "No"} />
-            </dl>
-            {rateOverrides.length === 0 ? (
-              <EmptyPanel message="No agreed rate overrides. Catalogue rates apply." />
-            ) : (
-              <div className="overflow-x-auto rounded-md border">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium">Product</th>
-                      <th className="px-3 py-2 text-right font-medium">Rate</th>
-                      <th className="px-3 py-2 text-left font-medium">Effective from</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {rateOverrides.map((row) => (
-                      <tr key={row.id}>
-                        <td className="px-3 py-2 font-medium">{row.productName || "—"}</td>
-                        <td className="px-3 py-2 text-right font-mono tabular-nums">
-                          {formatDailyRate(row.rate)}
-                        </td>
-                        <td className="px-3 py-2 text-muted-foreground">
-                          {formatShortDate(row.effectiveFrom)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+          <TabsContent value="rates" className="mt-0 px-3 py-3 focus-visible:outline-none sm:px-4">
+            <OperativeRatesPanel
+              dailyRate={formatDailyRate(user.dailyRate)}
+              cisName={user.cisName?.trim() || "—"}
+              isDailyRate={Boolean(user.isDailyRate)}
+              rateOverrides={rateOverrides}
+            />
           </TabsContent>
         </Tabs>
       </section>

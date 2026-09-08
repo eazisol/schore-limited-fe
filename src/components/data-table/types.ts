@@ -97,8 +97,8 @@ export interface DataTableProps<T> {
 /** Sensible defaults so common CRUD columns stay stable without per-page width hacks. */
 export const DEFAULT_COLUMN_WIDTHS: Record<string, string> = {
   name: "16rem",
-  code: "7rem",
-  sku: "7rem",
+  code: "10rem",
+  sku: "10rem",
   status: "7.5rem",
   rate: "5.5rem",
   salePrice: "7.5rem",

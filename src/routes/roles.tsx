@@ -21,6 +21,7 @@ import { rolesService, type ApiRole, type RolePayload } from "@/lib/api/services
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { ROLES_ROUTE } from "@/lib/roles";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { CodeBadge } from "@/components/CodeBadge";
 
 export const Route = createFileRoute("/roles")({
   head: () => ({ meta: [{ title: "Roles | Schore" }] }),
@@ -103,7 +104,7 @@ function RolesPage() {
       {
         id: "code",
         header: "Code",
-        cell: (role) => <span className="text-muted-foreground">{role.code}</span>,
+        cell: (role) => <CodeBadge code={role.code} />,
       },
       {
         id: "description",

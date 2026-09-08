@@ -73,7 +73,7 @@ const dateOfBirthField = z
     }
   });
 
-/** Daily rate: required, ≥ 0, up to 2 decimal places (operative only). */
+/** Daily rate: optional; when set, ≥ 0 with up to 2 decimal places (operative). */
 export const dailyRateSchema = z
   .string()
   .trim()
@@ -83,6 +83,14 @@ export const dailyRateSchema = z
   })
   .transform((v) => Number(v))
   .refine((n) => n >= 0, { message: "Daily rate cannot be negative" });
+
+const optionalDailyRateSchema = z
+  .string()
+  .trim()
+  .refine((v) => v === "" || /^\d+(\.\d{1,2})?$/.test(v), {
+    message: "Enter a valid amount (up to 2 decimal places)",
+  })
+  .refine((v) => v === "" || Number(v) >= 0, { message: "Daily rate cannot be negative" });
 
 export type UserFormValues = {
   firstName: string;
@@ -240,8 +248,8 @@ export function userToFormValues(user: ApiUser): UserFormValues {
     rateOverrides: rateOverridesToFormValues(user.rateOverrides),
     rateChangeReason: "",
     accountHolderName: user.accountHolderName ?? "",
-    sortCode: user.sortCode ?? "",
-    accountNumber: user.accountNumber ?? "",
+    sortCode: formatSortCodeInput(user.sortCode ?? ""),
+    accountNumber: formatAccountNumberInput(user.accountNumber ?? ""),
     bankName: user.bankName ?? "",
     cardHolderName: user.cardHolderName ?? "",
     cardNumber: user.cardNumber ?? "",
@@ -251,13 +259,9 @@ export function userToFormValues(user: ApiUser): UserFormValues {
 }
 
 function operativeExtrasRefine(values: UserFormValues, ctx: z.RefinementCtx) {
-  if (!values.tradeIds.some((id) => id.trim().length > 0)) {
-    ctx.addIssue({ code: "custom", path: ["tradeIds"], message: "Select at least one trade" });
-  }
-  if (!values.cisId.trim()) {
-    ctx.addIssue({ code: "custom", path: ["cisId"], message: "CIS is required" });
-  }
-  const parsed = dailyRateSchema.safeParse(values.dailyRate);
+  const rate = values.dailyRate.trim();
+  if (!rate) return;
+  const parsed = optionalDailyRateSchema.safeParse(rate);
   if (!parsed.success) {
     for (const issue of parsed.error.issues) {
       ctx.addIssue({ ...issue, path: ["dailyRate"] });
@@ -443,7 +447,7 @@ export function editUserFormSchema(mode: UserModuleMode) {
 function refineBankDetails(values: UserFormValues, ctx: z.RefinementCtx) {
   const holder = values.accountHolderName.trim();
   const sort = values.sortCode.trim();
-  const account = values.accountNumber.trim();
+  const account = values.accountNumber.replace(/\s+/g, "").trim();
   const bank = values.bankName.trim();
   const anyFilled = Boolean(holder || sort || account || bank);
   if (!anyFilled) return;
@@ -455,20 +459,36 @@ function refineBankDetails(values: UserFormValues, ctx: z.RefinementCtx) {
       message: "Account holder name must be 120 characters or fewer",
     });
   }
-  if (sort && !/^\d{2}-?\d{2}-?\d{2}$/.test(sort)) {
+
+  const sortDigits = sort.replace(/\D/g, "");
+  if (!sortDigits) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["sortCode"],
+      message: "Sort code is required",
+    });
+  } else if (!/^\d{6}$/.test(sortDigits)) {
     ctx.addIssue({
       code: "custom",
       path: ["sortCode"],
       message: "Enter a valid UK sort code (e.g. 12-34-56)",
     });
   }
-  if (account && !/^\d{6,10}$/.test(account)) {
+
+  if (!account) {
     ctx.addIssue({
       code: "custom",
       path: ["accountNumber"],
-      message: "Enter a valid account number (6–10 digits)",
+      message: "Account number is required",
+    });
+  } else if (!/^\d{8}$/.test(account)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["accountNumber"],
+      message: "Enter a valid 8-digit account number",
     });
   }
+
   if (bank.length > 100) {
     ctx.addIssue({
       code: "custom",
@@ -476,6 +496,21 @@ function refineBankDetails(values: UserFormValues, ctx: z.RefinementCtx) {
       message: "Bank name must be 100 characters or fewer",
     });
   }
+}
+
+/** Format UK sort code as XX-XX-XX while typing. */
+export function formatSortCodeInput(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 6);
+  const parts: string[] = [];
+  if (digits.length > 0) parts.push(digits.slice(0, 2));
+  if (digits.length > 2) parts.push(digits.slice(2, 4));
+  if (digits.length > 4) parts.push(digits.slice(4, 6));
+  return parts.join("-");
+}
+
+/** Digits-only account number, max 8 (UK). */
+export function formatAccountNumberInput(value: string): string {
+  return value.replace(/\D/g, "").slice(0, 8);
 }
 
 function refineCardDetails(values: UserFormValues, ctx: z.RefinementCtx) {
@@ -508,9 +543,11 @@ function refineCardDetails(values: UserFormValues, ctx: z.RefinementCtx) {
   }
 }
 
-function parseDailyRate(value: string): number {
-  const parsed = dailyRateSchema.safeParse(value.trim());
-  return parsed.success ? parsed.data : 0;
+function parseDailyRate(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = dailyRateSchema.safeParse(trimmed);
+  return parsed.success ? parsed.data : null;
 }
 
 function applyContactPayload(
@@ -563,12 +600,16 @@ export function toCreateUserPayload(
     const tradeIds = values.tradeIds.map((id) => id.trim()).filter((id) => id.length > 0);
     payload.tradeIds = tradeIds;
     payload.tradeId = tradeIds[0] ?? null;
-    payload.cisId = values.cisId;
+    payload.cisId = values.cisId.trim() || null;
     payload.dailyRate = parseDailyRate(values.dailyRate);
     payload.isDailyRate = values.isDailyRate;
     payload.accountHolderName = values.accountHolderName.trim() || null;
-    payload.sortCode = values.sortCode.trim() || null;
-    payload.accountNumber = values.accountNumber.trim() || null;
+    payload.sortCode = (() => {
+      const digits = values.sortCode.replace(/\D/g, "");
+      if (digits.length !== 6) return values.sortCode.trim() || null;
+      return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4, 6)}`;
+    })();
+    payload.accountNumber = values.accountNumber.replace(/\D/g, "").trim() || null;
     payload.bankName = values.bankName.trim() || null;
     payload.cardHolderName = values.cardHolderName.trim() || null;
     payload.cardNumber = values.cardNumber.replace(/\s+/g, "").trim() || null;
@@ -629,12 +670,16 @@ export function toUpdateUserPayload(
     const tradeIds = values.tradeIds.map((id) => id.trim()).filter((id) => id.length > 0);
     payload.tradeIds = tradeIds;
     payload.tradeId = tradeIds[0] ?? null;
-    payload.cisId = values.cisId;
+    payload.cisId = values.cisId.trim() || null;
     payload.dailyRate = parseDailyRate(values.dailyRate);
     payload.isDailyRate = values.isDailyRate;
     payload.accountHolderName = values.accountHolderName.trim() || null;
-    payload.sortCode = values.sortCode.trim() || null;
-    payload.accountNumber = values.accountNumber.trim() || null;
+    payload.sortCode = (() => {
+      const digits = values.sortCode.replace(/\D/g, "");
+      if (digits.length !== 6) return values.sortCode.trim() || null;
+      return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4, 6)}`;
+    })();
+    payload.accountNumber = values.accountNumber.replace(/\D/g, "").trim() || null;
     payload.bankName = values.bankName.trim() || null;
     payload.cardHolderName = values.cardHolderName.trim() || null;
     payload.cardNumber = values.cardNumber.replace(/\s+/g, "").trim() || null;

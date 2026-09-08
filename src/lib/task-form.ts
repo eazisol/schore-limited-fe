@@ -175,7 +175,7 @@ export const taskFormSchema = z
     startDate: z.string().min(1, "Start date is required"),
     handOverDate: z.string(),
     budget: z.string(),
-    jobTypeId: z.string().min(1, "Job type is required"),
+    jobTypeId: z.string().min(1, "Property type is required"),
     description: descriptionSchema(),
     statusId: z.string().min(1, "Status is required"),
     siteManagerId: z.string(),

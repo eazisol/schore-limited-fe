@@ -27,6 +27,8 @@ import {
 import { tradesService } from "@/lib/api/services/trades";
 import { cisService } from "@/lib/api/services/cis";
 import { rolesService } from "@/lib/api/services/system-config";
+import { certificationTypesService } from "@/lib/api/services/certification-types";
+import { certificationLevelsService } from "@/lib/api/services/certification-levels";
 import {
   ADDRESS_MAX_LENGTH,
   CODE_MAX_LENGTH,
@@ -153,6 +155,11 @@ const roleQuickSchema = z.object({
   description: descriptionSchema(),
 });
 
+const certificationLevelQuickSchema = z.object({
+  name: nameSchema("Name", 100),
+  code: codeSchema("Code", 50),
+});
+
 type PropertyValues = z.infer<typeof propertySchema>;
 type JobTypeValues = z.infer<typeof jobTypeSchema>;
 type NamedLookupValues = z.infer<typeof namedLookupSchema>;
@@ -164,6 +171,7 @@ type ContractorQuickValues = z.infer<typeof contractorQuickSchema>;
 type SiteQuickValues = z.infer<typeof siteQuickSchema>;
 type ProjectQuickValues = z.infer<typeof projectQuickSchema>;
 type RoleQuickValues = z.infer<typeof roleQuickSchema>;
+type CertificationLevelQuickValues = z.infer<typeof certificationLevelQuickSchema>;
 
 export interface LookupQuickCreateModalProps {
   type: LookupCreateType;
@@ -211,6 +219,16 @@ export function LookupQuickCreateModal({
       return <ProjectQuickCreateModal onClose={onClose} onCreated={onCreated} context={context} />;
     case "role":
       return <RoleQuickCreateModal onClose={onClose} onCreated={onCreated} />;
+    case "certificationType":
+      return <CertificationTypeQuickCreateModal onClose={onClose} onCreated={onCreated} />;
+    case "certificationLevel":
+      return (
+        <CertificationLevelQuickCreateModal
+          onClose={onClose}
+          onCreated={onCreated}
+          context={context}
+        />
+      );
     default:
       return null;
   }
@@ -350,24 +368,24 @@ function JobTypeQuickCreateModal({
     onSuccess: (res) => {
       const created = res.data;
       if (!created) return;
-      toast.success(res.message || "Job type created");
+      toast.success(res.message || "Property type created");
       onCreated({
         value: String(created.id),
-        label: created.name?.trim() || `Job type ${created.id}`,
+        label: created.name?.trim() || `Property type ${created.id}`,
       });
     },
   });
 
   return (
     <QuickCreateShell
-      title="Add job type"
+      title="Add property type"
       form={form}
       onClose={onClose}
       onSubmit={async (values) => {
         await mutation.mutateAsync(values);
       }}
       pending={mutation.isPending}
-      submitLabel="Create job type"
+      submitLabel="Create property type"
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <TextField<JobTypeValues> name="name" label="Name" required autoFocus maxLength={JOB_TYPE_NAME_MAX} />
@@ -1176,6 +1194,154 @@ function RoleQuickCreateModal({
           rows={3}
           maxLength={500}
         />
+      </div>
+    </QuickCreateShell>
+  );
+}
+
+function CertificationTypeQuickCreateModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (option: SearchableSelectOption) => void;
+}) {
+  const form = useForm<NamedLookupValues>({
+    resolver: zodResolver(namedLookupSchema),
+    defaultValues: { name: "", code: "" },
+  });
+
+  const mutation = useMutation({
+    mutationFn: (values: NamedLookupValues) =>
+      certificationTypesService.create({
+        name: values.name.trim(),
+        code: values.code.trim().toUpperCase(),
+        description: null,
+        orderBy: 0,
+        isActive: true,
+      }),
+    onSuccess: (res) => {
+      const created = res.data;
+      if (!created) return;
+      toast.success(res.message || "Certification type created");
+      onCreated({
+        value: String(created.id),
+        label: created.name?.trim() || `Type ${created.id}`,
+      });
+    },
+  });
+
+  return (
+    <QuickCreateShell
+      title="Add certification type"
+      form={form}
+      onClose={onClose}
+      onSubmit={async (values) => {
+        await mutation.mutateAsync(values);
+      }}
+      pending={mutation.isPending}
+      submitLabel="Create type"
+    >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <TextField<NamedLookupValues> name="name" label="Name" required autoFocus maxLength={100} />
+        <TextField<NamedLookupValues>
+          name="code"
+          label="Code"
+          required
+          maxLength={50}
+          transformValue={normalizeCodeInput}
+          inputClassName="uppercase"
+        />
+      </div>
+    </QuickCreateShell>
+  );
+}
+
+function CertificationLevelQuickCreateModal({
+  onClose,
+  onCreated,
+  context,
+}: {
+  onClose: () => void;
+  onCreated: (option: SearchableSelectOption) => void;
+  context?: LookupCreateContext;
+}) {
+  const typeId = context?.certificationTypeId?.trim() || "";
+  const typeLabel = context?.certificationTypeLabel?.trim() || typeId;
+
+  const form = useForm<CertificationLevelQuickValues>({
+    resolver: zodResolver(certificationLevelQuickSchema),
+    defaultValues: { name: "", code: "" },
+  });
+
+  const mutation = useMutation({
+    mutationFn: (values: CertificationLevelQuickValues) =>
+      certificationLevelsService.create({
+        name: values.name.trim(),
+        code: values.code.trim().toUpperCase(),
+        description: null,
+        certificationTypeId: typeId,
+        orderBy: 0,
+        isActive: true,
+      }),
+    onSuccess: (res) => {
+      const created = res.data;
+      if (!created) return;
+      toast.success(res.message || "Certification level created");
+      onCreated({
+        value: String(created.id),
+        label: created.name?.trim() || `Level ${created.id}`,
+      });
+    },
+  });
+
+  if (!typeId) {
+    return (
+      <Modal open onClose={onClose} title="Add certification level" size="md" showCloseButton={false}>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Select a certification type first, then add a level.
+          </p>
+          <div className="flex justify-end border-t pt-2">
+            <Button type="button" variant="outline" size="sm" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <QuickCreateShell
+      title="Add certification level"
+      form={form}
+      onClose={onClose}
+      onSubmit={async (values) => {
+        await mutation.mutateAsync(values);
+      }}
+      pending={mutation.isPending}
+      submitLabel="Create level"
+    >
+      <div className="space-y-3">
+        <LockedLookupField label="Certification type" value={typeLabel} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <TextField<CertificationLevelQuickValues>
+            name="name"
+            label="Name"
+            required
+            autoFocus
+            maxLength={100}
+          />
+          <TextField<CertificationLevelQuickValues>
+            name="code"
+            label="Code"
+            required
+            maxLength={50}
+            transformValue={normalizeCodeInput}
+            inputClassName="uppercase"
+          />
+        </div>
       </div>
     </QuickCreateShell>
   );

@@ -157,7 +157,7 @@ export function refineCertifications(
       ctx.addIssue({
         code: "custom",
         path: [...path, index, "startDate"],
-        message: "Start date is required",
+        message: "Issue date is required",
       });
     }
     if (!expiry) {
@@ -180,21 +180,21 @@ export function refineCertifications(
       ctx.addIssue({
         code: "custom",
         path: [...path, index, "startDate"],
-        message: "Enter a valid start date",
+        message: "Enter a valid issue date (dd/mm/yyyy)",
       });
     }
     if (expiry && !expiryDate) {
       ctx.addIssue({
         code: "custom",
         path: [...path, index, "expiryDate"],
-        message: "Enter a valid expiry date",
+        message: "Enter a valid expiry date (dd/mm/yyyy)",
       });
     }
     if (startDate && expiryDate && expiryDate < startDate) {
       ctx.addIssue({
         code: "custom",
         path: [...path, index, "expiryDate"],
-        message: "Expiry must be on or after start date",
+        message: "Expiry must be on or after issue date",
       });
     }
   });

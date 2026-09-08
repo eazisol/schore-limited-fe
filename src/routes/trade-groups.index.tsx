@@ -21,6 +21,7 @@ import {
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { AppTooltip } from "@/components/AppTooltip";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { CodeBadge } from "@/components/CodeBadge";
 import { formatDateTime, truncateWithEllipsis } from "@/lib/module-ui";
 import { TRADE_GROUPS_ROUTE } from "@/lib/trade-groups";
 import { SearchableSelect } from "@/components/form";
@@ -152,9 +153,7 @@ function TradeGroupsList() {
         header: "Code",
         sortable: true,
         width: "11%",
-        cell: (row) => (
-          <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">{row.code}</code>
-        ),
+        cell: (row) => <CodeBadge code={row.code} />,
       },
       {
         id: "trade",

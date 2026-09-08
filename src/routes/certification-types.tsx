@@ -25,6 +25,7 @@ import {
 } from "@/lib/api/services/certification-types";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { CodeBadge } from "@/components/CodeBadge";
 import { CERTIFICATION_TYPES_ROUTE } from "@/lib/certification-types";
 import {
   DESCRIPTION_MAX_LENGTH,
@@ -135,6 +136,7 @@ function CertificationTypesPage() {
         id: "code",
         header: "Code",
         accessor: (item) => item.code,
+        cell: (item) => <CodeBadge code={item.code} />,
       },
       {
         id: "status",

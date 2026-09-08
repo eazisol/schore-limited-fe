@@ -12,6 +12,8 @@ import { ITEMS_ROUTE } from "@/lib/items";
 import { TRADES_ROUTE } from "@/lib/trades";
 import { CIS_ROUTE } from "@/lib/cis";
 import { ROLES_ROUTE } from "@/lib/roles";
+import { CERTIFICATION_TYPES_ROUTE } from "@/lib/certification-types";
+import { CERTIFICATION_LEVELS_ROUTE } from "@/lib/certification-levels";
 
 export type LookupCreateType =
   | "property"
@@ -27,7 +29,9 @@ export type LookupCreateType =
   | "customer"
   | "site"
   | "project"
-  | "role";
+  | "role"
+  | "certificationType"
+  | "certificationLevel";
 
 /** Parent form context passed into inline create modals (e.g. pre-selected customer/site). */
 export interface LookupCreateContext {
@@ -35,6 +39,8 @@ export interface LookupCreateContext {
   customerLabel?: string | null;
   siteId?: string;
   siteLabel?: string | null;
+  certificationTypeId?: string;
+  certificationTypeLabel?: string | null;
 }
 
 export interface LookupCreateConfig {
@@ -57,7 +63,7 @@ export const LOOKUP_CREATE_CONFIG: Record<LookupCreateType, LookupCreateConfig> 
     type: "jobType",
     permissionRoutes: [JOB_TYPES_ROUTE, MANAGE_FORMS_ROUTE],
     invalidateQueryKeys: [["lookups", "job-types"], ["job-types"]],
-    addNewLabel: "Add job type",
+    addNewLabel: "Add property type",
   },
   status: {
     type: "status",
@@ -146,6 +152,24 @@ export const LOOKUP_CREATE_CONFIG: Record<LookupCreateType, LookupCreateConfig> 
     permissionRoutes: [ROLES_ROUTE],
     invalidateQueryKeys: [["roles"], ["roles", "list"], ["lookups", "roles"]],
     addNewLabel: "Add role",
+  },
+  certificationType: {
+    type: "certificationType",
+    permissionRoutes: [CERTIFICATION_TYPES_ROUTE],
+    invalidateQueryKeys: [
+      ["lookups", "certification-types"],
+      ["certification-types"],
+    ],
+    addNewLabel: "Add certification type",
+  },
+  certificationLevel: {
+    type: "certificationLevel",
+    permissionRoutes: [CERTIFICATION_LEVELS_ROUTE],
+    invalidateQueryKeys: [
+      ["lookups", "certification-levels"],
+      ["certification-levels"],
+    ],
+    addNewLabel: "Add certification level",
   },
 };
 

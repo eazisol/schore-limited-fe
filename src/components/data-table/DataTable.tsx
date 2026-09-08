@@ -218,8 +218,8 @@ export function DataTable<T>({
                         <td
                           key={column.id}
                           className={cn(
-                            "overflow-hidden align-middle",
-                            !isNowrapColumn && "max-w-0",
+                            "align-middle",
+                            isNowrapColumn ? "overflow-visible" : "max-w-0 overflow-hidden",
                             cellPadding,
                             column.id === columns[0]?.id ? "px-5" : "px-3",
                             ALIGN_CLASS[align],
@@ -240,8 +240,9 @@ export function DataTable<T>({
                           ) : (
                             <div
                               className={cn(
-                                "min-w-0 overflow-hidden",
-                                isNowrapColumn && "whitespace-nowrap",
+                                isNowrapColumn
+                                  ? "w-max max-w-full whitespace-nowrap"
+                                  : "min-w-0 overflow-hidden",
                               )}
                             >
                               {content}

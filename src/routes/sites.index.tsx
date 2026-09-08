@@ -21,6 +21,7 @@ import {
 import { sitesService, type ApiSite } from "@/lib/api/services/sites";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { CodeBadge } from "@/components/CodeBadge";
 import { SITES_ROUTE } from "@/lib/sites";
 import { fetchCustomerOptions } from "@/lib/user-dropdowns";
 import {
@@ -134,9 +135,7 @@ function SitesList() {
       {
         id: "code",
         header: "Code",
-        cell: (item) => (
-          <code className="rounded bg-secondary px-1.5 py-0.5 text-xs font-mono">{item.code}</code>
-        ),
+        cell: (item) => <CodeBadge code={item.code} />,
       },
       {
         id: "customer",

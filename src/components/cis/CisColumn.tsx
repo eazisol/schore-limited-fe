@@ -147,7 +147,8 @@ export function CisColumn() {
                   <LookupItemRow
                     key={item.id}
                     label={item.name}
-                    subtitle={[item.code, formatCisRate(item.rate)].filter(Boolean).join(" · ")}
+                    code={item.code}
+                    subtitle={formatCisRate(item.rate)}
                     description={item.description}
                     inactive={!item.isActive}
                     selected={selectedId === item.id}

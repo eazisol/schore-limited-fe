@@ -3,6 +3,7 @@ import { Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { CodeBadge } from "@/components/CodeBadge";
 import { AppTooltip } from "@/components/AppTooltip";
 import { useManageFormsLayout } from "./manage-forms-layout";
 
@@ -166,6 +167,7 @@ export function LookupFormPanel({
 
 export function LookupItemRow({
   label,
+  code,
   subtitle,
   description,
   inactive,
@@ -176,6 +178,8 @@ export function LookupItemRow({
   onDelete,
 }: {
   label: string;
+  /** Shown as a mono badge; never truncated with the name. */
+  code?: string | null;
   subtitle?: string;
   description?: string | null;
   inactive?: boolean;
@@ -187,13 +191,13 @@ export function LookupItemRow({
 }) {
   const tooltipText = description?.trim();
   const labelContent = (
-    <span className="block truncate text-sm leading-tight">
-      <span className="font-medium">{label}</span>
+    <span className="flex min-w-0 items-center gap-2">
+      <span className="min-w-0 truncate text-sm font-medium leading-tight">{label}</span>
+      {code?.trim() ? <CodeBadge code={code} className="shrink-0" /> : null}
       {subtitle ? (
-        <>
-          <span className="text-muted-foreground"> · </span>
-          <span className="text-muted-foreground">{subtitle}</span>
-        </>
+        <span className="min-w-0 truncate text-sm leading-tight text-muted-foreground">
+          {subtitle}
+        </span>
       ) : null}
     </span>
   );

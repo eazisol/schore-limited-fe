@@ -9,7 +9,12 @@ export function CodeBadge({ code, className }: { code?: string | null; className
   }
 
   return (
-    <code className={cn("rounded bg-secondary px-1.5 py-0.5 font-mono text-xs", className)}>
+    <code
+      className={cn(
+        "inline-block max-w-full whitespace-nowrap rounded bg-secondary px-1.5 py-0.5 font-mono text-xs",
+        className,
+      )}
+    >
       {trimmed}
     </code>
   );

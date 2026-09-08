@@ -13,7 +13,7 @@ import { AlertCircle, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Form, SubmitButton, SwitchField } from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
-import { UserFormFields } from "@/components/users/UserFormFields";
+import { UserFormFields, OPERATIVE_FORM_TABS, type OperativeFormTab } from "@/components/users/UserFormFields";
 import { OperativeDetailExtras } from "@/components/users/OperativeDetailExtras";
 import { CustomerDetailExtrasPanel } from "@/components/users/CustomerDetailPanels";
 import { UserDetailExtras } from "@/components/users/UserDetailExtras";
@@ -27,6 +27,8 @@ import {
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { formatDailyRate, formatDetailAddress, formatDateTime, namesLookSimilar } from "@/lib/module-ui";
+import { formatUkDate } from "@/lib/week-ending";
+import { formatSortCodeInput } from "@/lib/user-form";
 import { useUserModuleMode, userModuleConfig } from "@/lib/user-module";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -57,9 +59,14 @@ export function UserDetailPage() {
   const canDelete = usePermission({ route: cfg.permissionRoute, action: "delete" });
   const [confirmDel, setConfirmDel] = useState(false);
   const [clientEditOpen, setClientEditOpen] = useState(false);
+  const [operativeTab, setOperativeTab] = useState<OperativeFormTab>("details");
   const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
   const isEditing = !cfg.isCustomer && search.mode === "edit" && canModify;
   const schema = editUserFormSchema(mode);
+  const isOperative = mode === "operative";
+  const operativeTabIndex = OPERATIVE_FORM_TABS.findIndex((item) => item.id === operativeTab);
+  const canGoNext =
+    isOperative && isEditing && operativeTabIndex >= 0 && operativeTabIndex < OPERATIVE_FORM_TABS.length - 1;
 
   useEffect(() => {
     if (!cfg.isCustomer || !canModify || search.mode !== "edit" || !id) return;
@@ -216,13 +223,15 @@ export function UserDetailPage() {
       return [
         { label: "Daily rate", value: formatDailyRate(user.dailyRate) },
         { label: "CIS", value: user.cisName?.trim() || "—" },
-        { label: "Is daily rate", value: user.isDailyRate ? "Yes" : "No" },
+        ...(user.isDailyRate
+          ? [{ label: "Is daily rate", value: "Yes" } satisfies DetailProfileHighlight]
+          : []),
         {
           label: "Bank",
           value: user.bankName?.trim()
             || user.accountHolderName?.trim()
             || (user.sortCode && user.accountNumber
-              ? `${user.sortCode} / ${user.accountNumber}`
+              ? `${formatSortCodeInput(user.sortCode)} / ${user.accountNumber.replace(/\D/g, "")}`
               : "—"),
         },
       ];
@@ -255,11 +264,19 @@ export function UserDetailPage() {
 
   const profileDateOfBirth =
     !cfg.isContractor && !cfg.isCustomer
-      ? toDateInputValue(user.dateOfBirth) || undefined
+      ? (() => {
+          const raw = toDateInputValue(user.dateOfBirth);
+          return raw ? formatUkDate(raw) : undefined;
+        })()
       : undefined;
 
   const profileJoiningDate =
-    cfg.isOperative ? toDateInputValue(user.startDate) || undefined : undefined;
+    cfg.isOperative
+      ? (() => {
+          const raw = toDateInputValue(user.startDate);
+          return raw ? formatUkDate(raw) : undefined;
+        })()
+      : undefined;
 
   return (
     <div className="space-y-6">
@@ -288,6 +305,17 @@ export function UserDetailPage() {
                   >
                     Cancel
                   </Button>
+                  {canGoNext ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={updateMutation.isPending}
+                      onClick={() => setOperativeTab(OPERATIVE_FORM_TABS[operativeTabIndex + 1]!.id)}
+                    >
+                      Next
+                    </Button>
+                  ) : null}
                   <SubmitButton size="sm" disabled={!dirty} loadingText="Saving…">
                     Save changes
                   </SubmitButton>
@@ -323,6 +351,8 @@ export function UserDetailPage() {
               }}
               contractorSelectedLabel={user.contractorName}
               capabilityResetKey={id}
+              operativeTab={isOperative ? operativeTab : undefined}
+              onOperativeTabChange={isOperative ? setOperativeTab : undefined}
             />
           </FormPageCard>
         </Form>

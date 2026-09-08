@@ -31,6 +31,7 @@ import {
 } from "@/lib/api/services/job-types";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { CodeBadge } from "@/components/CodeBadge";
 import { JOB_TYPES_ROUTE } from "@/lib/job-types";
 import {
   DESCRIPTION_MAX_LENGTH,
@@ -41,7 +42,7 @@ import {
 } from "@/lib/field-validation";
 
 export const Route = createFileRoute("/job-types")({
-  head: () => ({ meta: [{ title: "Job Types | Schore" }] }),
+  head: () => ({ meta: [{ title: "Property Types | Schore" }] }),
   component: JobTypesPage,
 });
 
@@ -100,17 +101,17 @@ function JobTypesPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => jobTypesService.remove(id),
     onSuccess: (res) => {
-      toast.success(res.message || "Job type deleted");
+      toast.success(res.message || "Property type deleted");
       setConfirmDel(null);
       qc.invalidateQueries({ queryKey: jobTypesQueryKey });
       qc.invalidateQueries({ queryKey: lookupsKey });
     },
-    onError: (err) => notifyApiError(err, "Failed to delete job type"),
+    onError: (err) => notifyApiError(err, "Failed to delete property type"),
   });
 
   function handleExportCsv() {
     if (rows.length === 0) {
-      toast.warning("No job types to export for the current page.");
+      toast.warning("No property types to export for the current page.");
       return;
     }
     setExporting(true);
@@ -126,7 +127,7 @@ function JobTypesPage() {
         ]),
       });
       toast.success(
-        `Exported ${rows.length} job type${rows.length === 1 ? "" : "s"} to CSV`,
+        `Exported ${rows.length} property type${rows.length === 1 ? "" : "s"} to CSV`,
       );
     } finally {
       setExporting(false);
@@ -152,9 +153,7 @@ function JobTypesPage() {
       {
         id: "code",
         header: "Code",
-        cell: (item) => (
-          <code className="rounded bg-secondary px-1.5 py-0.5 text-xs font-mono">{item.code}</code>
-        ),
+        cell: (item) => <CodeBadge code={item.code} />,
       },
       {
         id: "duration",
@@ -200,7 +199,7 @@ function JobTypesPage() {
   return (
     <div>
       <PageHeader
-        title="Job Types"
+        title="Property Types"
         actions={
           <>
             <Button
@@ -219,7 +218,7 @@ function JobTypesPage() {
             <Can route={JOB_TYPES_ROUTE} action="modify">
               <Button size="sm" onClick={() => setMode({ kind: "create" })}>
                 <Plus className="h-4 w-4" />
-                Add job type
+                Add property type
               </Button>
             </Can>
           </>
@@ -232,11 +231,11 @@ function JobTypesPage() {
         getRowId={(item) => item.id}
         loading={query.isLoading}
         fetching={query.isFetching}
-        loadingText="Loading job types…"
+        loadingText="Loading property types…"
         error={
           query.isError
             ? {
-                title: "Unable to load job types",
+                title: "Unable to load property types",
                 message: (query.error as unknown as ApiError)?.message || "Please try again.",
                 onRetry: () => {
                   void query.refetch();
@@ -248,10 +247,10 @@ function JobTypesPage() {
           value: searchInput,
           onChange: setSearchInput,
           placeholder: "Search by name or code…",
-          "aria-label": "Search job types",
+          "aria-label": "Search property types",
         }}
         emptyState={{
-          title: "No job types found.",
+          title: "No property types found.",
           description: search ? "Try clearing the search." : undefined,
           action: search ? (
             <Button variant="outline" size="sm" onClick={clearSearch}>
@@ -270,7 +269,7 @@ function JobTypesPage() {
             setPageSize(size);
             setPage(1);
           },
-          itemLabel: "job types",
+          itemLabel: "property types",
           disabled: query.isFetching,
           controlsAlign: "center",
         }}
@@ -298,7 +297,7 @@ function JobTypesPage() {
             onClick={(event) => event.stopPropagation()}
           >
             <h3 className="font-display text-lg font-semibold">
-              Delete job type “{confirmDel.name}”?
+              Delete property type “{confirmDel.name}”?
             </h3>
             <p className="mt-2 text-sm text-muted-foreground">This action cannot be undone.</p>
             <div className="mt-6 flex justify-end gap-2">
@@ -380,11 +379,11 @@ function JobTypeFormModal({
     },
     onSuccess: (res) => {
       toast.success(
-        res.message || (mode.kind === "edit" ? "Job type updated" : "Job type created"),
+        res.message || (mode.kind === "edit" ? "Property type updated" : "Property type created"),
       );
       onSaved();
     },
-    onError: (err) => notifyApiError(err, "Failed to save job type"),
+    onError: (err) => notifyApiError(err, "Failed to save property type"),
   });
 
   async function submit(values: Values) {
@@ -401,10 +400,10 @@ function JobTypeFormModal({
 
   const title =
     mode.kind === "create"
-      ? "Add job type"
+      ? "Add property type"
       : mode.kind === "edit"
-        ? "Edit job type"
-        : "View job type";
+        ? "Edit property type"
+        : "View property type";
 
   return (
     <Form form={form} onSubmit={submit} className="contents">
@@ -456,7 +455,7 @@ function JobTypeFormModal({
             </Button>
             {!isView && (
               <SubmitButton size="sm" loadingText="Saving…">
-                {mode.kind === "edit" ? "Update job type" : "Create job type"}
+                {mode.kind === "edit" ? "Update property type" : "Create property type"}
               </SubmitButton>
             )}
           </div>

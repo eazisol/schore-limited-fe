@@ -322,7 +322,7 @@ function HolidaysPage() {
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-medium leading-tight">{opt.label}</span>
                         <span className="block text-[11px] leading-tight text-muted-foreground">
-                          {checked ? "Off day (non-working)" : "Working day"}
+                          {checked ? "Off day" : "Working day"}
                         </span>
                       </span>
                     </label>

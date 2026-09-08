@@ -33,6 +33,7 @@ import {
 import { certificationTypesService } from "@/lib/api/services/certification-types";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { CodeBadge } from "@/components/CodeBadge";
 import { CERTIFICATION_LEVELS_ROUTE } from "@/lib/certification-levels";
 import {
   DESCRIPTION_MAX_LENGTH,
@@ -166,6 +167,7 @@ function CertificationLevelsPage() {
         id: "code",
         header: "Code",
         accessor: (item) => item.code,
+        cell: (item) => <CodeBadge code={item.code} />,
       },
       {
         id: "status",

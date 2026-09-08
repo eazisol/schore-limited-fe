@@ -160,7 +160,7 @@ export function DetailProfileHero({
               ) : null}
               {hasMeta ? (
                 <div className="mt-1.5 flex flex-col items-center gap-1 sm:items-start">
-                  {trimmedEmail || trimmedPhone || trimmedDob ? (
+                  {trimmedEmail || trimmedPhone || trimmedDob || trimmedJoiningDate ? (
                     <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:justify-start">
                       {trimmedEmail ? (
                         <span className="inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
@@ -180,24 +180,22 @@ export function DetailProfileHero({
                           <span className="leading-none">{trimmedDob}</span>
                         </span>
                       ) : null}
-                    </div>
-                  ) : null}
-                  {trimmedJoiningDate || locationLine ? (
-                    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:justify-start">
                       {trimmedJoiningDate ? (
                         <span className="inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
                           <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
                           <span className="leading-none">Joined {trimmedJoiningDate}</span>
                         </span>
                       ) : null}
-                      {locationLine ? (
-                        <AppTooltip content={locationLine} asChild>
-                          <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-xs text-muted-foreground sm:max-w-md sm:text-sm lg:max-w-lg">
-                            <MapPin className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
-                            <span className="truncate leading-none">{locationLine}</span>
-                          </span>
-                        </AppTooltip>
-                      ) : null}
+                    </div>
+                  ) : null}
+                  {locationLine ? (
+                    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:justify-start">
+                      <AppTooltip content={locationLine} asChild>
+                        <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-xs text-muted-foreground sm:max-w-md sm:text-sm lg:max-w-lg">
+                          <MapPin className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
+                          <span className="truncate leading-none">{locationLine}</span>
+                        </span>
+                      </AppTooltip>
                     </div>
                   ) : null}
                 </div>

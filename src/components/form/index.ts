@@ -5,6 +5,7 @@ export { SelectField, type SelectOption } from "./SelectField";
 export { SearchableSelect, type SearchableSelectOption } from "./SearchableSelect";
 export { SearchableSelectField } from "./SearchableSelectField";
 export { CreatableSearchableSelectField } from "./CreatableSearchableSelectField";
+export { CreatableSearchableMultiSelectField } from "./CreatableSearchableMultiSelectField";
 export { SearchableMultiSelect } from "./SearchableMultiSelect";
 export { SearchableMultiSelectField } from "./SearchableMultiSelectField";
 export { TextareaField } from "./TextareaField";

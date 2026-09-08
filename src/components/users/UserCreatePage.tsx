@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FormPageCard } from "@/components/FormPageCard";
@@ -8,7 +9,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, SubmitButton, SwitchField } from "@/components/form";
 import { RequirePermission } from "@/components/Permission";
-import { UserFormFields } from "@/components/users/UserFormFields";
+import {
+  OPERATIVE_FORM_TABS,
+  UserFormFields,
+  type OperativeFormTab,
+} from "@/components/users/UserFormFields";
 import { usersService } from "@/lib/api/services/users";
 import { notifyApiError } from "@/lib/api/axios";
 import { useUserModuleMode, userModuleConfig } from "@/lib/user-module";
@@ -28,6 +33,8 @@ export function UserCreatePage() {
   const queryClient = useQueryClient();
   const schema = createUserFormSchema(mode);
   const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
+  const isOperative = mode === "operative";
+  const [operativeTab, setOperativeTab] = useState<OperativeFormTab>("details");
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(schema),
@@ -60,6 +67,12 @@ export function UserCreatePage() {
     }
   }
 
+  const operativeTabIndex = useMemo(
+    () => OPERATIVE_FORM_TABS.findIndex((item) => item.id === operativeTab),
+    [operativeTab],
+  );
+  const canGoNext = isOperative && operativeTabIndex >= 0 && operativeTabIndex < OPERATIVE_FORM_TABS.length - 1;
+
   return (
     <RequirePermission route={cfg.permissionRoute} action="modify">
       <Form form={form} onSubmit={submit} className="w-full max-w-3xl">
@@ -79,6 +92,17 @@ export function UserCreatePage() {
               >
                 Cancel
               </Button>
+              {canGoNext ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={createMutation.isPending}
+                  onClick={() => setOperativeTab(OPERATIVE_FORM_TABS[operativeTabIndex + 1]!.id)}
+                >
+                  Next
+                </Button>
+              ) : null}
               <SubmitButton size="sm" loadingText="Saving…">
                 {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 {cfg.labels.createButton}
@@ -93,6 +117,8 @@ export function UserCreatePage() {
             disabled={createMutation.isPending}
             autoFocusFirstName
             capabilityResetKey="create"
+            operativeTab={isOperative ? operativeTab : undefined}
+            onOperativeTabChange={isOperative ? setOperativeTab : undefined}
           />
         </FormPageCard>
       </Form>

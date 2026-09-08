@@ -161,7 +161,7 @@ export function UnitsColumn() {
                   <LookupItemRow
                     key={item.id}
                     label={item.name}
-                    subtitle={item.code}
+                    code={item.code}
                     inactive={!item.isActive}
                     selected={selectedId === item.id}
                     canEdit={canModify}

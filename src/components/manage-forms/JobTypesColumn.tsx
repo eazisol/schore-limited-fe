@@ -90,7 +90,7 @@ export function JobTypesColumn() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => jobTypesService.remove(id),
     onSuccess: (res) => {
-      toast.success(res.message || "Job type deleted");
+      toast.success(res.message || "Property type deleted");
       setConfirmDel(null);
       if (mode.kind !== "create" && confirmDel && mode.item.id === confirmDel.id) {
         setMode({ kind: "create" });
@@ -98,7 +98,7 @@ export function JobTypesColumn() {
       qc.invalidateQueries({ queryKey: jobTypesQueryKey });
       qc.invalidateQueries({ queryKey: lookupsKey });
     },
-    onError: (err) => notifyApiError(err, "Failed to delete job type"),
+    onError: (err) => notifyApiError(err, "Failed to delete property type"),
   });
 
   function handleSaved() {
@@ -112,21 +112,21 @@ export function JobTypesColumn() {
       <LookupSplitLayout
         list={
           <LookupColumnCard
-            title="Job Types"
+            title="Property Types"
             searchInput={searchInput}
             onSearchChange={setSearchInput}
             searchPlaceholder="Search by name or code…"
-            searchAriaLabel="Search job types"
+            searchAriaLabel="Search property types"
             canAdd={canModify}
             onAdd={() => setMode({ kind: "create" })}
-            addAriaLabel="Add job type"
+            addAriaLabel="Add property type"
             loading={query.isLoading}
             fetching={query.isFetching}
-            loadingText="Loading job types…"
+            loadingText="Loading property types…"
             error={
               query.isError
                 ? {
-                    title: "Unable to load job types",
+                    title: "Unable to load property types",
                     message: (query.error as unknown as ApiError)?.message || "Please try again.",
                     onRetry: () => {
                       void query.refetch();
@@ -137,7 +137,7 @@ export function JobTypesColumn() {
             empty={
               !query.isLoading && !query.isError && rows.length === 0 ? (
                 <LookupEmptyState
-                  title="No job types found."
+                  title="No property types found."
                   description={search ? "Try clearing the search." : undefined}
                   onClear={search ? clearSearch : undefined}
                 />
@@ -149,7 +149,7 @@ export function JobTypesColumn() {
                   page={page}
                   totalPages={totalPages}
                   totalCount={totalCount}
-                  itemLabel="job types"
+                  itemLabel="property types"
                   disabled={query.isFetching}
                   onPageChange={setPage}
                 />
@@ -162,7 +162,7 @@ export function JobTypesColumn() {
                   <LookupItemRow
                     key={item.id}
                     label={item.name}
-                    subtitle={item.code}
+                    code={item.code}
                     description={item.description}
                     inactive={!item.isActive}
                     selected={selectedId === item.id}
@@ -190,7 +190,7 @@ export function JobTypesColumn() {
 
       {confirmDel ? (
         <DeleteConfirmDialog
-          title={`Delete job type “${confirmDel.name}”?`}
+          title={`Delete property type “${confirmDel.name}”?`}
           pending={deleteMutation.isPending}
           onCancel={() => setConfirmDel(null)}
           onConfirm={() => deleteMutation.mutate(confirmDel.id)}
@@ -263,11 +263,11 @@ function JobTypeFormPanel({
     },
     onSuccess: (res) => {
       toast.success(
-        res.message || (mode.kind === "edit" ? "Job type updated" : "Job type created"),
+        res.message || (mode.kind === "edit" ? "Property type updated" : "Property type created"),
       );
       onSaved();
     },
-    onError: (err) => notifyApiError(err, "Failed to save job type"),
+    onError: (err) => notifyApiError(err, "Failed to save property type"),
   });
 
   async function submit(values: Values) {
@@ -284,10 +284,10 @@ function JobTypeFormPanel({
 
   const title =
     mode.kind === "create"
-      ? "Add job type"
+      ? "Add property type"
       : mode.kind === "edit"
-        ? "Edit job type"
-        : "View job type";
+        ? "Edit property type"
+        : "View property type";
 
   return (
     <Form form={form} onSubmit={submit} className="contents">
@@ -303,7 +303,7 @@ function JobTypeFormPanel({
             ) : null}
             {!isView ? (
               <SubmitButton size="sm" loadingText="Saving…">
-                {mode.kind === "edit" ? "Update job type" : "Create job type"}
+                {mode.kind === "edit" ? "Update property type" : "Create property type"}
               </SubmitButton>
             ) : (
               <Button type="button" variant="outline" size="sm" onClick={onCancel}>

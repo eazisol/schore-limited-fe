@@ -26,7 +26,7 @@ function dateTooltipLabel(value: string): string {
   if (!trimmed) return "Select date";
   const d = new Date(`${trimmed}T00:00:00`);
   if (Number.isNaN(d.getTime())) return trimmed;
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -62,6 +62,7 @@ export function TextField<T extends FieldValues>({
                 <Input
                   {...rest}
                   type={type}
+                  lang={isDateField ? (rest.lang ?? "en-GB") : rest.lang}
                   name={field.name}
                   onBlur={(event) => {
                     field.onBlur();

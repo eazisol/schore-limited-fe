@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { useFormContext, type FieldErrors } from "react-hook-form";
+import { useFormContext, useWatch, type FieldErrors } from "react-hook-form";
 import {
   TextField,
   PasswordField,
@@ -8,11 +8,12 @@ import {
   CheckboxField,
   PhoneNumberField,
   CreatableSearchableSelectField,
-  SearchableMultiSelectField,
+  CreatableSearchableMultiSelectField,
 } from "@/components/form";
 import { FormFieldHint } from "@/components/form/FormFieldLabel";
 import { PasswordRequirements } from "@/lib/password";
 import type { UserFormValues } from "@/lib/user-form";
+import { formatAccountNumberInput, formatSortCodeInput } from "@/lib/user-form";
 import { type UserModuleMode } from "@/lib/user-module";
 import { fetchCisOptions, fetchRoleOptions, fetchTradeOptions } from "@/lib/user-dropdowns";
 import { ADDRESS_MAX_LENGTH } from "@/lib/field-validation";
@@ -31,28 +32,33 @@ import {
   underlineTabTriggerClass,
 } from "@/components/ui/tabs";
 
-type OperativeFormTab = "details" | "trades" | "rates" | "payment" | "certificates";
+export type OperativeFormTab = "details" | "rates" | "payment" | "certificates";
 
-const OPERATIVE_TABS: { id: OperativeFormTab; label: string }[] = [
+export const OPERATIVE_FORM_TABS: { id: OperativeFormTab; label: string }[] = [
   { id: "details", label: "Details" },
-  { id: "trades", label: "Trades" },
   { id: "rates", label: "Rates" },
-  { id: "payment", label: "Bank & card" },
+  { id: "payment", label: "Bank" },
   { id: "certificates", label: "Certificates" },
 ];
 
+const OPERATIVE_TABS = OPERATIVE_FORM_TABS;
+
 const OPERATIVE_TAB_FIELDS: Record<OperativeFormTab, (keyof UserFormValues)[]> = {
-  details: ["firstName", "lastName", "email", "phone", "password", "dateOfBirth", "startDate"],
-  trades: ["tradeIds"],
+  details: [
+    "firstName",
+    "lastName",
+    "email",
+    "phone",
+    "password",
+    "startDate",
+    "tradeIds",
+  ],
   rates: ["dailyRate", "cisId", "isDailyRate", "rateOverrides", "rateChangeReason"],
   payment: [
     "accountHolderName",
     "bankName",
     "sortCode",
     "accountNumber",
-    "cardHolderName",
-    "cardNumber",
-    "cardExpiry",
   ],
   certificates: ["certifications"],
 };
@@ -60,8 +66,27 @@ const OPERATIVE_TAB_FIELDS: Record<OperativeFormTab, (keyof UserFormValues)[]> =
 const TAB_PANEL_CLASS =
   "mt-0 space-y-2 pt-3 focus-visible:outline-none data-[state=inactive]:hidden";
 
+function fieldHasError(error: unknown): boolean {
+  if (!error) return false;
+  if (typeof error !== "object") return false;
+  if ("message" in error && (error as { message?: unknown }).message) return true;
+  if ("types" in error) return true;
+  if (Array.isArray(error)) return error.some(fieldHasError);
+  return Object.values(error as Record<string, unknown>).some(fieldHasError);
+}
+
 function tabHasError(errors: FieldErrors<UserFormValues>, tab: OperativeFormTab) {
-  return OPERATIVE_TAB_FIELDS[tab].some((name) => Boolean(errors[name]));
+  return OPERATIVE_TAB_FIELDS[tab].some((name) => fieldHasError(errors[name]));
+}
+
+function firstErrorFieldInTab(
+  errors: FieldErrors<UserFormValues>,
+  tab: OperativeFormTab,
+): keyof UserFormValues | null {
+  for (const name of OPERATIVE_TAB_FIELDS[tab]) {
+    if (fieldHasError(errors[name])) return name;
+  }
+  return null;
 }
 
 export function UserFormFields({
@@ -76,6 +101,8 @@ export function UserFormFields({
   contractorSelectedLabel,
   autoFocusFirstName = false,
   capabilityResetKey,
+  operativeTab,
+  onOperativeTabChange,
 }: {
   mode: UserModuleMode;
   variant: "create" | "edit";
@@ -92,6 +119,9 @@ export function UserFormFields({
   contractorSelectedLabel?: string | null;
   autoFocusFirstName?: boolean;
   capabilityResetKey?: string;
+  /** Controlled tab for operative create/edit footers (Next). */
+  operativeTab?: OperativeFormTab;
+  onOperativeTabChange?: (tab: OperativeFormTab) => void;
 }) {
   const { watch } = useFormContext<UserFormValues>();
   const { hasCapability } = usePermissions();
@@ -119,6 +149,8 @@ export function UserFormFields({
           operativeSelectedLabels={operativeSelectedLabels}
           autoFocusFirstName={autoFocusFirstName}
           activeToggle={activeToggle}
+          tab={operativeTab}
+          onTabChange={onOperativeTabChange}
         />
       </fieldset>
     );
@@ -347,6 +379,8 @@ function OperativeFormTabs({
   operativeSelectedLabels,
   autoFocusFirstName,
   activeToggle,
+  tab: controlledTab,
+  onTabChange,
 }: {
   variant: "create" | "edit";
   disabled: boolean;
@@ -358,13 +392,19 @@ function OperativeFormTabs({
   };
   autoFocusFirstName?: boolean;
   activeToggle?: ReactNode;
+  tab?: OperativeFormTab;
+  onTabChange?: (tab: OperativeFormTab) => void;
 }) {
   const {
     setFocus,
+    control,
     formState: { errors, submitCount },
   } = useFormContext<UserFormValues>();
-  const [tab, setTab] = useState<OperativeFormTab>("details");
+  const [uncontrolledTab, setUncontrolledTab] = useState<OperativeFormTab>("details");
+  const tab = controlledTab ?? uncontrolledTab;
+  const setTab = onTabChange ?? setUncontrolledTab;
   const lastSubmitCount = useRef(0);
+  const isDailyRate = useWatch({ control, name: "isDailyRate" });
 
   useEffect(() => {
     if (submitCount <= lastSubmitCount.current) return;
@@ -372,13 +412,13 @@ function OperativeFormTabs({
     const firstInvalid = OPERATIVE_TABS.find((item) => tabHasError(errors, item.id));
     if (!firstInvalid) return;
     setTab(firstInvalid.id);
-    const firstField = OPERATIVE_TAB_FIELDS[firstInvalid.id].find((name) => Boolean(errors[name]));
+    const firstField = firstErrorFieldInTab(errors, firstInvalid.id);
     if (!firstField) return;
     const frame = requestAnimationFrame(() => {
       setFocus(firstField);
     });
     return () => cancelAnimationFrame(frame);
-  }, [errors, setFocus, submitCount]);
+  }, [errors, setFocus, setTab, submitCount]);
 
   return (
     <Tabs
@@ -435,6 +475,21 @@ function OperativeFormTabs({
           <PhoneNumberField<UserFormValues> name="phone" label="Phone" placeholder="07700 900000" />
         </div>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <TextField<UserFormValues> name="startDate" label="Joining Date" type="date" />
+          <CreatableSearchableMultiSelectField<UserFormValues>
+            name="tradeIds"
+            label="Trades"
+            description="Trade used on wage sheets and job assignment."
+            placeholder="Select trades…"
+            searchPlaceholder="Search trades…"
+            disabled={disabled}
+            queryKey={["lookups", "trades"]}
+            selectedLabels={operativeSelectedLabels?.trades}
+            fetchOptions={fetchTradeOptions}
+            lookupType="trade"
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           <div className="space-y-2">
             <PasswordField<UserFormValues>
               name="password"
@@ -445,38 +500,14 @@ function OperativeFormTabs({
             />
             {(variant === "create" || password) && <PasswordRequirements password={password} />}
           </div>
-          <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
         </div>
-        <div className="max-w-xs">
-          <TextField<UserFormValues> name="startDate" label="Joining Date" type="date" />
-        </div>
-      </TabsContent>
-
-      <TabsContent value="trades" forceMount className={TAB_PANEL_CLASS}>
-        <PanelHint>Trade used on wage sheets and job assignment.</PanelHint>
-        <SearchableMultiSelectField<UserFormValues>
-          name="tradeIds"
-          label="Trades"
-          required
-          placeholder="Select trades…"
-          searchPlaceholder="Search trades…"
-          disabled={disabled}
-          queryKey={["lookups", "trades"]}
-          selectedLabels={operativeSelectedLabels?.trades}
-          fetchOptions={fetchTradeOptions}
-        />
       </TabsContent>
 
       <TabsContent value="rates" forceMount className={TAB_PANEL_CLASS}>
-        <PanelHint>
-          Daily rate and CIS status for pay. Agreed item rates stay within parent budget, or need a
-          reason + Rate approvals.
-        </PanelHint>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           <TextField<UserFormValues>
             name="dailyRate"
             label="Daily rate (£)"
-            required
             type="number"
             min={0}
             step="0.01"
@@ -485,7 +516,6 @@ function OperativeFormTabs({
           <CreatableSearchableSelectField<UserFormValues>
             name="cisId"
             label="CIS"
-            required
             placeholder="Select CIS"
             searchPlaceholder="Search CIS statuses…"
             disabled={disabled}
@@ -499,85 +529,49 @@ function OperativeFormTabs({
           name="isDailyRate"
           label="Use daily rate for pay (MAX price vs daily)"
         />
-        {canSeeRates ? <RateOverrideFields disabled={disabled} /> : null}
+        {canSeeRates && isDailyRate ? <RateOverrideFields disabled={disabled} /> : null}
       </TabsContent>
 
       <TabsContent value="payment" forceMount className={TAB_PANEL_CLASS}>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Bank details
-            </p>
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-              <TextField<UserFormValues>
-                name="accountHolderName"
-                label="Account holder name"
-                placeholder="Name on the account"
-                maxLength={120}
-              />
-              <TextField<UserFormValues>
-                name="bankName"
-                label="Bank name"
-                placeholder="Optional"
-                maxLength={100}
-              />
-              <TextField<UserFormValues>
-                name="sortCode"
-                label="Sort code"
-                placeholder="12-34-56"
-                maxLength={10}
-              />
-              <TextField<UserFormValues>
-                name="accountNumber"
-                label="Account number"
-                placeholder="8 digits"
-                maxLength={20}
-              />
-            </div>
-          </div>
-          <div className="space-y-2 border-t border-border pt-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Card details
-            </p>
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-              <TextField<UserFormValues>
-                name="cardHolderName"
-                label="Cardholder name"
-                placeholder="Name on the card"
-                maxLength={120}
-              />
-              <TextField<UserFormValues>
-                name="cardNumber"
-                label="Card number"
-                placeholder="•••• •••• •••• ••••"
-                maxLength={25}
-                inputMode="numeric"
-                autoComplete="cc-number"
-              />
-              <TextField<UserFormValues>
-                name="cardExpiry"
-                label="Expiry (MM/YY)"
-                placeholder="MM/YY"
-                maxLength={5}
-                autoComplete="cc-exp"
-              />
-            </div>
-          </div>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <TextField<UserFormValues>
+            name="accountHolderName"
+            label="Account holder name"
+            placeholder="Name on the account"
+            maxLength={120}
+          />
+          <TextField<UserFormValues>
+            name="bankName"
+            label="Bank name"
+            placeholder="Optional"
+            maxLength={100}
+          />
+          <TextField<UserFormValues>
+            name="sortCode"
+            label="Sort code"
+            placeholder="12-34-56"
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={8}
+            transformValue={formatSortCodeInput}
+          />
+          <TextField<UserFormValues>
+            name="accountNumber"
+            label="Account number"
+            placeholder="8 digits"
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={8}
+            transformValue={formatAccountNumberInput}
+          />
         </div>
       </TabsContent>
 
       <TabsContent value="certificates" forceMount className={TAB_PANEL_CLASS}>
-        <PanelHint>
-          CSCS, asbestos, training and other accreditations with start and expiry dates.
-        </PanelHint>
         <OperativeCertificationFields disabled={disabled} />
       </TabsContent>
     </Tabs>
   );
-}
-
-function PanelHint({ children }: { children: ReactNode }) {
-  return <p className="text-xs text-muted-foreground">{children}</p>;
 }
 
 function Section({

@@ -163,7 +163,8 @@ export function StatusesColumn() {
                   <LookupItemRow
                     key={item.id}
                     label={item.name}
-                    subtitle={[item.code, item.documentTypeName].filter(Boolean).join(" · ")}
+                    code={item.code}
+                    subtitle={item.documentTypeName || undefined}
                     description={item.description}
                     inactive={!item.isActive}
                     selected={selectedId === item.id}

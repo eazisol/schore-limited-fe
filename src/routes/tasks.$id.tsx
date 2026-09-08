@@ -319,7 +319,7 @@ function TaskDetail() {
             <div className="card-elevated grid grid-cols-2 gap-x-4 gap-y-2 overflow-hidden px-4 py-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 [&>*]:min-w-0">
               <Detail label="Job number" value={<CodeBadge code={task.taskNumber} />} />
               <Detail label="Property" value={task.propertyName} />
-              <Detail label="Job type" value={task.jobTypeName} />
+              <Detail label="Property type" value={task.jobTypeName} />
               <Detail label="Client" value={<CodeWithLabel combined={customerDisplay} />} />
               <Detail label="Post Code" value={postCodeDisplay} />
               <Detail label="Start date" value={task.startDate?.slice(0, 10) || "—"} />

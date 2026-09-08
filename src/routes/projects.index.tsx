@@ -21,6 +21,7 @@ import {
 import { projectsService, type ApiProject } from "@/lib/api/services/projects";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { CodeBadge } from "@/components/CodeBadge";
 import { PROJECTS_ROUTE } from "@/lib/projects";
 import { fetchCustomerOptions } from "@/lib/user-dropdowns";
 import {
@@ -135,9 +136,7 @@ function ProjectsList() {
       {
         id: "code",
         header: "Code",
-        cell: (item) => (
-          <code className="rounded bg-secondary px-1.5 py-0.5 text-xs font-mono">{item.code}</code>
-        ),
+        cell: (item) => <CodeBadge code={item.code} />,
       },
       {
         id: "site",

@@ -31,7 +31,7 @@ function ManageFormsPage() {
               Statuses
             </TabsTrigger>
             <TabsTrigger value="job-types" className={TAB_TRIGGER_CLASS}>
-              Job Types
+              Property Types
             </TabsTrigger>
             <TabsTrigger value="day-suggestions" className={TAB_TRIGGER_CLASS}>
               Day Suggestions

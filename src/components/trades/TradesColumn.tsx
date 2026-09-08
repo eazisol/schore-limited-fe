@@ -145,7 +145,7 @@ export function TradesColumn() {
                   <LookupItemRow
                     key={item.id}
                     label={item.name}
-                    subtitle={item.code}
+                    code={item.code}
                     description={item.description}
                     inactive={!item.isActive}
                     selected={selectedId === item.id}

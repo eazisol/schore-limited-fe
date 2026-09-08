@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check, ChevronDown, Loader2, Search, X } from "lucide-react";
+import { Check, ChevronDown, Loader2, Plus, Search, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useDebouncedSearch } from "@/components/data-table";
@@ -21,6 +21,8 @@ export interface SearchableMultiSelectProps {
   /** Labels for selected values that may not be in the current options page. */
   selectedLabels?: Record<string, string>;
   invalid?: boolean;
+  onAddNew?: () => void;
+  addNewLabel?: string;
 }
 
 export function SearchableMultiSelect({
@@ -36,6 +38,8 @@ export function SearchableMultiSelect({
   fetchOptions,
   selectedLabels,
   invalid,
+  onAddNew,
+  addNewLabel = "Add new",
 }: SearchableMultiSelectProps) {
   const [open, setOpen] = useState(false);
   const { searchInput, setSearchInput, search } = useDebouncedSearch({
@@ -162,6 +166,23 @@ export function SearchableMultiSelect({
               })
             )}
           </ul>
+          {onAddNew ? (
+            <div className="border-t p-1">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setOpen(false);
+                  onAddNew();
+                }}
+                className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm font-medium text-accent transition-colors hover:bg-accent/10"
+              >
+                <Plus className="h-4 w-4 shrink-0" />
+                <span className="truncate">{addNewLabel}</span>
+              </button>
+            </div>
+          ) : null}
         </PopoverContent>
       </Popover>
 

@@ -1,9 +1,8 @@
-import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
+import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TextField, TextareaField, CreatableSearchableSelectField } from "@/components/form";
 import { SearchableSelect } from "@/components/form/SearchableSelect";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Modal } from "@/components/Modal";
 import { AppTooltip } from "@/components/AppTooltip";
 import { Calculator, Plus, Trash2 } from "lucide-react";
@@ -759,10 +758,10 @@ export function TaskFormFields({
             />
             <CreatableSearchableSelectField<TaskFormValues>
               name="jobTypeId"
-              label="Job type"
+              label="Property type"
               required
-              placeholder="Select job type"
-              searchPlaceholder="Search job types…"
+              placeholder="Select property type"
+              searchPlaceholder="Search property types…"
               queryKey={["lookups", "job-types"]}
               selectedLabel={selectedLabels?.jobType}
               fetchOptions={fetchJobTypeOptions}
@@ -778,7 +777,7 @@ export function TaskFormFields({
             />
             <TextField<TaskFormValues>
               name="handOverDate"
-              label="Hand over date (auto from job type)"
+              label="Hand over date (auto from property type)"
               type="date"
               className="min-w-0"
               inputClassName="h-10 min-w-0"
@@ -851,7 +850,7 @@ export function TaskFormFields({
 
           {operativeCards.length === 0 ? (
             <div className="card-elevated p-4 text-sm text-muted-foreground">
-              No job items yet. Select a job type with a template, or choose an operative and add a
+              No job items yet. Select a property type with a template, or choose an operative and add a
               package / add-on.
             </div>
           ) : null}
@@ -1050,7 +1049,7 @@ export function TaskFormFields({
   );
 }
 
-const PRODUCT_LINE_TABLE_MIN_WIDTH = "1068px";
+const PRODUCT_LINE_TABLE_MIN_WIDTH = "1012px";
 
 function ProductLinesTable({
   indexes,
@@ -1088,7 +1087,6 @@ function ProductLinesTable({
           <col style={{ width: "80px" }} />
           <col style={{ width: "110px" }} />
           <col style={{ width: "88px" }} />
-          <col style={{ width: "56px" }} />
           <col style={{ width: "200px" }} />
           <col style={{ width: "44px" }} />
         </colgroup>
@@ -1100,7 +1098,6 @@ function ProductLinesTable({
             <th className="px-2 py-1.5 text-xs font-medium">Qty</th>
             <th className="px-2 py-1.5 text-xs font-medium">Rate</th>
             <th className="px-2 py-1.5 text-xs font-medium">Amount</th>
-            <th className="px-2 py-1.5 text-xs font-medium">Ticked</th>
             <th className="px-2 py-1.5 text-xs font-medium">Notes</th>
             <th className="px-2 py-1.5 text-xs font-medium" />
           </tr>
@@ -1231,23 +1228,6 @@ function ProductLineRow({
       <td className="px-2 py-1 font-medium">
         <AppTooltip content={fmtGBP(amount)} asChild align="end">
           <span className="inline-block tabular-nums text-sm">{fmtGBP(amount)}</span>
-        </AppTooltip>
-      </td>
-      <td className="px-2 py-1">
-        <AppTooltip content="Tick to confirm this line for the daily programmer" asChild>
-          <span className="inline-flex">
-            <Controller
-              control={control}
-              name={`items.${index}.isTicked`}
-              render={({ field }) => (
-                <Checkbox
-                  checked={!!field.value}
-                  onCheckedChange={(checked) => field.onChange(checked === true)}
-                  aria-label="Ticked"
-                />
-              )}
-            />
-          </span>
         </AppTooltip>
       </td>
       <td className="min-w-0 px-2 py-1">

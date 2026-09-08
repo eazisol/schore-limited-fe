@@ -32,6 +32,8 @@ export function SearchableMultiSelectField<T extends FieldValues>({
   queryKey,
   fetchOptions,
   selectedLabels,
+  onAddNew,
+  addNewLabel,
 }: SearchableMultiSelectFieldProps<T>) {
   const { control, formState } = useFormContext<T>();
   const submitting = formState.isSubmitting;
@@ -67,6 +69,8 @@ export function SearchableMultiSelectField<T extends FieldValues>({
                 invalid={invalid}
                 triggerClassName={triggerClassName}
                 aria-label={typeof label === "string" ? label : undefined}
+                onAddNew={onAddNew}
+                addNewLabel={addNewLabel}
               />
             </FormControl>
           </FormItem>

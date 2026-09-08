@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { FileUp, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SearchableSelectField, TextField } from "@/components/form";
+import { Label } from "@/components/ui/label";
+import { TextField, CreatableSearchableSelectField } from "@/components/form";
 import type { SearchableSelectOption } from "@/components/form";
 import { FormFieldHint } from "@/components/form/FormFieldLabel";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -141,7 +142,7 @@ function CertificationRow({ index, locked }: { index: number; locked: boolean })
   return (
     <div className="space-y-2 rounded-md border border-border p-3">
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-        <SearchableSelectField<CertificationForm>
+        <CreatableSearchableSelectField<CertificationForm>
           name={`certifications.${index}.certificationTypeId`}
           label="Certification type"
           required
@@ -150,6 +151,7 @@ function CertificationRow({ index, locked }: { index: number; locked: boolean })
           queryKey={["lookups", "certification-types"]}
           fetchOptions={fetchTypeOptions}
           selectedLabel={typeLabel || undefined}
+          lookupType="certificationType"
           onSelect={(option) => {
             form.setValue(`certifications.${index}.certificationTypeLabel`, option.label, {
               shouldDirty: true,
@@ -163,7 +165,7 @@ function CertificationRow({ index, locked }: { index: number; locked: boolean })
           }}
           disabled={locked}
         />
-        <SearchableSelectField<CertificationForm>
+        <CreatableSearchableSelectField<CertificationForm>
           name={`certifications.${index}.certificationLevelId`}
           label="Certification level"
           placeholder={typeId ? "Select level (if applicable)" : "Select type first"}
@@ -171,6 +173,12 @@ function CertificationRow({ index, locked }: { index: number; locked: boolean })
           queryKey={levelsQuery}
           fetchOptions={levelFetcher}
           selectedLabel={levelLabel || undefined}
+          lookupType="certificationLevel"
+          canCreate={typeId?.trim() ? undefined : false}
+          lookupContext={{
+            certificationTypeId: typeId?.trim() || undefined,
+            certificationTypeLabel: typeLabel || undefined,
+          }}
           onSelect={(option) => {
             form.setValue(`certifications.${index}.certificationLevelLabel`, option.label, {
               shouldDirty: true,
@@ -189,23 +197,26 @@ function CertificationRow({ index, locked }: { index: number; locked: boolean })
         />
         <TextField<CertificationForm>
           name={`certifications.${index}.startDate`}
-          label="Start date"
+          label="Issue date"
           type="date"
           required
+          lang="en-GB"
           disabled={locked}
         />
       </div>
-      <div className="grid grid-cols-1 items-end gap-2 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         <TextField<CertificationForm>
           name={`certifications.${index}.expiryDate`}
           label="Expiry date"
           type="date"
           required
+          lang="en-GB"
+          placeholder="dd/mm/yyyy"
           disabled={locked}
         />
         <div className="space-y-1.5">
           <div className="flex items-center gap-1.5">
-            <p className="text-sm font-medium leading-none">Status</p>
+            <Label>Status</Label>
             <FormFieldHint description="Valid until the expiry date; Invalid after it." />
           </div>
           <div className="flex h-9 items-center">

@@ -85,7 +85,7 @@ function TasksList() {
     },
     {
       id: "jobType",
-      header: "Job type",
+      header: "Property type",
       cell: (task) => task.jobTypeName || "—",
     },
     {

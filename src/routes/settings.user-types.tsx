@@ -24,6 +24,7 @@ import {
 } from "@/lib/api/services/system-config";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
+import { CodeBadge } from "@/components/CodeBadge";
 
 export const Route = createFileRoute("/settings/user-types")({
   head: () => ({ meta: [{ title: "User Types | Settings" }] }),
@@ -104,7 +105,7 @@ function UserTypesPage() {
       {
         id: "code",
         header: "Code",
-        cell: (item) => <span className="text-muted-foreground">{item.code}</span>,
+        cell: (item) => <CodeBadge code={item.code} />,
       },
       {
         id: "status",
