@@ -53,7 +53,7 @@ const OPERATIVE_TAB_FIELDS: Record<OperativeFormTab, (keyof UserFormValues)[]> =
     "startDate",
     "tradeIds",
   ],
-  rates: ["dailyRate", "cisId", "isDailyRate", "rateOverrides", "rateChangeReason"],
+  rates: ["cisId", "dailyRate", "isDailyRate", "rateOverrides", "rateChangeReason"],
   payment: [
     "accountHolderName",
     "bankName",
@@ -414,10 +414,27 @@ function OperativeFormTabs({
     setTab(firstInvalid.id);
     const firstField = firstErrorFieldInTab(errors, firstInvalid.id);
     if (!firstField) return;
-    const frame = requestAnimationFrame(() => {
-      setFocus(firstField);
-    });
-    return () => cancelAnimationFrame(frame);
+
+    // Wait until the target tab panel is visible, then focus/scroll the field.
+    const timer = window.setTimeout(() => {
+      try {
+        setFocus(firstField);
+      } catch {
+        /* custom controls may not register a focusable ref */
+      }
+      const el = document.querySelector(
+        `[data-field="${CSS.escape(String(firstField))}"]`,
+      ) as HTMLElement | null;
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (el && document.activeElement !== el) {
+        try {
+          el.focus({ preventScroll: true });
+        } catch {
+          /* ignore */
+        }
+      }
+    }, 50);
+    return () => window.clearTimeout(timer);
   }, [errors, setFocus, setTab, submitCount]);
 
   return (
@@ -505,17 +522,10 @@ function OperativeFormTabs({
 
       <TabsContent value="rates" forceMount className={TAB_PANEL_CLASS}>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <TextField<UserFormValues>
-            name="dailyRate"
-            label="Daily rate (£)"
-            type="number"
-            min={0}
-            step="0.01"
-            placeholder="0.00"
-          />
           <CreatableSearchableSelectField<UserFormValues>
             name="cisId"
             label="CIS"
+            required
             placeholder="Select CIS"
             searchPlaceholder="Search CIS statuses…"
             disabled={disabled}
@@ -523,6 +533,14 @@ function OperativeFormTabs({
             selectedLabel={operativeSelectedLabels?.cis}
             fetchOptions={fetchCisOptions}
             lookupType="cis"
+          />
+          <TextField<UserFormValues>
+            name="dailyRate"
+            label="Daily rate (£)"
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder="0.00"
           />
         </div>
         <CheckboxField<UserFormValues>

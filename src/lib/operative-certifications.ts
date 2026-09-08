@@ -48,6 +48,7 @@ export type ApiOperativeCertification = {
   clientKey?: string | null;
   certificationTypeId: string;
   certificationTypeName?: string | null;
+  certificationTypeCode?: string | null;
   certificationLevelId?: string | null;
   certificationLevelName?: string | null;
   documentNumber?: string | null;
@@ -57,7 +58,10 @@ export type ApiOperativeCertification = {
   files?: ApiOperativeCertificationFile[];
 };
 
-export type CertificationExpiryStatus = "Valid" | "Invalid";
+export type CertificationExpiryStatus = "Valid" | "Expiring soon" | "Expired";
+
+/** Days before expiry that count as “Expiring soon” (matches backend reminder window). */
+export const CERTIFICATION_EXPIRING_SOON_DAYS = 30;
 
 export function newClientKey(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -126,7 +130,51 @@ export function certificationStatusFromExpiry(
 ): CertificationExpiryStatus | null {
   const expiry = parseDate((expiryDate ?? "").toString().slice(0, 10));
   if (!expiry) return null;
-  return expiry.getTime() >= now.getTime() ? "Valid" : "Invalid";
+  const days = Math.round((expiry.getTime() - now.getTime()) / 86_400_000);
+  if (days < 0) return "Expired";
+  if (days <= CERTIFICATION_EXPIRING_SOON_DAYS) return "Expiring soon";
+  return "Valid";
+}
+
+/** e.g. "08 Sep 2024" */
+export function formatCertificationDisplayDate(value: string | null | undefined): string {
+  const raw = (value ?? "").toString().trim().slice(0, 10);
+  if (!raw) return "—";
+  const d = parseDate(raw);
+  if (!d) return raw;
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+export type CertificationExpiryRelative = {
+  text: string;
+  tone: "warning" | "destructive" | "muted";
+};
+
+/** Relative line under expiry, e.g. "(in 5 days)", "(expired)". */
+export function formatCertificationExpiryRelative(
+  expiryDate: string | null | undefined,
+  now: Date = startOfToday(),
+): CertificationExpiryRelative | null {
+  const expiry = parseDate((expiryDate ?? "").toString().slice(0, 10));
+  if (!expiry) return null;
+  const days = Math.round((expiry.getTime() - now.getTime()) / 86_400_000);
+  if (days < 0) return { text: "(expired)", tone: "destructive" };
+  if (days === 0) return { text: "(today)", tone: "warning" };
+  if (days < 60) {
+    return {
+      text: `(in ${days} day${days === 1 ? "" : "s"})`,
+      tone: days <= CERTIFICATION_EXPIRING_SOON_DAYS ? "warning" : "muted",
+    };
+  }
+  const months = Math.max(1, Math.round(days / 30));
+  return {
+    text: `(in ${months} month${months === 1 ? "" : "s"})`,
+    tone: "muted",
+  };
 }
 
 export function refineCertifications(

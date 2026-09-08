@@ -217,7 +217,7 @@ function CertificationRow({ index, locked }: { index: number; locked: boolean })
         <div className="space-y-1.5">
           <div className="flex items-center gap-1.5">
             <Label>Status</Label>
-            <FormFieldHint description="Valid until the expiry date; Invalid after it." />
+            <FormFieldHint description="Valid until expiry; Expiring soon within 30 days; Expired after." />
           </div>
           <div className="flex h-9 items-center">
             {expiryStatus ? (

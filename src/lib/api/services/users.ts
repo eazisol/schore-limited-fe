@@ -79,6 +79,7 @@ export interface ApiUser {
     clientKey?: string | null;
     certificationTypeId: string;
     certificationTypeName?: string | null;
+    certificationTypeCode?: string | null;
     certificationLevelId?: string | null;
     certificationLevelName?: string | null;
     documentNumber?: string | null;

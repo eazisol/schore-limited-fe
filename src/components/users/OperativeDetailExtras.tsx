@@ -2,12 +2,12 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Cell, Label, Pie, PieChart } from "recharts";
-import { CheckCircle2, ChevronDown, ClipboardList, Clock, Database, Eye, FileText, Loader2, Percent, Plus, PoundSterling } from "lucide-react";
+import { Award, CheckCircle2, ChevronDown, ClipboardList, Clock, Database, Eye, FileText, HeartPulse, IdCard, Loader2, Paperclip, Percent, Plus, PoundSterling, Shield } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { AppTooltip } from "@/components/AppTooltip";
 import { CodeBadge } from "@/components/CodeBadge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   ChartContainer,
   ChartLegend,
@@ -32,7 +32,11 @@ import { formatUkDate } from "@/lib/week-ending";
 import { formatSortCodeInput } from "@/lib/user-form";
 import { IN_PROGRESS_STATUS_CODE } from "@/lib/hold";
 import { isNonEmptyId } from "@/lib/ids";
-import { certificationStatusFromExpiry } from "@/lib/operative-certifications";
+import {
+  certificationStatusFromExpiry,
+  formatCertificationDisplayDate,
+  formatCertificationExpiryRelative,
+} from "@/lib/operative-certifications";
 import { TASKS_ROUTE } from "@/lib/tasks";
 import { cn } from "@/lib/utils";
 
@@ -63,15 +67,20 @@ function formatShortDate(value: string | null | undefined) {
 }
 
 function formatDisplayDate(value: string | null | undefined) {
-  const raw = (value ?? "").trim().slice(0, 10);
-  if (!raw) return "—";
-  const d = new Date(`${raw}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return formatUkDate(raw);
-  return d.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return formatCertificationDisplayDate(value);
+}
+
+const CERT_ICON_STYLES = [
+  { Icon: Award, className: "bg-success/15 text-success" },
+  { Icon: IdCard, className: "bg-info/15 text-info" },
+  { Icon: HeartPulse, className: "bg-warning/15 text-warning-foreground" },
+  { Icon: Shield, className: "bg-accent/15 text-accent" },
+] as const;
+
+function certificationIconStyle(key: string) {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash + key.charCodeAt(i) * (i + 1)) % CERT_ICON_STYLES.length;
+  return CERT_ICON_STYLES[hash] ?? CERT_ICON_STYLES[0];
 }
 
 function RatesSummaryCard({
@@ -505,75 +514,137 @@ export function OperativeDetailExtras({
             {certifications.length === 0 ? (
               <EmptyPanel message="No certificates on file." />
             ) : (
-              <ul className="space-y-2.5">
-                {certifications.map((cert) => {
-                  const status = certificationStatusFromExpiry(cert.expiryDate);
-                  const files = cert.files ?? [];
-                  const typeName = cert.certificationTypeName?.trim() || "Certification";
-                  const levelName = cert.certificationLevelName?.trim();
-                  const number = cert.documentNumber?.trim();
-                  const notes = cert.notes?.trim();
-                  return (
-                    <li
-                      key={cert.id ?? `${cert.certificationTypeId}-${cert.startDate}`}
-                      className="rounded-lg border border-border bg-background px-4 py-3"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div className="min-w-0 space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-semibold">{typeName}</p>
-                            {levelName ? (
-                              <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                                {levelName}
+              <div className="-mx-3 overflow-x-auto sm:-mx-4">
+                <table className="w-full min-w-[52rem] border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <th className="px-3 pb-2.5 pt-1 font-medium sm:px-4">Certificate</th>
+                      <th className="px-3 pb-2.5 pt-1 font-medium">Level</th>
+                      <th className="px-3 pb-2.5 pt-1 font-medium">Certificate no.</th>
+                      <th className="px-3 pb-2.5 pt-1 font-medium">Issue date</th>
+                      <th className="px-3 pb-2.5 pt-1 font-medium">Expiry date</th>
+                      <th className="px-3 pb-2.5 pt-1 font-medium">Status</th>
+                      <th className="px-3 pb-2.5 pt-1 font-medium sm:px-4">Attachments</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {certifications.map((cert) => {
+                      const status = certificationStatusFromExpiry(cert.expiryDate);
+                      const relative = formatCertificationExpiryRelative(cert.expiryDate);
+                      const files = cert.files ?? [];
+                      const typeName = cert.certificationTypeName?.trim() || "Certification";
+                      const typeCode = cert.certificationTypeCode?.trim();
+                      const levelName = cert.certificationLevelName?.trim() || "—";
+                      const number = cert.documentNumber?.trim() || "—";
+                      const { Icon, className: iconClass } = certificationIconStyle(
+                        String(cert.certificationTypeId ?? typeName),
+                      );
+                      const fileCount = files.length;
+                      const fileLabel =
+                        fileCount === 0
+                          ? "—"
+                          : `${fileCount} file${fileCount === 1 ? "" : "s"}`;
+
+                      return (
+                        <tr
+                          key={cert.id ?? `${cert.certificationTypeId}-${cert.startDate}`}
+                          className="border-b border-border/70 last:border-b-0"
+                        >
+                          <td className="px-3 py-3.5 sm:px-4">
+                            <div className="flex min-w-0 items-center gap-2.5">
+                              <span
+                                className={cn(
+                                  "grid h-9 w-9 shrink-0 place-items-center rounded-full",
+                                  iconClass,
+                                )}
+                              >
+                                <Icon className="h-4 w-4" aria-hidden />
                               </span>
+                              <div className="min-w-0">
+                                <p className="truncate font-semibold text-foreground">{typeName}</p>
+                                {typeCode ? (
+                                  <p className="truncate text-xs text-muted-foreground">{typeCode}</p>
+                                ) : null}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3.5 text-foreground">{levelName}</td>
+                          <td className="px-3 py-3.5 font-mono text-[13px] text-foreground">
+                            {number}
+                          </td>
+                          <td className="px-3 py-3.5 whitespace-nowrap text-foreground">
+                            {formatCertificationDisplayDate(cert.startDate)}
+                          </td>
+                          <td className="px-3 py-3.5 whitespace-nowrap">
+                            <p className="text-foreground">
+                              {formatCertificationDisplayDate(cert.expiryDate)}
+                            </p>
+                            {relative ? (
+                              <p
+                                className={cn(
+                                  "text-xs",
+                                  relative.tone === "destructive" && "text-destructive",
+                                  relative.tone === "warning" && "text-warning-foreground",
+                                  relative.tone === "muted" && "text-muted-foreground",
+                                )}
+                              >
+                                {relative.text}
+                              </p>
                             ) : null}
-                            {status ? <StatusBadge status={status} /> : null}
-                          </div>
-                          {number ? <CodeBadge code={number} /> : null}
-                        </div>
-                        <div className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-                          <p>
-                            <span className="text-[10px] uppercase tracking-wide">Issue</span>{" "}
-                            <span className="font-medium text-foreground">
-                              {formatUkDate(cert.startDate)}
-                            </span>
-                          </p>
-                          <p className="mt-0.5">
-                            <span className="text-[10px] uppercase tracking-wide">Expiry</span>{" "}
-                            <span className="font-medium text-foreground">
-                              {formatUkDate(cert.expiryDate)}
-                            </span>
-                          </p>
-                        </div>
-                      </div>
-
-                      {notes ? (
-                        <p className="mt-2 text-sm text-muted-foreground">{notes}</p>
-                      ) : null}
-
-                      {files.length > 0 ? (
-                        <ul className="mt-2 flex flex-wrap gap-2 border-t border-border/70 pt-2">
-                          {files.map((file) => (
-                            <li key={file.id}>
-                              <AppTooltip content={file.fileName} asChild>
-                                <a
-                                  href={resolveProfileImageUrl(file.filePath)}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex max-w-[14rem] items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-info hover:bg-muted"
-                                >
-                                  <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                                  <span className="truncate">{file.fileName}</span>
-                                </a>
-                              </AppTooltip>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
+                          </td>
+                          <td className="px-3 py-3.5">
+                            {status ? <StatusBadge status={status} /> : "—"}
+                          </td>
+                          <td className="px-3 py-3.5 sm:px-4">
+                            {fileCount === 0 ? (
+                              <span className="text-muted-foreground">—</span>
+                            ) : fileCount === 1 ? (
+                              <a
+                                href={resolveProfileImageUrl(files[0]!.filePath)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                              >
+                                <Paperclip className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                {fileLabel}
+                              </a>
+                            ) : (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                  >
+                                    <Paperclip className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                    {fileLabel}
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent align="end" className="w-64 p-2">
+                                  <ul className="space-y-1">
+                                    {files.map((file) => (
+                                      <li key={file.id}>
+                                        <a
+                                          href={resolveProfileImageUrl(file.filePath)}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted"
+                                        >
+                                          <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                          <span className="truncate">{file.fileName}</span>
+                                        </a>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </TabsContent>
 

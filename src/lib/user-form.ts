@@ -259,6 +259,14 @@ export function userToFormValues(user: ApiUser): UserFormValues {
 }
 
 function operativeExtrasRefine(values: UserFormValues, ctx: z.RefinementCtx) {
+  if (!values.cisId.trim()) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["cisId"],
+      message: "CIS is required for operatives.",
+    });
+  }
+
   const rate = values.dailyRate.trim();
   if (!rate) return;
   const parsed = optionalDailyRateSchema.safeParse(rate);

@@ -86,6 +86,8 @@ export function SearchableSelectField<T extends FieldValues>({
               <SearchableSelect
                 value={rawValue}
                 onValueChange={field.onChange}
+                triggerRef={field.ref}
+                data-field={String(name)}
                 placeholder={placeholder}
                 searchPlaceholder={searchPlaceholder}
                 disabled={disabled || submitting}

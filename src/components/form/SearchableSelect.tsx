@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type Ref } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronDown, Loader2, Plus, Search } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -27,6 +27,10 @@ export interface SearchableSelectProps {
   className?: string;
   triggerClassName?: string;
   "aria-label"?: string;
+  /** Lets RHF setFocus / DOM lookup target this control. */
+  triggerRef?: Ref<HTMLButtonElement>;
+  /** Attribute used by form invalid-focus helpers. */
+  "data-field"?: string;
   /** React Query key prefix for this dropdown. */
   queryKey: readonly unknown[];
   /** Fetch options for the current search term (server-side). */
@@ -62,6 +66,8 @@ export function SearchableSelect({
   className,
   triggerClassName,
   "aria-label": ariaLabel,
+  triggerRef,
+  "data-field": dataField,
   queryKey,
   fetchOptions,
   selectedLabel,
@@ -161,6 +167,8 @@ export function SearchableSelect({
         <PopoverTrigger asChild>
           <button
             type="button"
+            ref={triggerRef}
+            data-field={dataField}
             role="combobox"
             aria-expanded={open}
             aria-label={ariaLabel}
