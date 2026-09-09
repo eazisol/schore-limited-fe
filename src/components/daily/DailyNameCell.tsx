@@ -71,7 +71,7 @@ export function DailyNameCell({ row, date, disabled = false }: DailyNameCellProp
     <div className="max-w-[9rem] overflow-x-auto">
       <ul className="flex w-max items-center gap-1.5 py-0.5">
         {operatives.map((op) => (
-          <li key={op.operativeId} className="shrink-0">
+          <li key={op.operativeId ?? `unassigned-${op.operativeName}`} className="shrink-0">
             <OperativeAvatarPopover
               operative={op}
               taskId={row.taskId}

@@ -52,7 +52,7 @@ export interface JobTypePayload {
 export interface JobTypeTemplatePreviewItem {
   dayOffset: number;
   workDate: string;
-  tradeId: string;
+  tradeId: string | null;
   tradeName: string;
   tradeGroupId: string | null;
   tradeGroupName: string | null;

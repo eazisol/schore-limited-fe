@@ -35,6 +35,11 @@ import { HoldDetailsModal, type HoldDetails } from "@/components/tasks/HoldDetai
 import { getTaskStatusCode, isHoldStatusCode } from "@/lib/task-hold";
 import { jobTypesService } from "@/lib/api/services/job-types";
 import { tasksService } from "@/lib/api/services/tasks";
+import {
+  findCertificationWarningsForWorkDates,
+  type CertificationAssignWarning,
+} from "@/lib/operative-certifications";
+import { notifyApiError } from "@/lib/api/axios";
 
 const ADD_AS_OPTIONS: SearchableSelectOption[] = [
   { value: "tradeGroup", label: "Package" },
@@ -118,6 +123,14 @@ export function TaskFormFields({
     previousRate: string;
     nextRate: string;
   } | null>(null);
+  const [certAssignPrompt, setCertAssignPrompt] = useState<{
+    indexes: number[];
+    operativeId: string;
+    operativeLabel: string;
+    pickKey?: string;
+    warnings: CertificationAssignWarning[];
+  } | null>(null);
+  const [certAssignChecking, setCertAssignChecking] = useState(false);
   const [holdOpen, setHoldOpen] = useState(false);
   /** Pending operative pick for assigning a package / add-on block (unassigned template lines). */
   const [assignPick, setAssignPick] = useState<Record<string, { id: string; label: string }>>({});
@@ -198,7 +211,7 @@ export function TaskFormFields({
             ...emptyTaskItem(),
             operativeId: "",
             workDate: line.workDate.slice(0, 10),
-            tradeId: String(line.tradeId),
+            tradeId: line.tradeId != null ? String(line.tradeId) : "",
             itemKind: line.tradeGroupId ? "tradeGroup" : "product",
             tradeGroupId,
             productId,
@@ -437,10 +450,25 @@ export function TaskFormFields({
     await addForOperative(activeOperativeId);
   }
 
+  function applyOperativeAssignment(
+    indexes: number[],
+    operativeId: string,
+    operativeLabel: string,
+  ) {
+    setOperativeLabels((prev) => ({
+      ...prev,
+      [operativeId]: operativeLabel || prev[operativeId] || operativeId,
+    }));
+    for (const index of indexes) {
+      setValue(`items.${index}.operativeId`, operativeId, { shouldDirty: true });
+    }
+  }
+
   async function assignItemsToOperative(
     indexes: number[],
     operativeId: string,
     operativeLabel: string,
+    pickKey?: string,
   ) {
     if (itemsLocked) {
       toast.warning("This job is locked. Tick previous-day work before assigning items.");
@@ -452,15 +480,56 @@ export function TaskFormFields({
     }
     if (indexes.length === 0) return;
 
-    setOperativeLabels((prev) => ({
-      ...prev,
-      [operativeId]: operativeLabel || prev[operativeId] || operativeId,
-    }));
-    await ensureOperativeMeta(operativeId, operativeLabel);
+    setCertAssignChecking(true);
+    try {
+      const certifications =
+        (await usersService.getAssignCertifications(operativeId)).data ?? [];
 
-    for (const index of indexes) {
-      setValue(`items.${index}.operativeId`, operativeId, { shouldDirty: true });
+      const workDates = indexes.map((index) => getValues(`items.${index}.workDate`));
+      const warnings = findCertificationWarningsForWorkDates(certifications, workDates);
+
+      if (warnings.length > 0) {
+        setCertAssignPrompt({
+          indexes,
+          operativeId,
+          operativeLabel,
+          pickKey,
+          warnings,
+        });
+        return;
+      }
+
+      applyOperativeAssignment(indexes, operativeId, operativeLabel);
+      if (pickKey) {
+        setAssignPick((prev) => {
+          const next = { ...prev };
+          delete next[pickKey];
+          return next;
+        });
+      }
+    } catch (err) {
+      notifyApiError(err, "Unable to check operative certificates");
+    } finally {
+      setCertAssignChecking(false);
     }
+  }
+
+  function confirmCertAssign() {
+    if (!certAssignPrompt) return;
+    const { indexes, operativeId, operativeLabel, pickKey } = certAssignPrompt;
+    applyOperativeAssignment(indexes, operativeId, operativeLabel);
+    if (pickKey) {
+      setAssignPick((prev) => {
+        const next = { ...prev };
+        delete next[pickKey];
+        return next;
+      });
+    }
+    setCertAssignPrompt(null);
+  }
+
+  function cancelCertAssign() {
+    setCertAssignPrompt(null);
   }
 
   function renderAssignOperativeControls(pickKey: string, indexes: number[]) {
@@ -496,16 +565,9 @@ export function TaskFormFields({
           type="button"
           size="sm"
           className="h-8 shrink-0 px-2.5 text-xs"
-          disabled={!pick.id || addControlsDisabled}
+          disabled={!pick.id || addControlsDisabled || certAssignChecking}
           onClick={() => {
-            void (async () => {
-              await assignItemsToOperative(indexes, pick.id, pick.label);
-              setAssignPick((prev) => {
-                const next = { ...prev };
-                delete next[pickKey];
-                return next;
-              });
-            })();
+            void assignItemsToOperative(indexes, pick.id, pick.label, pickKey);
           }}
         >
           Assign
@@ -1033,6 +1095,41 @@ export function TaskFormFields({
                 </Button>
                 <Button type="button" size="sm" onClick={() => resolveRatePrompt(true)}>
                   Save as permanent product rate
+                </Button>
+              </div>
+            </div>
+          </Modal>
+        ) : null}
+
+        {certAssignPrompt ? (
+          <Modal
+            open
+            onClose={cancelCertAssign}
+            title="Certificate expiry warning"
+            subtitle={`${certAssignPrompt.operativeLabel || "This operative"} has certificate(s) expired or expiring within 7 days of the work date.`}
+            size="sm"
+            showCloseButton={false}
+          >
+            <div className="space-y-3">
+              <ul className="space-y-1.5 text-sm">
+                {certAssignPrompt.warnings.map((w) => (
+                  <li
+                    key={`${w.name}-${w.expiryDate}`}
+                    className="flex items-baseline justify-between gap-3 border-b border-border/40 pb-1.5 last:border-0 last:pb-0"
+                  >
+                    <span className="min-w-0 font-medium text-foreground">{w.name}</span>
+                    <span className="shrink-0 tabular-nums text-muted-foreground">
+                      Expires {w.displayExpiry}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button type="button" variant="outline" size="sm" onClick={cancelCertAssign}>
+                  Cancel
+                </Button>
+                <Button type="button" size="sm" onClick={confirmCertAssign}>
+                  Confirm assign
                 </Button>
               </div>
             </div>

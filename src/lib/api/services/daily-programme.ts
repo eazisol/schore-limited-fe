@@ -3,7 +3,7 @@ import type { ApiEnvelope } from "./auth";
 
 export interface ApiDailyAllocation {
   itemId: string;
-  operativeId: string;
+  operativeId: string | null;
   operativeName: string;
   displayName: string;
   tradeCode: string | null;
@@ -37,14 +37,14 @@ export interface ApiDailyAssignedPackageGroup {
 }
 
 export interface ApiDailyAssignedOperative {
-  operativeId: string;
+  operativeId: string | null;
   operativeName: string;
   packages: ApiDailyAssignedPackageGroup[];
   addOns: ApiDailyAssignedItemLine[];
 }
 
 export interface ApiDailyNameOperative {
-  operativeId: string;
+  operativeId: string | null;
   operativeName: string;
   items: ApiDailyAssignedItemLine[];
 }

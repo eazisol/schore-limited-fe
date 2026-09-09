@@ -63,6 +63,9 @@ export type CertificationExpiryStatus = "Valid" | "Expiring soon" | "Expired";
 /** Days before expiry that count as “Expiring soon” (matches backend reminder window). */
 export const CERTIFICATION_EXPIRING_SOON_DAYS = 30;
 
+/** Warn when assigning an operative if a cert expires on/before work date + this many days. */
+export const CERTIFICATION_ASSIGN_WARN_DAYS = 7;
+
 export function newClientKey(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
@@ -147,6 +150,56 @@ export function formatCertificationDisplayDate(value: string | null | undefined)
     month: "short",
     year: "numeric",
   });
+}
+
+export type CertificationAssignWarning = {
+  name: string;
+  expiryDate: string;
+  displayExpiry: string;
+};
+
+/**
+ * Certs that are already expired relative to a work date, or expire within
+ * {@link CERTIFICATION_ASSIGN_WARN_DAYS} days of that work date.
+ */
+export function findCertificationWarningsForWorkDates(
+  certifications: Array<{
+    certificationTypeName?: string | null;
+    certificationTypeCode?: string | null;
+    expiryDate?: string | null;
+  }>,
+  workDates: Array<string | null | undefined>,
+): CertificationAssignWarning[] {
+  const refs = workDates
+    .map((d) => parseDate((d ?? "").toString().slice(0, 10)))
+    .filter((d): d is Date => d != null);
+  if (refs.length === 0) return [];
+
+  const warnMs = CERTIFICATION_ASSIGN_WARN_DAYS * 86_400_000;
+  const byExpiry = new Map<string, CertificationAssignWarning>();
+
+  for (const cert of certifications) {
+    const expiryRaw = (cert.expiryDate ?? "").toString().slice(0, 10);
+    const expiry = parseDate(expiryRaw);
+    if (!expiry) continue;
+
+    const atRisk = refs.some((workDate) => expiry.getTime() - workDate.getTime() <= warnMs);
+    if (!atRisk) continue;
+
+    const name =
+      cert.certificationTypeName?.trim() ||
+      cert.certificationTypeCode?.trim() ||
+      "Certificate";
+    const key = `${name}|${expiryRaw}`;
+    if (byExpiry.has(key)) continue;
+    byExpiry.set(key, {
+      name,
+      expiryDate: expiryRaw,
+      displayExpiry: formatCertificationDisplayDate(expiryRaw),
+    });
+  }
+
+  return [...byExpiry.values()].sort((a, b) => a.expiryDate.localeCompare(b.expiryDate));
 }
 
 export type CertificationExpiryRelative = {

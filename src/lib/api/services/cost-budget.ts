@@ -33,7 +33,7 @@ export interface ApiCostBudgetLedgerLine {
   taskNumber: string;
   propertyId: string;
   propertyName: string;
-  customerId: string;
+  customerId: string | null;
   customerName: string | null;
   priceWork: number;
   topUpShare: number;

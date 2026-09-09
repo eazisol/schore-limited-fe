@@ -291,6 +291,17 @@ export const usersService = {
       },
     }),
   get: (id: string) => http.get<ApiEnvelope<ApiUser>>(`Users/${id}`),
+  /** Lightweight certs for assign-time expiry checks (no Users menu permission). */
+  getAssignCertifications: (id: string) =>
+    http.get<
+      ApiEnvelope<
+        {
+          certificationTypeName?: string | null;
+          certificationTypeCode?: string | null;
+          expiryDate: string;
+        }[]
+      >
+    >(`Users/${id}/assign-certifications`),
   dropdown: (params: {
     search?: string;
     userTypeId?: number;

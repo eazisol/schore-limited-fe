@@ -27,6 +27,12 @@ import { notifyApiError } from "@/lib/api/axios";
 import { fmtGBP } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { Modal } from "@/components/Modal";
+import { usersService } from "@/lib/api/services/users";
+import {
+  findCertificationWarningsForWorkDates,
+  type CertificationAssignWarning,
+} from "@/lib/operative-certifications";
 
 type DayLine = {
   itemId: string;
@@ -392,6 +398,8 @@ function ItemFormCard({
   const [rate, setRate] = useState(String(editLine?.rate ?? ""));
   const [timeSlotId, setTimeSlotId] = useState(editLine?.timeSlotId ?? "");
   const [timeSlotLabel, setTimeSlotLabel] = useState(editLine?.timeSlotName ?? "");
+  const [certWarnings, setCertWarnings] = useState<CertificationAssignWarning[] | null>(null);
+  const [certCheckPending, setCertCheckPending] = useState(false);
 
   const timeSlotsQuery = useQuery({
     queryKey: ["tasks", "time-slots"],
@@ -501,11 +509,75 @@ function ItemFormCard({
       toast.warning("Enter a valid quantity.");
       return;
     }
-    saveMutation.mutate();
+
+    const operativeChanged = !isEdit || operativeId !== (editLine?.operativeId ?? "");
+    if (!operativeChanged) {
+      saveMutation.mutate();
+      return;
+    }
+
+    setCertCheckPending(true);
+    void (async () => {
+      try {
+        const certifications =
+          (await usersService.getAssignCertifications(operativeId)).data ?? [];
+        const warnings = findCertificationWarningsForWorkDates(certifications, [date]);
+        if (warnings.length > 0) {
+          setCertWarnings(warnings);
+          return;
+        }
+        saveMutation.mutate();
+      } catch (err) {
+        notifyApiError(err, "Unable to check operative certificates");
+      } finally {
+        setCertCheckPending(false);
+      }
+    })();
   }
 
   return (
     <div className="rounded-lg border border-accent/25 bg-accent/5 p-3">
+      {certWarnings ? (
+        <Modal
+          open
+          onClose={() => setCertWarnings(null)}
+          title="Certificate expiry warning"
+          subtitle={`${operativeLabel || "This operative"} has certificate(s) expired or expiring within 7 days of the work date.`}
+          size="sm"
+          showCloseButton={false}
+        >
+          <div className="space-y-3">
+            <ul className="space-y-1.5 text-sm">
+              {certWarnings.map((w) => (
+                <li
+                  key={`${w.name}-${w.expiryDate}`}
+                  className="flex items-baseline justify-between gap-3 border-b border-border/40 pb-1.5 last:border-0 last:pb-0"
+                >
+                  <span className="min-w-0 font-medium text-foreground">{w.name}</span>
+                  <span className="shrink-0 tabular-nums text-muted-foreground">
+                    Expires {w.displayExpiry}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="outline" size="sm" onClick={() => setCertWarnings(null)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setCertWarnings(null);
+                  saveMutation.mutate();
+                }}
+              >
+                Confirm assign
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold">{isEdit ? "Edit item" : "Add item"}</p>
@@ -686,9 +758,9 @@ function ItemFormCard({
           size="sm"
           className="h-8"
           onClick={handleSave}
-          disabled={disabled || saveMutation.isPending}
-        >
-          {saveMutation.isPending ? (
+          disabled={disabled || saveMutation.isPending || certCheckPending}
+          >
+          {saveMutation.isPending || certCheckPending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : isEdit ? (
             "Save"
