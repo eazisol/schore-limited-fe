@@ -1,6 +1,16 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Calendar, CalendarCheck, Mail, MapPin, Phone, ScrollText, User } from "lucide-react";
+import {
+  ArrowLeft,
+  Calendar,
+  CalendarCheck,
+  Mail,
+  MapPin,
+  Phone,
+  ScrollText,
+  User,
+  type LucideIcon,
+} from "lucide-react";
 import { AppTooltip } from "@/components/AppTooltip";
 import { TableImagePreview } from "@/components/TableImagePreview";
 import { cn } from "@/lib/utils";
@@ -10,6 +20,11 @@ export type DetailProfileHighlight = {
   value: ReactNode;
   /** Span both columns in the highlights grid (e.g. address block). */
   wide?: boolean;
+};
+
+export type DetailProfileTag = {
+  label: string;
+  icon?: LucideIcon;
 };
 
 function resolveNameText(name: ReactNode, imageAlt?: string): string {
@@ -36,6 +51,7 @@ export function DetailProfileHero({
   leading,
   name,
   subtitle,
+  tags,
   imageUrl,
   imageAlt,
   status,
@@ -58,6 +74,8 @@ export function DetailProfileHero({
   leading?: ReactNode;
   name: ReactNode;
   subtitle?: string;
+  /** Designation / trade chips shown under the name (e.g. Decorator). */
+  tags?: DetailProfileTag[];
   imageUrl?: string;
   imageAlt?: string;
   status?: ReactNode;
@@ -155,7 +173,22 @@ export function DetailProfileHero({
                 </h2>
                 {status}
               </div>
-              {subtitle ? (
+              {tags?.length ? (
+                <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5 sm:justify-start">
+                  {tags.map((tag, index) => {
+                    const Icon = tag.icon;
+                    return (
+                      <span
+                        key={`${tag.label}-${index}`}
+                        className="inline-flex items-center gap-1.5 rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground"
+                      >
+                        {Icon ? <Icon className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden /> : null}
+                        {tag.label}
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : subtitle ? (
                 <p className="mt-0.5 break-words text-xs text-muted-foreground sm:text-sm">{subtitle}</p>
               ) : null}
               {hasMeta ? (

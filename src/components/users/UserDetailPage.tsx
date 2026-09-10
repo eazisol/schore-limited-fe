@@ -7,7 +7,9 @@ import { FormPageCard } from "@/components/FormPageCard";
 import {
   DetailProfileHero,
   type DetailProfileHighlight,
+  type DetailProfileTag,
 } from "@/components/DetailProfileHero";
+import { roleIconForName, splitTradeNames, tradeIconForName } from "@/lib/profile-tags";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -44,7 +46,6 @@ import {
 } from "@/lib/user-form";
 import { uploadPendingCertificationFiles } from "@/lib/upload-certification-files";
 import { useRateCapReasonGate } from "@/components/rates/useRateCapReasonGate";
-import { cn } from "@/lib/utils";
 
 export function UserDetailPage() {
   const mode = useUserModuleMode();
@@ -60,7 +61,12 @@ export function UserDetailPage() {
   const canDelete = usePermission({ route: cfg.permissionRoute, action: "delete" });
   const [confirmDel, setConfirmDel] = useState(false);
   const [clientEditOpen, setClientEditOpen] = useState(false);
-  const [operativeTab, setOperativeTab] = useState<OperativeFormTab>(search.tab ?? "details");
+  const isKnownOperativeTab = (tab: unknown): tab is OperativeFormTab =>
+    typeof tab === "string" && OPERATIVE_FORM_TABS.some((item) => item.id === tab);
+
+  const [operativeTab, setOperativeTab] = useState<OperativeFormTab>(() =>
+    isKnownOperativeTab(search.tab) ? search.tab : "details"
+  );
   const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
   const isEditing = !cfg.isCustomer && search.mode === "edit" && canModify;
   const schema = editUserFormSchema(mode);
@@ -71,7 +77,7 @@ export function UserDetailPage() {
     isOperative && isEditing && operativeTabIndex >= 0 && operativeTabIndex < OPERATIVE_FORM_TABS.length - 1;
 
   useEffect(() => {
-    if (search.tab) {
+    if (isKnownOperativeTab(search.tab)) {
       setOperativeTab(search.tab);
     }
   }, [search.tab]);
@@ -87,20 +93,20 @@ export function UserDetailPage() {
     });
   }, [canModify, cfg.detailPath, cfg.isCustomer, id, navigate, search.mode]);
 
-  function openEdit(targetTab?: OperativeFormTab) {
+  function openEdit(targetTab?: OperativeFormTab | unknown) {
     if (cfg.isCustomer) {
       setClientEditOpen(true);
       return;
     }
-    if (targetTab) {
-      setOperativeTab(targetTab);
-    }
+    const validTab = isKnownOperativeTab(targetTab) ? targetTab : undefined;
+    const nextTab = validTab ?? (isKnownOperativeTab(operativeTab) ? operativeTab : "details");
+    setOperativeTab(nextTab);
     navigate({
       to: cfg.detailPath,
       params: { id },
       search: {
         mode: "edit",
-        ...(targetTab ? { tab: targetTab } : {}),
+        ...(validTab ? { tab: validTab } : {}),
       },
       replace: true,
     });
@@ -203,7 +209,6 @@ export function UserDetailPage() {
 
   const dirty = form.formState.isDirty;
   const profileImageUrl = resolveProfileImageUrl(user.profileImagePath, user.editDate);
-  const roleLabel = (user.roleNames ?? []).filter(Boolean).join(", ") || "—";
   const name = displayUserName(user);
 
   const profileHeroNameText = cfg.isContractor
@@ -216,21 +221,29 @@ export function UserDetailPage() {
 
   const contactPersonName = [user.firstName, user.lastName].filter(Boolean).join(" ");
 
+  const profileHeroTags = ((): DetailProfileTag[] | undefined => {
+    if (cfg.isOperative) {
+      const trades = splitTradeNames(user.tradeName, user.tradeNames);
+      if (!trades.length) return undefined;
+      return trades.map((label) => ({ label, icon: tradeIconForName(label) }));
+    }
+    if (mode === "user") {
+      const roles = (user.roleNames ?? []).map((n) => n.trim()).filter(Boolean);
+      if (!roles.length) return undefined;
+      return roles.map((label) => ({ label, icon: roleIconForName(label) }));
+    }
+    return undefined;
+  })();
+
   const profileHeroSubtitle = cfg.isContractor
     ? (() => {
         if (!contactPersonName) return undefined;
         if (namesLookSimilar(profileHeroNameText, contactPersonName)) return undefined;
         return `Contact: ${contactPersonName}`;
       })()
-    : cfg.isOperative
-      ? user.tradeName?.trim() || undefined
-      : cfg.isCustomer
-        ? user.contractorName?.trim() || undefined
-        : mode === "user"
-          ? undefined
-          : roleLabel !== "—"
-            ? roleLabel
-            : undefined;
+    : cfg.isCustomer
+      ? user.contractorName?.trim() || undefined
+      : undefined;
 
   const profileHeroHighlights = ((): DetailProfileHighlight[] | undefined => {
     if (cfg.isOperative) {
@@ -254,7 +267,6 @@ export function UserDetailPage() {
       const items: DetailProfileHighlight[] = [];
       const loginUsername = user.username?.trim();
       const accountEmail = user.email?.trim();
-      if (roleLabel !== "—") items.push({ label: "Role", value: roleLabel });
       if (
         loginUsername &&
         loginUsername.toLowerCase() !== accountEmail?.toLowerCase() &&
@@ -391,7 +403,7 @@ export function UserDetailPage() {
             headerActions={
               <>
                 {canModify && (
-                  <Button variant="outline" size="sm" onClick={openEdit}>
+                  <Button variant="outline" size="sm" onClick={() => openEdit()}>
                     <Pencil className="h-4 w-4" />
                     {cfg.labels.editButton}
                   </Button>
@@ -411,9 +423,14 @@ export function UserDetailPage() {
             }
             name={profileHeroNameText}
             subtitle={profileHeroSubtitle}
+            tags={profileHeroTags}
             imageUrl={profileImageUrl || undefined}
             imageAlt={`${cfg.labels.entityTitle} profile`}
-            status={<ActiveStatusBadge isActive={user.isActive} />}
+            status={
+              cfg.isOperative || mode === "user"
+                ? undefined
+                : <ActiveStatusBadge isActive={user.isActive} />
+            }
             email={user.email}
             phone={user.phone}
             dateOfBirth={profileDateOfBirth}

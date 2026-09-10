@@ -3,16 +3,18 @@ import { z } from "zod";
 import { isNonEmptyId } from "@/lib/ids";
 
 export const hierarchyReturnSearchSchema = z.object({
-  from: z.enum(["customer", "site", "project"]).optional(),
+  from: z.enum(["customer", "site", "project", "operative"]).optional(),
   customerId: z.string().optional(),
   siteId: z.string().optional(),
   projectId: z.string().optional(),
+  operativeId: z.string().optional(),
 });
 
 export type HierarchyReturnContext =
   | { from: "customer"; customerId: string }
   | { from: "site"; siteId: string }
-  | { from: "project"; projectId: string };
+  | { from: "project"; projectId: string }
+  | { from: "operative"; operativeId: string };
 
 export type HierarchyCardScope =
   | { scope: "customer"; customerId: string }
@@ -43,6 +45,9 @@ export function parseHierarchyReturnSearch(
   if (search.from === "project" && isNonEmptyId(search.projectId)) {
     return { from: "project", projectId: search.projectId };
   }
+  if (search.from === "operative" && isNonEmptyId(search.operativeId)) {
+    return { from: "operative", operativeId: search.operativeId };
+  }
   return null;
 }
 
@@ -54,6 +59,8 @@ export function hierarchyReturnSearch(ctx: HierarchyReturnContext): Record<strin
       return { from: "site", siteId: ctx.siteId };
     case "project":
       return { from: "project", projectId: ctx.projectId };
+    case "operative":
+      return { from: "operative", operativeId: ctx.operativeId };
   }
 }
 
@@ -81,6 +88,12 @@ export function hierarchyTaskViewSearch(ctx: HierarchyReturnContext) {
         from: "project" as const,
         projectId: ctx.projectId,
       };
+    case "operative":
+      return {
+        mode: "view" as const,
+        from: "operative" as const,
+        operativeId: ctx.operativeId,
+      };
   }
 }
 
@@ -100,6 +113,8 @@ export function hierarchyBackLabel(
       return "Back to site";
     case "project":
       return "Back to project";
+    case "operative":
+      return "Back to operative";
   }
 }
 
@@ -117,5 +132,7 @@ export function hierarchyBackNavigation(
       return { to: "/sites/$id", params: { id: ctx.siteId } };
     case "project":
       return { to: "/projects/$id", params: { id: ctx.projectId } };
+    case "operative":
+      return { to: "/operatives/$id", params: { id: ctx.operativeId } };
   }
 }

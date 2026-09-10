@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Cell, Label, Pie, PieChart } from "recharts";
-import { Award, Building2, CheckCircle2, ChevronDown, ClipboardList, Clock, Database, Eye, FileText, FolderKanban, HeartPulse, IdCard, Loader2, MapPin, Paperclip, Percent, Plus, PoundSterling, Shield } from "lucide-react";
+import { Award, Building2, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, ClipboardList, Clock, Coins, Database, Eye, FileText, FolderKanban, HeartPulse, IdCard, ListTodo, Loader2, MapPin, Paperclip, Percent, Plus, PoundSterling, Shield, TrendingUp, Wallet } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { CodeBadge } from "@/components/CodeBadge";
@@ -30,19 +30,16 @@ import { tasksService } from "@/lib/api/services/tasks";
 import { formatDailyRate } from "@/lib/module-ui";
 import { formatUkDate } from "@/lib/week-ending";
 import { formatSortCodeInput } from "@/lib/user-form";
-import { IN_PROGRESS_STATUS_CODE } from "@/lib/hold";
 import { isNonEmptyId } from "@/lib/ids";
 import {
   certificationStatusFromExpiry,
   formatCertificationDisplayDate,
   formatCertificationExpiryRelative,
 } from "@/lib/operative-certifications";
+import { hierarchyReturnSearch } from "@/lib/hierarchy-navigation";
 import { TASKS_ROUTE } from "@/lib/tasks";
 import type { OperativeFormTab } from "@/components/users/UserFormFields";
 import { cn } from "@/lib/utils";
-
-const PENDING_STATUS_CODE = "PENDING";
-const COMPLETED_STATUS_CODE = "COMPLETED";
 
 const taskStatusChartConfig = {
   pending: { label: "Pending", color: "var(--warning)" },
@@ -243,22 +240,25 @@ function OperativeRatesPanel({
 function itemStatusLabel(
   statusName: string | null | undefined,
   statusCode: string | null | undefined,
+  isTicked?: boolean,
 ) {
+  if (isTicked) return "Completed";
   const code = (statusCode ?? "").toUpperCase();
   if (!code || code === "DRAFT") return "Pending";
   return statusName || statusCode || "Pending";
 }
 
-async function countOperativeItems(operativeId: string, statusCode?: string) {
-  const data = (
-    await tasksService.listItems({
-      page: 1,
-      pageSize: 1,
-      operativeId,
-      ...(statusCode ? { statusCode } : {}),
-    })
-  ).data;
-  return data.totalCount;
+/** Item-level bucket only (Daily tick / item Status) — never the parent job status. */
+function itemStatusBucket(item: {
+  isTicked: boolean;
+  statusCode: string | null;
+}): "pending" | "inProgress" | "completed" | null {
+  if (item.isTicked) return "completed";
+  const code = (item.statusCode ?? "").toUpperCase();
+  if (!code || code === "DRAFT" || code === "PENDING") return "pending";
+  if (code === "IN_PROGRESS") return "inProgress";
+  if (code === "COMPLETED") return "completed";
+  return null;
 }
 
 export function OperativeDetailExtras({
@@ -274,6 +274,10 @@ export function OperativeDetailExtras({
   const navigate = useNavigate();
   const canAddTask = usePermission({ route: TASKS_ROUTE, action: "modify" });
   const [tab, setTab] = useState("tasks");
+  const operativeReturnSearch = hierarchyReturnSearch({
+    from: "operative",
+    operativeId,
+  });
 
   const itemsQuery = useQuery({
     queryKey: ["task-items", "operative", operativeId],
@@ -296,27 +300,26 @@ export function OperativeDetailExtras({
     enabled: isNonEmptyId(operativeId),
   });
 
-  const countsQuery = useQuery({
-    queryKey: ["task-items", "operative-counts", operativeId],
-    queryFn: async () => {
-      const [total, pending, inProgress, completed] = await Promise.all([
-        countOperativeItems(operativeId),
-        countOperativeItems(operativeId, PENDING_STATUS_CODE),
-        countOperativeItems(operativeId, IN_PROGRESS_STATUS_CODE),
-        countOperativeItems(operativeId, COMPLETED_STATUS_CODE),
-      ]);
-      return { total, pending, inProgress, completed };
-    },
-    enabled: isNonEmptyId(operativeId),
-  });
-
   const items = itemsQuery.data?.items ?? [];
-  const statusCounts = countsQuery.data ?? {
-    total: itemsQuery.data?.totalCount ?? 0,
-    pending: 0,
-    inProgress: 0,
-    completed: 0,
-  };
+
+  // Same task-item rows as the Tasks table — not parent job (WorkTask) status.
+  const statusCounts = useMemo(() => {
+    let pending = 0;
+    let inProgress = 0;
+    let completed = 0;
+    for (const item of items) {
+      const bucket = itemStatusBucket(item);
+      if (bucket === "pending") pending += 1;
+      else if (bucket === "inProgress") inProgress += 1;
+      else if (bucket === "completed") completed += 1;
+    }
+    return {
+      pending,
+      inProgress,
+      completed,
+      total: pending + inProgress + completed,
+    };
+  }, [items]);
 
   const statusPieData = useMemo(
     () =>
@@ -344,7 +347,7 @@ export function OperativeDetailExtras({
   );
 
   const pieTotal = statusCounts.pending + statusCounts.inProgress + statusCounts.completed;
-  const chartLoading = countsQuery.isLoading;
+  const chartLoading = itemsQuery.isLoading;
 
   const tradeNames = useMemo(() => {
     if (user.tradeNames?.length) return user.tradeNames.filter(Boolean);
@@ -497,14 +500,14 @@ export function OperativeDetailExtras({
                           {formatShortDate(item.workDate)}
                         </td>
                         <td className="px-3 py-2.5">
-                          <StatusBadge status={itemStatusLabel(item.statusName, item.statusCode)} />
+                          <StatusBadge status={itemStatusLabel(item.statusName, item.statusCode, item.isTicked)} />
                         </td>
                         <td className="px-4 py-2.5 text-right">
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
                             <Link
                               to="/tasks/$id"
                               params={{ id: String(item.taskId) }}
-                              search={{ mode: "view" }}
+                              search={{ mode: "view", from: "operative", operativeId }}
                               aria-label={`View ${item.taskNumber}`}
                             >
                               <Eye className="h-4 w-4" />
@@ -564,6 +567,7 @@ export function OperativeDetailExtras({
                             <Link
                               to="/sites/$id"
                               params={{ id: String(site.siteId) }}
+                              search={operativeReturnSearch}
                               aria-label={`View ${site.siteName}`}
                             >
                               <Eye className="h-3.5 w-3.5" />
@@ -625,6 +629,7 @@ export function OperativeDetailExtras({
                             <Link
                               to="/projects/$id"
                               params={{ id: String(project.projectId) }}
+                              search={operativeReturnSearch}
                               aria-label={`View ${project.projectName}`}
                             >
                               <Eye className="h-3.5 w-3.5" />
@@ -816,152 +821,167 @@ export function OperativeDetailExtras({
 
       <section className="flex flex-col gap-4 lg:col-span-4">
         <div className="card-elevated overflow-hidden">
-          <div className="border-b px-4 py-3 sm:px-5">
-            <h2 className="font-display font-semibold">Task status</h2>
-            <p className="text-xs text-muted-foreground">
-              Assigned task items — pending, in progress and completed
-            </p>
+          <div className="flex items-start gap-3 px-4 pb-1 pt-4 sm:px-5">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-info/15 text-info">
+              <ListTodo className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-display font-semibold">Task status</h2>
+              <p className="text-xs text-muted-foreground">
+                Per task item — pending, in progress and completed
+              </p>
+            </div>
           </div>
 
-          <div className="px-4 pb-2 pt-4 sm:px-5">
-            {chartLoading ? (
-              <div className="flex h-[220px] items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading…
-              </div>
-            ) : pieTotal === 0 && statusCounts.total === 0 ? (
-              <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
-                No task item status data yet.
-              </div>
-            ) : pieTotal === 0 ? (
-              <div className="flex h-[220px] flex-col items-center justify-center gap-1 text-center text-sm text-muted-foreground">
-                <span className="font-display text-2xl font-semibold text-foreground">
-                  {statusCounts.total}
-                </span>
-                <span>Total items (none pending / in progress / completed)</span>
-              </div>
-            ) : (
-              <ChartContainer
-                config={taskStatusChartConfig}
-                className="mx-auto aspect-square h-[220px] w-full max-w-[260px]"
-              >
-                <PieChart>
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent hideLabel nameKey="key" />}
-                  />
-                  <Pie
-                    data={statusPieData}
-                    dataKey="value"
-                    nameKey="key"
-                    innerRadius={58}
-                    outerRadius={88}
-                    strokeWidth={2}
-                    stroke="var(--color-card)"
-                    paddingAngle={2}
-                    isAnimationActive={false}
-                  >
-                    {statusPieData.map((entry) => (
-                      <Cell key={entry.key} fill={entry.fill} />
-                    ))}
-                    <Label
-                      content={({ viewBox }) => {
-                        if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                          return (
-                            <text
-                              x={viewBox.cx}
-                              y={viewBox.cy}
-                              textAnchor="middle"
-                              dominantBaseline="middle"
-                            >
-                              <tspan
-                                x={viewBox.cx}
-                                y={(viewBox.cy ?? 0) - 6}
-                                className="fill-foreground font-display text-2xl font-semibold"
-                              >
-                                {statusCounts.total}
-                              </tspan>
-                              <tspan
-                                x={viewBox.cx}
-                                y={(viewBox.cy ?? 0) + 14}
-                                className="fill-muted-foreground text-[11px]"
-                              >
-                                Total
-                              </tspan>
-                            </text>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                  </Pie>
-                  <ChartLegend
-                    content={<ChartLegendContent nameKey="key" />}
-                    className="-translate-y-1 flex-wrap gap-2"
-                  />
-                </PieChart>
-              </ChartContainer>
-            )}
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 border-t p-3 sm:p-4">
-            {(
-              [
-                {
-                  key: "pending",
-                  label: "Pending",
-                  value: statusCounts.pending,
-                  tone: "warn" as const,
-                  icon: Clock,
-                },
-                {
-                  key: "inProgress",
-                  label: "In progress",
-                  value: statusCounts.inProgress,
-                  tone: "info" as const,
-                  icon: ClipboardList,
-                },
-                {
-                  key: "completed",
-                  label: "Completed",
-                  value: statusCounts.completed,
-                  tone: "ok" as const,
-                  icon: CheckCircle2,
-                },
-              ] as const
-            ).map((item) => (
-              <div
-                key={item.key}
-                className={cn(
-                  "rounded-lg border px-2 py-2 text-center",
-                  item.tone === "warn" && "border-warning/20 bg-warning/5",
-                  item.tone === "info" && "border-info/20 bg-info/5",
-                  item.tone === "ok" && "border-success/20 bg-success/5",
-                )}
-              >
-                <item.icon
-                  className={cn(
-                    "mx-auto mb-1 h-3.5 w-3.5",
-                    item.tone === "warn" && "text-warning-foreground",
-                    item.tone === "info" && "text-info",
-                    item.tone === "ok" && "text-success",
-                  )}
-                />
-                <div className="font-display text-base font-semibold tabular-nums">
-                  {item.value}
+          <div className="grid gap-4 px-4 py-4 sm:px-5 sm:py-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-center">
+            <div className="min-w-0">
+              {chartLoading ? (
+                <div className="flex h-[180px] items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading…
                 </div>
-                <div className="text-[10px] text-muted-foreground">{item.label}</div>
-              </div>
-            ))}
+              ) : pieTotal === 0 && statusCounts.total === 0 ? (
+                <div className="flex h-[180px] items-center justify-center text-sm text-muted-foreground">
+                  No task item status data yet.
+                </div>
+              ) : pieTotal === 0 ? (
+                <div className="flex h-[180px] flex-col items-center justify-center gap-1 text-center text-sm text-muted-foreground">
+                  <span className="font-display text-2xl font-semibold text-foreground">
+                    {statusCounts.total}
+                  </span>
+                  <span>Total items (none pending / in progress / completed)</span>
+                </div>
+              ) : (
+                <ChartContainer
+                  config={taskStatusChartConfig}
+                  className="mx-auto aspect-square h-[180px] w-full max-w-[200px]"
+                >
+                  <PieChart>
+                    <ChartTooltip
+                      cursor={false}
+                      content={<ChartTooltipContent hideLabel nameKey="key" />}
+                    />
+                    <Pie
+                      data={statusPieData}
+                      dataKey="value"
+                      nameKey="key"
+                      innerRadius={48}
+                      outerRadius={72}
+                      strokeWidth={2}
+                      stroke="var(--color-card)"
+                      paddingAngle={2}
+                      isAnimationActive={false}
+                    >
+                      {statusPieData.map((entry) => (
+                        <Cell key={entry.key} fill={entry.fill} />
+                      ))}
+                      <Label
+                        content={({ viewBox }) => {
+                          if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                            return (
+                              <text
+                                x={viewBox.cx}
+                                y={viewBox.cy}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                              >
+                                <tspan
+                                  x={viewBox.cx}
+                                  y={(viewBox.cy ?? 0) - 6}
+                                  className="fill-foreground font-display text-2xl font-semibold"
+                                >
+                                  {statusCounts.total}
+                                </tspan>
+                                <tspan
+                                  x={viewBox.cx}
+                                  y={(viewBox.cy ?? 0) + 14}
+                                  className="fill-muted-foreground text-[11px]"
+                                >
+                                  Total
+                                </tspan>
+                              </text>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                    </Pie>
+                    <ChartLegend
+                      content={<ChartLegendContent nameKey="key" />}
+                      className="-translate-y-1 flex-wrap gap-2"
+                    />
+                  </PieChart>
+                </ChartContainer>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {(
+                [
+                  {
+                    key: "pending",
+                    label: "Pending",
+                    value: statusCounts.pending,
+                    tone: "warn" as const,
+                    icon: Clock,
+                  },
+                  {
+                    key: "inProgress",
+                    label: "In progress",
+                    value: statusCounts.inProgress,
+                    tone: "info" as const,
+                    icon: ClipboardList,
+                  },
+                  {
+                    key: "completed",
+                    label: "Completed",
+                    value: statusCounts.completed,
+                    tone: "ok" as const,
+                    icon: CheckCircle2,
+                  },
+                ] as const
+              ).map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setTab("tasks")}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors hover:opacity-90",
+                    item.tone === "warn" && "border-warning/20 bg-warning/10",
+                    item.tone === "info" && "border-info/20 bg-info/10",
+                    item.tone === "ok" && "border-success/20 bg-success/10",
+                  )}
+                >
+                  <item.icon
+                    className={cn(
+                      "h-4 w-4 shrink-0",
+                      item.tone === "warn" && "text-warning-foreground",
+                      item.tone === "info" && "text-info",
+                      item.tone === "ok" && "text-success",
+                    )}
+                  />
+                  <span className="font-display text-base font-semibold tabular-nums">
+                    {item.value}
+                  </span>
+                  <span className="min-w-0 flex-1 text-sm text-muted-foreground">{item.label}</span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/70" />
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         <div className="card-elevated overflow-hidden">
-          <div className="border-b px-4 py-3 sm:px-5">
-            <h2 className="font-display font-semibold">Earnings</h2>
-            <p className="text-xs text-muted-foreground">
-              Pay statements gross / net, plus completed price work
-            </p>
+          <div className="flex items-start gap-3 px-4 pb-1 pt-4 sm:px-5">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-success/15 text-success">
+              <Coins className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-display font-semibold">Earnings</h2>
+              <p className="text-xs text-muted-foreground">
+                Pay statements gross / net, plus completed price work
+              </p>
+            </div>
           </div>
           {workSummaryQuery.isLoading ? (
             <div className="flex h-[140px] items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -973,61 +993,117 @@ export function OperativeDetailExtras({
               Unable to load earnings.
             </p>
           ) : (
-            <div className="space-y-3 p-4 sm:p-5">
+            <div className="space-y-4 p-4 pt-3 sm:p-5 sm:pt-3">
               <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-lg border border-accent/20 bg-accent/5 px-3 py-3">
-                  <div className="mb-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                    <PoundSterling className="h-3 w-3 text-accent" />
-                    Gross
+                <div className="rounded-lg border border-success/20 bg-success/10 px-2.5 py-2">
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-medium text-muted-foreground">Gross</span>
+                    <span className="grid h-6 w-6 place-items-center rounded-full bg-success/15 text-success">
+                      <TrendingUp className="h-3 w-3" />
+                    </span>
                   </div>
-                  <p className="font-display text-lg font-semibold tabular-nums">
+                  <p className="font-display text-lg font-semibold tabular-nums tracking-tight leading-none">
                     {formatDailyRate(earnings?.totalGross ?? 0)}
                   </p>
+                  <span className="mt-1.5 inline-flex rounded-full bg-success/20 px-1.5 py-0.5 text-[10px] font-medium text-success">
+                    Total gross pay
+                  </span>
                 </div>
-                <div className="rounded-lg border border-success/20 bg-success/5 px-3 py-3">
-                  <div className="mb-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                    <PoundSterling className="h-3 w-3 text-success" />
-                    Net
+                <div className="rounded-lg border border-info/20 bg-info/10 px-2.5 py-2">
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-medium text-muted-foreground">Net</span>
+                    <span className="grid h-6 w-6 place-items-center rounded-full bg-info/15 text-info">
+                      <Wallet className="h-3 w-3" />
+                    </span>
                   </div>
-                  <p className="font-display text-lg font-semibold tabular-nums">
+                  <p className="font-display text-lg font-semibold tabular-nums tracking-tight leading-none">
                     {formatDailyRate(earnings?.totalNet ?? 0)}
                   </p>
+                  <span className="mt-1.5 inline-flex rounded-full bg-info/20 px-1.5 py-0.5 text-[10px] font-medium text-info">
+                    After deductions
+                  </span>
                 </div>
               </div>
-              <dl className="space-y-2 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-muted-foreground">CIS deducted</dt>
+              <dl className="divide-y text-sm">
+                <div className="flex items-center justify-between gap-3 py-2.5 first:pt-0">
+                  <dt className="flex items-center gap-2 text-muted-foreground">
+                    <Coins className="h-3.5 w-3.5 shrink-0" />
+                    CIS deducted
+                  </dt>
                   <dd className="font-medium tabular-nums">
                     {formatDailyRate(earnings?.totalCisDeduction ?? 0)}
                   </dd>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-muted-foreground">Statements</dt>
+                <div className="flex items-center justify-between gap-3 py-2.5">
+                  <dt className="flex items-center gap-2 text-muted-foreground">
+                    <FileText className="h-3.5 w-3.5 shrink-0" />
+                    Statements
+                  </dt>
                   <dd className="font-medium tabular-nums">{earnings?.statementCount ?? 0}</dd>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-muted-foreground">Latest week ending</dt>
+                <div className="flex items-center justify-between gap-3 py-2.5">
+                  <dt className="flex items-center gap-2 text-muted-foreground">
+                    <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                    Latest week ending
+                  </dt>
                   <dd className="font-medium tabular-nums">
                     {formatShortDate(earnings?.latestWeekEnding)}
                   </dd>
                 </div>
-                <div className="flex items-center justify-between gap-3 border-t pt-2">
-                  <dt className="text-muted-foreground">Completed price work</dt>
+                <div className="flex items-center justify-between gap-3 py-2.5 last:pb-0">
+                  <dt className="flex items-center gap-2 text-muted-foreground">
+                    <PoundSterling className="h-3.5 w-3.5 shrink-0" />
+                    Completed price work
+                  </dt>
                   <dd className="font-medium tabular-nums">
                     {formatDailyRate(earnings?.completedPriceWork ?? 0)}
                   </dd>
                 </div>
               </dl>
               {(sites.length > 0 || projects.length > 0) && (
-                <div className="flex flex-wrap gap-2 border-t pt-3 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
-                    <Building2 className="h-3 w-3" />
-                    {sites.length} site{sites.length === 1 ? "" : "s"}
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
-                    <FolderKanban className="h-3 w-3" />
-                    {projects.length} project{projects.length === 1 ? "" : "s"}
-                  </span>
+                <div className="flex flex-wrap gap-2 pt-1 text-xs text-muted-foreground">
+                  {sites.length > 0 &&
+                    (sites.length === 1 ? (
+                      <Link
+                        to="/sites/$id"
+                        params={{ id: String(sites[0]!.siteId) }}
+                        search={operativeReturnSearch}
+                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 transition-colors hover:bg-muted/80 hover:text-foreground"
+                      >
+                        <Building2 className="h-3 w-3" />
+                        1 site
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setTab("sites")}
+                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 transition-colors hover:bg-muted/80 hover:text-foreground"
+                      >
+                        <Building2 className="h-3 w-3" />
+                        {sites.length} sites
+                      </button>
+                    ))}
+                  {projects.length > 0 &&
+                    (projects.length === 1 ? (
+                      <Link
+                        to="/projects/$id"
+                        params={{ id: String(projects[0]!.projectId) }}
+                        search={operativeReturnSearch}
+                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 transition-colors hover:bg-muted/80 hover:text-foreground"
+                      >
+                        <FolderKanban className="h-3 w-3" />
+                        1 project
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setTab("projects")}
+                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 transition-colors hover:bg-muted/80 hover:text-foreground"
+                      >
+                        <FolderKanban className="h-3 w-3" />
+                        {projects.length} projects
+                      </button>
+                    ))}
                 </div>
               )}
             </div>

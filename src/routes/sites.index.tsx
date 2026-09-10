@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Download, Eye, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
@@ -371,39 +371,40 @@ function SiteCreateModal({
 
   return (
     <>
-    <Form
-      form={form}
-      onSubmit={async (values) => {
-        try {
-          await runWithCapReason(values, (next) => mutation.mutateAsync(toSitePayload(next)));
-        } catch (err) {
-          notifyApiError(err, "Failed to save site");
-        }
-      }}
-      className="contents"
-    >
-      <Modal
-        open
-        onClose={onClose}
-        title="Add site"
-        size="lg"
-        showCloseButton={false}
-        headerActions={<SwitchField<SiteFormValues> name="isActive" label="Active" />}
-      >
-        <div className="space-y-3">
-          <SiteFormFields />
-          <div className="flex justify-end gap-2 border-t pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={onClose}>
-              Cancel
-            </Button>
-            <SubmitButton size="sm" loadingText="Saving…">
-              Create site
-            </SubmitButton>
-          </div>
-        </div>
-      </Modal>
-    </Form>
-    {capReasonModal}
+      <FormProvider {...form}>
+        <Modal
+          open
+          onClose={onClose}
+          title="Add site"
+          size="lg"
+          showCloseButton={false}
+          headerActions={<SwitchField<SiteFormValues> name="isActive" label="Active" />}
+        >
+          {/* Modal portals to body — keep <form> inside so submit is wired. */}
+          <Form
+            form={form}
+            onSubmit={async (values) => {
+              try {
+                await runWithCapReason(values, (next) => mutation.mutateAsync(toSitePayload(next)));
+              } catch (err) {
+                notifyApiError(err, "Failed to save site");
+              }
+            }}
+            className="space-y-3"
+          >
+            <SiteFormFields />
+            <div className="flex justify-end gap-2 border-t pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={onClose}>
+                Cancel
+              </Button>
+              <SubmitButton size="sm" loadingText="Saving…">
+                Create site
+              </SubmitButton>
+            </div>
+          </Form>
+        </Modal>
+      </FormProvider>
+      {capReasonModal}
     </>
   );
 }

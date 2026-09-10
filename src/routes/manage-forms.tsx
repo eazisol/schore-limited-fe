@@ -20,7 +20,7 @@ const TAB_PANEL_CLASS =
 
 function ManageFormsPage() {
   return (
-    <div className="flex flex-col xl:h-[calc(100svh-5.5rem)] xl:min-h-0 xl:overflow-hidden">
+    <div className="flex flex-col xl:h-[calc(100svh-5.5rem)] xl:min-h-0 xl:overflow-y-auto">
       <PageHeader title="Manage Forms" />
 
       <ManageFormsLayoutProvider layout="split">

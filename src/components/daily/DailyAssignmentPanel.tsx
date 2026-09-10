@@ -28,6 +28,7 @@ import {
 import { fetchOperativeOptions, fetchTimeSlotOptions } from "@/lib/task-dropdowns";
 import {
   findCertificationWarningsForWorkDates,
+  formatCertificationWarningSubtitle,
   type CertificationAssignWarning,
 } from "@/lib/operative-certifications";
 import { toYmd } from "@/lib/week-ending";
@@ -752,7 +753,10 @@ export function DailyAssignmentPanel({
           open
           onClose={cancelCertAssign}
           title="Certificate expiry warning"
-          subtitle={`${certPrompt.operativeLabel || "This operative"} has certificate(s) expired or expiring within 7 days of the work date.`}
+          subtitle={formatCertificationWarningSubtitle(
+            certPrompt.operativeLabel,
+            certPrompt.warnings,
+          )}
           size="sm"
           showCloseButton={false}
         >
@@ -764,8 +768,15 @@ export function DailyAssignmentPanel({
                   className="flex items-baseline justify-between gap-3 border-b border-border/40 pb-1.5 last:border-0 last:pb-0"
                 >
                   <span className="min-w-0 font-medium text-foreground">{w.name}</span>
-                  <span className="shrink-0 tabular-nums text-muted-foreground">
-                    Expires {w.displayExpiry}
+                  <span
+                    className={cn(
+                      "shrink-0 tabular-nums text-xs font-medium",
+                      w.isExpired
+                        ? "text-destructive"
+                        : "text-amber-600 dark:text-amber-400",
+                    )}
+                  >
+                    {w.statusLabel || (w.isExpired ? `Expired ${w.displayExpiry}` : `Expires ${w.displayExpiry}`)}
                   </span>
                 </li>
               ))}

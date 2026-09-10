@@ -1,11 +1,11 @@
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TextField, TextareaField, CreatableSearchableSelectField } from "@/components/form";
 import { SearchableSelect } from "@/components/form/SearchableSelect";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
 import { AppTooltip } from "@/components/AppTooltip";
-import { Calculator, Plus, Trash2, Undo2 } from "lucide-react";
+import { Calculator, Plus, Trash2, Undo2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtGBP } from "@/lib/data";
 import { truncateWithEllipsis } from "@/lib/module-ui";
@@ -38,12 +38,35 @@ import { jobTypesService } from "@/lib/api/services/job-types";
 import { tasksService } from "@/lib/api/services/tasks";
 import {
   findCertificationWarningsForWorkDates,
+  formatCertificationWarningSubtitle,
   type CertificationAssignWarning,
 } from "@/lib/operative-certifications";
 import { notifyApiError } from "@/lib/api/axios";
 
 /** Form grouping key for template lines that have no operative yet. */
 const UNASSIGNED_OPERATIVE_KEY = "__unassigned";
+
+/** Clone item rows so replace() keeps identity fields (id, operativeId) intact. */
+function snapshotItems(rows: TaskItemFormValues[]): TaskItemFormValues[] {
+  return rows.map((row) => ({
+    ...emptyTaskItem(),
+    ...row,
+    id: row.id ?? "",
+    operativeId: row.operativeId ?? "",
+    workDate: row.workDate ?? "",
+    tradeId: row.tradeId ?? "",
+    itemKind: row.itemKind === "product" ? "product" : "tradeGroup",
+    tradeGroupId: row.tradeGroupId ?? "",
+    productId: row.productId ?? "",
+    quantity: row.quantity ?? "1",
+    doneQty: row.doneQty ?? "0",
+    rate: row.rate ?? "0",
+    applyRatePermanently: Boolean(row.applyRatePermanently),
+    timeSlotId: row.timeSlotId ?? "",
+    isTicked: Boolean(row.isTicked),
+    notes: row.notes ?? "",
+  }));
+}
 
 export type TaskFormSelectedLabels = {
   property?: string | null;
@@ -89,14 +112,20 @@ export function TaskFormFields({
   /** Keyed by existing TaskItem id (string). */
   itemSelectedLabels?: Record<string, TaskItemSelectedLabels>;
 }) {
-  const { control, setValue, getValues } = useFormContext<TaskFormValues>();
-  const { fields, append, remove, replace } = useFieldArray({ control, name: "items" });
+  const { control, setValue, getValues, unregister } = useFormContext<TaskFormValues>();
+  const { fields, append, replace } = useFieldArray<TaskFormValues, "items", "fieldKey">({
+    control,
+    name: "items",
+    // Backend TaskItem.id must not be RHF's array key — new rows share id "".
+    keyName: "fieldKey",
+  });
   const addControlsDisabled = disabled || itemsLocked;
   const jobTypeId = useWatch({ control, name: "jobTypeId" });
   const startDate = useWatch({ control, name: "startDate" });
   const templateSeededRef = useRef<string>("");
   const [activeOperativeId, setActiveOperativeId] = useState<string>("");
   const [activeOperativeLabel, setActiveOperativeLabel] = useState<string>("");
+  const [showAddComposer, setShowAddComposer] = useState(false);
   const [operativeLabels, setOperativeLabels] = useState<Record<string, string>>({});
   const [tradeGroupLabels, setTradeGroupLabels] = useState<Record<string, string>>({});
   const [productLabels, setProductLabels] = useState<Record<string, string>>({});
@@ -448,9 +477,14 @@ export function TaskFormFields({
       toast.warning("This job is locked. Tick previous-day work before modifying items.");
       return;
     }
-    for (const index of indexes) {
-      setValue(`items.${index}.operativeId`, "", { shouldDirty: true });
-    }
+    if (indexes.length === 0) return;
+    const indexSet = new Set(indexes);
+    const current = getValues("items") ?? [];
+    replace(
+      snapshotItems(current).map((row, index) =>
+        indexSet.has(index) ? { ...row, operativeId: "" } : row,
+      ),
+    );
   }
 
   async function assignItemsToOperative(
@@ -684,6 +718,16 @@ export function TaskFormFields({
           <Plus className="h-3.5 w-3.5" />
           Add item
         </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-foreground"
+          onClick={() => setShowAddComposer(false)}
+          aria-label="Close add item"
+        >
+          <X className="h-4 w-4" />
+        </Button>
       </div>
     );
   }
@@ -702,6 +746,19 @@ export function TaskFormFields({
     if (hasUnassigned) ids.unshift(UNASSIGNED_OPERATIVE_KEY);
     return ids;
   }, [grouped]);
+
+  function removeItem(index: number) {
+    if (itemsLocked) {
+      toast.warning("This job is locked. Tick previous-day work before modifying items.");
+      return;
+    }
+    const current = getValues("items") ?? [];
+    if (index < 0 || index >= current.length) return;
+    const next = snapshotItems(current.filter((_, i) => i !== index));
+    unregister(`items.${index}`);
+    replace(next);
+    setValue("items", next, { shouldDirty: true });
+  }
 
   function resolveRatePrompt(permanent: boolean) {
     if (!ratePrompt) return;
@@ -726,71 +783,91 @@ export function TaskFormFields({
 
   return (
     <>
-      <fieldset disabled={disabled} className="min-w-0 w-full max-w-full space-y-2">
+      <fieldset disabled={disabled} className="min-w-0 w-full max-w-full space-y-2.5">
         <div
           className={
             embedded
-              ? "min-w-0 space-y-2"
-              : "card-elevated min-w-0 space-y-2 overflow-hidden p-3"
+              ? "min-w-0 w-full space-y-2"
+              : "card-elevated min-w-0 w-full space-y-2 overflow-hidden p-3"
           }
         >
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 [&>*]:min-w-0">
-            <CreatableSearchableSelectField<TaskFormValues>
-              name="propertyId"
-              label="Property"
-              required
-              placeholder="Select property"
-              searchPlaceholder="Search properties…"
-              queryKey={["lookups", "properties"]}
-              selectedLabel={selectedLabels?.property}
-              fetchOptions={fetchPropertyOptions}
-              lookupType="property"
-              className="min-w-0"
-            />
-            <CreatableSearchableSelectField<TaskFormValues>
-              name="jobTypeId"
-              label="Property type"
-              required
-              placeholder="Select property type"
-              searchPlaceholder="Search property types…"
-              queryKey={["lookups", "job-types"]}
-              selectedLabel={selectedLabels?.jobType}
-              fetchOptions={fetchJobTypeOptions}
-              lookupType="jobType"
-              className="min-w-0"
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 [&>*]:min-w-0">
-            <TextField<TaskFormValues>
-              name="startDate"
-              label="Start date"
-              type="date"
-              required
-              className="min-w-0"
-              inputClassName="h-9 min-w-0"
-            />
-            <TextField<TaskFormValues>
-              name="handOverDate"
-              label="Hand over date"
-              description="Auto from property type"
-              type="date"
-              className="min-w-0"
-              inputClassName="h-9 min-w-0"
-              disabled
-            />
-            <CreatableSearchableSelectField<TaskFormValues>
-              name="statusId"
-              label="Status"
-              required
-              placeholder="Select status"
-              searchPlaceholder="Search statuses…"
-              queryKey={["lookups", "statuses", "TASK"]}
-              selectedLabel={selectedLabels?.status}
-              fetchOptions={fetchTaskStatusOptions}
-              onSelect={handleStatusSelect}
-              lookupType="status"
-              className="min-w-0"
-            />
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-12 [&>*]:min-w-0">
+            <div className="sm:col-span-4">
+              <CreatableSearchableSelectField<TaskFormValues>
+                name="propertyId"
+                label="Property"
+                required
+                placeholder="Select property"
+                searchPlaceholder="Search properties…"
+                queryKey={["lookups", "properties"]}
+                selectedLabel={selectedLabels?.property}
+                fetchOptions={fetchPropertyOptions}
+                lookupType="property"
+                className="min-w-0"
+                triggerClassName="h-8.5 text-xs"
+              />
+            </div>
+            <div className="sm:col-span-4">
+              <CreatableSearchableSelectField<TaskFormValues>
+                name="jobTypeId"
+                label="Property type"
+                required
+                placeholder="Select property type"
+                searchPlaceholder="Search property types…"
+                queryKey={["lookups", "job-types"]}
+                selectedLabel={selectedLabels?.jobType}
+                fetchOptions={fetchJobTypeOptions}
+                lookupType="jobType"
+                className="min-w-0"
+                triggerClassName="h-8.5 text-xs"
+              />
+            </div>
+            <div className="sm:col-span-4">
+              <TextField<TaskFormValues>
+                name="startDate"
+                label="Start date"
+                type="date"
+                required
+                className="min-w-0"
+                inputClassName="h-8.5 min-w-0 text-xs"
+              />
+            </div>
+            <div className="sm:col-span-3">
+              <TextField<TaskFormValues>
+                name="handOverDate"
+                label="Hand over date"
+                description="Auto from property type"
+                type="date"
+                className="min-w-0"
+                inputClassName="h-8.5 min-w-0 text-xs"
+                disabled
+              />
+            </div>
+            <div className="sm:col-span-3">
+              <CreatableSearchableSelectField<TaskFormValues>
+                name="statusId"
+                label="Status"
+                required
+                placeholder="Select status"
+                searchPlaceholder="Search statuses…"
+                queryKey={["lookups", "statuses", "TASK"]}
+                selectedLabel={selectedLabels?.status}
+                fetchOptions={fetchTaskStatusOptions}
+                onSelect={handleStatusSelect}
+                lookupType="status"
+                className="min-w-0"
+                triggerClassName="h-8.5 text-xs"
+              />
+            </div>
+            <div className="sm:col-span-6">
+              <TextareaField<TaskFormValues>
+                name="description"
+                label="Description"
+                rows={2}
+                maxLength={DESCRIPTION_MAX_LENGTH}
+                className="min-w-0 w-full"
+              />
+            </div>
           </div>
           {/* Temporarily hidden: Budget — re-enable when needed */}
           {false && (
@@ -820,12 +897,6 @@ export function TaskFormFields({
               lookupType="siteManager"
             />
           )}
-          <TextareaField<TaskFormValues>
-            name="description"
-            label="Description"
-            rows={2}
-            maxLength={DESCRIPTION_MAX_LENGTH}
-          />
         </div>
 
         {/* Job items — auto-filled from JobType template; SM can edit */}
@@ -838,29 +909,29 @@ export function TaskFormFields({
                   items.
                 </p>
               ) : null}
-              {renderTopAddControls()}
+              {!addControlsDisabled ? (
+                showAddComposer ? (
+                  renderTopAddControls()
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-2.5 text-xs"
+                    onClick={() => setShowAddComposer(true)}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add more
+                  </Button>
+                )
+              ) : null}
             </div>
-            {items.length > 0 ? (
-              <div className="flex shrink-0 items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5">
-                <Calculator className="h-3.5 w-3.5 text-accent" aria-hidden />
-                <div className="leading-tight">
-                  <div className="text-[11px] text-muted-foreground">
-                    {items.length} item{items.length === 1 ? "" : "s"}
-                  </div>
-                  <AppTooltip content={fmtGBP(jobItemsTotal)} asChild align="end">
-                    <div className="font-display text-sm font-semibold tabular-nums">
-                      {fmtGBP(jobItemsTotal)}
-                    </div>
-                  </AppTooltip>
-                </div>
-              </div>
-            ) : null}
           </div>
 
           {operativeCards.length === 0 ? (
             <div className="card-elevated p-3 text-sm text-muted-foreground">
-              No job items yet. Select a property type with a template, or choose an operative and add a
-              package / add-on.
+              No job items yet. Select a property type with a template, or use Add more to choose an
+              operative and package / add-on.
             </div>
           ) : null}
 
@@ -880,6 +951,8 @@ export function TaskFormFields({
               const line = qty * rate;
               return sum + (Number.isFinite(line) ? line : 0);
             }, 0);
+            const isAllDone =
+              indexes.length > 0 && indexes.every((idx) => Number(items[idx]?.doneQty || 0) > 0);
 
             return (
               <div
@@ -888,78 +961,81 @@ export function TaskFormFields({
               >
                 <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
                   <h4 className="text-sm font-medium leading-tight">{name}</h4>
-                  {indexes.length > 0 ? (
-                    <div className="flex shrink-0 items-baseline gap-1.5 text-xs">
-                      <span className="text-muted-foreground">
-                        {indexes.length} item{indexes.length === 1 ? "" : "s"}
-                      </span>
-                      <AppTooltip content={fmtGBP(operativeTotal)} asChild align="end">
-                        <span className="font-display font-semibold tabular-nums">
-                          {fmtGBP(operativeTotal)}
+                  <div className="flex shrink-0 items-center gap-2">
+                    {indexes.length > 0 ? (
+                      <div className="flex items-baseline gap-1.5 text-xs">
+                        <span className="text-muted-foreground">
+                          {indexes.length} item{indexes.length === 1 ? "" : "s"}
                         </span>
-                      </AppTooltip>
-                    </div>
-                  ) : null}
+                        <AppTooltip content={fmtGBP(operativeTotal)} asChild align="end">
+                          <span className="font-display font-semibold tabular-nums">
+                            {fmtGBP(operativeTotal)}
+                          </span>
+                        </AppTooltip>
+                      </div>
+                    ) : null}
+                    {isUnassigned && indexes.length > 0 ? (
+                      renderAssignOperativeControls(`ops-${operativeId}`, indexes)
+                    ) : null}
+                    {!isUnassigned && indexes.length > 0 && !isAllDone ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => unassignItems(indexes)}
+                        disabled={disabled || itemsLocked}
+                      >
+                        <Undo2 className="h-3.5 w-3.5" aria-hidden />
+                        Unassign
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
-                {isUnassigned ? (
-                  <p className="text-[11px] leading-snug text-muted-foreground">
-                    Assign an operative on each package or add-on.
-                  </p>
-                ) : null}
 
                 {indexes.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    No lines yet. Use Active operative and Package / Add-on above, then Add item.
+                    No lines yet. Use Add more above to choose an operative and package / add-on.
                   </p>
                 ) : (
-                  (() => {
-                    const isAllDone = indexes.every(
-                      (idx) => Number(items[idx]?.doneQty || 0) > 0,
-                    );
-                    const lineActions = isUnassigned ? (
-                      renderAssignOperativeControls(`ops-${operativeId}`, indexes)
-                    ) : !isAllDone ? (
-                      <AppTooltip content="Unassign" asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => unassignItems(indexes)}
-                          disabled={disabled || itemsLocked}
-                          aria-label="Unassign"
-                        >
-                          <Undo2 className="h-3.5 w-3.5" aria-hidden />
-                        </Button>
-                      </AppTooltip>
-                    ) : null;
-
-                    return (
-                      <div className="min-w-0">
-                        {isUnassigned && lineActions ? (
-                          <div className="mb-1 flex min-w-0 justify-end">{lineActions}</div>
-                        ) : null}
-                        <ProductLinesTable
-                          indexes={indexes}
-                          fields={fields}
-                          items={items}
-                          productLabels={productLabels}
-                          headerAction={!isUnassigned ? lineActions : null}
-                          onRemove={remove}
-                          onRateCommit={(index, previousRate, nextRate) => {
-                            if (previousRate === nextRate) return;
-                            setValue(`items.${index}.rate`, nextRate);
-                            setRatePrompt({ index, previousRate, nextRate });
-                          }}
-                          getValues={getValues}
-                        />
-                      </div>
-                    );
-                  })()
+                  <div className="min-w-0">
+                    <ProductLinesTable
+                      indexes={indexes}
+                      fields={fields}
+                      items={items}
+                      productLabels={productLabels}
+                      removeDisabled={disabled || itemsLocked}
+                      onRemove={removeItem}
+                      onRateCommit={(index, previousRate, nextRate) => {
+                        if (previousRate === nextRate) return;
+                        setValue(`items.${index}.rate`, nextRate);
+                        setRatePrompt({ index, previousRate, nextRate });
+                      }}
+                      getValues={getValues}
+                    />
+                  </div>
                 )}
               </div>
             );
           })}
+
+          {items.length > 0 ? (
+            <div className="flex items-center justify-end gap-3 border-t border-border pt-3">
+              <div className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-3 py-2">
+                <Calculator className="h-4 w-4 text-accent" aria-hidden />
+                <div className="leading-tight text-right">
+                  <div className="text-[11px] text-muted-foreground">
+                    {items.length} item{items.length === 1 ? "" : "s"}
+                  </div>
+                  <AppTooltip content={fmtGBP(jobItemsTotal)} asChild align="end">
+                    <div className="font-display text-base font-semibold tabular-nums">
+                      Total {fmtGBP(jobItemsTotal)}
+                    </div>
+                  </AppTooltip>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {ratePrompt ? (
@@ -997,7 +1073,10 @@ export function TaskFormFields({
             open
             onClose={cancelCertAssign}
             title="Certificate expiry warning"
-            subtitle={`${certAssignPrompt.operativeLabel || "This operative"} has certificate(s) expired or expiring within 7 days of the work date.`}
+            subtitle={formatCertificationWarningSubtitle(
+              certAssignPrompt.operativeLabel,
+              certAssignPrompt.warnings,
+            )}
             size="sm"
             showCloseButton={false}
           >
@@ -1009,8 +1088,15 @@ export function TaskFormFields({
                     className="flex items-baseline justify-between gap-3 border-b border-border/40 pb-1.5 last:border-0 last:pb-0"
                   >
                     <span className="min-w-0 font-medium text-foreground">{w.name}</span>
-                    <span className="shrink-0 tabular-nums text-muted-foreground">
-                      Expires {w.displayExpiry}
+                    <span
+                      className={cn(
+                        "shrink-0 tabular-nums text-xs font-medium",
+                        w.isExpired
+                          ? "text-destructive"
+                          : "text-amber-600 dark:text-amber-400",
+                      )}
+                    >
+                      {w.statusLabel || (w.isExpired ? `Expired ${w.displayExpiry}` : `Expires ${w.displayExpiry}`)}
                     </span>
                   </li>
                 ))}
@@ -1044,21 +1130,21 @@ function ProductLinesTable({
   fields,
   items,
   productLabels,
-  headerAction,
+  removeDisabled = false,
   onRemove,
   onRateCommit,
   getValues,
 }: {
   indexes: number[];
-  fields: { id: string }[];
+  fields: { fieldKey: string }[];
   items: TaskFormValues["items"];
   productLabels: Record<string, string>;
-  headerAction?: ReactNode;
+  removeDisabled?: boolean;
   onRemove: (index: number) => void;
   onRateCommit: (index: number, previousRate: string, nextRate: string) => void;
   getValues: ReturnType<typeof useFormContext<TaskFormValues>>["getValues"];
 }) {
-  const { register, setValue, control } = useFormContext<TaskFormValues>();
+  const { setValue, control } = useFormContext<TaskFormValues>();
   const timeSlotsQuery = useQuery({
     queryKey: ["lookups", "time-slots"],
     queryFn: async () => (await tasksService.timeSlots()).data ?? [],
@@ -1089,15 +1175,16 @@ function ProductLinesTable({
             <th className="px-1.5 py-1 text-[11px] font-medium">Rate</th>
             <th className="px-1.5 py-1 text-[11px] font-medium">Amount</th>
             <th className="px-1.5 py-1 text-[11px] font-medium">Notes</th>
-            <th className="px-0.5 py-1 text-[11px] font-medium">
-              <div className="flex items-center justify-end gap-0.5">{headerAction}</div>
-            </th>
+            <th className="px-0.5 py-1 text-[11px] font-medium" />
           </tr>
         </thead>
         <tbody>
-          {indexes.map((index) => (
+          {indexes.map((index) => {
+            const fieldId = fields[index]?.fieldKey ?? `item-${index}`;
+            return (
             <ProductLineRow
-              key={fields[index]?.id ?? index}
+              key={fieldId}
+              fieldId={fieldId}
               index={index}
               item={items[index]}
               productLabel={
@@ -1106,14 +1193,15 @@ function ProductLinesTable({
                   : "—"
               }
               timeSlots={timeSlotsQuery.data ?? []}
-              register={register}
               setValue={setValue}
               control={control}
               getValues={getValues}
               onRemove={() => onRemove(index)}
+              removeDisabled={removeDisabled}
               onRateCommit={onRateCommit}
             />
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -1121,66 +1209,78 @@ function ProductLinesTable({
 }
 
 function ProductLineRow({
+  fieldId,
   index,
   item,
   productLabel,
   timeSlots,
-  register,
   setValue,
   control,
   getValues,
   onRemove,
+  removeDisabled = false,
   onRateCommit,
 }: {
+  fieldId: string;
   index: number;
   item: TaskFormValues["items"][number];
   productLabel: string;
   timeSlots: { id: number; name: string }[];
-  register: ReturnType<typeof useFormContext<TaskFormValues>>["register"];
   setValue: ReturnType<typeof useFormContext<TaskFormValues>>["setValue"];
   control: ReturnType<typeof useFormContext<TaskFormValues>>["control"];
   getValues: ReturnType<typeof useFormContext<TaskFormValues>>["getValues"];
   onRemove: () => void;
+  removeDisabled?: boolean;
   onRateCommit: (index: number, previousRate: string, nextRate: string) => void;
 }) {
+  const workDate = String(useWatch({ control, name: `items.${index}.workDate` }) ?? "");
+  const timeSlotId = String(useWatch({ control, name: `items.${index}.timeSlotId` }) ?? "");
   const quantity = Number(useWatch({ control, name: `items.${index}.quantity` }) || 0);
-  const rate = Number(useWatch({ control, name: `items.${index}.rate` }) || 0);
+  const quantityValue = String(useWatch({ control, name: `items.${index}.quantity` }) ?? "");
+  const rateValue = String(useWatch({ control, name: `items.${index}.rate` }) ?? "");
+  const rate = Number(rateValue || 0);
   const notes = String(useWatch({ control, name: `items.${index}.notes` }) ?? "");
   const amount = Number.isFinite(quantity * rate) ? quantity * rate : 0;
   const rateBeforeEdit = useRef(item?.rate ?? "0");
 
   useEffect(() => {
     rateBeforeEdit.current = getValues(`items.${index}.rate`) || "0";
-  }, [getValues, index, item?.id, item?.productId]);
+  }, [getValues, index, item?.id, item?.productId, fieldId]);
 
   useEffect(() => {
     const current = getValues(`items.${index}.timeSlotId`);
     if (!current && timeSlots.length > 0) {
       setValue(`items.${index}.timeSlotId`, String(timeSlots[0].id), { shouldDirty: false });
     }
-  }, [getValues, index, setValue, timeSlots]);
+  }, [fieldId, getValues, index, setValue, timeSlots]);
 
   const doneQty = Number(useWatch({ control, name: `items.${index}.doneQty` }) || item?.doneQty || 0);
   const isDone = doneQty > 0;
 
   return (
     <tr className="align-middle border-b border-border/50">
-      <td className="min-w-0 px-1.5 py-0.5 font-medium">
-        {/* Keep doneQty in the form; column is hidden from the UI */}
-        <input type="hidden" {...register(`items.${index}.doneQty`)} />
+      <td className="min-w-0 px-1.5 py-1.5 font-medium">
         <TruncatedTooltip text={productLabel} maxChars={22} />
       </td>
-      <td className="px-1.5 py-0.5">
+      <td className="px-1.5 py-1.5">
         <input
+          key={`${fieldId}-workDate`}
           type="date"
           className="h-7 w-[124px] max-w-full rounded-md border border-input bg-background px-1.5 text-xs"
-          {...register(`items.${index}.workDate`)}
+          value={workDate}
+          onChange={(event) =>
+            setValue(`items.${index}.workDate`, event.target.value, { shouldDirty: true })
+          }
         />
       </td>
-      <td className="px-1.5 py-0.5">
+      <td className="px-1.5 py-1.5">
         <select
+          key={`${fieldId}-timeSlot`}
           className="h-7 w-[88px] max-w-full rounded-md border border-input bg-background px-1 text-xs"
-          {...register(`items.${index}.timeSlotId`)}
+          value={timeSlotId}
+          onChange={(event) =>
+            setValue(`items.${index}.timeSlotId`, event.target.value, { shouldDirty: true })
+          }
         >
           <option value="">Select…</option>
           {timeSlots.map((t) => (
@@ -1190,22 +1290,30 @@ function ProductLineRow({
           ))}
         </select>
       </td>
-      <td className="px-1.5 py-0.5">
+      <td className="px-1.5 py-1.5">
         <input
+          key={`${fieldId}-qty`}
           type="number"
           min={0.01}
           step={0.01}
           className="h-7 w-[52px] max-w-full rounded-md border border-input bg-background px-1 text-xs"
-          {...register(`items.${index}.quantity`)}
+          value={quantityValue}
+          onChange={(event) =>
+            setValue(`items.${index}.quantity`, event.target.value, { shouldDirty: true })
+          }
         />
       </td>
-      <td className="px-1.5 py-0.5">
+      <td className="px-1.5 py-1.5">
         <input
+          key={`${fieldId}-rate`}
           type="number"
           min={0}
           step={0.01}
           className="h-7 w-[64px] max-w-full rounded-md border border-input bg-background px-1 text-xs"
-          {...register(`items.${index}.rate`)}
+          value={rateValue}
+          onChange={(event) =>
+            setValue(`items.${index}.rate`, event.target.value, { shouldDirty: true })
+          }
           onFocus={() => {
             rateBeforeEdit.current = getValues(`items.${index}.rate`) || "0";
           }}
@@ -1220,12 +1328,12 @@ function ProductLineRow({
           }}
         />
       </td>
-      <td className="px-1.5 py-0.5 font-medium">
+      <td className="px-1.5 py-1.5 font-medium">
         <AppTooltip content={fmtGBP(amount)} asChild align="end">
           <span className="inline-block tabular-nums text-xs">{fmtGBP(amount)}</span>
         </AppTooltip>
       </td>
-      <td className="min-w-0 px-1.5 py-0.5">
+      <td className="min-w-0 px-1.5 py-1.5">
         <AppTooltip
           content={notes.trim() || undefined}
           disabled={!notes.trim()}
@@ -1234,28 +1342,30 @@ function ProductLineRow({
         >
           <div className="min-w-0 w-full">
             <input
+              key={`${fieldId}-notes`}
               type="text"
               className="h-7 w-full min-w-[140px] truncate rounded-md border border-input bg-background px-1.5 text-xs"
               placeholder="Notes"
-              {...register(`items.${index}.notes`)}
+              value={notes}
+              onChange={(event) =>
+                setValue(`items.${index}.notes`, event.target.value, { shouldDirty: true })
+              }
             />
           </div>
         </AppTooltip>
       </td>
-      <td className="px-0.5 py-0.5">
+      <td className="px-0.5 py-1.5">
         {!isDone ? (
-          <AppTooltip content="Remove item" asChild>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6"
-              onClick={onRemove}
-              aria-label="Remove item"
-            >
-              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-            </Button>
-          </AppTooltip>
+          <button
+            type="button"
+            className="inline-flex h-6 w-6 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+            onClick={() => onRemove()}
+            disabled={removeDisabled}
+            aria-label="Remove item"
+            title="Remove item"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
         ) : null}
       </td>
     </tr>

@@ -346,7 +346,9 @@ function UserFormTabs({
     formState: { errors, submitCount },
   } = useFormContext<UserFormValues>();
   const [uncontrolledTab, setUncontrolledTab] = useState<UserFormTab>("details");
-  const tab = controlledTab ?? uncontrolledTab;
+  const isControlledValid =
+    typeof controlledTab === "string" && USER_FORM_TABS.some((item) => item.id === controlledTab);
+  const tab = isControlledValid ? controlledTab : uncontrolledTab;
   const setTab = onTabChange ?? setUncontrolledTab;
   const lastSubmitCount = useRef(0);
 
@@ -539,7 +541,9 @@ function OperativeFormTabs({
     formState: { errors, submitCount },
   } = useFormContext<UserFormValues>();
   const [uncontrolledTab, setUncontrolledTab] = useState<OperativeFormTab>("details");
-  const tab = controlledTab ?? uncontrolledTab;
+  const isControlledValid =
+    typeof controlledTab === "string" && OPERATIVE_TABS.some((item) => item.id === controlledTab);
+  const tab = isControlledValid ? controlledTab : uncontrolledTab;
   const setTab = onTabChange ?? setUncontrolledTab;
   const lastSubmitCount = useRef(0);
 

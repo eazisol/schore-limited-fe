@@ -155,13 +155,30 @@ export function LookupFormPanel({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const layout = useManageFormsLayout();
+  const isSplit = layout === "split";
+
   return (
-    <section className="flex h-auto w-full min-w-0 flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
+    <section
+      className={cn(
+        "flex h-auto w-full min-w-0 flex-col overflow-hidden rounded-xl border bg-card shadow-sm",
+        // Cap the whole panel (header + body + footer) so Save stays on-screen.
+        // Short forms stay compact; tall forms scroll inside the body only.
+        isSplit && "max-h-[calc(100svh-13.5rem)]",
+      )}
+    >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2">
         <h2 className="font-display text-sm font-semibold tracking-tight">{title}</h2>
         {headerActions ? <div className="flex items-center gap-2">{headerActions}</div> : null}
       </div>
-      <div className="px-3 py-2.5">{children}</div>
+      <div
+        className={cn(
+          "px-3 py-2.5",
+          isSplit && "min-h-0 flex-1 overflow-y-auto scrollbar-elegant",
+        )}
+      >
+        {children}
+      </div>
       {footer ? <div className="shrink-0 border-t px-3 py-2">{footer}</div> : null}
     </section>
   );

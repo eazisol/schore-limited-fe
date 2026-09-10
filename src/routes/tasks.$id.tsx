@@ -35,11 +35,12 @@ import { z } from "zod";
 
 const searchSchema = z.object({
   mode: z.enum(["view", "edit"]).optional().default("view"),
-  from: z.enum(["daily", "customer", "property", "site", "project"]).optional(),
+  from: z.enum(["daily", "customer", "property", "site", "project", "operative"]).optional(),
   customerId: z.string().optional(),
   propertyId: z.string().optional(),
   siteId: z.string().optional(),
   projectId: z.string().optional(),
+  operativeId: z.string().optional(),
 });
 
 export const Route = createFileRoute("/tasks/$id")({
@@ -50,7 +51,7 @@ export const Route = createFileRoute("/tasks/$id")({
 
 function TaskDetail() {
   const { id } = Route.useParams();
-  const { mode, from, customerId, propertyId, siteId, projectId } = Route.useSearch();
+  const { mode, from, customerId, propertyId, siteId, projectId, operativeId } = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canModify = usePermission({ route: TASKS_ROUTE, action: "modify" });
@@ -60,6 +61,7 @@ function TaskDetail() {
   const fromProperty = from === "property" && Boolean(propertyId);
   const fromSite = from === "site" && Boolean(siteId);
   const fromProject = from === "project" && Boolean(projectId);
+  const fromOperative = from === "operative" && Boolean(operativeId);
   const backLabel = fromDaily
     ? "Back to daily programmer"
     : fromCustomer
@@ -70,7 +72,9 @@ function TaskDetail() {
           ? "Back to project"
           : fromProperty
             ? "Back to property"
-            : "Back to jobs";
+            : fromOperative
+              ? "Back to operative"
+              : "Back to jobs";
   const contextSearch = fromDaily
     ? { from: "daily" as const }
     : fromCustomer
@@ -81,7 +85,9 @@ function TaskDetail() {
           ? { from: "project" as const, projectId: String(projectId) }
           : fromProperty
             ? { from: "property" as const, propertyId: String(propertyId) }
-            : undefined;
+            : fromOperative
+              ? { from: "operative" as const, operativeId: String(operativeId) }
+              : undefined;
 
   const goBack = () => {
     if (fromDaily) {
@@ -102,6 +108,10 @@ function TaskDetail() {
     }
     if (fromProperty && propertyId) {
       navigate({ to: "/properties/$id", params: { id: propertyId } });
+      return;
+    }
+    if (fromOperative && operativeId) {
+      navigate({ to: "/operatives/$id", params: { id: operativeId } });
       return;
     }
     navigate({ to: "/tasks" });

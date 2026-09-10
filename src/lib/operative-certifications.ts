@@ -156,6 +156,8 @@ export type CertificationAssignWarning = {
   name: string;
   expiryDate: string;
   displayExpiry: string;
+  isExpired: boolean;
+  statusLabel: string;
 };
 
 /**
@@ -175,6 +177,8 @@ export function findCertificationWarningsForWorkDates(
     .filter((d): d is Date => d != null);
   if (refs.length === 0) return [];
 
+  const today = startOfToday();
+  const earliestWorkDate = new Date(Math.min(...refs.map((r) => r.getTime())));
   const warnMs = CERTIFICATION_ASSIGN_WARN_DAYS * 86_400_000;
   const byExpiry = new Map<string, CertificationAssignWarning>();
 
@@ -183,7 +187,10 @@ export function findCertificationWarningsForWorkDates(
     const expiry = parseDate(expiryRaw);
     if (!expiry) continue;
 
-    const atRisk = refs.some((workDate) => expiry.getTime() - workDate.getTime() <= warnMs);
+    const isExpired =
+      expiry.getTime() < earliestWorkDate.getTime() || expiry.getTime() < today.getTime();
+    const atRisk =
+      isExpired || refs.some((workDate) => expiry.getTime() - workDate.getTime() <= warnMs);
     if (!atRisk) continue;
 
     const name =
@@ -192,14 +199,39 @@ export function findCertificationWarningsForWorkDates(
       "Certificate";
     const key = `${name}|${expiryRaw}`;
     if (byExpiry.has(key)) continue;
+
+    const formattedDate = formatCertificationDisplayDate(expiryRaw);
+    const statusLabel = isExpired
+      ? `Expired ${formattedDate}`
+      : `Expires ${formattedDate}`;
+
     byExpiry.set(key, {
       name,
       expiryDate: expiryRaw,
-      displayExpiry: formatCertificationDisplayDate(expiryRaw),
+      displayExpiry: formattedDate,
+      isExpired,
+      statusLabel,
     });
   }
 
   return [...byExpiry.values()].sort((a, b) => a.expiryDate.localeCompare(b.expiryDate));
+}
+
+export function formatCertificationWarningSubtitle(
+  operativeName: string | undefined | null,
+  warnings: CertificationAssignWarning[],
+): string {
+  const name = operativeName?.trim() || "This operative";
+  const allExpired = warnings.length > 0 && warnings.every((w) => w.isExpired);
+  const allExpiring = warnings.length > 0 && warnings.every((w) => !w.isExpired);
+
+  if (allExpired) {
+    return `${name} has expired certificate(s).`;
+  }
+  if (allExpiring) {
+    return `${name} has certificate(s) expiring within 7 days of the work date.`;
+  }
+  return `${name} has certificate(s) that are expired or expiring within 7 days of the work date.`;
 }
 
 export type CertificationExpiryRelative = {

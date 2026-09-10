@@ -112,20 +112,20 @@ export function formatPriceDisplay(budget: number | null | undefined): string {
 
 const taskItemSchema = z
   .object({
-    id: z.string(),
-    operativeId: z.string(),
+    id: z.string().default(""),
+    operativeId: z.string().default(""),
     workDate: z.string().min(1, "Work date is required"),
-    tradeId: z.string(),
-    itemKind: z.enum(["tradeGroup", "product"]),
-    tradeGroupId: z.string(),
-    productId: z.string(),
+    tradeId: z.string().default(""),
+    itemKind: z.enum(["tradeGroup", "product"]).default("tradeGroup"),
+    tradeGroupId: z.string().default(""),
+    productId: z.string().default(""),
     quantity: z.string().min(1, "Quantity is required"),
-    doneQty: z.string().min(1, "Done qty is required"),
+    doneQty: z.string().min(1, "Done qty is required").default("0"),
     rate: z.string().min(1, "Rate is required"),
-    applyRatePermanently: z.boolean(),
-    timeSlotId: z.string(),
-    isTicked: z.boolean(),
-    notes: z.string(),
+    applyRatePermanently: z.boolean().default(false),
+    timeSlotId: z.string().default(""),
+    isTicked: z.boolean().default(false),
+    notes: z.string().default(""),
   })
   .superRefine((item, ctx) => {
     if (item.itemKind === "tradeGroup" && !item.tradeGroupId.trim()) {

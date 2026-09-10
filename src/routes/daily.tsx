@@ -339,9 +339,9 @@ function Daily() {
         id: "startingDate",
         header: "Starting Date",
         width: "7rem",
-        accessor: (row) => row.startingDate?.slice(0, 10) || "—",
+        accessor: (row) => formatUkDate(row.startingDate),
         cell: (row) => (
-          <span className="tabular-nums">{row.startingDate?.slice(0, 10) || "—"}</span>
+          <span className="tabular-nums">{formatUkDate(row.startingDate)}</span>
         ),
       },
       {

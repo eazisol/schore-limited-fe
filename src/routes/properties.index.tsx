@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -466,11 +466,7 @@ function PropertyCreateModal({
   });
 
   return (
-    <Form
-      form={form}
-      onSubmit={(values) => mutation.mutateAsync(toPropertyPayload(values))}
-      className="contents"
-    >
+    <FormProvider {...form}>
       <Modal
         open
         onClose={onClose}
@@ -479,7 +475,12 @@ function PropertyCreateModal({
         showCloseButton={false}
         headerActions={<SwitchField<PropertyFormValues> name="isActive" label="Active" />}
       >
-        <div className="space-y-3">
+        {/* Modal portals to body — keep <form> inside so submit is wired. */}
+        <Form
+          form={form}
+          onSubmit={(values) => mutation.mutateAsync(toPropertyPayload(values))}
+          className="space-y-3"
+        >
           <PropertyFormFields embedded autoFocusPropertyName disabled={mutation.isPending} />
           <div className="flex justify-end gap-2 border-t pt-2">
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
@@ -489,8 +490,8 @@ function PropertyCreateModal({
               Create property
             </SubmitButton>
           </div>
-        </div>
+        </Form>
       </Modal>
-    </Form>
+    </FormProvider>
   );
 }
