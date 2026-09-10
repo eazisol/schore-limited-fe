@@ -1,5 +1,5 @@
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { TextField, TextareaField, CreatableSearchableSelectField } from "@/components/form";
 import { SearchableSelect } from "@/components/form/SearchableSelect";
 import { Button } from "@/components/ui/button";
@@ -18,12 +18,13 @@ import {
 import {
   fetchJobTypeOptions,
   fetchOperativeOptions,
-  fetchPackageOptions,
-  fetchProductOptions,
+  fetchPackageOrAddonOptions,
   fetchPropertyOptions,
   fetchSiteManagerOptions,
   fetchTaskStatusOptions,
   fetchTradeOptions,
+  packageOrAddonSelectionValue,
+  parsePackageOrAddonValue,
 } from "@/lib/task-dropdowns";
 import type { SearchableSelectOption } from "@/components/form";
 import { usersService } from "@/lib/api/services/users";
@@ -41,23 +42,8 @@ import {
 } from "@/lib/operative-certifications";
 import { notifyApiError } from "@/lib/api/axios";
 
-const ADD_AS_OPTIONS: SearchableSelectOption[] = [
-  { value: "tradeGroup", label: "Package" },
-  { value: "product", label: "Add-on" },
-];
-
 /** Form grouping key for template lines that have no operative yet. */
 const UNASSIGNED_OPERATIVE_KEY = "__unassigned";
-
-async function fetchAddAsOptions(search: string): Promise<SearchableSelectOption[]> {
-  const q = search.trim().toLowerCase();
-  if (!q) return ADD_AS_OPTIONS;
-  return ADD_AS_OPTIONS.filter((opt) => opt.label.toLowerCase().includes(q));
-}
-
-function addAsLabel(itemKind: "tradeGroup" | "product") {
-  return itemKind === "tradeGroup" ? "Package" : "Add-on product";
-}
 
 export type TaskFormSelectedLabels = {
   property?: string | null;
@@ -72,7 +58,7 @@ export type TaskItemSelectedLabels = {
   product?: string | null;
 };
 
-type OperativeAddState = {
+type ItemAddState = {
   itemKind: "tradeGroup" | "product";
   tradeGroupId: string;
   tradeGroupLabel: string;
@@ -80,7 +66,7 @@ type OperativeAddState = {
   productLabel: string;
 };
 
-const defaultAddState = (): OperativeAddState => ({
+const defaultAddState = (): ItemAddState => ({
   itemKind: "tradeGroup",
   tradeGroupId: "",
   tradeGroupLabel: "",
@@ -114,7 +100,7 @@ export function TaskFormFields({
   const [operativeLabels, setOperativeLabels] = useState<Record<string, string>>({});
   const [tradeGroupLabels, setTradeGroupLabels] = useState<Record<string, string>>({});
   const [productLabels, setProductLabels] = useState<Record<string, string>>({});
-  const [operativeAddState, setOperativeAddState] = useState<Record<string, OperativeAddState>>({});
+  const [operativeAddState, setOperativeAddState] = useState<ItemAddState>(defaultAddState);
   const [operativeRates, setOperativeRates] = useState<Record<string, string>>({});
   const [operativeTrades, setOperativeTrades] = useState<Record<string, string>>({});
   const defaultTradeIdRef = useRef<string>("");
@@ -325,15 +311,8 @@ export function TaskFormFields({
     return Array.from(map.entries());
   }, [items, operativeLabels, activeOperativeId, activeOperativeLabel]);
 
-  function getAddState(operativeId: string): OperativeAddState {
-    return operativeAddState[operativeId] ?? defaultAddState();
-  }
-
-  function patchAddState(operativeId: string, patch: Partial<OperativeAddState>) {
-    setOperativeAddState((prev) => ({
-      ...prev,
-      [operativeId]: { ...(prev[operativeId] ?? defaultAddState()), ...patch },
-    }));
+  function patchAddState(patch: Partial<ItemAddState>) {
+    setOperativeAddState((prev) => ({ ...prev, ...patch }));
   }
 
   async function ensureOperativeMeta(operativeId: string, operativeName?: string) {
@@ -361,7 +340,7 @@ export function TaskFormFields({
       return;
     }
     if (!operativeId) return;
-    const addState = getAddState(operativeId);
+    const addState = operativeAddState;
     const operativeMeta = await ensureOperativeMeta(
       operativeId,
       operativeLabels[operativeId] ||
@@ -370,7 +349,7 @@ export function TaskFormFields({
 
     if (addState.itemKind === "tradeGroup") {
       if (!addState.tradeGroupId) {
-        toast.warning("Select a package first.");
+        toast.warning("Select a package or add-on first.");
         return;
       }
       const group = (await tradeGroupsService.get(addState.tradeGroupId)).data;
@@ -406,7 +385,7 @@ export function TaskFormFields({
     }
 
     if (!addState.productId) {
-      toast.warning("Select an add-on product first.");
+      toast.warning("Select a package or add-on first.");
       return;
     }
 
@@ -600,142 +579,110 @@ export function TaskFormFields({
     );
   }
 
-  function renderAddControls(
-    operativeId: string,
-    options?: {
-      addButtonLabel?: string;
-      querySuffix?: string;
-      includeOperative?: boolean;
-      className?: string;
-    },
-  ) {
-    const addState = getAddState(operativeId);
-    const addButtonLabel = options?.addButtonLabel ?? "Add for this operative";
-    const querySuffix = options?.querySuffix ?? operativeId;
-    const includeOperative = options?.includeOperative ?? false;
+  function renderTopAddControls() {
+    const addState = operativeAddState;
+    const selectionValue = packageOrAddonSelectionValue(
+      addState.itemKind,
+      addState.itemKind === "tradeGroup" ? addState.tradeGroupId : addState.productId,
+    );
+    const selectionLabel =
+      addState.itemKind === "tradeGroup"
+        ? addState.tradeGroupLabel || null
+        : addState.productLabel || null;
     const canAdd =
-      Boolean(operativeId) &&
+      Boolean(activeOperativeId) &&
       (addState.itemKind === "tradeGroup"
         ? Boolean(addState.tradeGroupId)
         : Boolean(addState.productId));
 
+    function applyPackageOrAddonSelection(value: string, label: string) {
+      const parsed = parsePackageOrAddonValue(value);
+      if (!parsed) {
+        patchAddState({
+          itemKind: "tradeGroup",
+          tradeGroupId: "",
+          tradeGroupLabel: "",
+          productId: "",
+          productLabel: "",
+        });
+        return;
+      }
+      if (parsed.kind === "tradeGroup") {
+        patchAddState({
+          itemKind: "tradeGroup",
+          tradeGroupId: parsed.id,
+          tradeGroupLabel: label,
+          productId: "",
+          productLabel: "",
+        });
+        return;
+      }
+      patchAddState({
+        itemKind: "product",
+        productId: parsed.id,
+        productLabel: label,
+        tradeGroupId: "",
+        tradeGroupLabel: "",
+      });
+    }
+
     return (
-      <div
-        className={cn(
-          "flex w-full min-w-0 flex-wrap items-end justify-between gap-2",
-          options?.className,
-        )}
-      >
-        <div className="flex min-w-0 flex-wrap items-end gap-2">
-          {includeOperative ? (
-            <div className="w-[160px] shrink-0">
-              <label className="mb-0.5 block text-[11px] text-muted-foreground">Active operative</label>
-              <SearchableSelect
-                value={activeOperativeId}
-                onValueChange={setActiveOperativeId}
-                onSelect={(opt) => {
-                  setActiveOperativeLabel(opt.label);
-                  if (opt.value) {
-                    setOperativeLabels((prev) => ({ ...prev, [opt.value]: opt.label }));
-                    void ensureOperativeMeta(opt.value, opt.label);
-                  }
-                }}
-                placeholder="Select operative"
-                searchPlaceholder="Search operatives…"
-                queryKey={["lookups", "operatives", "active"]}
-                fetchOptions={fetchOperativeOptions}
-                selectedLabel={activeOperativeLabel || null}
-                disabled={addControlsDisabled}
-                triggerClassName="h-8 text-xs"
-              />
-            </div>
-          ) : null}
-          <div className="w-[160px] shrink-0">
-            <label className="mb-0.5 block text-[11px] text-muted-foreground">Add as</label>
-            <SearchableSelect
-              value={addState.itemKind}
-              onValueChange={(value) => {
-                const kind = (value || "tradeGroup") as "tradeGroup" | "product";
-                patchAddState(operativeId, {
-                  itemKind: kind,
+      <div className="flex w-full min-w-0 flex-wrap items-end gap-2">
+        <div className="w-[160px] shrink-0">
+          <label className="mb-0.5 block text-[11px] text-muted-foreground">Active operative</label>
+          <SearchableSelect
+            value={activeOperativeId}
+            onValueChange={setActiveOperativeId}
+            onSelect={(opt) => {
+              setActiveOperativeLabel(opt.label);
+              if (opt.value) {
+                setOperativeLabels((prev) => ({ ...prev, [opt.value]: opt.label }));
+                void ensureOperativeMeta(opt.value, opt.label);
+              }
+            }}
+            placeholder="Select operative"
+            searchPlaceholder="Search operatives…"
+            queryKey={["lookups", "operatives", "active"]}
+            fetchOptions={fetchOperativeOptions}
+            selectedLabel={activeOperativeLabel || null}
+            disabled={addControlsDisabled}
+            triggerClassName="h-8 text-xs"
+          />
+        </div>
+        <div className="w-[220px] shrink-0">
+          <label className="mb-0.5 block text-[11px] text-muted-foreground">Package / Add-on</label>
+          <SearchableSelect
+            value={selectionValue}
+            onValueChange={(value) => {
+              if (!value) {
+                patchAddState({
+                  itemKind: "tradeGroup",
                   tradeGroupId: "",
                   tradeGroupLabel: "",
                   productId: "",
                   productLabel: "",
                 });
-              }}
-              onSelect={(opt) => {
-                const kind = (opt.value || "tradeGroup") as "tradeGroup" | "product";
-                patchAddState(operativeId, {
-                  itemKind: kind,
-                  tradeGroupId: "",
-                  tradeGroupLabel: "",
-                  productId: "",
-                  productLabel: "",
-                });
-              }}
-              placeholder="Select type"
-              searchPlaceholder="Search add type…"
-              queryKey={["lookups", "add-as", querySuffix]}
-              fetchOptions={fetchAddAsOptions}
-              selectedLabel={addAsLabel(addState.itemKind)}
-              disabled={!operativeId || addControlsDisabled}
-              triggerClassName="h-8 text-xs"
-            />
-          </div>
-          <div className="w-[160px] shrink-0">
-            <label className="mb-0.5 block text-[11px] text-muted-foreground">Package / Add-on</label>
-            {addState.itemKind === "tradeGroup" ? (
-              <SearchableSelect
-                value={addState.tradeGroupId}
-                onValueChange={(value) => patchAddState(operativeId, { tradeGroupId: value })}
-                onSelect={(opt) =>
-                  patchAddState(operativeId, {
-                    tradeGroupId: opt.value,
-                    tradeGroupLabel: opt.label,
-                  })
-                }
-                placeholder="Select package"
-                searchPlaceholder="Search packages…"
-                queryKey={["lookups", "packages", "catalogue", querySuffix]}
-                fetchOptions={fetchPackageOptions}
-                selectedLabel={addState.tradeGroupLabel || null}
-                disabled={!operativeId || addControlsDisabled}
-                triggerClassName="h-8 text-xs"
-              />
-            ) : (
-              <SearchableSelect
-                value={addState.productId}
-                onValueChange={(value) => patchAddState(operativeId, { productId: value })}
-                onSelect={(opt) =>
-                  patchAddState(operativeId, {
-                    productId: opt.value,
-                    productLabel: opt.label,
-                  })
-                }
-                placeholder="Select add-on"
-                searchPlaceholder="Search add-ons…"
-                queryKey={["lookups", "active-products", querySuffix]}
-                fetchOptions={fetchProductOptions}
-                selectedLabel={addState.productLabel || null}
-                disabled={!operativeId || addControlsDisabled}
-                triggerClassName="h-8 text-xs"
-              />
-            )}
-          </div>
+              }
+            }}
+            onSelect={(opt) => applyPackageOrAddonSelection(opt.value, opt.label)}
+            placeholder="Select package or add-on"
+            searchPlaceholder="Search packages & add-ons…"
+            queryKey={["lookups", "packages-or-addons"]}
+            fetchOptions={fetchPackageOrAddonOptions}
+            selectedLabel={selectionLabel}
+            disabled={addControlsDisabled}
+            triggerClassName="h-8 text-xs"
+          />
         </div>
         <Button
           type="button"
           size="sm"
           className="h-8 shrink-0 px-2.5 text-xs"
-          variant={options?.addButtonLabel ? "default" : "outline"}
-          onClick={() =>
-            void (options?.addButtonLabel ? addFromTop() : addForOperative(operativeId))
-          }
+          onClick={() => void addFromTop()}
           disabled={!canAdd || addControlsDisabled}
         >
           <Plus className="h-3.5 w-3.5" />
-          {addButtonLabel}
+          Add item
         </Button>
       </div>
     );
@@ -756,56 +703,6 @@ export function TaskFormFields({
     return ids;
   }, [grouped]);
 
-  function packageGroupsForOperative(indexes: number[]) {
-    const packages = new Map<string, { name: string; indexes: number[] }>();
-    const addOns: number[] = [];
-    for (const index of indexes) {
-      const item = items[index];
-      if (item?.tradeGroupId) {
-        const key = item.tradeGroupId;
-        const name = tradeGroupLabels[key] || `Package #${key}`;
-        const existing = packages.get(key);
-        if (existing) existing.indexes.push(index);
-        else packages.set(key, { name, indexes: [index] });
-      } else {
-        addOns.push(index);
-      }
-    }
-
-    const workDateValue = (index: number) => {
-      const raw = items[index]?.workDate?.trim() ?? "";
-      if (!raw) return 0;
-      const time = new Date(`${raw.slice(0, 10)}T12:00:00`).getTime();
-      return Number.isFinite(time) ? time : 0;
-    };
-
-    const sortIndexesByLatestDate = (list: number[]) =>
-      [...list].sort((a, b) => {
-        const dateDiff = workDateValue(b) - workDateValue(a);
-        return dateDiff !== 0 ? dateDiff : b - a;
-      });
-
-    const sortedPackages = Array.from(packages.entries())
-      .map(([id, pkg]) => {
-        const sortedIndexes = sortIndexesByLatestDate(pkg.indexes);
-        const latestDate = sortedIndexes.reduce(
-          (max, index) => Math.max(max, workDateValue(index)),
-          0,
-        );
-        return [id, { ...pkg, indexes: sortedIndexes, latestDate }] as const;
-      })
-      .sort((a, b) => {
-        const dateDiff = b[1].latestDate - a[1].latestDate;
-        return dateDiff !== 0 ? dateDiff : Number(b[0]) - Number(a[0]);
-      })
-      .map(([id, pkg]) => [id, { name: pkg.name, indexes: pkg.indexes }] as const);
-
-    return {
-      packages: sortedPackages,
-      addOns: sortIndexesByLatestDate(addOns),
-    };
-  }
-
   function resolveRatePrompt(permanent: boolean) {
     if (!ratePrompt) return;
     setValue(`items.${ratePrompt.index}.rate`, ratePrompt.nextRate, { shouldDirty: true });
@@ -820,17 +717,24 @@ export function TaskFormFields({
     setRatePrompt(null);
   }
 
+  const jobItemsTotal = items.reduce((sum, item) => {
+    const qty = Number(item?.quantity || 0);
+    const rate = Number(item?.rate || 0);
+    const line = qty * rate;
+    return sum + (Number.isFinite(line) ? line : 0);
+  }, 0);
+
   return (
     <>
-      <fieldset disabled={disabled} className="min-w-0 w-full max-w-full space-y-3">
+      <fieldset disabled={disabled} className="min-w-0 w-full max-w-full space-y-2">
         <div
           className={
             embedded
-              ? "min-w-0 space-y-3"
-              : "card-elevated min-w-0 space-y-3 overflow-hidden p-4 sm:p-6"
+              ? "min-w-0 space-y-2"
+              : "card-elevated min-w-0 space-y-2 overflow-hidden p-3"
           }
         >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 [&>*]:min-w-0">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 [&>*]:min-w-0">
             <CreatableSearchableSelectField<TaskFormValues>
               name="propertyId"
               label="Property"
@@ -855,6 +759,8 @@ export function TaskFormFields({
               lookupType="jobType"
               className="min-w-0"
             />
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 [&>*]:min-w-0">
             <TextField<TaskFormValues>
               name="startDate"
               label="Start date"
@@ -872,20 +778,6 @@ export function TaskFormFields({
               inputClassName="h-9 min-w-0"
               disabled
             />
-            {/* Temporarily hidden: Budget — re-enable when needed */}
-            {false && (
-            <TextField<TaskFormValues>
-              name="budget"
-              label="Budget"
-              placeholder="1000"
-              description="Job budget"
-              className="min-w-0"
-              inputClassName="h-10 min-w-0"
-              leftIcon={({ className }) => (
-                <span className={cn(className, "text-sm font-semibold leading-none")}>£</span>
-              )}
-            />
-            )}
             <CreatableSearchableSelectField<TaskFormValues>
               name="statusId"
               label="Status"
@@ -899,8 +791,23 @@ export function TaskFormFields({
               lookupType="status"
               className="min-w-0"
             />
-            {/* Temporarily hidden: Site Manager is assigned from the project Assign To field */}
-            {false && (
+          </div>
+          {/* Temporarily hidden: Budget — re-enable when needed */}
+          {false && (
+            <TextField<TaskFormValues>
+              name="budget"
+              label="Budget"
+              placeholder="1000"
+              description="Job budget"
+              className="min-w-0"
+              inputClassName="h-10 min-w-0"
+              leftIcon={({ className }) => (
+                <span className={cn(className, "text-sm font-semibold leading-none")}>£</span>
+              )}
+            />
+          )}
+          {/* Temporarily hidden: Site Manager is assigned from the project Assign To field */}
+          {false && (
             <CreatableSearchableSelectField<TaskFormValues>
               name="siteManagerId"
               label="Site Manager"
@@ -912,34 +819,46 @@ export function TaskFormFields({
               emptyOption={{ value: "", label: "None" }}
               lookupType="siteManager"
             />
-            )}
-          </div>
+          )}
           <TextareaField<TaskFormValues>
             name="description"
             label="Description"
-            rows={3}
+            rows={2}
             maxLength={DESCRIPTION_MAX_LENGTH}
           />
         </div>
 
         {/* Job items — auto-filled from JobType template; SM can edit */}
-        <div className={embedded ? "min-w-0 space-y-2 border-t border-border pt-4" : "min-w-0 space-y-2"}>
-          <div className="min-w-0 space-y-2">
-            {itemsLocked ? (
-              <p className="text-xs font-medium text-warning-foreground">
-                Locked — tick at least one item on the previous working day before adding new
-                items.
-              </p>
+        <div className={embedded ? "min-w-0 space-y-2 border-t border-border pt-3" : "min-w-0 space-y-2"}>
+          <div className="flex min-w-0 flex-wrap items-end justify-between gap-2">
+            <div className="min-w-0 flex-1 space-y-1">
+              {itemsLocked ? (
+                <p className="text-xs font-medium text-warning-foreground">
+                  Locked — tick at least one item on the previous working day before adding new
+                  items.
+                </p>
+              ) : null}
+              {renderTopAddControls()}
+            </div>
+            {items.length > 0 ? (
+              <div className="flex shrink-0 items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5">
+                <Calculator className="h-3.5 w-3.5 text-accent" aria-hidden />
+                <div className="leading-tight">
+                  <div className="text-[11px] text-muted-foreground">
+                    {items.length} item{items.length === 1 ? "" : "s"}
+                  </div>
+                  <AppTooltip content={fmtGBP(jobItemsTotal)} asChild align="end">
+                    <div className="font-display text-sm font-semibold tabular-nums">
+                      {fmtGBP(jobItemsTotal)}
+                    </div>
+                  </AppTooltip>
+                </div>
+              </div>
             ) : null}
-            {renderAddControls(activeOperativeId, {
-              addButtonLabel: "Add item",
-              querySuffix: "top",
-              includeOperative: true,
-            })}
           </div>
 
           {operativeCards.length === 0 ? (
-            <div className="card-elevated p-4 text-sm text-muted-foreground">
+            <div className="card-elevated p-3 text-sm text-muted-foreground">
               No job items yet. Select a property type with a template, or choose an operative and add a
               package / add-on.
             </div>
@@ -955,7 +874,6 @@ export function TaskFormFields({
                 (operativeId === activeOperativeId
                   ? activeOperativeLabel
                   : `Operative #${operativeId}`);
-            const { packages, addOns } = packageGroupsForOperative(indexes);
             const operativeTotal = indexes.reduce((sum, index) => {
               const qty = Number(items[index]?.quantity || 0);
               const rate = Number(items[index]?.rate || 0);
@@ -966,177 +884,79 @@ export function TaskFormFields({
             return (
               <div
                 key={operativeId}
-                className="card-elevated min-w-0 space-y-2 overflow-hidden p-3"
+                className="card-elevated min-w-0 space-y-1.5 overflow-hidden p-2.5"
               >
-                <div className="min-w-0 space-y-1">
+                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
                   <h4 className="text-sm font-medium leading-tight">{name}</h4>
-                  {isUnassigned ? (
-                    <p className="text-[11px] leading-snug text-muted-foreground">
-                      Assign an operative on each package or add-on.
-                    </p>
-                  ) : (
-                    renderAddControls(operativeId)
-                  )}
+                  {indexes.length > 0 ? (
+                    <div className="flex shrink-0 items-baseline gap-1.5 text-xs">
+                      <span className="text-muted-foreground">
+                        {indexes.length} item{indexes.length === 1 ? "" : "s"}
+                      </span>
+                      <AppTooltip content={fmtGBP(operativeTotal)} asChild align="end">
+                        <span className="font-display font-semibold tabular-nums">
+                          {fmtGBP(operativeTotal)}
+                        </span>
+                      </AppTooltip>
+                    </div>
+                  ) : null}
                 </div>
-
-                {indexes.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No lines yet. Select Package or Add-on, then click Add for this operative.
+                {isUnassigned ? (
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    Assign an operative on each package or add-on.
                   </p>
                 ) : null}
 
-                {packages.map(([packageId, pkg]) => {
-                  const isPkgDone =
-                    pkg.indexes.length > 0 &&
-                    pkg.indexes.every((idx) => Number(items[idx]?.doneQty || 0) > 0);
-                  return (
-                    <div key={`${operativeId}-pkg-${packageId}`} className="min-w-0 space-y-1">
-                      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-                        <div className="flex min-w-0 items-center">
-                          <span className="inline-flex max-w-full items-center rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium leading-none text-secondary-foreground">
-                            <AppTooltip content={`Package: ${pkg.name}`} asChild align="start">
-                              <span className="truncate">Package: {pkg.name}</span>
-                            </AppTooltip>
-                          </span>
-                        </div>
-                        {isUnassigned ? (
-                          renderAssignOperativeControls(`pkg-${packageId}`, pkg.indexes)
-                        ) : !isPkgDone ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                            onClick={() => unassignItems(pkg.indexes)}
-                            disabled={disabled || itemsLocked}
-                          >
-                            <Undo2 className="mr-1 h-3.5 w-3.5" aria-hidden />
-                            Unassign
-                          </Button>
-                        ) : null}
-                      </div>
-                      <ProductLinesTable
-                        indexes={pkg.indexes}
-                        fields={fields}
-                        items={items}
-                        productLabels={productLabels}
-                        onRemove={remove}
-                        onRateCommit={(index, previousRate, nextRate) => {
-                          if (previousRate === nextRate) return;
-                          setValue(`items.${index}.rate`, nextRate);
-                          setRatePrompt({ index, previousRate, nextRate });
-                        }}
-                        getValues={getValues}
-                      />
-                    </div>
-                  );
-                })}
+                {indexes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No lines yet. Use Active operative and Package / Add-on above, then Add item.
+                  </p>
+                ) : (
+                  (() => {
+                    const isAllDone = indexes.every(
+                      (idx) => Number(items[idx]?.doneQty || 0) > 0,
+                    );
+                    const lineActions = isUnassigned ? (
+                      renderAssignOperativeControls(`ops-${operativeId}`, indexes)
+                    ) : !isAllDone ? (
+                      <AppTooltip content="Unassign" asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => unassignItems(indexes)}
+                          disabled={disabled || itemsLocked}
+                          aria-label="Unassign"
+                        >
+                          <Undo2 className="h-3.5 w-3.5" aria-hidden />
+                        </Button>
+                      </AppTooltip>
+                    ) : null;
 
-                {addOns.length > 0 ? (
-                  isUnassigned ? (
-                    addOns.map((index) => {
-                      const productId = items[index]?.productId ?? "";
-                      const productName =
-                        (productId && productLabels[productId]) ||
-                        (productId ? `Product #${productId}` : "Add-on");
-                      return (
-                        <div key={`${operativeId}-addon-${index}`} className="min-w-0 space-y-1">
-                          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-                            <div className="flex min-w-0 items-center">
-                              <span className="inline-flex max-w-full items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium leading-none text-muted-foreground">
-                                <AppTooltip content={`Add-on: ${productName}`} asChild align="start">
-                                  <span className="truncate">Add-on: {productName}</span>
-                                </AppTooltip>
-                              </span>
-                            </div>
-                            {renderAssignOperativeControls(`addon-${index}`, [index])}
-                          </div>
-                          <ProductLinesTable
-                            indexes={[index]}
-                            fields={fields}
-                            items={items}
-                            productLabels={productLabels}
-                            onRemove={remove}
-                            onRateCommit={(lineIndex, previousRate, nextRate) => {
-                              if (previousRate === nextRate) return;
-                              setValue(`items.${lineIndex}.rate`, nextRate);
-                              setRatePrompt({ index: lineIndex, previousRate, nextRate });
-                            }}
-                            getValues={getValues}
-                          />
-                        </div>
-                      );
-                    })
-                  ) : (
-                    addOns.map((index) => {
-                      const productId = items[index]?.productId ?? "";
-                      const isAddOnDone = Number(items[index]?.doneQty || 0) > 0;
-                      const productName =
-                        (productId && productLabels[productId]) ||
-                        (productId ? `Product #${productId}` : "Add-on");
-                      return (
-                        <div key={`${operativeId}-addon-${index}`} className="min-w-0 space-y-1">
-                          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-                            <div className="flex min-w-0 items-center">
-                              <span className="inline-flex max-w-full items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium leading-none text-muted-foreground">
-                                <AppTooltip content={`Add-on: ${productName}`} asChild align="start">
-                                  <span className="truncate">Add-on: {productName}</span>
-                                </AppTooltip>
-                              </span>
-                            </div>
-                            {!isAddOnDone ? (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 px-2 text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                onClick={() => unassignItems([index])}
-                                disabled={disabled || itemsLocked}
-                              >
-                                <Undo2 className="mr-1 h-3.5 w-3.5" aria-hidden />
-                                Unassign
-                              </Button>
-                            ) : null}
-                          </div>
-                          <ProductLinesTable
-                            indexes={[index]}
-                            fields={fields}
-                            items={items}
-                            productLabels={productLabels}
-                            onRemove={remove}
-                            onRateCommit={(lineIndex, previousRate, nextRate) => {
-                              if (previousRate === nextRate) return;
-                              setValue(`items.${lineIndex}.rate`, nextRate);
-                              setRatePrompt({ index: lineIndex, previousRate, nextRate });
-                            }}
-                            getValues={getValues}
-                          />
-                        </div>
-                      );
-                    })
-                  )
-                ) : null}
-
-                {indexes.length > 0 ? (
-                  <div className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/50 px-2.5 py-1.5">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <div className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
-                        <Calculator className="h-3 w-3" aria-hidden />
-                      </div>
+                    return (
                       <div className="min-w-0">
-                        <div className="text-xs font-semibold text-foreground">Total</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {indexes.length} item{indexes.length === 1 ? "" : "s"}
-                        </div>
+                        {isUnassigned && lineActions ? (
+                          <div className="mb-1 flex min-w-0 justify-end">{lineActions}</div>
+                        ) : null}
+                        <ProductLinesTable
+                          indexes={indexes}
+                          fields={fields}
+                          items={items}
+                          productLabels={productLabels}
+                          headerAction={!isUnassigned ? lineActions : null}
+                          onRemove={remove}
+                          onRateCommit={(index, previousRate, nextRate) => {
+                            if (previousRate === nextRate) return;
+                            setValue(`items.${index}.rate`, nextRate);
+                            setRatePrompt({ index, previousRate, nextRate });
+                          }}
+                          getValues={getValues}
+                        />
                       </div>
-                    </div>
-                    <AppTooltip content={fmtGBP(operativeTotal)} asChild align="end">
-                      <div className="shrink-0 font-display text-sm font-semibold tabular-nums tracking-tight text-foreground">
-                        {fmtGBP(operativeTotal)}
-                      </div>
-                    </AppTooltip>
-                  </div>
-                ) : null}
+                    );
+                  })()
+                )}
               </div>
             );
           })}
@@ -1217,13 +1037,14 @@ export function TaskFormFields({
   );
 }
 
-const PRODUCT_LINE_TABLE_MIN_WIDTH = "1012px";
+const PRODUCT_LINE_TABLE_MIN_WIDTH = "736px";
 
 function ProductLinesTable({
   indexes,
   fields,
   items,
   productLabels,
+  headerAction,
   onRemove,
   onRateCommit,
   getValues,
@@ -1232,6 +1053,7 @@ function ProductLinesTable({
   fields: { id: string }[];
   items: TaskFormValues["items"];
   productLabels: Record<string, string>;
+  headerAction?: ReactNode;
   onRemove: (index: number) => void;
   onRateCommit: (index: number, previousRate: string, nextRate: string) => void;
   getValues: ReturnType<typeof useFormContext<TaskFormValues>>["getValues"];
@@ -1245,29 +1067,31 @@ function ProductLinesTable({
   return (
     <div className="min-w-0 max-w-full overflow-x-auto rounded-md border border-border/60">
       <table
-        className="w-full table-fixed text-sm"
+        className="w-full table-fixed text-xs"
         style={{ minWidth: PRODUCT_LINE_TABLE_MIN_WIDTH }}
       >
         <colgroup>
-          <col style={{ width: "168px" }} />
-          <col style={{ width: "150px" }} />
-          <col style={{ width: "110px" }} />
-          <col style={{ width: "80px" }} />
-          <col style={{ width: "110px" }} />
-          <col style={{ width: "88px" }} />
-          <col style={{ width: "200px" }} />
-          <col style={{ width: "44px" }} />
+          <col style={{ width: "120px" }} />
+          <col style={{ width: "132px" }} />
+          <col style={{ width: "96px" }} />
+          <col style={{ width: "56px" }} />
+          <col style={{ width: "72px" }} />
+          <col style={{ width: "64px" }} />
+          <col />
+          <col style={{ width: "56px" }} />
         </colgroup>
         <thead>
           <tr className="border-b bg-muted/20 text-left text-muted-foreground">
-            <th className="px-2 py-1.5 text-xs font-medium">Product</th>
-            <th className="px-2 py-1.5 text-xs font-medium">Work date</th>
-            <th className="px-2 py-1.5 text-xs font-medium">Time</th>
-            <th className="px-2 py-1.5 text-xs font-medium">Qty</th>
-            <th className="px-2 py-1.5 text-xs font-medium">Rate</th>
-            <th className="px-2 py-1.5 text-xs font-medium">Amount</th>
-            <th className="px-2 py-1.5 text-xs font-medium">Notes</th>
-            <th className="px-2 py-1.5 text-xs font-medium" />
+            <th className="px-1.5 py-1 text-[11px] font-medium">Product</th>
+            <th className="px-1.5 py-1 text-[11px] font-medium">Work date</th>
+            <th className="px-1.5 py-1 text-[11px] font-medium">Time</th>
+            <th className="px-1.5 py-1 text-[11px] font-medium">Qty</th>
+            <th className="px-1.5 py-1 text-[11px] font-medium">Rate</th>
+            <th className="px-1.5 py-1 text-[11px] font-medium">Amount</th>
+            <th className="px-1.5 py-1 text-[11px] font-medium">Notes</th>
+            <th className="px-0.5 py-1 text-[11px] font-medium">
+              <div className="flex items-center justify-end gap-0.5">{headerAction}</div>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -1341,21 +1165,21 @@ function ProductLineRow({
 
   return (
     <tr className="align-middle border-b border-border/50">
-      <td className="min-w-0 px-2 py-1 font-medium">
+      <td className="min-w-0 px-1.5 py-0.5 font-medium">
         {/* Keep doneQty in the form; column is hidden from the UI */}
         <input type="hidden" {...register(`items.${index}.doneQty`)} />
-        <TruncatedTooltip text={productLabel} maxChars={28} />
+        <TruncatedTooltip text={productLabel} maxChars={22} />
       </td>
-      <td className="px-2 py-1">
+      <td className="px-1.5 py-0.5">
         <input
           type="date"
-          className="h-8 w-[140px] max-w-full rounded-md border border-input bg-background px-2 text-sm"
+          className="h-7 w-[124px] max-w-full rounded-md border border-input bg-background px-1.5 text-xs"
           {...register(`items.${index}.workDate`)}
         />
       </td>
-      <td className="px-2 py-1">
+      <td className="px-1.5 py-0.5">
         <select
-          className="h-8 w-[100px] max-w-full rounded-md border border-input bg-background px-2 text-sm"
+          className="h-7 w-[88px] max-w-full rounded-md border border-input bg-background px-1 text-xs"
           {...register(`items.${index}.timeSlotId`)}
         >
           <option value="">Select…</option>
@@ -1366,21 +1190,21 @@ function ProductLineRow({
           ))}
         </select>
       </td>
-      <td className="px-2 py-1">
+      <td className="px-1.5 py-0.5">
         <input
           type="number"
           min={0.01}
           step={0.01}
-          className="h-8 w-[72px] max-w-full rounded-md border border-input bg-background px-2 text-sm"
+          className="h-7 w-[52px] max-w-full rounded-md border border-input bg-background px-1 text-xs"
           {...register(`items.${index}.quantity`)}
         />
       </td>
-      <td className="px-2 py-1">
+      <td className="px-1.5 py-0.5">
         <input
           type="number"
           min={0}
           step={0.01}
-          className="h-8 w-[100px] max-w-full rounded-md border border-input bg-background px-2 text-sm"
+          className="h-7 w-[64px] max-w-full rounded-md border border-input bg-background px-1 text-xs"
           {...register(`items.${index}.rate`)}
           onFocus={() => {
             rateBeforeEdit.current = getValues(`items.${index}.rate`) || "0";
@@ -1396,36 +1220,36 @@ function ProductLineRow({
           }}
         />
       </td>
-      <td className="px-2 py-1 font-medium">
+      <td className="px-1.5 py-0.5 font-medium">
         <AppTooltip content={fmtGBP(amount)} asChild align="end">
-          <span className="inline-block tabular-nums text-sm">{fmtGBP(amount)}</span>
+          <span className="inline-block tabular-nums text-xs">{fmtGBP(amount)}</span>
         </AppTooltip>
       </td>
-      <td className="min-w-0 px-2 py-1">
+      <td className="min-w-0 px-1.5 py-0.5">
         <AppTooltip
           content={notes.trim() || undefined}
           disabled={!notes.trim()}
           asChild
           align="start"
         >
-          <div className="min-w-0">
+          <div className="min-w-0 w-full">
             <input
               type="text"
-              className="h-8 w-[190px] max-w-full truncate rounded-md border border-input bg-background px-2 text-sm"
+              className="h-7 w-full min-w-[140px] truncate rounded-md border border-input bg-background px-1.5 text-xs"
               placeholder="Notes"
               {...register(`items.${index}.notes`)}
             />
           </div>
         </AppTooltip>
       </td>
-      <td className="px-1 py-1">
+      <td className="px-0.5 py-0.5">
         {!isDone ? (
           <AppTooltip content="Remove item" asChild>
             <Button
               type="button"
               size="icon"
               variant="ghost"
-              className="h-7 w-7"
+              className="h-6 w-6"
               onClick={onRemove}
               aria-label="Remove item"
             >
@@ -1442,10 +1266,10 @@ function TruncatedTooltip({ text, maxChars = 24 }: { text: string; maxChars?: nu
   const value = text.trim();
   if (!value) return <span>—</span>;
   const truncated = truncateWithEllipsis(value, maxChars);
-  const label = <span className="block min-w-0 max-w-[12rem] truncate">{truncated}</span>;
+  const label = <span className="block min-w-0 max-w-[8.5rem] truncate">{truncated}</span>;
   return (
     <AppTooltip content={value} asChild align="start">
-      <span className="block min-w-0 max-w-[12rem] cursor-default">{label}</span>
+      <span className="block min-w-0 max-w-[8.5rem] cursor-default">{label}</span>
     </AppTooltip>
   );
 }

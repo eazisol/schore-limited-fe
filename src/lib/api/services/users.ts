@@ -134,6 +134,8 @@ export interface CreateUserPayload {
   isActive: boolean;
   userTypeId: number;
   roleIds: string[] | null;
+  /** Prefer when Roles list API is not available (e.g. project quick-add CM/PM/SM). */
+  roleCodes?: string[] | null;
   tradeId?: string | null;
   tradeIds?: string[] | null;
   cisId?: string | null;

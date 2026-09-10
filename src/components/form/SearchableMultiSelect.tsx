@@ -77,9 +77,13 @@ export function SearchableMultiSelect({
     staleTime: 30_000,
   });
 
+  const needsLabelResolve = selected.some(
+    (id) => !selectedLabels?.[id]?.trim(),
+  );
   const initialQuery = useQuery({
     queryKey: [...queryKey, ""],
     queryFn: () => fetchOptions(""),
+    enabled: needsLabelResolve,
     staleTime: 60_000,
   });
 

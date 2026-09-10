@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { CalendarDays, Eye, Pencil, Plus } from "lucide-react";
+import { CalendarDays, Eye, Loader2, Pencil, Plus, Search } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Can, usePermission } from "@/components/Permission";
@@ -151,91 +151,86 @@ export function PropertyTasksCard({ propertyId, propertyName }: PropertyTasksCar
       : []),
   ];
 
+  const newJobButton = (
+    <Can route={TASKS_ROUTE} action="modify">
+      <Button size="sm" className="h-8" asChild>
+        <Link
+          to="/tasks/new"
+          search={{
+            from: "property",
+            propertyId: String(propertyId),
+          }}
+        >
+          <Plus className="mr-1 h-4 w-4" />
+          New job
+        </Link>
+      </Button>
+    </Can>
+  );
+
   return (
     <div className="card-elevated overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
-        <div className="min-w-0">
-          <h3 className="font-display text-base font-semibold tracking-tight">Jobs</h3>
+      <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2 sm:px-4">
+        <h3 className="shrink-0 font-display text-base font-semibold tracking-tight">Jobs</h3>
+        <div className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-background px-2.5 sm:max-w-xs sm:flex-none">
+          <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <input
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Search jobs…"
+            className="w-full min-w-0 bg-transparent text-sm outline-none"
+            aria-label="Search property jobs"
+          />
         </div>
-        <Can route={TASKS_ROUTE} action="modify">
-          <Button size="sm" asChild>
-            <Link
-              to="/tasks/new"
-              search={{
-                from: "property",
-                propertyId: String(propertyId),
-              }}
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              New job
-            </Link>
-          </Button>
-        </Can>
+        {isFetching ? (
+          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
+        ) : null}
+        <div className="ml-auto shrink-0">{newJobButton}</div>
       </div>
 
-      <div className="p-4 sm:p-5">
-        <DataTable
-          columns={columns}
-          rows={rows}
-          getRowId={(row) => row.id}
-          loading={isLoading}
-          fetching={isFetching}
-          loadingText="Loading jobs…"
-          error={
-            isError
-              ? {
-                  title: "Unable to load jobs",
-                  message:
-                    (error as unknown as ApiError)?.message || "Please try again.",
-                  onRetry: () => {
-                    void refetch();
-                  },
-                }
-              : null
-          }
-          search={{
-            value: searchInput,
-            onChange: setSearchInput,
-            placeholder: "Search jobs…",
-            "aria-label": "Search property jobs",
-          }}
-          pagination={{
-            page,
-            pageSize,
-            totalCount,
-            totalPages,
-            onPageChange: setPage,
-            onPageSizeChange: (size) => {
-              setPageSize(size);
-              setPage(1);
-            },
-            itemLabel: "jobs",
-            controlsAlign: "center",
-          }}
-          rowActions={rowActions}
-          emptyState={{
-            title: search ? "No matching jobs" : "No jobs for this property",
-            description: search
-              ? "Try a different search."
-              : "Create a job against this property to allocate work.",
-            action:
-              !search && canModify ? (
-                <Button size="sm" asChild>
-                  <Link
-                    to="/tasks/new"
-                    search={{
-                      from: "property",
-                      propertyId: String(propertyId),
-                    }}
-                  >
-                    <Plus className="mr-1 h-4 w-4" />
-                    New job
-                  </Link>
-                </Button>
-              ) : undefined,
-          }}
-        />
-      </div>
+      <DataTable
+        embedded
+        density="compact"
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => row.id}
+        loading={isLoading}
+        fetching={false}
+        loadingText="Loading jobs…"
+        error={
+          isError
+            ? {
+                title: "Unable to load jobs",
+                message:
+                  (error as unknown as ApiError)?.message || "Please try again.",
+                onRetry: () => {
+                  void refetch();
+                },
+              }
+            : null
+        }
+        pagination={{
+          page,
+          pageSize,
+          totalCount,
+          totalPages,
+          onPageChange: setPage,
+          onPageSizeChange: (size) => {
+            setPageSize(size);
+            setPage(1);
+          },
+          itemLabel: "jobs",
+          controlsAlign: "center",
+        }}
+        rowActions={rowActions}
+        emptyState={{
+          title: search ? "No matching jobs" : "No jobs for this property",
+          description: search
+            ? "Try a different search."
+            : "Create a job against this property to allocate work.",
+          action: !search && canModify ? newJobButton : undefined,
+        }}
+      />
     </div>
   );
 }

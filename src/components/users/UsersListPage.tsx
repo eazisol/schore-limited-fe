@@ -62,6 +62,46 @@ function roleBadgeClass(roleName: string, index: number): string {
   return FALLBACK_ROLE_BADGES[index % FALLBACK_ROLE_BADGES.length];
 }
 
+/** Mounted only on Users list — never on Clients / Contractors / Operatives. */
+function UsersRoleFilter({
+  roleId,
+  onRoleIdChange,
+}: {
+  roleId: string | undefined;
+  onRoleIdChange: (roleId: string | undefined) => void;
+}) {
+  const rolesQuery = useQuery({
+    queryKey: ["roles"],
+    queryFn: async () => (await lookupsService.roles()).data,
+    staleTime: 60_000,
+  });
+  const roles = rolesQuery.data ?? [];
+
+  return (
+    <Select
+      value={roleId ?? "all"}
+      onValueChange={(value) => {
+        onRoleIdChange(value === "all" ? undefined : value);
+      }}
+    >
+      <SelectTrigger
+        className="h-9 w-full min-w-[11rem] sm:w-60 [&>span]:whitespace-nowrap"
+        aria-label="Filter by role"
+      >
+        <SelectValue placeholder="All roles" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All roles</SelectItem>
+        {roles.map((role) => (
+          <SelectItem key={role.id} value={String(role.id)}>
+            {role.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 export function displayUserName(user: ApiUser) {
   return `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || user.username;
 }
@@ -99,12 +139,6 @@ export function UsersListPage() {
     [cfg.hideAccessFields, cfg.isOperative],
   );
 
-  const rolesQuery = useQuery({
-    queryKey: ["roles"],
-    queryFn: async () => (await lookupsService.roles()).data,
-    staleTime: 60_000,
-  });
-
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: [...cfg.queryKey, { page, pageSize, search, roleId, sortBy, sortDir }],
     queryFn: async () =>
@@ -113,7 +147,7 @@ export function UsersListPage() {
           page,
           pageSize,
           search,
-          roleId,
+          roleId: cfg.hideAccessFields ? undefined : roleId,
           userTypeId: cfg.userTypeId,
           sortBy,
           sortDir,
@@ -439,8 +473,7 @@ export function UsersListPage() {
     setPage(1);
   }
 
-  const hasActiveFilters = Boolean(search) || roleId != null;
-  const roles = rolesQuery.data ?? [];
+  const hasActiveFilters = Boolean(search) || (!cfg.hideAccessFields && roleId != null);
 
   return (
     <div>
@@ -502,28 +535,13 @@ export function UsersListPage() {
         }}
         filters={
           cfg.hideAccessFields ? undefined : (
-            <Select
-              value={roleId ?? "all"}
-              onValueChange={(value) => {
-                setRoleId(value === "all" ? undefined : value);
+            <UsersRoleFilter
+              roleId={roleId}
+              onRoleIdChange={(next) => {
+                setRoleId(next);
                 setPage(1);
               }}
-            >
-              <SelectTrigger
-                className="h-9 w-full min-w-[11rem] sm:w-60 [&>span]:whitespace-nowrap"
-                aria-label="Filter by role"
-              >
-                <SelectValue placeholder="All roles" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All roles</SelectItem>
-                {roles.map((role) => (
-                  <SelectItem key={role.id} value={String(role.id)}>
-                    {role.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           )
         }
         sort={{

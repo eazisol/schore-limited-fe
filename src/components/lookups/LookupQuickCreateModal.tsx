@@ -41,7 +41,6 @@ import {
   rateSchema,
 } from "@/lib/field-validation";
 import { formatCisRate } from "@/lib/module-ui";
-import { getSiteManagerRoleId } from "@/lib/site-manager-role";
 import { USER_TYPE_ID } from "@/lib/user-module";
 import { emailSchema, userNameSchema } from "@/lib/user-validation";
 import { newPasswordSchema } from "@/lib/password";
@@ -55,9 +54,7 @@ import { projectsService } from "@/lib/api/services/projects";
 import { asIdString, isNonEmptyId } from "@/lib/ids";
 import {
   PROJECT_ASSIGNEE_ROLE_LABEL,
-  type ProjectAssigneeRoleCode,
 } from "@/lib/project-assignee";
-import { lookupsService } from "@/lib/api/services/lookups";
 import { RoleCodeBadge } from "@/components/RoleCodeBadge";
 import { cn } from "@/lib/utils";
 
@@ -518,11 +515,6 @@ function SiteManagerQuickCreateModal({
   onClose: () => void;
   onCreated: (option: SearchableSelectOption) => void;
 }) {
-  const roleQuery = useQuery({
-    queryKey: ["roles", "site-manager"],
-    queryFn: getSiteManagerRoleId,
-  });
-
   const form = useForm<SiteManagerValues>({
     resolver: zodResolver(siteManagerSchema),
     defaultValues: { firstName: "", lastName: "", email: "", password: "" },
@@ -531,12 +523,8 @@ function SiteManagerQuickCreateModal({
   const password = form.watch("password");
 
   const mutation = useMutation({
-    mutationFn: async (values: SiteManagerValues) => {
-      const roleId = roleQuery.data;
-      if (!roleId) {
-        throw new Error("Site Manager role is not available.");
-      }
-      return usersService.create({
+    mutationFn: async (values: SiteManagerValues) =>
+      usersService.create({
         username: values.email.trim(),
         email: values.email.trim(),
         password: values.password,
@@ -546,9 +534,9 @@ function SiteManagerQuickCreateModal({
         dateOfBirth: null,
         isActive: true,
         userTypeId: USER_TYPE_ID.user,
-        roleIds: [roleId],
-      });
-    },
+        roleIds: null,
+        roleCodes: ["SM"],
+      }),
     onSuccess: (res) => {
       const created = res.data;
       if (!created) return;
@@ -566,9 +554,8 @@ function SiteManagerQuickCreateModal({
       onSubmit={async (values) => {
         await mutation.mutateAsync(values);
       }}
-      pending={mutation.isPending || roleQuery.isLoading}
+      pending={mutation.isPending}
       submitLabel="Create site manager"
-      submitDisabled={!roleQuery.data}
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <TextField<SiteManagerValues> name="firstName" label="First name" required autoFocus maxLength={50} />
@@ -592,26 +579,6 @@ function SiteManagerQuickCreateModal({
   );
 }
 
-async function getProjectAssignableRoles(): Promise<
-  { id: string; code: ProjectAssigneeRoleCode; name: string }[]
-> {
-  const roles = (await lookupsService.roles()).data ?? [];
-  const wanted: ProjectAssigneeRoleCode[] = ["CM", "PM", "SM"];
-  return wanted
-    .map((code) => {
-      const role = roles.find(
-        (row) => row.code?.toUpperCase() === code && row.isActive !== false,
-      );
-      if (!role) return null;
-      return {
-        id: String(role.id),
-        code,
-        name: PROJECT_ASSIGNEE_ROLE_LABEL[code],
-      };
-    })
-    .filter((row): row is { id: string; code: ProjectAssigneeRoleCode; name: string } => row != null);
-}
-
 function ProjectAssigneeQuickCreateModal({
   onClose,
   onCreated,
@@ -619,11 +586,6 @@ function ProjectAssigneeQuickCreateModal({
   onClose: () => void;
   onCreated: (option: SearchableSelectOption) => void;
 }) {
-  const rolesQuery = useQuery({
-    queryKey: ["roles", "project-assignees"],
-    queryFn: getProjectAssignableRoles,
-  });
-
   const form = useForm<ProjectAssigneeValues>({
     resolver: zodResolver(projectAssigneeSchema),
     defaultValues: {
@@ -639,12 +601,8 @@ function ProjectAssigneeQuickCreateModal({
   const roleCode = form.watch("roleCode");
 
   const mutation = useMutation({
-    mutationFn: async (values: ProjectAssigneeValues) => {
-      const role = (rolesQuery.data ?? []).find((row) => row.code === values.roleCode);
-      if (!role) {
-        throw new Error(`${PROJECT_ASSIGNEE_ROLE_LABEL[values.roleCode]} role is not available.`);
-      }
-      return usersService.create({
+    mutationFn: async (values: ProjectAssigneeValues) =>
+      usersService.create({
         username: values.email.trim(),
         email: values.email.trim(),
         password: values.password,
@@ -654,9 +612,9 @@ function ProjectAssigneeQuickCreateModal({
         dateOfBirth: null,
         isActive: true,
         userTypeId: USER_TYPE_ID.user,
-        roleIds: [role.id],
-      });
-    },
+        roleIds: null,
+        roleCodes: [values.roleCode],
+      }),
     onSuccess: (res, values) => {
       const created = res.data;
       if (!created) return;
@@ -678,9 +636,8 @@ function ProjectAssigneeQuickCreateModal({
       onSubmit={async (values) => {
         await mutation.mutateAsync(values);
       }}
-      pending={mutation.isPending || rolesQuery.isLoading}
+      pending={mutation.isPending}
       submitLabel="Create staff"
-      submitDisabled={!rolesQuery.data?.length}
     >
       <div className="space-y-3">
         <div>
@@ -689,13 +646,12 @@ function ProjectAssigneeQuickCreateModal({
           </p>
           <div className="flex flex-wrap gap-2">
             {(["CM", "PM", "SM"] as const).map((code) => {
-              const available = rolesQuery.data?.some((row) => row.code === code) ?? false;
               const selected = roleCode === code;
               return (
                 <button
                   key={code}
                   type="button"
-                  disabled={!available || mutation.isPending}
+                  disabled={mutation.isPending}
                   onClick={() =>
                     form.setValue("roleCode", code, { shouldDirty: true, shouldValidate: true })
                   }
@@ -704,7 +660,6 @@ function ProjectAssigneeQuickCreateModal({
                     selected
                       ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
                       : "hover:bg-accent/10",
-                    !available && "cursor-not-allowed opacity-50",
                   )}
                 >
                   <RoleCodeBadge code={code} />

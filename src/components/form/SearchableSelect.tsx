@@ -16,6 +16,8 @@ export interface SearchableSelectOption {
   description?: string;
   /** Optional lookup code (e.g. status HOLD). */
   code?: string;
+  /** When set, options render under this section heading in the list. */
+  group?: string;
 }
 
 export interface SearchableSelectProps {
@@ -93,10 +95,12 @@ export function SearchableSelect({
     staleTime: 30_000,
   });
 
-  // Warm the first page so the trigger can resolve labels without opening.
+  // Only fetch while closed when we need a label and the parent did not provide one.
+  const needsLabelResolve = Boolean(value) && !selectedLabel?.trim();
   const initialQuery = useQuery({
     queryKey: [...queryKey, ""],
     queryFn: () => fetchOptions(""),
+    enabled: needsLabelResolve,
     staleTime: 60_000,
   });
 
@@ -155,6 +159,36 @@ export function SearchableSelect({
     (!rawValue && emptyOption?.label) ||
     "";
 
+  const groupedOptions = useMemo(() => {
+    const hasGroups = options.some((option) => option.group?.trim());
+    if (!hasGroups) {
+      return [{ group: null as string | null, options }];
+    }
+    const order: string[] = [];
+    const map = new Map<string, SearchableSelectOption[]>();
+    const ungrouped: SearchableSelectOption[] = [];
+    for (const option of options) {
+      const group = option.group?.trim() || "";
+      if (!group) {
+        ungrouped.push(option);
+        continue;
+      }
+      if (!map.has(group)) {
+        order.push(group);
+        map.set(group, []);
+      }
+      map.get(group)!.push(option);
+    }
+    const sections = order.map((group) => ({
+      group,
+      options: map.get(group) ?? [],
+    }));
+    if (ungrouped.length > 0) {
+      sections.push({ group: null, options: ungrouped });
+    }
+    return sections;
+  }, [options]);
+
   return (
     <div ref={rootRef} className={className}>
       <Popover
@@ -208,44 +242,64 @@ export function SearchableSelect({
               <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
             ) : null}
           </div>
-          <ul className="max-h-64 overflow-y-auto py-1">
+          <ul className="max-h-64 list-none overflow-y-auto p-0">
             {options.length === 0 ? (
               <li className="px-3 py-2 text-sm text-muted-foreground">
                 {optionsQuery.isLoading || initialQuery.isLoading ? "Loading…" : "No results found"}
               </li>
             ) : (
-              options.map((option) => {
-                const active = option.value === rawValue;
-                const isClearOption =
-                  option.value === "" && (emptyOption?.value === "" || clearable);
-                return (
-                  <li key={option.value || "__empty__"}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onValueChange(option.value);
-                        onSelect?.(option);
-                        setOpen(false);
-                      }}
+              groupedOptions.map((section, sectionIndex) => (
+                <li key={section.group ?? "__ungrouped__"} className="list-none">
+                  {section.group ? (
+                    <div
                       className={cn(
-                        "flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-accent/10",
-                        active && "bg-accent/10 font-medium",
-                        isClearOption && !active && "text-muted-foreground",
+                        "sticky top-0 z-[1] bg-popover px-3",
+                        sectionIndex === 0 ? "pt-0 pb-1" : "pt-1.5 pb-1",
                       )}
                     >
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate">{option.label}</span>
-                        {option.description ? (
-                          <span className="mt-0.5 block truncate text-xs leading-snug text-muted-foreground">
-                            {option.description}
-                          </span>
-                        ) : null}
+                      <span className="inline-flex items-center rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-secondary-foreground">
+                        {section.group}
                       </span>
-                      {active ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" /> : null}
-                    </button>
-                  </li>
-                );
-              })
+                    </div>
+                  ) : null}
+                  <ul className="m-0 list-none p-0">
+                    {section.options.map((option) => {
+                      const active = option.value === rawValue;
+                      const isClearOption =
+                        option.value === "" && (emptyOption?.value === "" || clearable);
+                      return (
+                        <li key={option.value || "__empty__"}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onValueChange(option.value);
+                              onSelect?.(option);
+                              setOpen(false);
+                            }}
+                            className={cn(
+                              "flex w-full items-start gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-accent/10",
+                              active && "bg-accent/10 font-medium",
+                              isClearOption && !active && "text-muted-foreground",
+                            )}
+                          >
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate">{option.label}</span>
+                              {option.description ? (
+                                <span className="mt-0.5 block truncate text-xs leading-snug text-muted-foreground">
+                                  {option.description}
+                                </span>
+                              ) : null}
+                            </span>
+                            {active ? (
+                              <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                            ) : null}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              ))
             )}
           </ul>
           {onAddNew ? (

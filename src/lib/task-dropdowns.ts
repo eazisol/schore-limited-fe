@@ -9,7 +9,6 @@ import { usersService } from "@/lib/api/services/users";
 import { tasksService } from "@/lib/api/services/tasks";
 import { DROPDOWN_FETCH_SIZE } from "@/lib/dropdown-fetch";
 import { USER_TYPE_ID } from "@/lib/user-module";
-import { getSiteManagerRoleId } from "@/lib/site-manager-role";
 
 function toOptions(
   rows: { id: number; name?: string | null; isActive?: boolean }[],
@@ -62,12 +61,11 @@ export async function fetchTaskItemStatusOptions(search: string): Promise<Search
 }
 
 export async function fetchSiteManagerOptions(search: string): Promise<SearchableSelectOption[]> {
-  const roleId = await getSiteManagerRoleId();
   const res = await usersService.dropdown({
     search,
     userTypeId: USER_TYPE_ID.user,
+    roleCodes: "SM",
     take: DROPDOWN_FETCH_SIZE,
-    ...(roleId != null ? { roleId } : {}),
   });
   return (res.data ?? []).map((u) => ({
     value: String(u.id),
@@ -117,6 +115,56 @@ export async function fetchProductOptions(search: string): Promise<SearchableSel
   return toOptions(
     (res.data.items ?? []).map((p) => ({ id: p.id, name: p.name, isActive: p.isActive })),
   );
+}
+
+const PACKAGE_VALUE_PREFIX = "pkg:";
+const ADDON_VALUE_PREFIX = "addon:";
+
+/** Combined package + add-on list for a single job-item picker. */
+export async function fetchPackageOrAddonOptions(
+  search: string,
+): Promise<SearchableSelectOption[]> {
+  const [packages, products] = await Promise.all([
+    fetchPackageOptions(search),
+    fetchProductOptions(search),
+  ]);
+  return [
+    ...packages.map((row) => ({
+      value: `${PACKAGE_VALUE_PREFIX}${row.value}`,
+      label: row.label,
+      group: "Packages",
+    })),
+    ...products.map((row) => ({
+      value: `${ADDON_VALUE_PREFIX}${row.value}`,
+      label: row.label,
+      group: "Add-ons",
+    })),
+  ];
+}
+
+export function parsePackageOrAddonValue(
+  value: string,
+): { kind: "tradeGroup" | "product"; id: string } | null {
+  const raw = value.trim();
+  if (raw.startsWith(PACKAGE_VALUE_PREFIX)) {
+    const id = raw.slice(PACKAGE_VALUE_PREFIX.length);
+    return id ? { kind: "tradeGroup", id } : null;
+  }
+  if (raw.startsWith(ADDON_VALUE_PREFIX)) {
+    const id = raw.slice(ADDON_VALUE_PREFIX.length);
+    return id ? { kind: "product", id } : null;
+  }
+  return null;
+}
+
+export function packageOrAddonSelectionValue(
+  kind: "tradeGroup" | "product",
+  id: string,
+): string {
+  if (!id) return "";
+  return kind === "tradeGroup"
+    ? `${PACKAGE_VALUE_PREFIX}${id}`
+    : `${ADDON_VALUE_PREFIX}${id}`;
 }
 
 export async function fetchTimeSlotOptions(search: string): Promise<SearchableSelectOption[]> {

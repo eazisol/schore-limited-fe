@@ -263,7 +263,7 @@ function TaskDetail() {
             <FormPageCard
               title={`Edit job ${task.taskNumber || ""}`.trim()}
               onBack={{ label: backLabel, onClick: goBack }}
-              maxWidth="w-full max-w-none"
+              maxWidth="w-full max-w-4xl"
               footer={
                 <div className="flex w-full flex-wrap items-center justify-end gap-2">
                   <Button

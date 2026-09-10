@@ -217,14 +217,13 @@ export function JobDayItemsEditor({
                 key={group.operativeId}
                 className="overflow-hidden rounded-lg border border-border/70"
               >
-                <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-secondary/50 px-3 py-2">
+                <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-secondary/50 px-3 py-1.5">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{group.operativeName}</p>
-                    <p className="text-[11px] text-muted-foreground">Operative</p>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-sm font-semibold tabular-nums">{fmtGBP(groupTotal)}</p>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-[11px] leading-tight text-muted-foreground">
                       {group.items.length} item{group.items.length === 1 ? "" : "s"}
                     </p>
                   </div>
@@ -233,14 +232,14 @@ export function JobDayItemsEditor({
                   <table className="w-full min-w-[34rem] text-sm">
                     <thead>
                       <tr className="border-b bg-muted/20 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        <th className="px-3 py-1.5">Package</th>
-                        <th className="px-3 py-1.5">Time</th>
-                        <th className="px-3 py-1.5 text-center">Qty</th>
-                        <th className="px-3 py-1.5 text-right">Rate</th>
-                        <th className="px-3 py-1.5 text-right">Amount</th>
-                        <th className="px-3 py-1.5">Status</th>
-                        <th className="px-3 py-1.5">Notes</th>
-                        <th className="px-3 py-1.5 text-right">Actions</th>
+                        <th className="px-3 py-1">Package</th>
+                        <th className="px-3 py-1">Time</th>
+                        <th className="px-3 py-1 text-center">Qty</th>
+                        <th className="px-3 py-1 text-right">Rate</th>
+                        <th className="px-3 py-1 text-right">Amount</th>
+                        <th className="px-3 py-1">Status</th>
+                        <th className="px-3 py-1">Notes</th>
+                        <th className="px-3 py-1 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -254,33 +253,33 @@ export function JobDayItemsEditor({
                             key={line.itemId}
                             className="border-b border-border/40 last:border-b-0"
                           >
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-1">
                               <span className="rounded-md bg-secondary px-1.5 py-0.5 font-mono text-xs font-semibold">
                                 {line.productName}
                               </span>
                             </td>
-                            <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
+                            <td className="whitespace-nowrap px-3 py-1 text-muted-foreground">
                               {line.timeSlotName || "—"}
                             </td>
-                            <td className="px-3 py-2 text-center tabular-nums font-medium">
+                            <td className="px-3 py-1 text-center font-medium tabular-nums">
                               <AppTooltip content="Qty" asChild>
                                 <span className="cursor-default">{line.quantity}</span>
                               </AppTooltip>
                             </td>
-                            <td className="px-3 py-2 text-right tabular-nums">
+                            <td className="px-3 py-1 text-right tabular-nums">
                               {fmtGBP(line.rate)}
                             </td>
-                            <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                            <td className="px-3 py-1 text-right font-semibold tabular-nums">
                               {fmtGBP(line.amount)}
                             </td>
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-1">
                               {line.isTicked ? (
                                 <StatusBadge status="Completed" className="text-[10px]" />
                               ) : (
                                 <span className="text-xs text-muted-foreground">Open</span>
                               )}
                             </td>
-                            <td className="max-w-[8rem] px-3 py-2">
+                            <td className="max-w-[8rem] px-3 py-1">
                               {line.notes ? (
                                 <AppTooltip content={line.notes} asChild align="start">
                                   <span className="block cursor-default truncate text-xs text-muted-foreground">
@@ -291,15 +290,15 @@ export function JobDayItemsEditor({
                                 <span className="text-xs text-muted-foreground">—</span>
                               )}
                             </td>
-                            <td className="px-3 py-2">
-                              <div className="flex items-center justify-end gap-1">
+                            <td className="px-3 py-1">
+                              <div className="flex items-center justify-end gap-0.5">
                                 {deleting ? (
                                   <>
                                     <Button
                                       type="button"
                                       size="sm"
                                       variant="destructive"
-                                      className="h-7 px-2 text-xs"
+                                      className="h-6 px-2 text-xs"
                                       disabled={busy || locked}
                                       onClick={() => removeMutation.mutate(line.itemId)}
                                     >
@@ -313,7 +312,7 @@ export function JobDayItemsEditor({
                                       type="button"
                                       size="sm"
                                       variant="outline"
-                                      className="h-7 px-2 text-xs"
+                                      className="h-6 px-2 text-xs"
                                       disabled={busy}
                                       onClick={() => setConfirmDeleteId(null)}
                                     >
@@ -327,7 +326,7 @@ export function JobDayItemsEditor({
                                         type="button"
                                         size="icon"
                                         variant="ghost"
-                                        className="h-7 w-7"
+                                        className="h-6 w-6"
                                         disabled={locked}
                                         onClick={() => setFormMode({ kind: "edit", line })}
                                       >
@@ -339,7 +338,7 @@ export function JobDayItemsEditor({
                                         type="button"
                                         size="icon"
                                         variant="ghost"
-                                        className="h-7 w-7 text-destructive hover:text-destructive"
+                                        className="h-6 w-6 text-destructive hover:text-destructive"
                                         disabled={locked}
                                         onClick={() => setConfirmDeleteId(line.itemId)}
                                       >
@@ -545,7 +544,7 @@ function ItemFormCard({
   }
 
   return (
-    <div className="rounded-lg border border-accent/25 bg-accent/5 p-3">
+    <div className="rounded-lg border border-accent/25 bg-accent/5 p-2">
       {certWarnings ? (
         <Modal
           open
@@ -587,8 +586,8 @@ function ItemFormCard({
           </div>
         </Modal>
       ) : null}
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <p className="text-sm font-semibold">{isEdit ? "Edit item" : "Add item"}</p>
           {!isEdit ? (
             <div className="inline-flex rounded-md border border-border bg-card p-0.5">
@@ -633,22 +632,22 @@ function ItemFormCard({
         </div>
         <button
           type="button"
-          className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
           onClick={onCancel}
           aria-label="Close form"
         >
-          <X className="h-4 w-4" />
+          <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      {/* One row: package 3 · operator 3 · qty 2 · time 2 · rate 2 */}
-      <div className="grid grid-cols-12 gap-2">
-        <div className="col-span-3 min-w-0">
-          <label className="mb-1 block text-[11px] text-muted-foreground">
+      {/* package · operative · qty · time · rate · action */}
+      <div className="flex flex-wrap items-end gap-1.5">
+        <div className="min-w-0 flex-1 basis-[7.5rem]">
+          <label className="mb-0.5 block text-[11px] text-muted-foreground">
             {isEdit ? "Package / product" : catalogKind === "package" ? "Package" : "Add-on"}
           </label>
           {isEdit ? (
-            <p className="flex h-9 items-center truncate rounded-md border border-border bg-card px-3 text-sm font-medium">
+            <p className="flex h-8 items-center truncate rounded-md border border-border bg-card px-2.5 text-sm font-medium">
               {editLine?.productName}
             </p>
           ) : catalogKind === "package" ? (
@@ -665,7 +664,7 @@ function ItemFormCard({
               fetchOptions={fetchPackageOptions}
               selectedLabel={catalogLabel || null}
               disabled={disabled || saveMutation.isPending}
-              triggerClassName="h-9 text-sm"
+              triggerClassName="h-8 text-sm"
             />
           ) : (
             <SearchableSelect
@@ -681,13 +680,13 @@ function ItemFormCard({
               fetchOptions={fetchProductOptions}
               selectedLabel={catalogLabel || null}
               disabled={disabled || saveMutation.isPending}
-              triggerClassName="h-9 text-sm"
+              triggerClassName="h-8 text-sm"
             />
           )}
         </div>
 
-        <div className="col-span-3 min-w-0">
-          <label className="mb-1 block text-[11px] text-muted-foreground">Operative</label>
+        <div className="min-w-0 flex-1 basis-[7.5rem]">
+          <label className="mb-0.5 block text-[11px] text-muted-foreground">Operative</label>
           <SearchableSelect
             value={operativeId}
             onValueChange={setOperativeId}
@@ -698,25 +697,25 @@ function ItemFormCard({
             fetchOptions={fetchOperativeOptions}
             selectedLabel={operativeLabel || null}
             disabled={disabled || saveMutation.isPending}
-            triggerClassName="h-9 text-sm"
+            triggerClassName="h-8 text-sm"
           />
         </div>
 
-        <div className="col-span-2 min-w-0">
-          <label className="mb-1 block text-[11px] text-muted-foreground">Qty</label>
+        <div className="w-[4rem] shrink-0">
+          <label className="mb-0.5 block text-[11px] text-muted-foreground">Qty</label>
           <Input
             type="number"
             min={0.01}
             step="0.01"
             value={qty}
             onChange={(e) => setQty(e.target.value)}
-            className="h-9"
+            className="h-8 px-2"
             disabled={disabled || saveMutation.isPending}
           />
         </div>
 
-        <div className="col-span-2 min-w-0">
-          <label className="mb-1 block text-[11px] text-muted-foreground">Time</label>
+        <div className="w-[8rem] shrink-0">
+          <label className="mb-0.5 block text-[11px] text-muted-foreground">Time</label>
           <SearchableSelect
             value={timeSlotId}
             onValueChange={setTimeSlotId}
@@ -727,48 +726,36 @@ function ItemFormCard({
             fetchOptions={fetchTimeSlotOptions}
             selectedLabel={timeSlotLabel || null}
             disabled={disabled || saveMutation.isPending}
-            triggerClassName="h-9 text-sm"
+            triggerClassName="h-8 px-2 text-sm"
           />
         </div>
 
         {canSeeRates ? (
-        <div className="col-span-2 min-w-0">
-          <label className="mb-1 block text-[11px] text-muted-foreground">Rate (£)</label>
-          <Input
-            type="number"
-            min={0}
-            step="0.01"
-            value={rate}
-            onChange={(e) => {
-              rateTouchedRef.current = true;
-              setRate(e.target.value);
-            }}
-            placeholder={!isEdit && resolvedRateQuery.isFetching ? "…" : "Auto"}
-            className="h-9"
-            disabled={disabled || saveMutation.isPending}
-          />
-        </div>
+          <div className="w-[5.25rem] shrink-0">
+            <label className="mb-0.5 block text-[11px] text-muted-foreground">Rate (£)</label>
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              value={rate}
+              onChange={(e) => {
+                rateTouchedRef.current = true;
+                setRate(e.target.value);
+              }}
+              placeholder={!isEdit && resolvedRateQuery.isFetching ? "…" : "Auto"}
+              className="h-8 px-2"
+              disabled={disabled || saveMutation.isPending}
+            />
+          </div>
         ) : null}
-      </div>
 
-      <div className="mt-3 flex justify-end gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8"
-          onClick={onCancel}
-          disabled={saveMutation.isPending}
-        >
-          Cancel
-        </Button>
         <Button
           type="button"
           size="sm"
-          className="h-8"
+          className="h-8 shrink-0 px-3"
           onClick={handleSave}
           disabled={disabled || saveMutation.isPending || certCheckPending}
-          >
+        >
           {saveMutation.isPending || certCheckPending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : isEdit ? (

@@ -177,7 +177,7 @@ function NewTask() {
             ...backRoute,
             label: backLabel,
           }}
-          maxWidth="w-full max-w-none"
+          maxWidth="w-full max-w-4xl"
           footer={
             <div className="flex w-full flex-wrap items-center justify-end gap-2">
               <Button
