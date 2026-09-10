@@ -26,6 +26,8 @@ import {
 import { uploadPendingCertificationFiles } from "@/lib/upload-certification-files";
 import { useRateCapReasonGate } from "@/components/rates/useRateCapReasonGate";
 
+import { cn } from "@/lib/utils";
+
 export function UserCreatePage() {
   const mode = useUserModuleMode();
   const cfg = userModuleConfig(mode);
@@ -34,6 +36,7 @@ export function UserCreatePage() {
   const schema = createUserFormSchema(mode);
   const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
   const isOperative = mode === "operative";
+  const isUser = mode === "user";
   const [operativeTab, setOperativeTab] = useState<OperativeFormTab>("details");
 
   const form = useForm<UserFormValues>({
@@ -71,6 +74,7 @@ export function UserCreatePage() {
     () => OPERATIVE_FORM_TABS.findIndex((item) => item.id === operativeTab),
     [operativeTab],
   );
+  const canGoPrevious = isOperative && operativeTabIndex > 0;
   const canGoNext = isOperative && operativeTabIndex >= 0 && operativeTabIndex < OPERATIVE_FORM_TABS.length - 1;
 
   return (
@@ -92,6 +96,17 @@ export function UserCreatePage() {
               >
                 Cancel
               </Button>
+              {canGoPrevious ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={createMutation.isPending}
+                  onClick={() => setOperativeTab(OPERATIVE_FORM_TABS[operativeTabIndex - 1]!.id)}
+                >
+                  Previous
+                </Button>
+              ) : null}
               {canGoNext ? (
                 <Button
                   type="button"

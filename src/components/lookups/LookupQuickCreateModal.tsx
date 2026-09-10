@@ -53,11 +53,18 @@ import { fetchSiteOptions } from "@/lib/site-dropdowns";
 import { sitesService } from "@/lib/api/services/sites";
 import { projectsService } from "@/lib/api/services/projects";
 import { asIdString, isNonEmptyId } from "@/lib/ids";
+import {
+  PROJECT_ASSIGNEE_ROLE_LABEL,
+  type ProjectAssigneeRoleCode,
+} from "@/lib/project-assignee";
+import { lookupsService } from "@/lib/api/services/lookups";
+import { RoleCodeBadge } from "@/components/RoleCodeBadge";
+import { cn } from "@/lib/utils";
 
 const JOB_TYPE_NAME_MAX = 50;
-const JOB_TYPE_CODE_MAX = 20;
+const JOB_TYPE_CODE_MAX = 10;
 const STATUS_NAME_MAX = 50;
-const STATUS_CODE_MAX = 20;
+const STATUS_CODE_MAX = 10;
 const CONTACT_FIELD_MAX = 30;
 
 const propertySchema = z
@@ -88,12 +95,12 @@ const jobTypeSchema = z.object({
 
 const namedLookupSchema = z.object({
   name: nameSchema("Name"),
-  code: codeSchema("Code"),
+  code: codeSchema("Code", CODE_MAX_LENGTH),
 });
 
 const cisQuickSchema = z.object({
   name: nameSchema("Name"),
-  code: codeSchema("Code"),
+  code: codeSchema("Code", CODE_MAX_LENGTH),
   rate: rateSchema(),
 });
 
@@ -109,8 +116,16 @@ const siteManagerSchema = z.object({
   password: newPasswordSchema,
 });
 
+const projectAssigneeSchema = z.object({
+  roleCode: z.enum(["CM", "PM", "SM"], { required_error: "Role is required" }),
+  firstName: userNameSchema("First name"),
+  lastName: userNameSchema("Last name"),
+  email: emailSchema(),
+  password: newPasswordSchema,
+});
+
 const contactUserSchema = z.object({
-  clientCode: z.string().trim().max(100, "Code must be 100 characters or fewer"),
+  clientCode: z.string().trim().max(10, "Code must be 10 characters or fewer"),
   firstName: userNameSchema("First name"),
   lastName: userNameSchema("Last name"),
   email: emailSchema(),
@@ -151,13 +166,13 @@ const projectQuickSchema = z.object({
 
 const roleQuickSchema = z.object({
   name: nameSchema("Name", 50),
-  code: codeSchema("Code", 50),
+  code: codeSchema("Code", CODE_MAX_LENGTH),
   description: descriptionSchema(),
 });
 
 const certificationLevelQuickSchema = z.object({
   name: nameSchema("Name", 100),
-  code: codeSchema("Code", 50),
+  code: codeSchema("Code", CODE_MAX_LENGTH),
 });
 
 type PropertyValues = z.infer<typeof propertySchema>;
@@ -166,6 +181,7 @@ type NamedLookupValues = z.infer<typeof namedLookupSchema>;
 type CisQuickValues = z.infer<typeof cisQuickSchema>;
 type StatusValues = z.infer<typeof statusSchema>;
 type SiteManagerValues = z.infer<typeof siteManagerSchema>;
+type ProjectAssigneeValues = z.infer<typeof projectAssigneeSchema>;
 type ContactUserValues = z.infer<typeof contactUserSchema>;
 type ContractorQuickValues = z.infer<typeof contractorQuickSchema>;
 type SiteQuickValues = z.infer<typeof siteQuickSchema>;
@@ -199,6 +215,8 @@ export function LookupQuickCreateModal({
       return <StatusQuickCreateModal onClose={onClose} onCreated={onCreated} />;
     case "siteManager":
       return <SiteManagerQuickCreateModal onClose={onClose} onCreated={onCreated} />;
+    case "projectAssignee":
+      return <ProjectAssigneeQuickCreateModal onClose={onClose} onCreated={onCreated} />;
     case "productType":
       return <ProductTypeQuickCreateModal onClose={onClose} onCreated={onCreated} />;
     case "category":
@@ -536,7 +554,7 @@ function SiteManagerQuickCreateModal({
       if (!created) return;
       const label = `${created.firstName} ${created.lastName}`.trim() || created.email;
       toast.success(res.message || "Site manager created");
-      onCreated({ value: String(created.id), label });
+      onCreated({ value: String(created.id), label, code: "SM" });
     },
   });
 
@@ -570,6 +588,157 @@ function SiteManagerQuickCreateModal({
         />
       </div>
       <PasswordRequirements password={password} />
+    </QuickCreateShell>
+  );
+}
+
+async function getProjectAssignableRoles(): Promise<
+  { id: string; code: ProjectAssigneeRoleCode; name: string }[]
+> {
+  const roles = (await lookupsService.roles()).data ?? [];
+  const wanted: ProjectAssigneeRoleCode[] = ["CM", "PM", "SM"];
+  return wanted
+    .map((code) => {
+      const role = roles.find(
+        (row) => row.code?.toUpperCase() === code && row.isActive !== false,
+      );
+      if (!role) return null;
+      return {
+        id: String(role.id),
+        code,
+        name: PROJECT_ASSIGNEE_ROLE_LABEL[code],
+      };
+    })
+    .filter((row): row is { id: string; code: ProjectAssigneeRoleCode; name: string } => row != null);
+}
+
+function ProjectAssigneeQuickCreateModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (option: SearchableSelectOption) => void;
+}) {
+  const rolesQuery = useQuery({
+    queryKey: ["roles", "project-assignees"],
+    queryFn: getProjectAssignableRoles,
+  });
+
+  const form = useForm<ProjectAssigneeValues>({
+    resolver: zodResolver(projectAssigneeSchema),
+    defaultValues: {
+      roleCode: "SM",
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+    },
+  });
+
+  const password = form.watch("password");
+  const roleCode = form.watch("roleCode");
+
+  const mutation = useMutation({
+    mutationFn: async (values: ProjectAssigneeValues) => {
+      const role = (rolesQuery.data ?? []).find((row) => row.code === values.roleCode);
+      if (!role) {
+        throw new Error(`${PROJECT_ASSIGNEE_ROLE_LABEL[values.roleCode]} role is not available.`);
+      }
+      return usersService.create({
+        username: values.email.trim(),
+        email: values.email.trim(),
+        password: values.password,
+        firstName: values.firstName.trim(),
+        lastName: values.lastName.trim(),
+        phone: null,
+        dateOfBirth: null,
+        isActive: true,
+        userTypeId: USER_TYPE_ID.user,
+        roleIds: [role.id],
+      });
+    },
+    onSuccess: (res, values) => {
+      const created = res.data;
+      if (!created) return;
+      const label = `${created.firstName} ${created.lastName}`.trim() || created.email;
+      toast.success(res.message || "Staff member created");
+      onCreated({
+        value: String(created.id),
+        label,
+        code: values.roleCode,
+      });
+    },
+  });
+
+  return (
+    <QuickCreateShell
+      title="Quick add staff"
+      form={form}
+      onClose={onClose}
+      onSubmit={async (values) => {
+        await mutation.mutateAsync(values);
+      }}
+      pending={mutation.isPending || rolesQuery.isLoading}
+      submitLabel="Create staff"
+      submitDisabled={!rolesQuery.data?.length}
+    >
+      <div className="space-y-3">
+        <div>
+          <p className="mb-1.5 text-sm font-medium">
+            Role <span className="text-destructive">*</span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(["CM", "PM", "SM"] as const).map((code) => {
+              const available = rolesQuery.data?.some((row) => row.code === code) ?? false;
+              const selected = roleCode === code;
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  disabled={!available || mutation.isPending}
+                  onClick={() =>
+                    form.setValue("roleCode", code, { shouldDirty: true, shouldValidate: true })
+                  }
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-sm transition-colors",
+                    selected
+                      ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
+                      : "hover:bg-accent/10",
+                    !available && "cursor-not-allowed opacity-50",
+                  )}
+                >
+                  <RoleCodeBadge code={code} />
+                  <span>{PROJECT_ASSIGNEE_ROLE_LABEL[code]}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <TextField<ProjectAssigneeValues>
+            name="firstName"
+            label="First name"
+            required
+            autoFocus
+            maxLength={50}
+          />
+          <TextField<ProjectAssigneeValues> name="lastName" label="Last name" required maxLength={50} />
+          <TextField<ProjectAssigneeValues>
+            name="email"
+            label="Email"
+            required
+            type="email"
+            placeholder="name@schore.co.uk"
+          />
+          <PasswordField<ProjectAssigneeValues>
+            name="password"
+            label="Password"
+            required
+            autoComplete="new-password"
+          />
+        </div>
+        <PasswordRequirements password={password} />
+      </div>
     </QuickCreateShell>
   );
 }
@@ -707,7 +876,7 @@ function CustomerQuickCreateModal({
           <TextField<ContactUserValues> name="lastName" label="Last name" required maxLength={50} />
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <TextField<ContactUserValues> name="clientCode" label="Code" maxLength={100} />
+          <TextField<ContactUserValues> name="clientCode" label="Code" maxLength={10} />
           <TextField<ContactUserValues>
             name="email"
             label="Email"
@@ -1114,7 +1283,7 @@ function CisQuickCreateModal({
           name="code"
           label="Code"
           required
-          maxLength={20}
+          maxLength={CODE_MAX_LENGTH}
           transformValue={normalizeCodeInput}
           inputClassName="uppercase"
         />
@@ -1183,7 +1352,7 @@ function RoleQuickCreateModal({
             name="code"
             label="Code"
             required
-            maxLength={50}
+            maxLength={CODE_MAX_LENGTH}
             transformValue={normalizeCodeInput}
             inputClassName="uppercase"
           />
@@ -1248,7 +1417,7 @@ function CertificationTypeQuickCreateModal({
           name="code"
           label="Code"
           required
-          maxLength={50}
+          maxLength={CODE_MAX_LENGTH}
           transformValue={normalizeCodeInput}
           inputClassName="uppercase"
         />
@@ -1337,7 +1506,7 @@ function CertificationLevelQuickCreateModal({
             name="code"
             label="Code"
             required
-            maxLength={50}
+            maxLength={CODE_MAX_LENGTH}
             transformValue={normalizeCodeInput}
             inputClassName="uppercase"
           />
@@ -1399,7 +1568,7 @@ function NamedLookupQuickCreateModal({
           name="code"
           label="Code"
           required
-          maxLength={20}
+          maxLength={CODE_MAX_LENGTH}
           transformValue={normalizeCodeInput}
           inputClassName="uppercase"
         />

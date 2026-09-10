@@ -49,6 +49,8 @@ export interface DataTableRowAction<T> {
   label: string;
   icon?: ReactNode;
   danger?: boolean;
+  variant?: "icon" | "badge" | "button" | "approve" | "reject";
+  className?: string;
   hidden?: (row: T) => boolean;
   onClick: (row: T) => void;
 }
@@ -88,6 +90,8 @@ export interface DataTableProps<T> {
   loadingText?: string;
   className?: string;
   density?: "compact" | "comfortable";
+  /** Optional custom width for the actions column (defaults to 12.5rem). */
+  actionsColumnWidth?: string;
   /**
    * When true, skips the elevated card chrome so the table can sit inside a parent card.
    */
@@ -98,6 +102,8 @@ export interface DataTableProps<T> {
 export const DEFAULT_COLUMN_WIDTHS: Record<string, string> = {
   name: "16rem",
   code: "10rem",
+  clientCode: "8rem",
+  address: "16rem",
   sku: "10rem",
   status: "7.5rem",
   rate: "5.5rem",
@@ -128,6 +134,7 @@ export const NOWRAP_COLUMN_IDS = new Set([
   "roles",
   "sku",
   "code",
+  "clientCode",
   "salePrice",
   "costPrice",
   "dailyRate",

@@ -15,14 +15,14 @@ export function CisFormFields({
   showHeader?: boolean;
 }) {
   return (
-    <fieldset className="space-y-3" disabled={disabled}>
+    <fieldset className="space-y-2" disabled={disabled}>
       {showHeader ? (
         <div className="flex items-center justify-between gap-4">
           <h3 className="font-display font-semibold">CIS status</h3>
           <SwitchField<CisFormValues> name="isActive" label="Active" />
         </div>
       ) : null}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <TextField<CisFormValues> name="name" label="Name" required maxLength={NAME_MAX_LENGTH} />
         <TextField<CisFormValues>
           name="code"
@@ -42,7 +42,7 @@ export function CisFormFields({
         <TextareaField<CisFormValues>
           name="description"
           label="Description"
-          rows={3}
+          rows={2}
           maxLength={DESCRIPTION_MAX_LENGTH}
           className="sm:col-span-2"
         />

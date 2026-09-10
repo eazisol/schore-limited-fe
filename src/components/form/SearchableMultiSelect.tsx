@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { useDebouncedSearch } from "@/components/data-table";
 import type { SearchableSelectOption } from "./SearchableSelect";
 import { searchableSelectTriggerClassName } from "./SearchableSelect";
+import { RoleCodeBadge } from "@/components/RoleCodeBadge";
+import { parseAssignableStaffLabel } from "@/lib/project-assignee";
 
 export interface SearchableMultiSelectProps {
   value: string[];
@@ -23,6 +25,23 @@ export interface SearchableMultiSelectProps {
   invalid?: boolean;
   onAddNew?: () => void;
   addNewLabel?: string;
+}
+
+function resolveOptionDisplay(
+  optionValue: string,
+  options: SearchableSelectOption[],
+  selectedLabels?: Record<string, string>,
+): { label: string; code?: string } {
+  const fromOptions = options.find((option) => option.value === optionValue);
+  if (fromOptions) {
+    return {
+      label: fromOptions.label,
+      code: fromOptions.code,
+    };
+  }
+  const raw = selectedLabels?.[optionValue] || optionValue;
+  const parsed = parseAssignableStaffLabel(raw);
+  return { label: parsed.label || raw, code: parsed.code };
 }
 
 export function SearchableMultiSelect({
@@ -70,14 +89,6 @@ export function SearchableMultiSelect({
 
   const options = optionsQuery.data ?? initialQuery.data ?? [];
 
-  function resolveLabel(optionValue: string): string {
-    return (
-      options.find((option) => option.value === optionValue)?.label ||
-      selectedLabels?.[optionValue] ||
-      optionValue
-    );
-  }
-
   function toggle(optionValue: string) {
     if (selected.includes(optionValue)) {
       onValueChange(selected.filter((item) => item !== optionValue));
@@ -89,6 +100,11 @@ export function SearchableMultiSelect({
   function remove(optionValue: string) {
     onValueChange(selected.filter((item) => item !== optionValue));
   }
+
+  const triggerLabel =
+    selected.length === 1
+      ? resolveOptionDisplay(selected[0], options, selectedLabels)
+      : null;
 
   return (
     <div className={cn("min-w-0 w-full max-w-full", className)}>
@@ -116,11 +132,16 @@ export function SearchableMultiSelect({
             )}
           >
             <span className="min-w-0 flex-1 truncate text-left">
-              {selected.length === 0
-                ? placeholder
-                : selected.length === 1
-                  ? resolveLabel(selected[0])
-                  : `${selected.length} selected`}
+              {selected.length === 0 ? (
+                placeholder
+              ) : selected.length === 1 ? (
+                <span className="inline-flex max-w-full items-center gap-1.5">
+                  <span className="min-w-0 truncate">{triggerLabel?.label}</span>
+                  <RoleCodeBadge code={triggerLabel?.code} />
+                </span>
+              ) : (
+                `${selected.length} selected`
+              )}
             </span>
             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </button>
@@ -148,6 +169,9 @@ export function SearchableMultiSelect({
             ) : (
               options.map((option) => {
                 const active = selected.includes(option.value);
+                const display = option.code
+                  ? { label: option.label, code: option.code }
+                  : parseAssignableStaffLabel(option.label);
                 return (
                   <li key={option.value || "__empty__"}>
                     <button
@@ -158,7 +182,10 @@ export function SearchableMultiSelect({
                         active && "bg-accent/10 font-medium",
                       )}
                     >
-                      <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                      <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                        <span className="min-w-0 truncate">{display.label || option.label}</span>
+                        <RoleCodeBadge code={option.code ?? display.code} />
+                      </span>
                       {active ? <Check className="h-4 w-4 shrink-0 text-accent" /> : null}
                     </button>
                   </li>
@@ -188,24 +215,28 @@ export function SearchableMultiSelect({
 
       {selected.length > 0 ? (
         <div className="mt-2 flex max-w-full flex-wrap gap-1.5 overflow-hidden">
-          {selected.map((optionValue) => (
-            <span
-              key={optionValue}
-              className="inline-flex max-w-full items-center gap-1 rounded-md border bg-secondary px-2 py-0.5 text-xs"
-            >
-              <span className="min-w-0 truncate">{resolveLabel(optionValue)}</span>
-              {!disabled ? (
-                <button
-                  type="button"
-                  className="shrink-0 rounded p-0.5 hover:bg-background"
-                  aria-label={`Remove ${resolveLabel(optionValue)}`}
-                  onClick={() => remove(optionValue)}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              ) : null}
-            </span>
-          ))}
+          {selected.map((optionValue) => {
+            const display = resolveOptionDisplay(optionValue, options, selectedLabels);
+            return (
+              <span
+                key={optionValue}
+                className="inline-flex max-w-full items-center gap-1 rounded-md border bg-secondary px-2 py-0.5 text-xs"
+              >
+                <span className="min-w-0 truncate">{display.label}</span>
+                <RoleCodeBadge code={display.code} />
+                {!disabled ? (
+                  <button
+                    type="button"
+                    className="shrink-0 rounded p-0.5 hover:bg-background"
+                    aria-label={`Remove ${display.label}`}
+                    onClick={() => remove(optionValue)}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                ) : null}
+              </span>
+            );
+          })}
         </div>
       ) : null}
     </div>

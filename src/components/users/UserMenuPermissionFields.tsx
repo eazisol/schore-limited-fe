@@ -140,27 +140,20 @@ export function UserMenuPermissionFields({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <FormFieldHint
-          description={
-            ceo
-              ? "CEO always has every screen. Menu access cannot be narrowed here."
-              : "Role defaults are pre-checked. Change a box to override this user only."
-          }
-        />
-        {!ceo && overrides.length > 0 ? (
+      {!ceo && overrides.length > 0 ? (
+        <div className="flex items-center justify-end pb-1">
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="h-7 px-2 text-xs"
+            className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground"
             onClick={resetToRole}
             disabled={disabled}
           >
             Reset to role
           </Button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       <div className="overflow-hidden rounded-md border">
         <div className={cn(permissionGridClass, "border-b bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground")}>
           <div className="px-4 py-2">Menu</div>

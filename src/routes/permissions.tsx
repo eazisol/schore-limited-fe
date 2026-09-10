@@ -34,7 +34,6 @@ import {
   type UpsertPermission,
 } from "@/lib/api/services/permissions";
 import { notifyApiError } from "@/lib/api/axios";
-import { SearchableMultiSelect } from "@/components/form";
 import { capabilitiesService, type ApiCapabilityDefinition } from "@/lib/api/services/access";
 import { Can, usePermission } from "@/components/Permission";
 import {
@@ -470,61 +469,68 @@ function PermissionsPage() {
 
         {roleId != null && capabilityDraft.length > 0 ? (
           <aside className="card-elevated w-full shrink-0 space-y-3 p-4 lg:w-80">
-            <div className="flex items-center gap-1.5">
-              <h3 className="font-display text-sm font-semibold">Rates &amp; commercial</h3>
-              <AppTooltip
-                content="Grant independently of menu access. Selected flags apply to every user with this role unless a user has their own override."
-                side="top"
-                align="start"
-                contentClassName="max-w-xs text-xs"
-              >
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label="Grant independently of menu access. Selected flags apply to every user with this role unless a user has their own override."
+            <div className="flex items-center justify-between gap-2 border-b border-border pb-2.5">
+              <div className="flex items-center gap-1.5">
+                <h3 className="font-display text-sm font-semibold">Rates &amp; commercial</h3>
+                <AppTooltip
+                  content="Grant independently of menu access. Selected flags apply to every user with this role unless a user has their own override."
+                  side="top"
+                  align="start"
+                  contentClassName="max-w-xs text-xs"
                 >
-                  <Info className="h-3.5 w-3.5" aria-hidden />
-                </button>
-              </AppTooltip>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label="Grant independently of menu access. Selected flags apply to every user with this role unless a user has their own override."
+                  >
+                    <Info className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                </AppTooltip>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground"
+                disabled={!canModify || saving}
+                onClick={() => {
+                  const allGranted = capabilityDraft.every((item) => item.isGranted);
+                  setCapabilityDraft((prev) =>
+                    prev.map((row) => ({ ...row, isGranted: !allGranted })),
+                  );
+                }}
+              >
+                {capabilityDraft.every((item) => item.isGranted) ? "Deselect all" : "Select all"}
+              </Button>
             </div>
-            <SearchableMultiSelect
-              value={capabilityDraft.filter((item) => item.isGranted).map((item) => item.code)}
-              onValueChange={(codes) => {
-                const granted = new Set(codes.map((code) => code.toUpperCase()));
-                setCapabilityDraft((prev) =>
-                  prev.map((row) => ({
-                    ...row,
-                    isGranted: granted.has(row.code.toUpperCase()),
-                  })),
-                );
-              }}
-              placeholder="Select commercial permissions…"
-              searchPlaceholder="Search permissions…"
-              disabled={!canModify || saving}
-              queryKey={["permissions", "capability-options", roleId]}
-              fetchOptions={async (search) => {
-                const query = search.trim().toLowerCase();
-                return capabilityDraft
-                  .filter((item) => {
-                    if (!query) return true;
-                    return (
-                      item.label.toLowerCase().includes(query) ||
-                      item.description.toLowerCase().includes(query) ||
-                      item.code.toLowerCase().includes(query)
-                    );
-                  })
-                  .map((item) => ({
-                    value: item.code,
-                    label: item.label,
-                    description: item.description,
-                  }));
-              }}
-              selectedLabels={Object.fromEntries(
-                capabilityDraft.map((item) => [item.code, item.label]),
-              )}
-              aria-label="Rates and commercial permissions"
-            />
+            <div className="space-y-0.5">
+              {capabilityDraft.map((item) => (
+                <label
+                  key={item.code}
+                  className={cn(
+                    "flex cursor-pointer select-none items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors",
+                    "hover:bg-accent/50",
+                    !canModify || saving ? "cursor-not-allowed opacity-60" : "",
+                  )}
+                >
+                  <Checkbox
+                    checked={item.isGranted}
+                    disabled={!canModify || saving}
+                    onCheckedChange={(checked) => {
+                      setCapabilityDraft((prev) =>
+                        prev.map((row) =>
+                          row.code === item.code ? { ...row, isGranted: Boolean(checked) } : row,
+                        ),
+                      );
+                    }}
+                  />
+                  <span className="text-sm font-medium leading-none text-foreground">
+                    {item.label}
+                  </span>
+                </label>
+              ))}
+            </div>
           </aside>
         ) : null}
       </div>

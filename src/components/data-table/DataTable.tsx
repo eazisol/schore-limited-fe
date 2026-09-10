@@ -19,7 +19,7 @@ const ALIGN_CLASS: Record<DataTableAlign, string> = {
   right: "text-right",
 };
 
-const ACTIONS_COLUMN_WIDTH = "8rem";
+const ACTIONS_COLUMN_WIDTH = "12.5rem";
 
 function resolveColumnWidth<T>(column: DataTableColumn<T>): string | undefined {
   return column.width ?? DEFAULT_COLUMN_WIDTHS[column.id];
@@ -38,8 +38,9 @@ function widthToRem(width: string | undefined, fallback = 8): number {
 function estimateTableMinWidthRem<T>(
   columns: DataTableColumn<T>[],
   hasActions: boolean,
+  actionsWidth: string = ACTIONS_COLUMN_WIDTH,
 ): number {
-  let total = hasActions ? widthToRem(ACTIONS_COLUMN_WIDTH) : 0;
+  let total = hasActions ? widthToRem(actionsWidth) : 0;
   for (const column of columns) {
     total += widthToRem(resolveColumnWidth(column));
   }
@@ -71,6 +72,7 @@ export function DataTable<T>({
   loadingText = "Loading…",
   className,
   density = "compact",
+  actionsColumnWidth,
   embedded = false,
 }: DataTableProps<T>) {
   const cellPadding = density === "compact" ? "py-1.5" : "py-3";
@@ -81,7 +83,8 @@ export function DataTable<T>({
       : rowActions
         ? () => rowActions
         : null;
-  const tableMinWidthRem = estimateTableMinWidthRem(columns, Boolean(actions));
+  const resolvedActionsWidth = actionsColumnWidth ?? ACTIONS_COLUMN_WIDTH;
+  const tableMinWidthRem = estimateTableMinWidthRem(columns, Boolean(actions), resolvedActionsWidth);
   const statePadding = embedded ? "p-8" : "p-12";
 
   function handleSort(column: DataTableColumn<T>) {
@@ -141,7 +144,7 @@ export function DataTable<T>({
                 const width = resolveColumnWidth(column);
                 return <col key={column.id} style={width ? { width } : undefined} />;
               })}
-              {actions ? <col style={{ width: ACTIONS_COLUMN_WIDTH }} /> : null}
+              {actions ? <col style={{ width: resolvedActionsWidth }} /> : null}
             </colgroup>
             <thead className="bg-muted/50 text-xs text-muted-foreground">
               <tr>
@@ -185,7 +188,7 @@ export function DataTable<T>({
                 {actions && (
                   <th
                     className={cn(
-                      "whitespace-nowrap px-5 text-right font-medium",
+                      "whitespace-nowrap px-4 text-right font-medium",
                       headerPadding,
                     )}
                   >
@@ -202,24 +205,21 @@ export function DataTable<T>({
                     {columns.map((column) => {
                       const align = column.align ?? "left";
                       const isNowrapColumn = NOWRAP_COLUMN_IDS.has(column.id);
-                      const shouldClamp = column.truncate !== false && !isNowrapColumn;
+                      const shouldClamp = column.truncate !== false;
                       const content =
                         column.cell?.(row) ??
                         (column.accessor ? String(column.accessor(row) ?? "—") : "—");
-                      const tooltipText = shouldClamp
-                        ? plainTextLabel(
-                            column.accessor?.(row) ??
-                              (typeof content === "string" || typeof content === "number"
-                                ? content
-                                : undefined),
-                          )
-                        : undefined;
+                      const tooltipText = plainTextLabel(
+                        column.accessor?.(row) ??
+                          (typeof content === "string" || typeof content === "number"
+                            ? content
+                            : undefined),
+                      );
                       return (
                         <td
                           key={column.id}
                           className={cn(
-                            "align-middle",
-                            isNowrapColumn ? "overflow-visible" : "max-w-0 overflow-hidden",
+                            "align-middle max-w-0 overflow-hidden",
                             cellPadding,
                             column.id === columns[0]?.id ? "px-5" : "px-3",
                             ALIGN_CLASS[align],
@@ -233,7 +233,7 @@ export function DataTable<T>({
                               align="start"
                               disabled={!tooltipText}
                             >
-                              <div className="inline-block w-fit max-w-full line-clamp-2 break-words">
+                              <div className="block max-w-full truncate whitespace-nowrap">
                                 {content}
                               </div>
                             </AppTooltip>
@@ -241,8 +241,8 @@ export function DataTable<T>({
                             <div
                               className={cn(
                                 isNowrapColumn
-                                  ? "w-max max-w-full whitespace-nowrap"
-                                  : "min-w-0 overflow-hidden",
+                                  ? "max-w-full truncate whitespace-nowrap"
+                                  : "min-w-0 max-w-full overflow-hidden truncate",
                               )}
                             >
                               {content}
@@ -252,7 +252,7 @@ export function DataTable<T>({
                       );
                     })}
                     {actions && (
-                      <td className={cn("overflow-hidden px-5", cellPadding)}>
+                      <td className={cn("whitespace-nowrap px-4 text-right align-middle", cellPadding)}>
                         <DataTableRowActions row={row} actions={rowActionsForRow} />
                       </td>
                     )}

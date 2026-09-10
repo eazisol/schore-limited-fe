@@ -220,16 +220,16 @@ export function DetailProfileHero({
                 <div
                   key={item.label}
                   className={cn(
-                    "min-w-[6.5rem] rounded-md border border-border/80 bg-card px-2.5 py-1.5 sm:min-w-[7rem]",
-                    item.wide && "w-full sm:w-auto sm:min-w-[14rem]",
+                    "min-w-[6.5rem] max-w-[18rem] overflow-hidden rounded-md border border-border/80 bg-card px-2.5 py-1.5 sm:min-w-[7rem]",
+                    item.wide && "w-full max-w-none sm:w-auto sm:min-w-[14rem]",
                   )}
                 >
-                  <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <dt className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                     {item.label}
                   </dt>
                   <dd
                     className={cn(
-                      "mt-0.5 break-words text-xs font-semibold text-foreground",
+                      "mt-0.5 truncate text-xs font-semibold text-foreground",
                       item.wide && "whitespace-pre-line font-normal leading-relaxed text-muted-foreground",
                     )}
                   >

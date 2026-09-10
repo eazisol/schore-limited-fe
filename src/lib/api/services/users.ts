@@ -277,6 +277,41 @@ export interface UserDropdownOption {
   name: string;
 }
 
+export interface OperativeWorkSite {
+  siteId: string;
+  siteName: string;
+  siteCode?: string | null;
+  projectCount: number;
+  itemCount: number;
+  lastWorkDate?: string | null;
+}
+
+export interface OperativeWorkProject {
+  projectId: string;
+  projectName: string;
+  projectCode?: string | null;
+  siteId: string;
+  siteName: string;
+  propertyCount: number;
+  itemCount: number;
+  lastWorkDate?: string | null;
+}
+
+export interface OperativeEarningsSummary {
+  totalGross: number;
+  totalNet: number;
+  totalCisDeduction: number;
+  statementCount: number;
+  latestWeekEnding?: string | null;
+  completedPriceWork: number;
+}
+
+export interface OperativeWorkSummary {
+  sites: OperativeWorkSite[];
+  projects: OperativeWorkProject[];
+  earnings: OperativeEarningsSummary;
+}
+
 export const usersService = {
   list: (params: UsersListParams) =>
     http.get<ApiEnvelope<PagedResult<ApiUser>>>("Users", {
@@ -291,6 +326,8 @@ export const usersService = {
       },
     }),
   get: (id: string) => http.get<ApiEnvelope<ApiUser>>(`Users/${id}`),
+  getWorkSummary: (id: string) =>
+    http.get<ApiEnvelope<OperativeWorkSummary>>(`Users/${id}/work-summary`),
   /** Lightweight certs for assign-time expiry checks (no Users menu permission). */
   getAssignCertifications: (id: string) =>
     http.get<

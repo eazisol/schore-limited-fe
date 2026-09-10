@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { useFormContext, useWatch, type FieldErrors } from "react-hook-form";
+import { useFormContext, type FieldErrors } from "react-hook-form";
 import {
   TextField,
   PasswordField,
@@ -63,6 +63,26 @@ const OPERATIVE_TAB_FIELDS: Record<OperativeFormTab, (keyof UserFormValues)[]> =
   certificates: ["certifications"],
 };
 
+export type UserFormTab = "details" | "permissions";
+
+export const USER_FORM_TABS: { id: UserFormTab; label: string }[] = [
+  { id: "details", label: "Details" },
+  { id: "permissions", label: "Permissions" },
+];
+
+const USER_TAB_FIELDS: Record<UserFormTab, (keyof UserFormValues)[]> = {
+  details: [
+    "firstName",
+    "lastName",
+    "email",
+    "phone",
+    "password",
+    "dateOfBirth",
+    "roleId",
+  ],
+  permissions: ["menuOverrides", "capabilityOverrides"],
+};
+
 const TAB_PANEL_CLASS =
   "mt-0 space-y-2 pt-3 focus-visible:outline-none data-[state=inactive]:hidden";
 
@@ -103,6 +123,8 @@ export function UserFormFields({
   capabilityResetKey,
   operativeTab,
   onOperativeTabChange,
+  userTab,
+  onUserTabChange,
 }: {
   mode: UserModuleMode;
   variant: "create" | "edit";
@@ -122,6 +144,9 @@ export function UserFormFields({
   /** Controlled tab for operative create/edit footers (Next). */
   operativeTab?: OperativeFormTab;
   onOperativeTabChange?: (tab: OperativeFormTab) => void;
+  /** Controlled tab for user create/edit footers. */
+  userTab?: UserFormTab;
+  onUserTabChange?: (tab: UserFormTab) => void;
 }) {
   const { watch } = useFormContext<UserFormValues>();
   const { hasCapability } = usePermissions();
@@ -130,7 +155,6 @@ export function UserFormFields({
   const isContractor = mode === "contractor";
   const isCustomer = mode === "customer";
   const isUser = mode === "user";
-  const isContactModule = isContractor || isCustomer;
   const canSeeRates =
     hasCapability(CAPABILITY_CODES.seeRates) || hasCapability(CAPABILITY_CODES.editTaskPrices);
   const activeToggle =
@@ -151,6 +175,26 @@ export function UserFormFields({
           activeToggle={activeToggle}
           tab={operativeTab}
           onTabChange={onOperativeTabChange}
+        />
+      </fieldset>
+    );
+  }
+
+  if (isUser) {
+    return (
+      <fieldset disabled={disabled}>
+        <UserFormTabs
+          variant={variant}
+          disabled={disabled}
+          password={password}
+          autoFocusFirstName={autoFocusFirstName}
+          activeToggle={activeToggle}
+          roleSelectedLabel={roleSelectedLabel}
+          lookupsLoading={lookupsLoading}
+          capabilityResetKey={capabilityResetKey}
+          embedded={embedded}
+          tab={userTab}
+          onTabChange={onUserTabChange}
         />
       </fieldset>
     );
@@ -209,7 +253,7 @@ export function UserFormFields({
               <TextField<UserFormValues> name="zipCode" label="ZIP Code" maxLength={20} />
             </div>
           </>
-        ) : isCustomer ? (
+        ) : (
           <>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <TextField<UserFormValues>
@@ -227,7 +271,7 @@ export function UserFormFields({
               />
             </div>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-              <TextField<UserFormValues> name="clientCode" label="Code" maxLength={100} />
+              <TextField<UserFormValues> name="clientCode" label="Code" maxLength={10} />
               <TextField<UserFormValues>
                 name="email"
                 label="Email"
@@ -255,57 +299,6 @@ export function UserFormFields({
               <TextField<UserFormValues> name="zipCode" label="ZIP Code" maxLength={20} />
             </div>
           </>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-              <TextField<UserFormValues>
-                name="firstName"
-                label="First name"
-                required
-                autoFocus={autoFocusFirstName}
-                maxLength={50}
-              />
-              <TextField<UserFormValues>
-                name="lastName"
-                label="Last name"
-                required
-                maxLength={50}
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-              <TextField<UserFormValues>
-                name="email"
-                label="Email"
-                required
-                type="email"
-                placeholder="name@schore.co.uk"
-              />
-              <PhoneNumberField<UserFormValues>
-                name="phone"
-                label="Phone"
-                placeholder="07700 900000"
-              />
-            </div>
-            {isUser ? (
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                <div className="space-y-2">
-                  <PasswordField<UserFormValues>
-                    name="password"
-                    label="Password"
-                    required={variant === "create"}
-                    autoComplete="new-password"
-                    placeholder={
-                      variant === "edit" ? "Leave blank to keep current password" : undefined
-                    }
-                  />
-                  {(variant === "create" || password) && (
-                    <PasswordRequirements password={password} />
-                  )}
-                </div>
-                <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
-              </div>
-            ) : null}
-          </>
         )}
       </Section>
 
@@ -319,8 +312,159 @@ export function UserFormFields({
           <RateOverrideFields disabled={disabled} />
         </Section>
       ) : null}
+    </fieldset>
+  );
+}
 
-      {!isContactModule ? (
+function UserFormTabs({
+  variant,
+  disabled,
+  password,
+  autoFocusFirstName,
+  activeToggle,
+  roleSelectedLabel,
+  lookupsLoading,
+  capabilityResetKey,
+  embedded,
+  tab: controlledTab,
+  onTabChange,
+}: {
+  variant: "create" | "edit";
+  disabled: boolean;
+  password?: string;
+  autoFocusFirstName?: boolean;
+  activeToggle?: ReactNode;
+  roleSelectedLabel?: string | null;
+  lookupsLoading?: boolean;
+  capabilityResetKey?: string;
+  embedded?: boolean;
+  tab?: UserFormTab;
+  onTabChange?: (tab: UserFormTab) => void;
+}) {
+  const {
+    setFocus,
+    formState: { errors, submitCount },
+  } = useFormContext<UserFormValues>();
+  const [uncontrolledTab, setUncontrolledTab] = useState<UserFormTab>("details");
+  const tab = controlledTab ?? uncontrolledTab;
+  const setTab = onTabChange ?? setUncontrolledTab;
+  const lastSubmitCount = useRef(0);
+
+  useEffect(() => {
+    if (submitCount <= lastSubmitCount.current) return;
+    lastSubmitCount.current = submitCount;
+    const firstInvalid = USER_FORM_TABS.find((item) =>
+      USER_TAB_FIELDS[item.id].some((name) => fieldHasError(errors[name]))
+    );
+    if (!firstInvalid) return;
+    setTab(firstInvalid.id);
+    const firstField = USER_TAB_FIELDS[firstInvalid.id].find((name) =>
+      fieldHasError(errors[name])
+    );
+    if (!firstField) return;
+
+    const timer = window.setTimeout(() => {
+      try {
+        setFocus(firstField);
+      } catch {
+        /* custom controls may not register a focusable ref */
+      }
+      const el = document.querySelector(
+        `[data-field="${CSS.escape(String(firstField))}"]`,
+      ) as HTMLElement | null;
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (el && document.activeElement !== el) {
+        try {
+          el.focus({ preventScroll: true });
+        } catch {
+          /* ignore */
+        }
+      }
+    }, 50);
+    return () => window.clearTimeout(timer);
+  }, [errors, setFocus, setTab, submitCount]);
+
+  return (
+    <Tabs
+      value={tab}
+      onValueChange={(value) => setTab(value as UserFormTab)}
+      className="flex min-w-0 flex-col"
+    >
+      <div className="-mx-4 -mt-3 min-w-0 overflow-x-auto border-b px-3 sm:-mx-5 sm:px-4">
+        <TabsList className={underlineTabListClass}>
+          {USER_FORM_TABS.map((item) => {
+            const invalid =
+              submitCount > 0 &&
+              USER_TAB_FIELDS[item.id].some((name) => fieldHasError(errors[name]));
+            return (
+              <TabsTrigger
+                key={item.id}
+                value={item.id}
+                className={underlineTabTriggerClass}
+              >
+                <span>{item.label}</span>
+                {invalid ? (
+                  <span
+                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive"
+                    aria-hidden
+                  />
+                ) : null}
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+      </div>
+
+      <TabsContent value="details" forceMount className={TAB_PANEL_CLASS}>
+        <Section title="Personal Information" embedded={embedded} headerAction={activeToggle}>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <TextField<UserFormValues>
+              name="firstName"
+              label="First name"
+              required
+              autoFocus={autoFocusFirstName}
+              maxLength={50}
+            />
+            <TextField<UserFormValues>
+              name="lastName"
+              label="Last name"
+              required
+              maxLength={50}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <TextField<UserFormValues>
+              name="email"
+              label="Email"
+              required
+              type="email"
+              placeholder="name@schore.co.uk"
+            />
+            <PhoneNumberField<UserFormValues>
+              name="phone"
+              label="Phone"
+              placeholder="07700 900000"
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="space-y-2">
+              <PasswordField<UserFormValues>
+                name="password"
+                label="Password"
+                required={variant === "create"}
+                autoComplete="new-password"
+                placeholder={
+                  variant === "edit" ? "Leave blank to keep current password" : undefined
+                }
+              />
+              {(variant === "create" || password) && (
+                <PasswordRequirements password={password} />
+              )}
+            </div>
+            <TextField<UserFormValues> name="dateOfBirth" label="Date of birth" type="date" />
+          </div>
+        </Section>
+
         <Section
           title="Access"
           hint="Roles control screens. Assignments control which projects this user can see."
@@ -342,32 +486,27 @@ export function UserFormFields({
             />
           </div>
         </Section>
-      ) : null}
+      </TabsContent>
 
-      {!isContactModule ? (
-        <Section
-          title="Menu access"
-          hint="Override which screens this user can read, change, or delete. Leave the role defaults unless this person needs different access."
-          embedded={embedded}
-          separated={embedded}
-        >
-          <UserMenuPermissionFields disabled={disabled} resetKey={capabilityResetKey} />
-        </Section>
-      ) : null}
-
-      {!isContactModule ? (
-        <Section
-          title="Rates & commercial"
-          hint="Select extra commercial permissions for this user, or remove ones the role would grant."
-          embedded={embedded}
-          separated={embedded}
-        >
-          <div className="min-w-0 max-w-full overflow-hidden">
-            <UserCapabilityFields disabled={disabled} resetKey={capabilityResetKey} />
+      <TabsContent value="permissions" forceMount className={TAB_PANEL_CLASS}>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-start">
+          <div className="min-w-0 lg:col-span-8">
+            <Section
+              title="Menu access"
+              hint="Override which screens this user can read, change, or delete. Leave the role defaults unless this person needs different access."
+              embedded={embedded}
+            >
+              <UserMenuPermissionFields disabled={disabled} resetKey={capabilityResetKey} />
+            </Section>
           </div>
-        </Section>
-      ) : null}
-    </fieldset>
+          <div className="min-w-0 lg:col-span-4">
+            <div className="min-w-0 max-w-full overflow-hidden">
+              <UserCapabilityFields disabled={disabled} resetKey={capabilityResetKey} />
+            </div>
+          </div>
+        </div>
+      </TabsContent>
+    </Tabs>
   );
 }
 
@@ -397,14 +536,12 @@ function OperativeFormTabs({
 }) {
   const {
     setFocus,
-    control,
     formState: { errors, submitCount },
   } = useFormContext<UserFormValues>();
   const [uncontrolledTab, setUncontrolledTab] = useState<OperativeFormTab>("details");
   const tab = controlledTab ?? uncontrolledTab;
   const setTab = onTabChange ?? setUncontrolledTab;
   const lastSubmitCount = useRef(0);
-  const isDailyRate = useWatch({ control, name: "isDailyRate" });
 
   useEffect(() => {
     if (submitCount <= lastSubmitCount.current) return;
@@ -454,7 +591,7 @@ function OperativeFormTabs({
                 className={cn(
                   underlineTabTriggerClass,
                   invalid &&
-                    "text-destructive data-[state=active]:border-destructive data-[state=active]:text-destructive",
+                  "text-destructive data-[state=active]:border-destructive data-[state=active]:text-destructive",
                 )}
               >
                 <span className="inline-flex items-center gap-1.5">
@@ -491,31 +628,33 @@ function OperativeFormTabs({
           />
           <PhoneNumberField<UserFormValues> name="phone" label="Phone" placeholder="07700 900000" />
         </div>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <TextField<UserFormValues> name="startDate" label="Joining Date" type="date" />
-          <CreatableSearchableMultiSelectField<UserFormValues>
-            name="tradeIds"
-            label="Trades"
-            description="Trade used on wage sheets and job assignment."
-            placeholder="Select trades…"
-            searchPlaceholder="Search trades…"
-            disabled={disabled}
-            queryKey={["lookups", "trades"]}
-            selectedLabels={operativeSelectedLabels?.trades}
-            fetchOptions={fetchTradeOptions}
-            lookupType="trade"
-          />
-        </div>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 md:items-start">
           <div className="space-y-2">
-            <PasswordField<UserFormValues>
-              name="password"
-              label="Password"
-              required={variant === "create"}
-              autoComplete="new-password"
-              placeholder={variant === "edit" ? "Leave blank to keep current password" : undefined}
+            <TextField<UserFormValues> name="startDate" label="Joining Date" type="date" />
+            <div className="space-y-2">
+              <PasswordField<UserFormValues>
+                name="password"
+                label="Password"
+                required={variant === "create"}
+                autoComplete="new-password"
+                placeholder={variant === "edit" ? "Leave blank to keep current password" : undefined}
+              />
+              {(variant === "create" || password) && <PasswordRequirements password={password} />}
+            </div>
+          </div>
+          <div>
+            <CreatableSearchableMultiSelectField<UserFormValues>
+              name="tradeIds"
+              label="Trades"
+              description="Trade used on wage sheets and job assignment."
+              placeholder="Select trades…"
+              searchPlaceholder="Search trades…"
+              disabled={disabled}
+              queryKey={["lookups", "trades"]}
+              selectedLabels={operativeSelectedLabels?.trades}
+              fetchOptions={fetchTradeOptions}
+              lookupType="trade"
             />
-            {(variant === "create" || password) && <PasswordRequirements password={password} />}
           </div>
         </div>
       </TabsContent>
@@ -547,7 +686,13 @@ function OperativeFormTabs({
           name="isDailyRate"
           label="Use daily rate for pay (MAX price vs daily)"
         />
-        {canSeeRates && isDailyRate ? <RateOverrideFields disabled={disabled} /> : null}
+        {canSeeRates ? (
+          <RateOverrideFields
+            disabled={disabled}
+            title="Rate overrides"
+            hint="Leave empty to use standard catalogue rates. Within parent budget saves immediately; above needs a per-item reason + Rate approvals."
+          />
+        ) : null}
       </TabsContent>
 
       <TabsContent value="payment" forceMount className={TAB_PANEL_CLASS}>
@@ -561,7 +706,7 @@ function OperativeFormTabs({
           <TextField<UserFormValues>
             name="bankName"
             label="Bank name"
-            placeholder="Optional"
+            placeholder="Enter bank name"
             maxLength={100}
           />
           <TextField<UserFormValues>

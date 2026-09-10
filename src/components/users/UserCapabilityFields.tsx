@@ -3,11 +3,11 @@ import { useFormContext, useWatch } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SearchableMultiSelect } from "@/components/form";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FormFieldHint } from "@/components/form/FormFieldLabel";
-import type { SearchableSelectOption } from "@/components/form/SearchableSelect";
 import { capabilitiesService } from "@/lib/api/services/access";
 import type { UserFormValues } from "@/lib/user-form";
+import { cn } from "@/lib/utils";
 import {
   isCeoRole,
   mergeCapabilityRows,
@@ -43,10 +43,6 @@ export function UserCapabilityFields({
   const rows = mergeCapabilityRows(roleItems, overrides, ceo);
   const catalogReady = Boolean(roleId) && catalogQuery.data?.roleId === roleId;
   const selectedCodes = rows.filter((item) => item.isGranted).map((item) => item.code);
-  const selectedLabels = useMemo(
-    () => Object.fromEntries(roleItems.map((item) => [item.code, item.label])),
-    [roleItems],
-  );
 
   useEffect(() => {
     if (!catalogReady || !roleId) return;
@@ -67,27 +63,6 @@ export function UserCapabilityFields({
     if (sameCapabilityOverrides(overrides, next)) return;
     setValue("capabilityOverrides", next, { shouldDirty: true, shouldTouch: true });
   }, [catalogReady, ceo, overrides, roleId, roleItems, setValue]);
-
-  const fetchOptions = useCallback(
-    async (search: string): Promise<SearchableSelectOption[]> => {
-      const query = search.trim().toLowerCase();
-      return roleItems
-        .filter((item) => {
-          if (!query) return true;
-          return (
-            item.label.toLowerCase().includes(query) ||
-            item.description.toLowerCase().includes(query) ||
-            item.code.toLowerCase().includes(query)
-          );
-        })
-        .map((item) => ({
-          value: item.code,
-          label: item.label,
-          description: item.description,
-        }));
-    },
-    [roleItems],
-  );
 
   function applyGrantedCodes(codes: string[]) {
     setValue("capabilityOverrides", overridesFromGrantedCodes(codes, roleItems), {
@@ -124,36 +99,71 @@ export function UserCapabilityFields({
 
   const helpText = ceo
     ? "CEO always has every commercial permission. This list cannot be narrowed here."
-    : "Selected flags are granted. Role defaults stay selected until you change them.";
+    : "Select extra commercial permissions for this user, or remove ones the role would grant.";
 
   return (
     <div className="min-w-0 max-w-full space-y-2">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <FormFieldHint description={helpText} />
-        {!ceo && overrides.length > 0 ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={resetToRole}
-            disabled={disabled}
-          >
-            Reset to role
-          </Button>
-        ) : null}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <h3 className="font-display text-sm font-semibold">Rates &amp; commercial</h3>
+          <FormFieldHint description={helpText} />
+        </div>
+        <div className="flex items-center gap-1.5">
+          {!ceo && overrides.length > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground"
+              onClick={resetToRole}
+              disabled={disabled}
+            >
+              Reset to role
+            </Button>
+          ) : null}
+          {!ceo && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground"
+              disabled={disabled}
+              onClick={() => {
+                const allGranted = rows.every((item) => item.isGranted);
+                applyGrantedCodes(allGranted ? [] : rows.map((r) => r.code));
+              }}
+            >
+              {rows.every((item) => item.isGranted) ? "Deselect all" : "Select all"}
+            </Button>
+          )}
+        </div>
       </div>
-      <SearchableMultiSelect
-        value={selectedCodes}
-        onValueChange={applyGrantedCodes}
-        placeholder="Select commercial permissions…"
-        searchPlaceholder="Search permissions…"
-        disabled={disabled || ceo}
-        queryKey={["users", "capability-options", roleId, roleItems.map((item) => item.code).join(",")]}
-        fetchOptions={fetchOptions}
-        selectedLabels={selectedLabels}
-        aria-label="Rates and commercial permissions"
-      />
+      <div className="space-y-0.5">
+        {rows.map((item) => (
+          <label
+            key={item.code}
+            className={cn(
+              "flex cursor-pointer select-none items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors",
+              "hover:bg-accent/50",
+              disabled || ceo ? "cursor-not-allowed opacity-60" : "",
+            )}
+          >
+            <Checkbox
+              checked={item.isGranted}
+              disabled={disabled || ceo}
+              onCheckedChange={(checked) => {
+                const nextCodes = checked
+                  ? [...selectedCodes, item.code]
+                  : selectedCodes.filter((c) => c.toUpperCase() !== item.code.toUpperCase());
+                applyGrantedCodes(nextCodes);
+              }}
+            />
+            <span className="text-sm font-medium leading-none text-foreground">
+              {item.label}
+            </span>
+          </label>
+        ))}
+      </div>
     </div>
   );
 }

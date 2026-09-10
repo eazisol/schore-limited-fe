@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CreatableSearchableSelectField,
-  SearchableMultiSelectField,
+  CreatableSearchableMultiSelectField,
   TextField,
   TextareaField,
 } from "@/components/form";
@@ -113,7 +113,7 @@ export function ProjectFormFields({
           disabled={disabled}
         />
       </div>
-      <SearchableMultiSelectField<ProjectFormValues>
+      <CreatableSearchableMultiSelectField<ProjectFormValues>
         name="assignedUserIds"
         label="Assign To"
         placeholder="Select CM, PM, or SM"
@@ -121,6 +121,7 @@ export function ProjectFormFields({
         queryKey={["users", "project-assignees", "dropdown"]}
         fetchOptions={fetchProjectAssigneeOptions}
         selectedLabels={selectedAssigneeLabels}
+        lookupType="projectAssignee"
         disabled={disabled}
       />
       <TextareaField<ProjectFormValues>

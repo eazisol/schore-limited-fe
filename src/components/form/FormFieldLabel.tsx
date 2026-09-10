@@ -47,7 +47,7 @@ export function FormFieldLabel({
   subdued,
 }: FormFieldLabelProps) {
   return (
-    <div className={cn("flex items-center gap-1.5", className)}>
+    <div className={cn("flex h-5 items-center gap-1.5", className)}>
       <FormLabel className={cn(subdued && "cursor-pointer font-normal")}>
         {label}
         {required && <span className="text-destructive ml-0.5" aria-hidden>*</span>}

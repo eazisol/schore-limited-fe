@@ -6,6 +6,7 @@ import { rolesService } from "@/lib/api/services/system-config";
 import { DROPDOWN_FETCH_SIZE } from "@/lib/dropdown-fetch";
 import { USER_TYPE_ID } from "@/lib/user-module";
 import { formatCisRate } from "@/lib/module-ui";
+import { parseAssignableStaffLabel } from "@/lib/project-assignee";
 
 export async function fetchCustomerOptions(search: string): Promise<SearchableSelectOption[]> {
   const res = await usersService.dropdown({
@@ -89,8 +90,12 @@ export async function fetchProjectAssigneeOptions(search: string): Promise<Searc
     roleCodes: PROJECT_ASSIGNABLE_ROLE_CODES,
     take: DROPDOWN_FETCH_SIZE,
   });
-  return (res.data ?? []).map((item) => ({
-    value: String(item.id),
-    label: item.name,
-  }));
+  return (res.data ?? []).map((item) => {
+    const parsed = parseAssignableStaffLabel(item.name ?? "");
+    return {
+      value: String(item.id),
+      label: parsed.label || item.name,
+      code: parsed.code,
+    };
+  });
 }

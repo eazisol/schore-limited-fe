@@ -44,7 +44,7 @@ const statusesQueryKey = ["statuses"] as const;
 const lookupsKey = ["lookups", "statuses"] as const;
 const PAGE_SIZE = 50;
 const STATUS_NAME_MAX_LENGTH = 50;
-const STATUS_CODE_MAX_LENGTH = 20;
+const STATUS_CODE_MAX_LENGTH = 10;
 
 const schema = z.object({
   name: nameSchema("Name", STATUS_NAME_MAX_LENGTH),

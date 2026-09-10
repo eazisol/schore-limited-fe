@@ -46,15 +46,30 @@ export type HierarchyStepId = (typeof HIERARCHY_STEPS)[number]["id"];
 /** After a successful save in the create wizard. */
 export type HierarchySaveAction = "continue" | "close";
 
-export function HierarchyStepper({ currentIndex }: { currentIndex: number }) {
+export function HierarchyStepper({
+  currentIndex,
+  onStepClick,
+}: {
+  currentIndex: number;
+  onStepClick?: (stepIndex: number, stepId: HierarchyStepId) => void;
+}) {
   return (
     <ol className="flex items-center gap-1 sm:gap-2" aria-label="Setup steps">
       {HIERARCHY_STEPS.map((s, index) => {
         const done = index < currentIndex;
         const active = index === currentIndex;
+        const canClick = done && Boolean(onStepClick);
         return (
           <li key={s.id} className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
-            <div className="flex min-w-0 items-center gap-2">
+            <button
+              type="button"
+              disabled={!canClick}
+              onClick={() => canClick && onStepClick?.(index, s.id)}
+              className={cn(
+                "flex min-w-0 items-center gap-2 text-left",
+                canClick ? "cursor-pointer transition-opacity hover:opacity-80" : "cursor-default",
+              )}
+            >
               <span
                 className={cn(
                   "grid h-7 w-7 shrink-0 place-items-center rounded-full border text-xs font-semibold",
@@ -74,7 +89,7 @@ export function HierarchyStepper({ currentIndex }: { currentIndex: number }) {
               >
                 {s.label}
               </span>
-            </div>
+            </button>
             {index < HIERARCHY_STEPS.length - 1 ? (
               <div
                 className={cn(
@@ -93,6 +108,7 @@ export function HierarchyStepper({ currentIndex }: { currentIndex: number }) {
 
 export function HierarchyFormFooter({
   onCancel,
+  onPrevious,
   submitLabel,
   pending,
   allowSaveAndClose = false,
@@ -100,6 +116,7 @@ export function HierarchyFormFooter({
   onIntentClose,
 }: {
   onCancel: () => void;
+  onPrevious?: () => void;
   submitLabel: string;
   pending: boolean;
   allowSaveAndClose?: boolean;
@@ -107,24 +124,39 @@ export function HierarchyFormFooter({
   onIntentClose?: () => void;
 }) {
   return (
-    <div className="flex flex-wrap justify-end gap-2 border-t pt-2">
-      <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={pending}>
-        Cancel
-      </Button>
-      {allowSaveAndClose ? (
-        <Button
-          type="submit"
-          variant="outline"
-          size="sm"
-          disabled={pending}
-          onClick={onIntentClose}
-        >
-          Save and close
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-2">
+      <div>
+        {onPrevious ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onPrevious}
+            disabled={pending}
+          >
+            Previous
+          </Button>
+        ) : null}
+      </div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={pending}>
+          Cancel
         </Button>
-      ) : null}
-      <SubmitButton size="sm" loadingText="Saving…" onClick={onIntentContinue}>
-        {submitLabel}
-      </SubmitButton>
+        {allowSaveAndClose ? (
+          <Button
+            type="submit"
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={onIntentClose}
+          >
+            Save and close
+          </Button>
+        ) : null}
+        <SubmitButton size="sm" loadingText="Saving…" onClick={onIntentContinue}>
+          {submitLabel}
+        </SubmitButton>
+      </div>
     </div>
   );
 }
@@ -134,6 +166,7 @@ export function ClientEntityForm({
   customerId,
   defaultValues = emptyUserFormValues,
   onCancel,
+  onPrevious,
   onSaved,
   submitLabel,
   allowSaveAndClose = false,
@@ -142,6 +175,7 @@ export function ClientEntityForm({
   customerId?: string;
   defaultValues?: UserFormValues;
   onCancel: () => void;
+  onPrevious?: () => void;
   onSaved: (
     next: { customerId: string; customerLabel: string },
     action: HierarchySaveAction,
@@ -151,7 +185,7 @@ export function ClientEntityForm({
 }) {
   const isEdit = mode === "edit";
   const resolvedSubmitLabel =
-    submitLabel ?? (isEdit ? "Save changes" : "Create & continue");
+    submitLabel ?? (isEdit ? "Save changes" : "Create Client");
   const saveActionRef = useRef<HierarchySaveAction>("continue");
   const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
   const form = useForm<UserFormValues>({
@@ -210,6 +244,7 @@ export function ClientEntityForm({
       />
       <HierarchyFormFooter
         onCancel={onCancel}
+        onPrevious={onPrevious}
         submitLabel={resolvedSubmitLabel}
         pending={mutation.isPending}
         allowSaveAndClose={allowSaveAndClose}
@@ -235,6 +270,7 @@ export function SiteEntityForm({
   submitLabel,
   allowSaveAndClose = false,
   onCancel,
+  onPrevious,
   onSaved,
 }: {
   mode: "create" | "edit";
@@ -242,14 +278,17 @@ export function SiteEntityForm({
   defaultValues: SiteFormValues;
   customerSelectedLabel?: string | null;
   lockCustomer?: boolean;
-  submitLabel: string;
+  submitLabel?: string;
   allowSaveAndClose?: boolean;
   onCancel: () => void;
+  onPrevious?: () => void;
   onSaved: (
     next: { siteId: string; siteLabel: string },
     action: HierarchySaveAction,
   ) => void;
 }) {
+  const resolvedSubmitLabel =
+    submitLabel ?? (mode === "edit" ? "Save changes" : "Create Site");
   const saveActionRef = useRef<HierarchySaveAction>("continue");
   const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
   const form = useForm<SiteFormValues>({
@@ -306,7 +345,8 @@ export function SiteEntityForm({
       />
       <HierarchyFormFooter
         onCancel={onCancel}
-        submitLabel={submitLabel}
+        onPrevious={onPrevious}
+        submitLabel={resolvedSubmitLabel}
         pending={mutation.isPending}
         allowSaveAndClose={allowSaveAndClose}
         onIntentContinue={() => {
@@ -334,6 +374,7 @@ export function ProjectEntityForm({
   submitLabel,
   allowSaveAndClose = false,
   onCancel,
+  onPrevious,
   onSaved,
 }: {
   mode: "create" | "edit";
@@ -344,14 +385,17 @@ export function ProjectEntityForm({
   assigneeSelectedLabels?: Record<string, string>;
   lockCustomer?: boolean;
   lockSite?: boolean;
-  submitLabel: string;
+  submitLabel?: string;
   allowSaveAndClose?: boolean;
   onCancel: () => void;
+  onPrevious?: () => void;
   onSaved: (
     next: { projectId: string; projectLabel: string },
     action: HierarchySaveAction,
   ) => void;
 }) {
+  const resolvedSubmitLabel =
+    submitLabel ?? (mode === "edit" ? "Save changes" : "Create Project");
   const saveActionRef = useRef<HierarchySaveAction>("continue");
   const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
   const form = useForm<ProjectFormValues>({
@@ -411,7 +455,8 @@ export function ProjectEntityForm({
       />
       <HierarchyFormFooter
         onCancel={onCancel}
-        submitLabel={submitLabel}
+        onPrevious={onPrevious}
+        submitLabel={resolvedSubmitLabel}
         pending={mutation.isPending}
         allowSaveAndClose={allowSaveAndClose}
         onIntentContinue={() => {
@@ -439,6 +484,7 @@ export function PropertyEntityForm({
   lockProject = false,
   submitLabel,
   onCancel,
+  onPrevious,
   onSaved,
 }: {
   mode: "create" | "edit";
@@ -450,10 +496,13 @@ export function PropertyEntityForm({
   lockCustomer?: boolean;
   lockSite?: boolean;
   lockProject?: boolean;
-  submitLabel: string;
+  submitLabel?: string;
   onCancel: () => void;
+  onPrevious?: () => void;
   onSaved: () => void;
 }) {
+  const resolvedSubmitLabel =
+    submitLabel ?? (mode === "edit" ? "Save changes" : "Create Property");
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertyFormSchema),
     mode: "onBlur",
@@ -502,7 +551,8 @@ export function PropertyEntityForm({
       />
       <HierarchyFormFooter
         onCancel={onCancel}
-        submitLabel={submitLabel}
+        onPrevious={onPrevious}
+        submitLabel={resolvedSubmitLabel}
         pending={mutation.isPending}
       />
     </Form>

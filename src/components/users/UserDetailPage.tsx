@@ -44,14 +44,15 @@ import {
 } from "@/lib/user-form";
 import { uploadPendingCertificationFiles } from "@/lib/upload-certification-files";
 import { useRateCapReasonGate } from "@/components/rates/useRateCapReasonGate";
+import { cn } from "@/lib/utils";
 
 export function UserDetailPage() {
   const mode = useUserModuleMode();
   const cfg = userModuleConfig(mode);
   const params = useParams({ strict: false }) as { id?: string };
-  const search = useSearch({ strict: false }) as { mode?: "edit" | "view" };
+  const search = useSearch({ strict: false }) as { mode?: "edit" | "view"; tab?: OperativeFormTab };
   const id = String(params.id ?? "");
-    const navigate = useNavigate();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user: sessionUser } = useAuth();
   const { refreshPermissions } = usePermissions();
@@ -59,14 +60,21 @@ export function UserDetailPage() {
   const canDelete = usePermission({ route: cfg.permissionRoute, action: "delete" });
   const [confirmDel, setConfirmDel] = useState(false);
   const [clientEditOpen, setClientEditOpen] = useState(false);
-  const [operativeTab, setOperativeTab] = useState<OperativeFormTab>("details");
+  const [operativeTab, setOperativeTab] = useState<OperativeFormTab>(search.tab ?? "details");
   const { runWithCapReason, modal: capReasonModal } = useRateCapReasonGate();
   const isEditing = !cfg.isCustomer && search.mode === "edit" && canModify;
   const schema = editUserFormSchema(mode);
   const isOperative = mode === "operative";
   const operativeTabIndex = OPERATIVE_FORM_TABS.findIndex((item) => item.id === operativeTab);
+  const canGoPrevious = isOperative && isEditing && operativeTabIndex > 0;
   const canGoNext =
     isOperative && isEditing && operativeTabIndex >= 0 && operativeTabIndex < OPERATIVE_FORM_TABS.length - 1;
+
+  useEffect(() => {
+    if (search.tab) {
+      setOperativeTab(search.tab);
+    }
+  }, [search.tab]);
 
   useEffect(() => {
     if (!cfg.isCustomer || !canModify || search.mode !== "edit" || !id) return;
@@ -79,15 +87,21 @@ export function UserDetailPage() {
     });
   }, [canModify, cfg.detailPath, cfg.isCustomer, id, navigate, search.mode]);
 
-  function openEdit() {
+  function openEdit(targetTab?: OperativeFormTab) {
     if (cfg.isCustomer) {
       setClientEditOpen(true);
       return;
     }
+    if (targetTab) {
+      setOperativeTab(targetTab);
+    }
     navigate({
       to: cfg.detailPath,
       params: { id },
-      search: { mode: "edit" },
+      search: {
+        mode: "edit",
+        ...(targetTab ? { tab: targetTab } : {}),
+      },
       replace: true,
     });
   }
@@ -138,7 +152,7 @@ export function UserDetailPage() {
         window.localStorage.setItem(PERMISSION_UPDATED_STORAGE_KEY, String(Date.now()));
         void refreshPermissions();
       }
-      navigate({ to: cfg.listPath });
+      openView();
     },
   });
 
@@ -284,7 +298,7 @@ export function UserDetailPage() {
         <Form form={form} onSubmit={save} className="w-full max-w-3xl">
           <FormPageCard
             title={cfg.labels.editTitle}
-            back={{ to: cfg.listPath, label: cfg.labels.backLabel }}
+            onBack={{ label: "Back to details", onClick: openView }}
             headerActions={<SwitchField<UserFormValues> name="isActive" label="Active" />}
             maxWidth="w-full max-w-3xl"
             footer={
@@ -305,6 +319,17 @@ export function UserDetailPage() {
                   >
                     Cancel
                   </Button>
+                  {canGoPrevious ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={updateMutation.isPending}
+                      onClick={() => setOperativeTab(OPERATIVE_FORM_TABS[operativeTabIndex - 1]!.id)}
+                    >
+                      Previous
+                    </Button>
+                  ) : null}
                   {canGoNext ? (
                     <Button
                       type="button"

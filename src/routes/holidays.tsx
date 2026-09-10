@@ -208,10 +208,7 @@ function HolidaysPage() {
   }
 
   function handleDaySelect(day: Date | undefined) {
-    if (!day) {
-      setSelectedYmd(null);
-      return;
-    }
+    if (!day) return;
     const ymd = toYmd(day);
     setSelectedYmd(ymd);
     setMonth(new Date(day.getFullYear(), day.getMonth(), 1));
@@ -441,6 +438,7 @@ function HolidaysPage() {
                   onMonthChange={goToMonth}
                   selected={selectedDate}
                   onSelect={handleDaySelect}
+                  onDayClick={handleDaySelect}
                   hideNavigation
                   showOutsideDays
                   fixedWeeks

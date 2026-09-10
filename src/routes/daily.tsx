@@ -315,9 +315,19 @@ function Daily() {
       {
         id: "contract",
         header: "Client",
-        width: "7rem",
+        width: "11rem",
         accessor: (row) => row.contract || "—",
-        cell: (row) => <code className="font-mono text-xs">{row.contract || "—"}</code>,
+        cell: (row) => {
+          const value = row.contract?.trim() || "—";
+          if (value === "—") return "—";
+          return (
+            <AppTooltip content={value} asChild align="start">
+              <code className="block max-w-full truncate whitespace-nowrap font-mono text-xs">
+                {value}
+              </code>
+            </AppTooltip>
+          );
+        },
       },
       {
         id: "type",

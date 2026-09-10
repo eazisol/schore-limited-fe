@@ -43,7 +43,7 @@ const schema = z.object({
     .string()
     .trim()
     .min(1, "Code is required")
-    .max(50, "Code must be 50 characters or fewer"),
+    .max(10, "Code must be 10 characters or fewer"),
   isActive: z.boolean(),
 });
 type Values = z.infer<typeof schema>;
@@ -325,7 +325,7 @@ function UserTypeFormModal({
                 autoFocus={!isView}
                 maxLength={50}
               />
-              <TextField<Values> name="code" label="Code" required maxLength={50} />
+              <TextField<Values> name="code" label="Code" required maxLength={10} />
             </div>
           </fieldset>
           <div className="flex justify-end gap-2 border-t pt-2">

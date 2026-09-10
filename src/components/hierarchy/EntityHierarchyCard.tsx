@@ -184,6 +184,39 @@ export function EntityHierarchyCard(props: HierarchyWorkTabsProps) {
 
   function openCreate(kind: WorkTab) {
     if (kind === "tasks") {
+      if (props.scope === "customer" && customerId) {
+        navigate({
+          to: "/tasks/new",
+          search: {
+            from: "customer",
+            customerId: String(customerId),
+          },
+        });
+        return;
+      }
+      if (props.scope === "site") {
+        navigate({
+          to: "/tasks/new",
+          search: {
+            from: "site",
+            siteId: String(scopeSiteId),
+            customerId: customerId ? String(customerId) : undefined,
+          },
+        });
+        return;
+      }
+      if (props.scope === "project") {
+        navigate({
+          to: "/tasks/new",
+          search: {
+            from: "project",
+            projectId: String(scopeProjectId),
+            siteId: props.siteId ? String(props.siteId) : undefined,
+            customerId: customerId ? String(customerId) : undefined,
+          },
+        });
+        return;
+      }
       navigate({ to: "/tasks/new" });
       return;
     }

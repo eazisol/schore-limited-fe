@@ -20,6 +20,7 @@ export type LookupCreateType =
   | "jobType"
   | "status"
   | "siteManager"
+  | "projectAssignee"
   | "productType"
   | "category"
   | "unit"
@@ -76,6 +77,16 @@ export const LOOKUP_CREATE_CONFIG: Record<LookupCreateType, LookupCreateConfig> 
     permissionRoutes: ["/users"],
     invalidateQueryKeys: [["lookups", "site-managers"], ["users"]],
     addNewLabel: "Add site manager",
+  },
+  projectAssignee: {
+    type: "projectAssignee",
+    permissionRoutes: ["/users"],
+    invalidateQueryKeys: [
+      ["users", "project-assignees", "dropdown"],
+      ["lookups", "site-managers"],
+      ["users"],
+    ],
+    addNewLabel: "Quick add staff",
   },
   productType: {
     type: "productType",

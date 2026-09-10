@@ -277,6 +277,7 @@ function Legends() {
             <Field label="Code" required>
               <input
                 required
+                maxLength={10}
                 value={form.code}
                 onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
                 className={inputCls}

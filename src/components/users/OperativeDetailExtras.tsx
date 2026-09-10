@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Cell, Label, Pie, PieChart } from "recharts";
-import { Award, CheckCircle2, ChevronDown, ClipboardList, Clock, Database, Eye, FileText, HeartPulse, IdCard, Loader2, Paperclip, Percent, Plus, PoundSterling, Shield } from "lucide-react";
+import { Award, Building2, CheckCircle2, ChevronDown, ClipboardList, Clock, Database, Eye, FileText, FolderKanban, HeartPulse, IdCard, Loader2, MapPin, Paperclip, Percent, Plus, PoundSterling, Shield } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { CodeBadge } from "@/components/CodeBadge";
@@ -25,7 +25,7 @@ import {
   underlineTabTriggerClass,
 } from "@/components/ui/tabs";
 import { usePermission } from "@/components/Permission";
-import { resolveProfileImageUrl, type ApiUser } from "@/lib/api/services/users";
+import { resolveProfileImageUrl, usersService, type ApiUser } from "@/lib/api/services/users";
 import { tasksService } from "@/lib/api/services/tasks";
 import { formatDailyRate } from "@/lib/module-ui";
 import { formatUkDate } from "@/lib/week-ending";
@@ -38,6 +38,7 @@ import {
   formatCertificationExpiryRelative,
 } from "@/lib/operative-certifications";
 import { TASKS_ROUTE } from "@/lib/tasks";
+import type { OperativeFormTab } from "@/components/users/UserFormFields";
 import { cn } from "@/lib/utils";
 
 const PENDING_STATUS_CODE = "PENDING";
@@ -267,7 +268,7 @@ export function OperativeDetailExtras({
 }: {
   user: ApiUser;
   canEdit?: boolean;
-  onEdit?: () => void;
+  onEdit?: (tab?: OperativeFormTab) => void;
 }) {
   const operativeId = String(user.id);
   const navigate = useNavigate();
@@ -286,6 +287,12 @@ export function OperativeDetailExtras({
           sortDir: "desc",
         })
       ).data,
+    enabled: isNonEmptyId(operativeId),
+  });
+
+  const workSummaryQuery = useQuery({
+    queryKey: ["users", "work-summary", operativeId],
+    queryFn: async () => (await usersService.getWorkSummary(operativeId)).data,
     enabled: isNonEmptyId(operativeId),
   });
 
@@ -352,6 +359,9 @@ export function OperativeDetailExtras({
 
   const certifications = user.certifications ?? [];
   const rateOverrides = user.rateOverrides ?? [];
+  const sites = workSummaryQuery.data?.sites ?? [];
+  const projects = workSummaryQuery.data?.projects ?? [];
+  const earnings = workSummaryQuery.data?.earnings;
 
   const addLabel =
     tab === "tasks"
@@ -360,18 +370,32 @@ export function OperativeDetailExtras({
         ? "Edit payment details"
         : tab === "certificates"
           ? "Edit certificates"
-          : tab === "trades"
-            ? "Edit trades"
+          : tab === "sites" || tab === "projects"
+            ? ""
             : "Edit rates";
 
-  const showAdd = tab === "tasks" ? canAddTask : Boolean(canEdit && onEdit);
+  const showAdd =
+    tab === "sites" || tab === "projects"
+      ? false
+      : tab === "tasks"
+        ? canAddTask
+        : Boolean(canEdit && onEdit);
 
   function handleAdd() {
     if (tab === "tasks") {
-      navigate({ to: "/tasks/new" });
+      navigate({
+        to: "/tasks/new",
+        search: { from: "operative", operativeId: String(operativeId) },
+      });
       return;
     }
-    onEdit?.();
+    const targetOperativeTab: OperativeFormTab =
+      tab === "bank"
+        ? "payment"
+        : tab === "certificates"
+          ? "certificates"
+          : "rates";
+    onEdit?.(targetOperativeTab);
   }
 
   return (
@@ -384,14 +408,17 @@ export function OperativeDetailExtras({
                 <TabsTrigger value="tasks" className={underlineTabTriggerClass}>
                   Tasks
                 </TabsTrigger>
+                <TabsTrigger value="sites" className={underlineTabTriggerClass}>
+                  Sites
+                </TabsTrigger>
+                <TabsTrigger value="projects" className={underlineTabTriggerClass}>
+                  Projects
+                </TabsTrigger>
                 <TabsTrigger value="bank" className={underlineTabTriggerClass}>
                   Bank
                 </TabsTrigger>
                 <TabsTrigger value="certificates" className={underlineTabTriggerClass}>
                   Certificates
-                </TabsTrigger>
-                <TabsTrigger value="trades" className={underlineTabTriggerClass}>
-                  Trades
                 </TabsTrigger>
                 <TabsTrigger value="rates" className={underlineTabTriggerClass}>
                   Rates
@@ -420,7 +447,15 @@ export function OperativeDetailExtras({
                   No task items assigned to this operative.
                 </p>
                 {canAddTask ? (
-                  <Button size="sm" onClick={() => navigate({ to: "/tasks/new" })}>
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      navigate({
+                        to: "/tasks/new",
+                        search: { from: "operative", operativeId: String(operativeId) },
+                      })
+                    }
+                  >
                     <Plus className="h-4 w-4" />
                     Add task
                   </Button>
@@ -473,6 +508,126 @@ export function OperativeDetailExtras({
                               aria-label={`View ${item.taskNumber}`}
                             >
                               <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="sites" className="mt-0 focus-visible:outline-none">
+            {workSummaryQuery.isLoading ? (
+              <div className="flex items-center justify-center gap-2 px-5 py-12 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading sites…
+              </div>
+            ) : workSummaryQuery.isError ? (
+              <EmptyPanel message="Unable to load sites for this operative." />
+            ) : sites.length === 0 ? (
+              <EmptyPanel message="No sites yet — sites appear when this operative is assigned to task items." />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-1.5 text-left font-medium">Site</th>
+                      <th className="px-3 py-1.5 text-left font-medium">Code</th>
+                      <th className="px-3 py-1.5 text-left font-medium">Projects</th>
+                      <th className="px-3 py-1.5 text-left font-medium">Items</th>
+                      <th className="px-3 py-1.5 text-left font-medium">Last work</th>
+                      <th className="px-4 py-1.5 text-right font-medium" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {sites.map((site) => (
+                      <tr key={site.siteId} className="hover:bg-muted/30">
+                        <td className="px-4 py-1.5">
+                          <div className="flex items-center gap-2 font-medium">
+                            <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            {site.siteName}
+                          </div>
+                        </td>
+                        <td className="px-3 py-1.5 font-mono text-xs">
+                          {site.siteCode?.trim() || "—"}
+                        </td>
+                        <td className="px-3 py-1.5 tabular-nums">{site.projectCount}</td>
+                        <td className="px-3 py-1.5 tabular-nums">{site.itemCount}</td>
+                        <td className="px-3 py-1.5 tabular-nums">
+                          {formatShortDate(site.lastWorkDate)}
+                        </td>
+                        <td className="px-4 py-1.5 text-right">
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" asChild>
+                            <Link
+                              to="/sites/$id"
+                              params={{ id: String(site.siteId) }}
+                              aria-label={`View ${site.siteName}`}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </Link>
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="projects" className="mt-0 focus-visible:outline-none">
+            {workSummaryQuery.isLoading ? (
+              <div className="flex items-center justify-center gap-2 px-5 py-12 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading projects…
+              </div>
+            ) : workSummaryQuery.isError ? (
+              <EmptyPanel message="Unable to load projects for this operative." />
+            ) : projects.length === 0 ? (
+              <EmptyPanel message="No projects yet — projects appear when this operative is assigned to task items." />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-1.5 text-left font-medium">Project</th>
+                      <th className="px-3 py-1.5 text-left font-medium">Code</th>
+                      <th className="px-3 py-1.5 text-left font-medium">Site</th>
+                      <th className="px-3 py-1.5 text-left font-medium">Properties</th>
+                      <th className="px-3 py-1.5 text-left font-medium">Items</th>
+                      <th className="px-3 py-1.5 text-left font-medium">Last work</th>
+                      <th className="px-4 py-1.5 text-right font-medium" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {projects.map((project) => (
+                      <tr key={project.projectId} className="hover:bg-muted/30">
+                        <td className="px-4 py-1.5">
+                          <div className="flex items-center gap-2 font-medium">
+                            <FolderKanban className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            {project.projectName}
+                          </div>
+                        </td>
+                        <td className="px-3 py-1.5 font-mono text-xs">
+                          {project.projectCode?.trim() || "—"}
+                        </td>
+                        <td className="px-3 py-1.5 text-muted-foreground">{project.siteName}</td>
+                        <td className="px-3 py-1.5 tabular-nums">{project.propertyCount}</td>
+                        <td className="px-3 py-1.5 tabular-nums">{project.itemCount}</td>
+                        <td className="px-3 py-1.5 tabular-nums">
+                          {formatShortDate(project.lastWorkDate)}
+                        </td>
+                        <td className="px-4 py-1.5 text-right">
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" asChild>
+                            <Link
+                              to="/projects/$id"
+                              params={{ id: String(project.projectId) }}
+                              aria-label={`View ${project.projectName}`}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
                             </Link>
                           </Button>
                         </td>
@@ -648,23 +803,6 @@ export function OperativeDetailExtras({
             )}
           </TabsContent>
 
-          <TabsContent value="trades" className="mt-0 px-4 py-3 focus-visible:outline-none sm:px-5">
-            {tradeNames.length === 0 ? (
-              <EmptyPanel message="No trades assigned." />
-            ) : (
-              <ul className="flex flex-wrap gap-1.5 py-1">
-                {tradeNames.map((name) => (
-                  <li
-                    key={name}
-                    className="rounded-md border bg-muted/40 px-2 py-0.5 text-xs font-medium"
-                  >
-                    {name}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </TabsContent>
-
           <TabsContent value="rates" className="mt-0 px-3 py-3 focus-visible:outline-none sm:px-4">
             <OperativeRatesPanel
               dailyRate={formatDailyRate(user.dailyRate)}
@@ -816,6 +954,84 @@ export function OperativeDetailExtras({
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="card-elevated overflow-hidden">
+          <div className="border-b px-4 py-3 sm:px-5">
+            <h2 className="font-display font-semibold">Earnings</h2>
+            <p className="text-xs text-muted-foreground">
+              Pay statements gross / net, plus completed price work
+            </p>
+          </div>
+          {workSummaryQuery.isLoading ? (
+            <div className="flex h-[140px] items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading…
+            </div>
+          ) : workSummaryQuery.isError ? (
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground sm:px-5">
+              Unable to load earnings.
+            </p>
+          ) : (
+            <div className="space-y-3 p-4 sm:p-5">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg border border-accent/20 bg-accent/5 px-3 py-3">
+                  <div className="mb-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <PoundSterling className="h-3 w-3 text-accent" />
+                    Gross
+                  </div>
+                  <p className="font-display text-lg font-semibold tabular-nums">
+                    {formatDailyRate(earnings?.totalGross ?? 0)}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-success/20 bg-success/5 px-3 py-3">
+                  <div className="mb-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <PoundSterling className="h-3 w-3 text-success" />
+                    Net
+                  </div>
+                  <p className="font-display text-lg font-semibold tabular-nums">
+                    {formatDailyRate(earnings?.totalNet ?? 0)}
+                  </p>
+                </div>
+              </div>
+              <dl className="space-y-2 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">CIS deducted</dt>
+                  <dd className="font-medium tabular-nums">
+                    {formatDailyRate(earnings?.totalCisDeduction ?? 0)}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">Statements</dt>
+                  <dd className="font-medium tabular-nums">{earnings?.statementCount ?? 0}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">Latest week ending</dt>
+                  <dd className="font-medium tabular-nums">
+                    {formatShortDate(earnings?.latestWeekEnding)}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3 border-t pt-2">
+                  <dt className="text-muted-foreground">Completed price work</dt>
+                  <dd className="font-medium tabular-nums">
+                    {formatDailyRate(earnings?.completedPriceWork ?? 0)}
+                  </dd>
+                </div>
+              </dl>
+              {(sites.length > 0 || projects.length > 0) && (
+                <div className="flex flex-wrap gap-2 border-t pt-3 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+                    <Building2 className="h-3 w-3" />
+                    {sites.length} site{sites.length === 1 ? "" : "s"}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+                    <FolderKanban className="h-3 w-3" />
+                    {projects.length} project{projects.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
     </div>

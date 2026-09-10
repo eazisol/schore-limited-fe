@@ -240,10 +240,12 @@ export function JobWorkCalendar({ task }: JobWorkCalendarProps) {
       ? `${assignedCount} item${assignedCount === 1 ? "" : "s"} · ${fmtGBP(assignedTotal)}`
       : "Assign packages & operatives for this day";
 
+  const todayYmd = toYmd(new Date());
+  const isPast = Boolean(selectedYmd && selectedYmd < todayYmd);
   const programmeLocked = Boolean(dayProgrammeQuery.data?.lockActive);
   const effectiveRow = liveRow ?? stubDailyRowFromTask(task, programmeLocked);
   const dayIsEmpty = selectedItems.length === 0;
-  const canShowAddForm = canEditDay && !effectiveRow.isLocked;
+  const canShowAddForm = canEditDay && !effectiveRow.isLocked && !isPast;
 
   function goToMonth(next: Date) {
     setMonth(new Date(next.getFullYear(), next.getMonth(), 1));
@@ -360,6 +362,7 @@ export function JobWorkCalendar({ task }: JobWorkCalendarProps) {
             onMonthChange={goToMonth}
             selected={selectedDate}
             onSelect={handleDaySelect}
+            onDayClick={handleDaySelect}
             hideNavigation
             showOutsideDays
             fixedWeeks
@@ -487,12 +490,15 @@ export function JobWorkCalendar({ task }: JobWorkCalendarProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            {effectiveRow.isLocked ? (
+            {isPast ? (
+              <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                Past date — tasks cannot be added or edited for previous dates.
+              </p>
+            ) : effectiveRow.isLocked ? (
               <p className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground">
                 Locked — complete previous-day ticks in Daily Programmer before editing.
               </p>
-            ) : null}
-            {!canEditDay ? (
+            ) : !canEditDay ? (
               <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
                 You can view assignments. Modify permission is required to assign or remove items.
               </p>
@@ -502,7 +508,7 @@ export function JobWorkCalendar({ task }: JobWorkCalendarProps) {
               task={task}
               row={effectiveRow}
               date={selectedYmd!}
-              disabled={!canEditDay}
+              disabled={!canEditDay || isPast}
               initialShowAdd={dayIsEmpty && canShowAddForm}
               onRowUpdated={setLiveRow}
             />

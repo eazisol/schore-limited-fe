@@ -22,6 +22,7 @@ import { sitesService, type ApiSite } from "@/lib/api/services/sites";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { CodeBadge } from "@/components/CodeBadge";
+import { AppTooltip } from "@/components/AppTooltip";
 import { SITES_ROUTE } from "@/lib/sites";
 import { fetchCustomerOptions } from "@/lib/user-dropdowns";
 import {
@@ -123,24 +124,35 @@ function SitesList() {
         header: "Name",
         accessor: (item) => item.name,
         cell: (item) => (
-          <button
-            type="button"
-            className="font-medium text-left text-info cursor-pointer"
-            onClick={() => navigate({ to: "/sites/$id", params: { id: item.id } })}
-          >
-            {item.name}
-          </button>
+          <AppTooltip content={item.name} asChild align="start">
+            <button
+              type="button"
+              className="block max-w-full truncate font-medium text-left text-info cursor-pointer"
+              onClick={() => navigate({ to: "/sites/$id", params: { id: item.id } })}
+            >
+              {item.name}
+            </button>
+          </AppTooltip>
         ),
       },
       {
         id: "code",
         header: "Code",
+        accessor: (item) => item.code,
         cell: (item) => <CodeBadge code={item.code} />,
       },
       {
         id: "customer",
         header: "Client",
-        cell: (item) => item.customerName ?? "—",
+        accessor: (item) => item.customerName,
+        cell: (item) =>
+          item.customerName ? (
+            <AppTooltip content={item.customerName} asChild align="start">
+              <span className="block max-w-full truncate">{item.customerName}</span>
+            </AppTooltip>
+          ) : (
+            "—"
+          ),
       },
       {
         id: "status",

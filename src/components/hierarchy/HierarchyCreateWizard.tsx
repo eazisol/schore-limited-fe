@@ -111,10 +111,16 @@ export function HierarchyCreateWizard({
       showCloseButton={false}
     >
       <div className="space-y-3">
-        <HierarchyStepper currentIndex={stepIndex} />
+        <HierarchyStepper
+          currentIndex={stepIndex}
+          onStepClick={(_, sId) => setStep(sId)}
+        />
 
         {step === "client" ? (
           <ClientEntityForm
+            mode={chain.customerId ? "edit" : "create"}
+            customerId={chain.customerId || undefined}
+            submitLabel={chain.customerId ? "Save & continue" : "Create Client"}
             allowSaveAndClose
             onCancel={handleClose}
             onSaved={(next, action) => {
@@ -131,12 +137,14 @@ export function HierarchyCreateWizard({
 
         {step === "site" ? (
           <SiteEntityForm
-            mode="create"
+            mode={chain.siteId ? "edit" : "create"}
+            siteId={chain.siteId || undefined}
             defaultValues={siteDefaults}
             customerSelectedLabel={chain.customerLabel}
             lockCustomer
             allowSaveAndClose
-            submitLabel="Create & continue"
+            submitLabel={chain.siteId ? "Save & continue" : "Create Site"}
+            onPrevious={() => setStep("client")}
             onCancel={handleClose}
             onSaved={(next, action) => {
               invalidateHierarchy();
@@ -152,14 +160,16 @@ export function HierarchyCreateWizard({
 
         {step === "project" ? (
           <ProjectEntityForm
-            mode="create"
+            mode={chain.projectId ? "edit" : "create"}
+            projectId={chain.projectId || undefined}
             defaultValues={projectDefaults}
             customerSelectedLabel={chain.customerLabel}
             siteSelectedLabel={chain.siteLabel}
             lockCustomer
             lockSite
             allowSaveAndClose
-            submitLabel="Create & continue"
+            submitLabel={chain.projectId ? "Save & continue" : "Create Project"}
+            onPrevious={() => setStep("site")}
             onCancel={handleClose}
             onSaved={(next, action) => {
               invalidateHierarchy();
@@ -183,7 +193,8 @@ export function HierarchyCreateWizard({
             lockCustomer
             lockSite
             lockProject
-            submitLabel="Create property"
+            submitLabel="Create Property"
+            onPrevious={() => setStep("project")}
             onCancel={handleClose}
             onSaved={() => {
               invalidateHierarchy();

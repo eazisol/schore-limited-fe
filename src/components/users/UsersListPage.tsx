@@ -291,12 +291,26 @@ export function UsersListPage() {
           {
             id: "companyName",
             header: "Company name",
-            cell: (user) => user.companyName || "—",
+            width: "14rem",
+            cell: (user) => (
+              <AppTooltip content={user.companyName} asChild align="start" disabled={!user.companyName}>
+                <span className="block max-w-full truncate">
+                  {user.companyName || "—"}
+                </span>
+              </AppTooltip>
+            ),
           },
           {
             id: "address",
             header: "Address",
-            cell: (user) => user.address || "—",
+            width: "16rem",
+            cell: (user) => (
+              <AppTooltip content={user.address} asChild align="start" disabled={!user.address}>
+                <span className="block max-w-full truncate">
+                  {user.address || "—"}
+                </span>
+              </AppTooltip>
+            ),
           },
           {
             id: "city",
@@ -309,12 +323,26 @@ export function UsersListPage() {
           {
             id: "clientCode",
             header: "Code",
-            cell: (user) => user.clientCode || "—",
+            width: "8rem",
+            cell: (user) => (
+              <AppTooltip content={user.clientCode} asChild align="start" disabled={!user.clientCode}>
+                <span className="block max-w-full truncate font-mono text-xs">
+                  {user.clientCode || "—"}
+                </span>
+              </AppTooltip>
+            ),
           },
           {
             id: "address",
             header: "Address",
-            cell: (user) => user.address || "—",
+            width: "16rem",
+            cell: (user) => (
+              <AppTooltip content={user.address} asChild align="start" disabled={!user.address}>
+                <span className="block max-w-full truncate">
+                  {user.address || "—"}
+                </span>
+              </AppTooltip>
+            ),
           },
         );
       }

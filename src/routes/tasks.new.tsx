@@ -22,8 +22,15 @@ import {
 import { TaskFormFields } from "@/components/tasks/TaskFormFields";
 
 const searchSchema = z.object({
-  from: z.enum(["daily", "property"]).optional(),
+  from: z
+    .enum(["daily", "customer", "property", "site", "project", "operative"])
+    .optional(),
+  customerId: z.string().optional(),
   propertyId: z.string().optional(),
+  siteId: z.string().optional(),
+  projectId: z.string().optional(),
+  operativeId: z.string().optional(),
+  returnTo: z.string().optional(),
 });
 
 export const Route = createFileRoute("/tasks/new")({
@@ -33,20 +40,52 @@ export const Route = createFileRoute("/tasks/new")({
 });
 
 function NewTask() {
-  const { from, propertyId } = Route.useSearch();
+  const {
+    from,
+    propertyId,
+    customerId,
+    siteId,
+    projectId,
+    operativeId,
+    returnTo,
+  } = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const fromDaily = from === "daily";
+  const fromCustomer = from === "customer" && Boolean(customerId);
   const fromProperty = from === "property" && Boolean(propertyId);
+  const fromSite = from === "site" && Boolean(siteId);
+  const fromProject = from === "project" && Boolean(projectId);
+  const fromOperative = from === "operative" && Boolean(operativeId);
   const presetPropertyId = propertyId?.trim() || "";
 
   const goBack = () => {
+    if (returnTo) {
+      navigate({ to: returnTo as any });
+      return;
+    }
     if (fromDaily) {
       navigate({ to: "/daily" });
       return;
     }
+    if (fromCustomer && customerId) {
+      navigate({ to: "/customers/$id", params: { id: customerId } });
+      return;
+    }
+    if (fromSite && siteId) {
+      navigate({ to: "/sites/$id", params: { id: siteId } });
+      return;
+    }
+    if (fromProject && projectId) {
+      navigate({ to: "/projects/$id", params: { id: projectId } });
+      return;
+    }
     if (fromProperty && propertyId) {
       navigate({ to: "/properties/$id", params: { id: propertyId } });
+      return;
+    }
+    if (fromOperative && operativeId) {
+      navigate({ to: "/operatives/$id", params: { id: operativeId } });
       return;
     }
     navigate({ to: "/tasks" });
@@ -54,9 +93,31 @@ function NewTask() {
 
   const backLabel = fromDaily
     ? "Back to daily programmer"
-    : fromProperty
-      ? "Back to property"
-      : "Back to jobs";
+    : fromCustomer
+      ? "Back to client"
+      : fromSite
+        ? "Back to site"
+        : fromProject
+          ? "Back to project"
+          : fromProperty
+            ? "Back to property"
+            : fromOperative
+              ? "Back to operative"
+              : "Back to jobs";
+
+  const backRoute = fromCustomer && customerId
+    ? { to: "/customers/$id" as const, params: { id: String(customerId) } }
+    : fromSite && siteId
+      ? { to: "/sites/$id" as const, params: { id: String(siteId) } }
+      : fromProject && projectId
+        ? { to: "/projects/$id" as const, params: { id: String(projectId) } }
+        : fromProperty && propertyId
+          ? { to: "/properties/$id" as const, params: { id: String(propertyId) } }
+          : fromOperative && operativeId
+            ? { to: "/operatives/$id" as const, params: { id: String(operativeId) } }
+            : fromDaily
+              ? { to: "/daily" as const }
+              : { to: "/tasks" as const };
 
   const propertyQuery = useQuery({
     queryKey: ["properties", presetPropertyId],
@@ -81,8 +142,22 @@ function NewTask() {
       if (fromDaily) {
         queryClient.invalidateQueries({ queryKey: ["daily-programme"] });
       }
+      if (fromCustomer && customerId) {
+        queryClient.invalidateQueries({ queryKey: ["tasks", "customer-work", customerId] });
+        queryClient.invalidateQueries({ queryKey: ["customers", customerId] });
+        queryClient.invalidateQueries({ queryKey: ["users", customerId] });
+      }
+      if (fromSite && siteId) {
+        queryClient.invalidateQueries({ queryKey: ["sites", siteId] });
+      }
+      if (fromProject && projectId) {
+        queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
+      }
       if (fromProperty && propertyId) {
         queryClient.invalidateQueries({ queryKey: ["properties", propertyId] });
+      }
+      if (fromOperative && operativeId) {
+        queryClient.invalidateQueries({ queryKey: ["task-items", "operative", operativeId] });
       }
       goBack();
     },
@@ -99,8 +174,7 @@ function NewTask() {
         <FormPageCard
           title="Add job"
           back={{
-            to: fromProperty && propertyId ? "/properties/$id" : fromDaily ? "/daily" : "/tasks",
-            params: fromProperty && propertyId ? { id: String(propertyId) } : undefined,
+            ...backRoute,
             label: backLabel,
           }}
           maxWidth="w-full max-w-none"

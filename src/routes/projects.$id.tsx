@@ -21,6 +21,7 @@ import { projectsService, type ApiProject } from "@/lib/api/services/projects";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { projectsQueryKey } from "./projects.index";
 import { CodeBadge, CodeWithLabel } from "@/components/CodeBadge";
+import { RoleCodeBadge } from "@/components/RoleCodeBadge";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { PROJECTS_ROUTE } from "@/lib/projects";
 import {
@@ -31,6 +32,7 @@ import {
   toProjectPayload,
   type ProjectFormValues,
 } from "@/lib/project-form";
+import { parseAssignableStaffLabel } from "@/lib/project-assignee";
 import { useRateCapReasonGate } from "@/components/rates/useRateCapReasonGate";
 import {
   hierarchyBackLabel,
@@ -53,15 +55,28 @@ export const Route = createFileRoute("/projects/$id")({
 });
 
 function projectHighlights(row: ApiProject): DetailProfileHighlight[] {
-  const assigned = (row.assignedUsers ?? [])
-    .map((user) => user.name)
-    .filter(Boolean)
-    .join(", ");
+  const assignedUsers = row.assignedUsers ?? [];
+  const assigned =
+    assignedUsers.length === 0 ? (
+      "—"
+    ) : (
+      <span className="inline-flex flex-wrap items-center gap-1.5">
+        {assignedUsers.map((user) => {
+          const parsed = parseAssignableStaffLabel(user.name ?? "");
+          return (
+            <span key={user.id} className="inline-flex items-center gap-1">
+              <span>{parsed.label || user.name}</span>
+              <RoleCodeBadge code={parsed.code} />
+            </span>
+          );
+        })}
+      </span>
+    );
   return [
     { label: "Code", value: <CodeBadge code={row.code} /> },
     { label: "Client", value: <CodeWithLabel combined={row.customerName} /> },
     { label: "Site", value: row.siteName?.trim() || "—" },
-    { label: "Assign To", value: assigned || "—" },
+    { label: "Assign To", value: assigned },
   ];
 }
 

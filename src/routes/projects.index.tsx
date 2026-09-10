@@ -22,6 +22,7 @@ import { projectsService, type ApiProject } from "@/lib/api/services/projects";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { ActiveStatusBadge } from "@/components/StatusBadge";
 import { CodeBadge } from "@/components/CodeBadge";
+import { AppTooltip } from "@/components/AppTooltip";
 import { PROJECTS_ROUTE } from "@/lib/projects";
 import { fetchCustomerOptions } from "@/lib/user-dropdowns";
 import {
@@ -124,29 +125,48 @@ function ProjectsList() {
         header: "Name",
         accessor: (item) => item.name,
         cell: (item) => (
-          <button
-            type="button"
-            className="font-medium text-left text-info cursor-pointer"
-            onClick={() => navigate({ to: "/projects/$id", params: { id: item.id } })}
-          >
-            {item.name}
-          </button>
+          <AppTooltip content={item.name} asChild align="start">
+            <button
+              type="button"
+              className="block max-w-full truncate font-medium text-left text-info cursor-pointer"
+              onClick={() => navigate({ to: "/projects/$id", params: { id: item.id } })}
+            >
+              {item.name}
+            </button>
+          </AppTooltip>
         ),
       },
       {
         id: "code",
         header: "Code",
+        accessor: (item) => item.code,
         cell: (item) => <CodeBadge code={item.code} />,
       },
       {
         id: "site",
         header: "Site",
-        cell: (item) => item.siteName ?? "—",
+        accessor: (item) => item.siteName,
+        cell: (item) =>
+          item.siteName ? (
+            <AppTooltip content={item.siteName} asChild align="start">
+              <span className="block max-w-full truncate">{item.siteName}</span>
+            </AppTooltip>
+          ) : (
+            "—"
+          ),
       },
       {
         id: "customer",
         header: "Client",
-        cell: (item) => item.customerName ?? "—",
+        accessor: (item) => item.customerName,
+        cell: (item) =>
+          item.customerName ? (
+            <AppTooltip content={item.customerName} asChild align="start">
+              <span className="block max-w-full truncate">{item.customerName}</span>
+            </AppTooltip>
+          ) : (
+            "—"
+          ),
       },
       {
         id: "status",

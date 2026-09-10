@@ -4,7 +4,7 @@ import { z } from "zod";
 export const NAME_MAX_LENGTH = 100;
 
 /** Standard max length for Code fields across modules. */
-export const CODE_MAX_LENGTH = 50;
+export const CODE_MAX_LENGTH = 10;
 
 /** Standard max length for Description fields across modules. */
 export const DESCRIPTION_MAX_LENGTH = 500;

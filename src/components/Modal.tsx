@@ -1,4 +1,5 @@
 import { ReactNode, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 export function Modal({
@@ -32,7 +33,7 @@ export function Modal({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
   const maxW =
     size === "sm"
       ? "max-w-md"
@@ -42,7 +43,7 @@ export function Modal({
           ? "max-w-4xl"
           : "max-w-xl";
 
-  return (
+  const modalNode = (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50" onClick={onClose}>
       <div className="flex min-h-full items-center justify-center p-4 sm:p-8">
         <div
@@ -74,6 +75,8 @@ export function Modal({
       </div>
     </div>
   );
+
+  return createPortal(modalNode, document.body);
 }
 
 export function Field({

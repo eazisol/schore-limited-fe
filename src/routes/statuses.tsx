@@ -60,7 +60,7 @@ const lookupsKey = ["lookups", "statuses"] as const;
 
 /** Status-module-specific field limits (stricter than shared defaults). */
 const STATUS_NAME_MAX_LENGTH = 50;
-const STATUS_CODE_MAX_LENGTH = 20;
+const STATUS_CODE_MAX_LENGTH = 10;
 
 const schema = z.object({
   name: nameSchema("Name", STATUS_NAME_MAX_LENGTH),

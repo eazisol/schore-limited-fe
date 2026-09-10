@@ -42,7 +42,7 @@ const jobTypesQueryKey = ["job-types"] as const;
 const lookupsKey = ["lookups", "job-types"] as const;
 const PAGE_SIZE = 50;
 const JOB_TYPE_NAME_MAX_LENGTH = 50;
-const JOB_TYPE_CODE_MAX_LENGTH = 20;
+const JOB_TYPE_CODE_MAX_LENGTH = 10;
 
 const schema = z.object({
   name: nameSchema("Name", JOB_TYPE_NAME_MAX_LENGTH),

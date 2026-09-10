@@ -51,7 +51,7 @@ const lookupsKey = ["lookups", "job-types"] as const;
 
 /** Job-types-module-specific field limits (stricter than shared defaults). */
 const JOB_TYPE_NAME_MAX_LENGTH = 50;
-const JOB_TYPE_CODE_MAX_LENGTH = 20;
+const JOB_TYPE_CODE_MAX_LENGTH = 10;
 
 const schema = z.object({
   name: nameSchema("Name", JOB_TYPE_NAME_MAX_LENGTH),

@@ -14,6 +14,7 @@ import {
   refineRateOverrides,
   toRateOverridePayload,
 } from "@/lib/rate-overrides";
+import { parseAssignableStaffLabel } from "@/lib/project-assignee";
 
 export const projectFormSchema = z
   .object({
@@ -91,5 +92,10 @@ export function projectToFormValues(
 export function projectAssigneeLabels(
   assignedUsers: ApiProject["assignedUsers"] | undefined,
 ): Record<string, string> {
-  return Object.fromEntries((assignedUsers ?? []).map((user) => [String(user.id), user.name]));
+  return Object.fromEntries(
+    (assignedUsers ?? []).map((user) => {
+      const parsed = parseAssignableStaffLabel(user.name ?? "");
+      return [String(user.id), parsed.label || user.name];
+    }),
+  );
 }

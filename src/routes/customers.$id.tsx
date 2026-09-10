@@ -4,6 +4,7 @@ import { UserDetailPage } from "@/components/users/UserDetailPage";
 
 const detailSearchSchema = z.object({
   mode: z.enum(["edit", "view"]).optional(),
+  tab: z.string().optional(),
 });
 
 export const Route = createFileRoute("/customers/$id")({

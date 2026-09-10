@@ -142,15 +142,15 @@ function PropertiesList() {
         id: "propertyName",
         header: "Property Name",
         sortable: true,
-        truncate: false,
+        accessor: (row) => row.propertyName,
         cell: (row) => (
           <AppTooltip content={row.propertyName} asChild align="start">
             <Link
               to="/properties/$id"
               params={{ id: String(row.id) }}
-              className="inline-block max-w-full cursor-pointer font-medium text-info"
+              className="block max-w-full truncate font-medium text-info"
             >
-              {truncateWithEllipsis(row.propertyName)}
+              {row.propertyName}
             </Link>
           </AppTooltip>
         ),
@@ -159,30 +159,60 @@ function PropertiesList() {
         id: "contactName",
         header: "Contact Name",
         sortable: true,
-        cell: (row) => truncateWithEllipsis(row.contactName),
+        accessor: (row) => row.contactName,
+        cell: (row) => (
+          <AppTooltip content={row.contactName} asChild align="start">
+            <span className="block max-w-full truncate">{row.contactName}</span>
+          </AppTooltip>
+        ),
       },
       {
         id: "customer",
         header: "Client",
         sortable: true,
-        cell: (row) => row.customerName?.trim() || "—",
+        accessor: (row) => row.customerName,
+        cell: (row) =>
+          row.customerName ? (
+            <AppTooltip content={row.customerName} asChild align="start">
+              <span className="block max-w-full truncate">{row.customerName}</span>
+            </AppTooltip>
+          ) : (
+            "—"
+          ),
       },
       {
         id: "site",
         header: "Site",
         sortable: true,
-        cell: (row) => row.siteName?.trim() || "—",
+        accessor: (row) => row.siteName,
+        cell: (row) =>
+          row.siteName ? (
+            <AppTooltip content={row.siteName} asChild align="start">
+              <span className="block max-w-full truncate">{row.siteName}</span>
+            </AppTooltip>
+          ) : (
+            "—"
+          ),
       },
       {
         id: "project",
         header: "Project",
         sortable: true,
-        cell: (row) => row.projectName?.trim() || "—",
+        accessor: (row) => row.projectName,
+        cell: (row) =>
+          row.projectName ? (
+            <AppTooltip content={row.projectName} asChild align="start">
+              <span className="block max-w-full truncate">{row.projectName}</span>
+            </AppTooltip>
+          ) : (
+            "—"
+          ),
       },
       {
         id: "phone",
         header: "Phone",
         sortable: false,
+        accessor: (row) => row.contactPhoneNo,
         cell: (row) => row.contactPhoneNo?.trim() || "—",
       },
       {
@@ -195,6 +225,7 @@ function PropertiesList() {
         id: "createdDate",
         header: "Created Date",
         sortable: false,
+        accessor: (row) => row.createdDate,
         cell: (row) => formatDateTime(row.createdDate),
       },
     ],

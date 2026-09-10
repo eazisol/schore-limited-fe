@@ -5,7 +5,7 @@ import { SearchableSelect } from "@/components/form/SearchableSelect";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
 import { AppTooltip } from "@/components/AppTooltip";
-import { Calculator, Plus, Trash2 } from "lucide-react";
+import { Calculator, Plus, Trash2, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtGBP } from "@/lib/data";
 import { truncateWithEllipsis } from "@/lib/module-ui";
@@ -464,6 +464,16 @@ export function TaskFormFields({
     }
   }
 
+  function unassignItems(indexes: number[]) {
+    if (itemsLocked) {
+      toast.warning("This job is locked. Tick previous-day work before modifying items.");
+      return;
+    }
+    for (const index of indexes) {
+      setValue(`items.${index}.operativeId`, "", { shouldDirty: true });
+    }
+  }
+
   async function assignItemsToOperative(
     indexes: number[],
     operativeId: string,
@@ -472,6 +482,13 @@ export function TaskFormFields({
   ) {
     if (itemsLocked) {
       toast.warning("This job is locked. Tick previous-day work before assigning items.");
+      if (pickKey) {
+        setAssignPick((prev) => {
+          const next = { ...prev };
+          delete next[pickKey];
+          return next;
+        });
+      }
       return;
     }
     if (!operativeId) {
@@ -509,6 +526,13 @@ export function TaskFormFields({
       }
     } catch (err) {
       notifyApiError(err, "Unable to check operative certificates");
+      if (pickKey) {
+        setAssignPick((prev) => {
+          const next = { ...prev };
+          delete next[pickKey];
+          return next;
+        });
+      }
     } finally {
       setCertAssignChecking(false);
     }
@@ -529,14 +553,22 @@ export function TaskFormFields({
   }
 
   function cancelCertAssign() {
+    if (certAssignPrompt?.pickKey) {
+      const pickKey = certAssignPrompt.pickKey;
+      setAssignPick((prev) => {
+        const next = { ...prev };
+        delete next[pickKey];
+        return next;
+      });
+    }
     setCertAssignPrompt(null);
   }
 
   function renderAssignOperativeControls(pickKey: string, indexes: number[]) {
     const pick = assignPick[pickKey] ?? { id: "", label: "" };
     return (
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-        <div className="w-[160px] shrink-0">
+      <div className="flex min-w-0 items-center">
+        <div className="w-[175px] shrink-0">
           <label className="sr-only">Operative</label>
           <SearchableSelect
             value={pick.id}
@@ -546,32 +578,24 @@ export function TaskFormFields({
                 [pickKey]: { id: value, label: prev[pickKey]?.label ?? "" },
               }))
             }
-            onSelect={(opt) =>
+            onSelect={(opt) => {
               setAssignPick((prev) => ({
                 ...prev,
                 [pickKey]: { id: opt.value, label: opt.label },
-              }))
-            }
+              }));
+              if (opt.value) {
+                void assignItemsToOperative(indexes, opt.value, opt.label, pickKey);
+              }
+            }}
             placeholder="Select operative"
             searchPlaceholder="Search operatives…"
             queryKey={["lookups", "operatives", "assign", pickKey]}
             fetchOptions={fetchOperativeOptions}
             selectedLabel={pick.label || null}
-            disabled={addControlsDisabled}
+            disabled={addControlsDisabled || certAssignChecking}
             triggerClassName="h-8 text-xs"
           />
         </div>
-        <Button
-          type="button"
-          size="sm"
-          className="h-8 shrink-0 px-2.5 text-xs"
-          disabled={!pick.id || addControlsDisabled || certAssignChecking}
-          onClick={() => {
-            void assignItemsToOperative(indexes, pick.id, pick.label, pickKey);
-          }}
-        >
-          Assign
-        </Button>
       </div>
     );
   }
@@ -806,7 +830,7 @@ export function TaskFormFields({
               : "card-elevated min-w-0 space-y-3 overflow-hidden p-4 sm:p-6"
           }
         >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 [&>*]:min-w-0">
             <CreatableSearchableSelectField<TaskFormValues>
               name="propertyId"
               label="Property"
@@ -817,6 +841,7 @@ export function TaskFormFields({
               selectedLabel={selectedLabels?.property}
               fetchOptions={fetchPropertyOptions}
               lookupType="property"
+              className="min-w-0"
             />
             <CreatableSearchableSelectField<TaskFormValues>
               name="jobTypeId"
@@ -828,6 +853,7 @@ export function TaskFormFields({
               selectedLabel={selectedLabels?.jobType}
               fetchOptions={fetchJobTypeOptions}
               lookupType="jobType"
+              className="min-w-0"
             />
             <TextField<TaskFormValues>
               name="startDate"
@@ -835,14 +861,15 @@ export function TaskFormFields({
               type="date"
               required
               className="min-w-0"
-              inputClassName="h-10 min-w-0"
+              inputClassName="h-9 min-w-0"
             />
             <TextField<TaskFormValues>
               name="handOverDate"
-              label="Hand over date (auto from property type)"
+              label="Hand over date"
+              description="Auto from property type"
               type="date"
               className="min-w-0"
-              inputClassName="h-10 min-w-0"
+              inputClassName="h-9 min-w-0"
               disabled
             />
             {/* Temporarily hidden: Budget — re-enable when needed */}
@@ -870,6 +897,7 @@ export function TaskFormFields({
               fetchOptions={fetchTaskStatusOptions}
               onSelect={handleStatusSelect}
               lookupType="status"
+              className="min-w-0"
             />
             {/* Temporarily hidden: Site Manager is assigned from the project Assign To field */}
             {false && (
@@ -957,35 +985,52 @@ export function TaskFormFields({
                   </p>
                 ) : null}
 
-                {packages.map(([packageId, pkg]) => (
-                  <div key={`${operativeId}-pkg-${packageId}`} className="min-w-0 space-y-1">
-                    <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center">
-                        <span className="inline-flex max-w-full items-center rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium leading-none text-secondary-foreground">
-                          <AppTooltip content={`Package: ${pkg.name}`} asChild align="start">
-                            <span className="truncate">Package: {pkg.name}</span>
-                          </AppTooltip>
-                        </span>
+                {packages.map(([packageId, pkg]) => {
+                  const isPkgDone =
+                    pkg.indexes.length > 0 &&
+                    pkg.indexes.every((idx) => Number(items[idx]?.doneQty || 0) > 0);
+                  return (
+                    <div key={`${operativeId}-pkg-${packageId}`} className="min-w-0 space-y-1">
+                      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-center">
+                          <span className="inline-flex max-w-full items-center rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium leading-none text-secondary-foreground">
+                            <AppTooltip content={`Package: ${pkg.name}`} asChild align="start">
+                              <span className="truncate">Package: {pkg.name}</span>
+                            </AppTooltip>
+                          </span>
+                        </div>
+                        {isUnassigned ? (
+                          renderAssignOperativeControls(`pkg-${packageId}`, pkg.indexes)
+                        ) : !isPkgDone ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => unassignItems(pkg.indexes)}
+                            disabled={disabled || itemsLocked}
+                          >
+                            <Undo2 className="mr-1 h-3.5 w-3.5" aria-hidden />
+                            Unassign
+                          </Button>
+                        ) : null}
                       </div>
-                      {isUnassigned
-                        ? renderAssignOperativeControls(`pkg-${packageId}`, pkg.indexes)
-                        : null}
+                      <ProductLinesTable
+                        indexes={pkg.indexes}
+                        fields={fields}
+                        items={items}
+                        productLabels={productLabels}
+                        onRemove={remove}
+                        onRateCommit={(index, previousRate, nextRate) => {
+                          if (previousRate === nextRate) return;
+                          setValue(`items.${index}.rate`, nextRate);
+                          setRatePrompt({ index, previousRate, nextRate });
+                        }}
+                        getValues={getValues}
+                      />
                     </div>
-                    <ProductLinesTable
-                      indexes={pkg.indexes}
-                      fields={fields}
-                      items={items}
-                      productLabels={productLabels}
-                      onRemove={remove}
-                      onRateCommit={(index, previousRate, nextRate) => {
-                        if (previousRate === nextRate) return;
-                        setValue(`items.${index}.rate`, nextRate);
-                        setRatePrompt({ index, previousRate, nextRate });
-                      }}
-                      getValues={getValues}
-                    />
-                  </div>
-                ))}
+                  );
+                })}
 
                 {addOns.length > 0 ? (
                   isUnassigned ? (
@@ -1023,26 +1068,52 @@ export function TaskFormFields({
                       );
                     })
                   ) : (
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex min-w-0 items-center">
-                        <span className="inline-flex max-w-full items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium leading-none text-muted-foreground">
-                          Add-ons
-                        </span>
-                      </div>
-                      <ProductLinesTable
-                        indexes={addOns}
-                        fields={fields}
-                        items={items}
-                        productLabels={productLabels}
-                        onRemove={remove}
-                        onRateCommit={(index, previousRate, nextRate) => {
-                          if (previousRate === nextRate) return;
-                          setValue(`items.${index}.rate`, nextRate);
-                          setRatePrompt({ index, previousRate, nextRate });
-                        }}
-                        getValues={getValues}
-                      />
-                    </div>
+                    addOns.map((index) => {
+                      const productId = items[index]?.productId ?? "";
+                      const isAddOnDone = Number(items[index]?.doneQty || 0) > 0;
+                      const productName =
+                        (productId && productLabels[productId]) ||
+                        (productId ? `Product #${productId}` : "Add-on");
+                      return (
+                        <div key={`${operativeId}-addon-${index}`} className="min-w-0 space-y-1">
+                          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                            <div className="flex min-w-0 items-center">
+                              <span className="inline-flex max-w-full items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium leading-none text-muted-foreground">
+                                <AppTooltip content={`Add-on: ${productName}`} asChild align="start">
+                                  <span className="truncate">Add-on: {productName}</span>
+                                </AppTooltip>
+                              </span>
+                            </div>
+                            {!isAddOnDone ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => unassignItems([index])}
+                                disabled={disabled || itemsLocked}
+                              >
+                                <Undo2 className="mr-1 h-3.5 w-3.5" aria-hidden />
+                                Unassign
+                              </Button>
+                            ) : null}
+                          </div>
+                          <ProductLinesTable
+                            indexes={[index]}
+                            fields={fields}
+                            items={items}
+                            productLabels={productLabels}
+                            onRemove={remove}
+                            onRateCommit={(lineIndex, previousRate, nextRate) => {
+                              if (previousRate === nextRate) return;
+                              setValue(`items.${lineIndex}.rate`, nextRate);
+                              setRatePrompt({ index: lineIndex, previousRate, nextRate });
+                            }}
+                            getValues={getValues}
+                          />
+                        </div>
+                      );
+                    })
                   )
                 ) : null}
 
@@ -1265,6 +1336,9 @@ function ProductLineRow({
     }
   }, [getValues, index, setValue, timeSlots]);
 
+  const doneQty = Number(useWatch({ control, name: `items.${index}.doneQty` }) || item?.doneQty || 0);
+  const isDone = doneQty > 0;
+
   return (
     <tr className="align-middle border-b border-border/50">
       <td className="min-w-0 px-2 py-1 font-medium">
@@ -1345,18 +1419,20 @@ function ProductLineRow({
         </AppTooltip>
       </td>
       <td className="px-1 py-1">
-        <AppTooltip content="Remove item" asChild>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7"
-            onClick={onRemove}
-            aria-label="Remove item"
-          >
-            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-          </Button>
-        </AppTooltip>
+        {!isDone ? (
+          <AppTooltip content="Remove item" asChild>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7"
+              onClick={onRemove}
+              aria-label="Remove item"
+            >
+              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+            </Button>
+          </AppTooltip>
+        ) : null}
       </td>
     </tr>
   );

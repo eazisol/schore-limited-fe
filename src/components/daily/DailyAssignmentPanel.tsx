@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, X } from "lucide-react";
+import { Loader2, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -30,6 +30,7 @@ import {
   findCertificationWarningsForWorkDates,
   type CertificationAssignWarning,
 } from "@/lib/operative-certifications";
+import { toYmd } from "@/lib/week-ending";
 import { notifyApiError } from "@/lib/api/axios";
 import { fmtGBP } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -41,24 +42,24 @@ type AssignPick = { id: string; label: string };
 
 type PendingCertAssign =
   | {
-      source: "catalog";
-      kind: UnassignedKind;
-      catalogId: string;
-      operativeId: string;
-      operativeLabel: string;
-      warnings: CertificationAssignWarning[];
-    }
+    source: "catalog";
+    kind: UnassignedKind;
+    catalogId: string;
+    operativeId: string;
+    operativeLabel: string;
+    warnings: CertificationAssignWarning[];
+  }
   | {
-      source: "existing";
-      kind: UnassignedKind;
-      catalogId: string;
-      operativeId: string;
-      operativeLabel: string;
-      pickKey: string;
-      quantity: number;
-      timeSlotId: string | null;
-      warnings: CertificationAssignWarning[];
-    };
+    source: "existing";
+    kind: UnassignedKind;
+    catalogId: string;
+    operativeId: string;
+    operativeLabel: string;
+    pickKey: string;
+    quantity: number;
+    timeSlotId: string | null;
+    warnings: CertificationAssignWarning[];
+  };
 
 function mergeRowInCache(
   qc: ReturnType<typeof useQueryClient>,
@@ -82,6 +83,16 @@ function invalidateAfterChange(qc: ReturnType<typeof useQueryClient>, taskId: st
   void qc.invalidateQueries({ queryKey: ["daily-programme", "cost-budget"] });
   void qc.invalidateQueries({ queryKey: tasksQueryKey });
   void qc.invalidateQueries({ queryKey: ["tasks", String(taskId)] });
+}
+
+function operativeInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
 type DailyAssignmentPanelProps = {
@@ -123,7 +134,8 @@ export function DailyAssignmentPanel({
   const assignedByOperative = row.assignedByOperative ?? [];
   const unassignedPackages = row.unassignedPackages ?? [];
   const unassignedAddOns = row.unassignedAddOns ?? [];
-  const cellDisabled = disabled || row.isLocked;
+  const isPast = date < toYmd(new Date());
+  const cellDisabled = disabled || row.isLocked || isPast;
 
   const timeSlotsQuery = useQuery({
     queryKey: ["tasks", "time-slots"],
@@ -249,6 +261,26 @@ export function DailyAssignmentPanel({
     onError: (err) => notifyApiError(err, "Unable to assign add-on"),
   });
 
+  const unassignPackageMutation = useMutation({
+    mutationFn: (tradeGroupId: string) =>
+      dailyProgrammeService.unassignPackage(row.taskId, {
+        date,
+        tradeGroupId,
+      }),
+    onSuccess: (res) => applyUpdatedRow(res.data, "Package unassigned"),
+    onError: (err) => notifyApiError(err, "Unable to unassign package"),
+  });
+
+  const unassignAddOnMutation = useMutation({
+    mutationFn: (productId: string) =>
+      dailyProgrammeService.unassignAddOn(row.taskId, {
+        date,
+        productId,
+      }),
+    onSuccess: (res) => applyUpdatedRow(res.data, "Add-on unassigned"),
+    onError: (err) => notifyApiError(err, "Unable to unassign add-on"),
+  });
+
   const completeMutation = useMutation({
     mutationFn: (itemId: string) => dailyProgrammeService.completeItem(itemId, date),
     onSuccess: (res) => {
@@ -278,6 +310,8 @@ export function DailyAssignmentPanel({
   const pending =
     assignPackageMutation.isPending ||
     assignAddOnMutation.isPending ||
+    unassignPackageMutation.isPending ||
+    unassignAddOnMutation.isPending ||
     completeMutation.isPending ||
     removeMutation.isPending ||
     certChecking;
@@ -413,10 +447,13 @@ export function DailyAssignmentPanel({
     catalogId: string,
     pickKey: string,
     items: ApiDailyAssignedItemLine[],
+    operativeId?: string,
+    operativeLabel?: string,
   ) {
     if (cellDisabled || pending) return;
-    const pick = existingAssignPick[pickKey];
-    if (!pick?.id) {
+    const opId = operativeId || existingAssignPick[pickKey]?.id;
+    const opLabel = operativeLabel || existingAssignPick[pickKey]?.label || "";
+    if (!opId) {
       toast.warning("Select an operative.");
       return;
     }
@@ -426,15 +463,22 @@ export function DailyAssignmentPanel({
     const timeSlotId = first?.timeSlotId ?? (assignTimeSlotId || null);
     const workDates = items.map((i) => i.workDate || date);
 
-    const warnings = await checkCertificates(pick.id, workDates);
-    if (warnings == null) return;
+    const warnings = await checkCertificates(opId, workDates);
+    if (warnings == null) {
+      setExistingAssignPick((prev) => {
+        const next = { ...prev };
+        delete next[pickKey];
+        return next;
+      });
+      return;
+    }
     if (warnings.length > 0) {
       setCertPrompt({
         source: "existing",
         kind,
         catalogId,
-        operativeId: pick.id,
-        operativeLabel: pick.label,
+        operativeId: opId,
+        operativeLabel: opLabel,
         pickKey,
         quantity,
         timeSlotId,
@@ -443,7 +487,7 @@ export function DailyAssignmentPanel({
       return;
     }
 
-    runExistingAssign(kind, catalogId, pick.id, quantity, timeSlotId, pickKey);
+    runExistingAssign(kind, catalogId, opId, quantity, timeSlotId, pickKey);
   }
 
   function confirmCertAssign() {
@@ -462,6 +506,18 @@ export function DailyAssignmentPanel({
       pendingAssign.timeSlotId,
       pendingAssign.pickKey,
     );
+  }
+
+  function cancelCertAssign() {
+    if (certPrompt?.source === "existing") {
+      const pickKey = certPrompt.pickKey;
+      setExistingAssignPick((prev) => {
+        const next = { ...prev };
+        delete next[pickKey];
+        return next;
+      });
+    }
+    setCertPrompt(null);
   }
 
   const selectedLabel =
@@ -484,12 +540,6 @@ export function DailyAssignmentPanel({
       >
         <div className="flex min-h-0 flex-col border-b border-border sm:border-b-0 sm:border-r">
           <div className="shrink-0 border-b border-border px-3 py-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Unassigned
-            </p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Tap a package or add-on, then assign operative
-            </p>
             <Input
               value={unassignedSearch}
               onChange={(e) => setUnassignedSearch(e.target.value)}
@@ -588,8 +638,8 @@ export function DailyAssignmentPanel({
                 onClick={() => void handleAssign()}
               >
                 {assignPackageMutation.isPending ||
-                assignAddOnMutation.isPending ||
-                certChecking ? (
+                  assignAddOnMutation.isPending ||
+                  certChecking ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   "Assign to roll"
@@ -611,8 +661,8 @@ export function DailyAssignmentPanel({
                         className={cn(
                           "w-full px-3 py-2 text-left text-sm hover:bg-accent/10",
                           selectedKind === "package" &&
-                            selectedId === pkg.tradeGroupId &&
-                            "bg-accent/10",
+                          selectedId === pkg.tradeGroupId &&
+                          "bg-accent/10",
                         )}
                         disabled={cellDisabled || pending}
                         onClick={() => selectUnassigned("package", pkg.tradeGroupId)}
@@ -642,8 +692,8 @@ export function DailyAssignmentPanel({
                         className={cn(
                           "w-full px-3 py-2 text-left text-sm hover:bg-accent/10",
                           selectedKind === "addon" &&
-                            selectedId === addOn.productId &&
-                            "bg-accent/10",
+                          selectedId === addOn.productId &&
+                          "bg-accent/10",
                         )}
                         disabled={cellDisabled || pending}
                         onClick={() => selectUnassigned("addon", addOn.productId)}
@@ -677,22 +727,30 @@ export function DailyAssignmentPanel({
           onAssignPickChange={(pickKey, pick) =>
             setExistingAssignPick((prev) => ({ ...prev, [pickKey]: pick }))
           }
-          onAssignExisting={(kind, catalogId, pickKey, items) =>
-            void handleExistingAssign(kind, catalogId, pickKey, items)
+          onAssignExisting={(kind, catalogId, pickKey, items, opId, opLabel) =>
+            void handleExistingAssign(kind, catalogId, pickKey, items, opId, opLabel)
           }
           completingItemId={
             completeMutation.isPending ? completeMutation.variables : undefined
           }
           removingItemId={removeMutation.isPending ? removeMutation.variables : undefined}
+          unassigningPackageId={
+            unassignPackageMutation.isPending ? unassignPackageMutation.variables : undefined
+          }
+          unassigningAddOnId={
+            unassignAddOnMutation.isPending ? unassignAddOnMutation.variables : undefined
+          }
           onComplete={(itemId) => completeMutation.mutate(itemId)}
           onRemove={(itemId) => removeMutation.mutate(itemId)}
+          onUnassignPackage={(tradeGroupId) => unassignPackageMutation.mutate(tradeGroupId)}
+          onUnassignAddOn={(productId) => unassignAddOnMutation.mutate(productId)}
         />
       </div>
 
       {certPrompt ? (
         <Modal
           open
-          onClose={() => setCertPrompt(null)}
+          onClose={cancelCertAssign}
           title="Certificate expiry warning"
           subtitle={`${certPrompt.operativeLabel || "This operative"} has certificate(s) expired or expiring within 7 days of the work date.`}
           size="sm"
@@ -713,7 +771,7 @@ export function DailyAssignmentPanel({
               ))}
             </ul>
             <div className="flex justify-end gap-2 pt-1">
-              <Button type="button" variant="outline" size="sm" onClick={() => setCertPrompt(null)}>
+              <Button type="button" variant="outline" size="sm" onClick={cancelCertAssign}>
                 Cancel
               </Button>
               <Button type="button" size="sm" onClick={confirmCertAssign}>
@@ -737,8 +795,12 @@ function AssignedTree({
   onAssignExisting,
   completingItemId,
   removingItemId,
+  unassigningPackageId,
+  unassigningAddOnId,
   onComplete,
   onRemove,
+  onUnassignPackage,
+  onUnassignAddOn,
 }: {
   groups: ApiDailyAssignedOperative[];
   taskId: string;
@@ -751,20 +813,23 @@ function AssignedTree({
     catalogId: string,
     pickKey: string,
     items: ApiDailyAssignedItemLine[],
+    operativeId?: string,
+    operativeLabel?: string,
   ) => void;
   completingItemId: string | undefined;
   removingItemId: string | undefined;
+  unassigningPackageId: string | undefined;
+  unassigningAddOnId: string | undefined;
   onComplete: (itemId: string) => void;
   onRemove: (itemId: string) => void;
+  onUnassignPackage: (tradeGroupId: string) => void;
+  onUnassignAddOn: (productId: string) => void;
 }) {
   return (
     <div className="flex min-h-0 flex-col">
       <div className="shrink-0 border-b border-border px-3 py-2">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Assigned
-        </p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">
-          Tick to complete · X to remove · assign unassigned below
         </p>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto py-2">
@@ -780,18 +845,54 @@ function AssignedTree({
                 key={operative.operativeId ?? `unassigned-${operative.operativeName}`}
                 className="border-b border-border/60 px-3 py-2 last:border-b-0"
               >
-                <p className="text-sm font-semibold">{operative.operativeName}</p>
+                {isUnassignedGroup ? (
+                  <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                    Unassigned
+                  </span>
+                ) : (
+                  <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 text-xs font-semibold text-accent">
+                    <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-accent/25 text-[10px] font-bold">
+                      {operativeInitials(operative.operativeName)}
+                    </span>
+                    <span className="truncate">{operative.operativeName}</span>
+                  </span>
+                )}
                 {operative.packages.map((pkg) => {
                   const pickKey = `pkg-${pkg.tradeGroupId}`;
                   const pick = assignPick[pickKey] ?? { id: "", label: "" };
+                  const isPkgCompleted =
+                    pkg.items.length > 0 && pkg.items.every((i) => Boolean(i.isTicked));
                   return (
                     <div key={pkg.tradeGroupId} className="mt-2 pl-2">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Package: {pkg.tradeGroupName}
-                      </p>
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Package: {pkg.tradeGroupName}
+                        </p>
+                        {!isUnassignedGroup && !isPkgCompleted ? (
+                          <AppTooltip content="Unassign package" asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-1.5 text-[11px] font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                              disabled={disabled || unassigningPackageId === pkg.tradeGroupId}
+                              onClick={() => onUnassignPackage(pkg.tradeGroupId)}
+                            >
+                              {unassigningPackageId === pkg.tradeGroupId ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <Undo2 className="mr-1 h-3 w-3" />
+                                  Unassign
+                                </>
+                              )}
+                            </Button>
+                          </AppTooltip>
+                        ) : null}
+                      </div>
                       {isUnassignedGroup ? (
                         <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
-                          <div className="w-[150px] shrink-0">
+                          <div className="w-[175px] shrink-0">
                             <SearchableSelect
                               value={pick.id}
                               onValueChange={(value) =>
@@ -800,12 +901,22 @@ function AssignedTree({
                                   label: pick.label,
                                 })
                               }
-                              onSelect={(opt) =>
+                              onSelect={(opt) => {
                                 onAssignPickChange(pickKey, {
                                   id: opt.value,
                                   label: opt.label,
-                                })
-                              }
+                                });
+                                if (opt.value) {
+                                  onAssignExisting(
+                                    "package",
+                                    pkg.tradeGroupId,
+                                    pickKey,
+                                    pkg.items,
+                                    opt.value,
+                                    opt.label,
+                                  );
+                                }
+                              }}
                               placeholder="Select operative"
                               searchPlaceholder="Search operatives…"
                               queryKey={[
@@ -817,25 +928,10 @@ function AssignedTree({
                               ]}
                               fetchOptions={fetchOperativeOptions}
                               selectedLabel={pick.label || null}
-                              disabled={disabled}
+                              disabled={disabled || assigning}
                               triggerClassName="h-8 text-xs"
                             />
                           </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            className="h-8 shrink-0 px-2.5 text-xs"
-                            disabled={!pick.id || disabled}
-                            onClick={() =>
-                              onAssignExisting("package", pkg.tradeGroupId, pickKey, pkg.items)
-                            }
-                          >
-                            {assigning ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              "Assign"
-                            )}
-                          </Button>
                         </div>
                       ) : null}
                       <ul className="mt-1 space-y-1">
@@ -866,7 +962,7 @@ function AssignedTree({
                           <li key={item.itemId} className="space-y-1">
                             {isUnassignedGroup && productId ? (
                               <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                                <div className="w-[150px] shrink-0">
+                                <div className="w-[175px] shrink-0">
                                   <SearchableSelect
                                     value={pick.id}
                                     onValueChange={(value) =>
@@ -875,12 +971,22 @@ function AssignedTree({
                                         label: pick.label,
                                       })
                                     }
-                                    onSelect={(opt) =>
+                                    onSelect={(opt) => {
                                       onAssignPickChange(pickKey, {
                                         id: opt.value,
                                         label: opt.label,
-                                      })
-                                    }
+                                      });
+                                      if (opt.value) {
+                                        onAssignExisting(
+                                          "addon",
+                                          productId,
+                                          pickKey,
+                                          [item],
+                                          opt.value,
+                                          opt.label,
+                                        );
+                                      }
+                                    }}
                                     placeholder="Select operative"
                                     searchPlaceholder="Search operatives…"
                                     queryKey={[
@@ -892,25 +998,10 @@ function AssignedTree({
                                     ]}
                                     fetchOptions={fetchOperativeOptions}
                                     selectedLabel={pick.label || null}
-                                    disabled={disabled}
+                                    disabled={disabled || assigning}
                                     triggerClassName="h-8 text-xs"
                                   />
                                 </div>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  className="h-8 shrink-0 px-2.5 text-xs"
-                                  disabled={!pick.id || disabled}
-                                  onClick={() =>
-                                    onAssignExisting("addon", productId, pickKey, [item])
-                                  }
-                                >
-                                  {assigning ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    "Assign"
-                                  )}
-                                </Button>
                               </div>
                             ) : null}
                             <AssignedItemLine
@@ -918,8 +1009,14 @@ function AssignedTree({
                               disabled={disabled}
                               completing={completingItemId === item.itemId}
                               removing={removingItemId === item.itemId}
+                              unassigning={Boolean(productId && unassigningAddOnId === productId)}
                               onComplete={() => onComplete(item.itemId)}
                               onRemove={() => onRemove(item.itemId)}
+                              onUnassign={
+                                !isUnassignedGroup && productId
+                                  ? () => onUnassignAddOn(productId)
+                                  : undefined
+                              }
                             />
                           </li>
                         );
@@ -941,19 +1038,24 @@ function AssignedItemLine({
   disabled,
   completing,
   removing,
+  unassigning = false,
   onComplete,
   onRemove,
+  onUnassign,
 }: {
   item: ApiDailyAssignedItemLine;
   disabled: boolean;
   completing: boolean;
   removing: boolean;
+  unassigning?: boolean;
   onComplete: () => void;
   onRemove: () => void;
+  onUnassign?: () => void;
 }) {
   const { hasCapability } = usePermissions();
   const canSeeRates = hasCapability(CAPABILITY_CODES.seeRates);
-  const lineBusy = completing || removing;
+  const lineBusy = completing || removing || unassigning;
+  const isCompleted = Boolean(item.isTicked);
   const meta = [
     `Qty ${item.quantity}`,
     item.timeSlotName ?? "—",
@@ -971,8 +1073,8 @@ function AssignedItemLine({
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           ) : (
             <Checkbox
-              checked={Boolean(item.isTicked)}
-              disabled={disabled || removing || item.isTicked}
+              checked={isCompleted}
+              disabled={disabled || lineBusy || isCompleted}
               onCheckedChange={(checked) => {
                 if (checked === true) onComplete();
               }}
@@ -984,25 +1086,46 @@ function AssignedItemLine({
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{item.productName}</p>
         <p className="truncate text-[11px] text-muted-foreground">{meta}</p>
-        {item.isTicked ? (
+        {isCompleted ? (
           <p className="text-[10px] font-medium text-success">Completed</p>
         ) : null}
       </div>
-      <AppTooltip content="Remove from assignment" asChild>
-        <button
-          type="button"
-          className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/10 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-          disabled={disabled || lineBusy}
-          onClick={onRemove}
-          aria-label={`Remove ${item.productName}`}
-        >
-          {removing ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <X className="h-3.5 w-3.5" />
-          )}
-        </button>
-      </AppTooltip>
+      {!isCompleted ? (
+        <div className="flex shrink-0 items-center gap-0.5">
+          {onUnassign ? (
+            <AppTooltip content="Unassign operative" asChild>
+              <button
+                type="button"
+                className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:pointer-events-none disabled:opacity-40"
+                disabled={disabled || lineBusy}
+                onClick={onUnassign}
+                aria-label={`Unassign ${item.productName}`}
+              >
+                {unassigning ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Undo2 className="h-3.5 w-3.5" />
+                )}
+              </button>
+            </AppTooltip>
+          ) : null}
+          <AppTooltip content="Remove from assignment" asChild>
+            <button
+              type="button"
+              className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:pointer-events-none disabled:opacity-40"
+              disabled={disabled || lineBusy}
+              onClick={onRemove}
+              aria-label={`Remove ${item.productName}`}
+            >
+              {removing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <X className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </AppTooltip>
+        </div>
+      ) : null}
     </li>
   );
 }

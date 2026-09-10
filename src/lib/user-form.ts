@@ -299,11 +299,11 @@ function contactModuleExtrasRefine(mode: UserModuleMode, values: UserFormValues,
 
   if (mode === "customer") {
     const clientCode = values.clientCode.trim();
-    if (clientCode && clientCode.length > 100) {
+    if (clientCode && clientCode.length > 10) {
       ctx.addIssue({
         code: "custom",
         path: ["clientCode"],
-        message: "Code must be 100 characters or fewer",
+        message: "Code must be 10 characters or fewer",
       });
     }
   }

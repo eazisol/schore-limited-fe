@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppTooltip } from "@/components/AppTooltip";
 import { splitCodeAndLabel } from "@/lib/code-display";
 import { cn } from "@/lib/utils";
 
@@ -9,14 +10,16 @@ export function CodeBadge({ code, className }: { code?: string | null; className
   }
 
   return (
-    <code
-      className={cn(
-        "inline-block max-w-full whitespace-nowrap rounded bg-secondary px-1.5 py-0.5 font-mono text-xs",
-        className,
-      )}
-    >
-      {trimmed}
-    </code>
+    <AppTooltip content={trimmed} asChild>
+      <code
+        className={cn(
+          "inline-block max-w-[10rem] truncate align-middle whitespace-nowrap rounded bg-secondary px-1.5 py-0.5 font-mono text-xs",
+          className,
+        )}
+      >
+        {trimmed}
+      </code>
+    </AppTooltip>
   );
 }
 
@@ -42,9 +45,13 @@ export function CodeWithLabel({
   }
 
   return (
-    <span className={cn("inline-flex flex-wrap items-center gap-1.5", className)}>
+    <span className={cn("inline-flex max-w-full items-center gap-1.5 truncate", className)}>
       {displayCode ? <CodeBadge code={displayCode} /> : null}
-      {displayLabel ? <span>{displayLabel}</span> : null}
+      {displayLabel ? (
+        <AppTooltip content={displayLabel} asChild align="start">
+          <span className="truncate max-w-[18rem]">{displayLabel}</span>
+        </AppTooltip>
+      ) : null}
     </span>
   );
 }

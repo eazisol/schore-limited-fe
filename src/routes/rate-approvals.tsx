@@ -7,6 +7,13 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   DataTable,
   useDebouncedSearch,
   type DataTableColumn,
@@ -185,14 +192,14 @@ function RateApprovals() {
     {
       id: "approve",
       label: "Approve",
-      icon: <Check className="h-4 w-4" />,
+      icon: <Check className="h-3.5 w-3.5" />,
       hidden: (row) => !canModify || !row.canApprove,
       onClick: (row) => approveMutation.mutate(row.id),
     },
     {
       id: "reject",
       label: "Reject",
-      icon: <X className="h-4 w-4" />,
+      icon: <X className="h-3.5 w-3.5" />,
       danger: true,
       hidden: (row) => !canModify || !row.canApprove,
       onClick: (row) => {
@@ -204,46 +211,7 @@ function RateApprovals() {
 
   return (
     <div>
-      <PageHeader
-        title="Rate approvals"
-        subtitle="Pending rates above the parent budget wait here. Approve or reject — live rates only change after approval."
-      />
-
-      <div className="mb-3 flex flex-wrap gap-1">
-        {statuses.map((filter) => (
-          <Button
-            key={filter.id}
-            type="button"
-            size="sm"
-            variant={selectedStatusId === filter.id ? "default" : "outline"}
-            className={cn(
-              "h-7 px-2.5 text-xs",
-              selectedStatusId === filter.id ? "" : "text-muted-foreground",
-            )}
-            onClick={() => {
-              setStatusId(filter.id);
-              setPage(1);
-            }}
-          >
-            {filter.name}
-          </Button>
-        ))}
-        <Button
-          type="button"
-          size="sm"
-          variant={statusId === ALL_STATUS ? "default" : "outline"}
-          className={cn(
-            "h-7 px-2.5 text-xs",
-            statusId === ALL_STATUS ? "" : "text-muted-foreground",
-          )}
-          onClick={() => {
-            setStatusId(ALL_STATUS);
-            setPage(1);
-          }}
-        >
-          All
-        </Button>
-      </div>
+      <PageHeader title="Rate approvals" />
 
       <DataTable
         columns={columns}
@@ -273,6 +241,30 @@ function RateApprovals() {
           placeholder: "Search item, client, reason…",
           "aria-label": "Search rate changes",
         }}
+        filters={
+          <Select
+            value={statusId ?? pendingStatus?.id ?? ALL_STATUS}
+            onValueChange={(next) => {
+              setStatusId(next === ALL_STATUS ? ALL_STATUS : next);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger
+              className="h-9 w-full min-w-[10rem] sm:w-48 [&>span]:whitespace-nowrap"
+              aria-label="Filter by status"
+            >
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              {statuses.map((filter) => (
+                <SelectItem key={filter.id} value={filter.id}>
+                  {filter.name}
+                </SelectItem>
+              ))}
+              <SelectItem value={ALL_STATUS}>All statuses</SelectItem>
+            </SelectContent>
+          </Select>
+        }
         emptyState={{
           title:
             selectedStatus?.code === RATE_CHANGE_STATUS_PENDING

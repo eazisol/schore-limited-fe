@@ -33,6 +33,7 @@ import {
   findCertificationWarningsForWorkDates,
   type CertificationAssignWarning,
 } from "@/lib/operative-certifications";
+import { toYmd } from "@/lib/week-ending";
 
 type DayLine = {
   itemId: string;
@@ -126,7 +127,9 @@ export function JobDayItemsEditor({
   onRowUpdated,
 }: JobDayItemsEditorProps) {
   const qc = useQueryClient();
-  const locked = disabled || row.isLocked;
+  const todayYmd = toYmd(new Date());
+  const isPast = Boolean(date && date < todayYmd);
+  const locked = disabled || row.isLocked || isPast;
   const [formMode, setFormMode] = useState<FormMode>(
     initialShowAdd && !locked ? { kind: "add" } : null,
   );
@@ -197,7 +200,9 @@ export function JobDayItemsEditor({
         <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-8 text-center">
           <p className="text-sm font-medium">No items on this day</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Use Add to assign a package or add-on to an operative.
+            {isPast
+              ? "Past date — tasks cannot be added to previous dates."
+              : "Use Add to assign a package or add-on to an operative."}
           </p>
         </div>
       ) : (
@@ -315,7 +320,7 @@ export function JobDayItemsEditor({
                                       Cancel
                                     </Button>
                                   </>
-                                ) : (
+                                ) : !line.isTicked ? (
                                   <>
                                     <AppTooltip content="Edit" asChild>
                                       <Button
@@ -323,7 +328,7 @@ export function JobDayItemsEditor({
                                         size="icon"
                                         variant="ghost"
                                         className="h-7 w-7"
-                                        disabled={locked || line.isTicked}
+                                        disabled={locked}
                                         onClick={() => setFormMode({ kind: "edit", line })}
                                       >
                                         <Pencil className="h-3.5 w-3.5" />
@@ -335,14 +340,14 @@ export function JobDayItemsEditor({
                                         size="icon"
                                         variant="ghost"
                                         className="h-7 w-7 text-destructive hover:text-destructive"
-                                        disabled={locked || line.isTicked}
+                                        disabled={locked}
                                         onClick={() => setConfirmDeleteId(line.itemId)}
                                       >
                                         <Trash2 className="h-3.5 w-3.5" />
                                       </Button>
                                     </AppTooltip>
                                   </>
-                                )}
+                                ) : null}
                               </div>
                             </td>
                           </tr>
@@ -492,6 +497,10 @@ function ItemFormCard({
   });
 
   function handleSave() {
+    if (date < toYmd(new Date())) {
+      toast.warning("Cannot add or edit tasks for past dates.");
+      return;
+    }
     if (!operativeId) {
       toast.warning("Select an operative.");
       return;
