@@ -1,11 +1,11 @@
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { TextField, TextareaField, CreatableSearchableSelectField } from "@/components/form";
 import { SearchableSelect } from "@/components/form/SearchableSelect";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
 import { AppTooltip } from "@/components/AppTooltip";
-import { Plus, Trash2, Undo2, X } from "lucide-react";
+import { Plus, Trash2, Undo2, User, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtGBP } from "@/lib/data";
 import { truncateWithEllipsis } from "@/lib/module-ui";
@@ -577,39 +577,48 @@ export function TaskFormFields({
     setCertAssignPrompt(null);
   }
 
-  function renderAssignOperativeControls(pickKey: string, indexes: number[]) {
+  function renderAssignOperativeAvatar(pickKey: string, indexes: number[]) {
     const pick = assignPick[pickKey] ?? { id: "", label: "" };
     return (
-      <div className="flex min-w-0 items-center">
-        <div className="w-[175px] shrink-0">
-          <label className="sr-only">Operative</label>
-          <SearchableSelect
-            value={pick.id}
-            onValueChange={(value) =>
-              setAssignPick((prev) => ({
-                ...prev,
-                [pickKey]: { id: value, label: prev[pickKey]?.label ?? "" },
-              }))
-            }
-            onSelect={(opt) => {
-              setAssignPick((prev) => ({
-                ...prev,
-                [pickKey]: { id: opt.value, label: opt.label },
-              }));
-              if (opt.value) {
-                void assignItemsToOperative(indexes, opt.value, opt.label, pickKey);
-              }
-            }}
-            placeholder="Select operative"
-            searchPlaceholder="Search operatives…"
-            queryKey={["lookups", "operatives", "assign", pickKey]}
-            fetchOptions={fetchOperativeOptions}
-            selectedLabel={pick.label || null}
-            disabled={addControlsDisabled || certAssignChecking}
-            triggerClassName="h-8 text-xs"
-          />
-        </div>
-      </div>
+      <SearchableSelect
+        value={pick.id}
+        onValueChange={(value) =>
+          setAssignPick((prev) => ({
+            ...prev,
+            [pickKey]: { id: value, label: prev[pickKey]?.label ?? "" },
+          }))
+        }
+        onSelect={(opt) => {
+          setAssignPick((prev) => ({
+            ...prev,
+            [pickKey]: { id: opt.value, label: opt.label },
+          }));
+          if (opt.value) {
+            void assignItemsToOperative(indexes, opt.value, opt.label, pickKey);
+          }
+        }}
+        placeholder="Select operative"
+        searchPlaceholder="Search operatives…"
+        queryKey={["lookups", "operatives", "assign", pickKey]}
+        fetchOptions={fetchOperativeOptions}
+        selectedLabel={pick.label || null}
+        disabled={addControlsDisabled || certAssignChecking}
+        aria-label="Assign operative"
+        contentClassName="w-[220px]"
+        renderTrigger={({ open, disabled: triggerDisabled }) => (
+          <button
+            type="button"
+            disabled={triggerDisabled}
+            className={cn(
+              "grid h-7 w-7 place-items-center rounded-full border border-dashed border-muted-foreground/40 text-muted-foreground transition-colors hover:border-accent hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+              open && "border-accent bg-accent/15 text-accent ring-1 ring-ring",
+            )}
+            aria-label="Assign operative"
+          >
+            <User className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        )}
+      />
     );
   }
 
@@ -961,36 +970,35 @@ export function TaskFormFields({
               >
                 <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
                   <h4 className="text-sm font-medium leading-tight">{name}</h4>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {indexes.length > 0 ? (
-                      <div className="flex items-baseline gap-1.5 text-xs">
-                        <span className="text-muted-foreground">
-                          {indexes.length} item{indexes.length === 1 ? "" : "s"}
-                        </span>
-                        <AppTooltip content={fmtGBP(operativeTotal)} asChild align="end">
-                          <span className="font-display font-semibold tabular-nums">
-                            {fmtGBP(operativeTotal)}
+                  {!isUnassigned ? (
+                    <div className="flex shrink-0 items-center gap-2">
+                      {indexes.length > 0 ? (
+                        <div className="flex items-baseline gap-1.5 text-xs">
+                          <span className="text-muted-foreground">
+                            {indexes.length} item{indexes.length === 1 ? "" : "s"}
                           </span>
-                        </AppTooltip>
-                      </div>
-                    ) : null}
-                    {isUnassigned && indexes.length > 0 ? (
-                      renderAssignOperativeControls(`ops-${operativeId}`, indexes)
-                    ) : null}
-                    {!isUnassigned && indexes.length > 0 && !isAllDone ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => unassignItems(indexes)}
-                        disabled={disabled || itemsLocked}
-                      >
-                        <Undo2 className="h-3.5 w-3.5" aria-hidden />
-                        Unassign
-                      </Button>
-                    ) : null}
-                  </div>
+                          <AppTooltip content={fmtGBP(operativeTotal)} asChild align="end">
+                            <span className="font-display font-semibold tabular-nums">
+                              {fmtGBP(operativeTotal)}
+                            </span>
+                          </AppTooltip>
+                        </div>
+                      ) : null}
+                      {indexes.length > 0 && !isAllDone ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => unassignItems(indexes)}
+                          disabled={disabled || itemsLocked}
+                        >
+                          <Undo2 className="h-3.5 w-3.5" aria-hidden />
+                          Unassign
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
 
                 {indexes.length === 0 ? (
@@ -1012,6 +1020,11 @@ export function TaskFormFields({
                         setRatePrompt({ index, previousRate, nextRate });
                       }}
                       getValues={getValues}
+                      showAssignColumn={isUnassigned}
+                      assignDisabled={addControlsDisabled || certAssignChecking}
+                      renderAssignControls={(index) =>
+                        renderAssignOperativeAvatar(`row-${index}`, [index])
+                      }
                     />
                   </div>
                 )}
@@ -1121,6 +1134,7 @@ export function TaskFormFields({
 }
 
 const PRODUCT_LINE_TABLE_MIN_WIDTH = "736px";
+const PRODUCT_LINE_TABLE_MIN_WIDTH_WITH_ASSIGN = "812px";
 
 function ProductLinesTable({
   indexes,
@@ -1131,6 +1145,9 @@ function ProductLinesTable({
   onRemove,
   onRateCommit,
   getValues,
+  showAssignColumn = false,
+  assignDisabled = false,
+  renderAssignControls,
 }: {
   indexes: number[];
   fields: { fieldKey: string }[];
@@ -1140,6 +1157,9 @@ function ProductLinesTable({
   onRemove: (index: number) => void;
   onRateCommit: (index: number, previousRate: string, nextRate: string) => void;
   getValues: ReturnType<typeof useFormContext<TaskFormValues>>["getValues"];
+  showAssignColumn?: boolean;
+  assignDisabled?: boolean;
+  renderAssignControls?: (index: number) => ReactNode;
 }) {
   const { setValue, control } = useFormContext<TaskFormValues>();
   const timeSlotsQuery = useQuery({
@@ -1151,9 +1171,14 @@ function ProductLinesTable({
     <div className="min-w-0 max-w-full overflow-x-auto rounded-md border border-border/60">
       <table
         className="w-full table-fixed text-xs"
-        style={{ minWidth: PRODUCT_LINE_TABLE_MIN_WIDTH }}
+        style={{
+          minWidth: showAssignColumn
+            ? PRODUCT_LINE_TABLE_MIN_WIDTH_WITH_ASSIGN
+            : PRODUCT_LINE_TABLE_MIN_WIDTH,
+        }}
       >
         <colgroup>
+          {showAssignColumn ? <col style={{ width: "56px" }} /> : null}
           <col style={{ width: "120px" }} />
           <col style={{ width: "132px" }} />
           <col style={{ width: "96px" }} />
@@ -1165,6 +1190,9 @@ function ProductLinesTable({
         </colgroup>
         <thead>
           <tr className="border-b bg-muted/20 text-left text-muted-foreground">
+            {showAssignColumn ? (
+              <th className="px-1.5 py-1 text-[11px] font-medium">Assign</th>
+            ) : null}
             <th className="px-1.5 py-1 text-[11px] font-medium">Product</th>
             <th className="px-1.5 py-1 text-[11px] font-medium">Work date</th>
             <th className="px-1.5 py-1 text-[11px] font-medium">Time</th>
@@ -1196,6 +1224,11 @@ function ProductLinesTable({
               onRemove={() => onRemove(index)}
               removeDisabled={removeDisabled}
               onRateCommit={onRateCommit}
+              showAssignColumn={showAssignColumn}
+              assignDisabled={assignDisabled}
+              assignControls={
+                showAssignColumn ? renderAssignControls?.(index) : null
+              }
             />
             );
           })}
@@ -1217,6 +1250,9 @@ function ProductLineRow({
   onRemove,
   removeDisabled = false,
   onRateCommit,
+  showAssignColumn = false,
+  assignDisabled = false,
+  assignControls,
 }: {
   fieldId: string;
   index: number;
@@ -1229,6 +1265,9 @@ function ProductLineRow({
   onRemove: () => void;
   removeDisabled?: boolean;
   onRateCommit: (index: number, previousRate: string, nextRate: string) => void;
+  showAssignColumn?: boolean;
+  assignDisabled?: boolean;
+  assignControls?: ReactNode;
 }) {
   const workDate = String(useWatch({ control, name: `items.${index}.workDate` }) ?? "");
   const timeSlotId = String(useWatch({ control, name: `items.${index}.timeSlotId` }) ?? "");
@@ -1256,6 +1295,13 @@ function ProductLineRow({
 
   return (
     <tr className="align-middle border-b border-border/50">
+      {showAssignColumn ? (
+        <td className="px-1.5 py-1.5">
+          <div className={cn(assignDisabled && "pointer-events-none opacity-50")}>
+            {assignControls}
+          </div>
+        </td>
+      ) : null}
       <td className="min-w-0 px-1.5 py-1.5 font-medium">
         <TruncatedTooltip text={productLabel} maxChars={22} />
       </td>

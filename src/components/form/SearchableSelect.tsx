@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type Ref } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
+  type Ref,
+} from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronDown, Loader2, Plus, Search } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -57,6 +64,13 @@ export interface SearchableSelectProps {
   /** Label for the clear option. Defaults to "Clear selection". */
   clearLabel?: string;
   invalid?: boolean;
+  /** Replace the default text trigger (e.g. avatar button). Must forward a button. */
+  renderTrigger?: (args: {
+    open: boolean;
+    disabled?: boolean;
+  }) => ReactElement;
+  /** Extra classes for the dropdown panel (e.g. fixed width with a custom trigger). */
+  contentClassName?: string;
 }
 
 export function SearchableSelect({
@@ -80,6 +94,8 @@ export function SearchableSelect({
   clearable = false,
   clearLabel = "Clear selection",
   invalid,
+  renderTrigger,
+  contentClassName,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -199,29 +215,36 @@ export function SearchableSelect({
         }}
       >
         <PopoverTrigger asChild>
-          <button
-            type="button"
-            ref={triggerRef}
-            data-field={dataField}
-            role="combobox"
-            aria-expanded={open}
-            aria-label={ariaLabel}
-            aria-invalid={invalid || undefined}
-            disabled={disabled}
-            className={cn(
-              searchableSelectTriggerClassName,
-              !displayLabel && "text-muted-foreground",
-              invalid && "border-destructive focus-visible:ring-destructive",
-              triggerClassName,
-            )}
-          >
-            <span className="truncate">{displayLabel || placeholder}</span>
-            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </button>
+          {renderTrigger ? (
+            renderTrigger({ open, disabled })
+          ) : (
+            <button
+              type="button"
+              ref={triggerRef}
+              data-field={dataField}
+              role="combobox"
+              aria-expanded={open}
+              aria-label={ariaLabel}
+              aria-invalid={invalid || undefined}
+              disabled={disabled}
+              className={cn(
+                searchableSelectTriggerClassName,
+                !displayLabel && "text-muted-foreground",
+                invalid && "border-destructive focus-visible:ring-destructive",
+                triggerClassName,
+              )}
+            >
+              <span className="truncate">{displayLabel || placeholder}</span>
+              <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </button>
+          )}
         </PopoverTrigger>
         <PopoverContent
           ref={contentRef}
-          className="z-[60] w-[var(--radix-popover-trigger-width)] p-0"
+          className={cn(
+            "z-[60] w-[var(--radix-popover-trigger-width)] p-0",
+            contentClassName,
+          )}
           align="start"
           onCloseAutoFocus={(event) => event.preventDefault()}
         >
