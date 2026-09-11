@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, type ComponentProps, type HTMLAttributes } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
@@ -761,7 +761,7 @@ function HolidayFormModal({
     mode.kind === "create" ? "Add holiday" : mode.kind === "edit" ? "Edit holiday" : "View holiday";
 
   return (
-    <Form form={form} onSubmit={submit} className="contents">
+    <FormProvider {...form}>
       <Modal
         open
         onClose={onClose}
@@ -770,7 +770,8 @@ function HolidayFormModal({
         showCloseButton={false}
         headerActions={<SwitchField<Values> name="isActive" label="Active" disabled={isView} />}
       >
-        <div className="space-y-3">
+        {/* Modal portals to body — keep <form> inside so submit is wired. */}
+        <Form form={form} onSubmit={submit} className="space-y-3">
           <fieldset disabled={isView} className="space-y-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <TextField<Values>
@@ -824,8 +825,8 @@ function HolidayFormModal({
               </>
             )}
           </div>
-        </div>
+        </Form>
       </Modal>
-    </Form>
+    </FormProvider>
   );
 }
