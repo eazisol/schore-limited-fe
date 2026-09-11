@@ -9,7 +9,7 @@ import {
   type DetailProfileHighlight,
   type DetailProfileTag,
 } from "@/components/DetailProfileHero";
-import { roleIconForName, splitTradeNames, tradeIconForName } from "@/lib/profile-tags";
+import { splitTradeNames } from "@/lib/profile-tags";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -225,12 +225,12 @@ export function UserDetailPage() {
     if (cfg.isOperative) {
       const trades = splitTradeNames(user.tradeName, user.tradeNames);
       if (!trades.length) return undefined;
-      return trades.map((label) => ({ label, icon: tradeIconForName(label) }));
+      return trades.map((label) => ({ label }));
     }
     if (mode === "user") {
       const roles = (user.roleNames ?? []).map((n) => n.trim()).filter(Boolean);
       if (!roles.length) return undefined;
-      return roles.map((label) => ({ label, icon: roleIconForName(label) }));
+      return roles.map((label) => ({ label }));
     }
     return undefined;
   })();

@@ -5,7 +5,7 @@ import { SearchableSelect } from "@/components/form/SearchableSelect";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
 import { AppTooltip } from "@/components/AppTooltip";
-import { Calculator, Plus, Trash2, Undo2, X } from "lucide-react";
+import { Plus, Trash2, Undo2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtGBP } from "@/lib/data";
 import { truncateWithEllipsis } from "@/lib/module-ui";
@@ -1021,18 +1021,15 @@ export function TaskFormFields({
 
           {items.length > 0 ? (
             <div className="flex items-center justify-end gap-3 border-t border-border pt-3">
-              <div className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-3 py-2">
-                <Calculator className="h-4 w-4 text-accent" aria-hidden />
-                <div className="leading-tight text-right">
-                  <div className="text-[11px] text-muted-foreground">
-                    {items.length} item{items.length === 1 ? "" : "s"}
-                  </div>
-                  <AppTooltip content={fmtGBP(jobItemsTotal)} asChild align="end">
-                    <div className="font-display text-base font-semibold tabular-nums">
-                      Total {fmtGBP(jobItemsTotal)}
-                    </div>
-                  </AppTooltip>
-                </div>
+              <div className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-3 py-2">
+                <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                  {items.length} item{items.length === 1 ? "" : "s"}
+                </span>
+                <AppTooltip content={fmtGBP(jobItemsTotal)} asChild align="end">
+                  <span className="font-display text-base font-semibold tabular-nums whitespace-nowrap">
+                    Total {fmtGBP(jobItemsTotal)}
+                  </span>
+                </AppTooltip>
               </div>
             </div>
           ) : null}
