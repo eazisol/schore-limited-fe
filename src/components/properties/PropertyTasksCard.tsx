@@ -1,7 +1,8 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { CalendarDays, Eye, Loader2, Pencil, Plus, Search } from "lucide-react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CalendarDays, Eye, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Can, usePermission } from "@/components/Permission";
@@ -12,8 +13,8 @@ import {
   type DataTableRowAction,
 } from "@/components/data-table";
 import { tasksService, type ApiTask } from "@/lib/api/services/tasks";
-import type { ApiError } from "@/lib/api/axios";
-import { formatDateTime, truncateWithEllipsis } from "@/lib/module-ui";
+import { notifyApiError, type ApiError } from "@/lib/api/axios";
+import { formatDateTime } from "@/lib/module-ui";
 import { TASKS_ROUTE } from "@/lib/tasks";
 import { DAILY_ROUTE } from "@/lib/daily";
 import { isNonEmptyId } from "@/lib/ids";
@@ -26,10 +27,13 @@ type PropertyTasksCardProps = {
 
 export function PropertyTasksCard({ propertyId, propertyName }: PropertyTasksCardProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const canModify = usePermission({ route: TASKS_ROUTE, action: "modify" });
+  const canDelete = usePermission({ route: TASKS_ROUTE, action: "delete" });
   const canReadDaily = usePermission({ route: DAILY_ROUTE, action: "read" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [confirmDel, setConfirmDel] = useState<ApiTask | null>(null);
   const { searchInput, setSearchInput, search } = useDebouncedSearch({
     onPageReset: () => setPage(1),
   });
@@ -49,6 +53,16 @@ export function PropertyTasksCard({ propertyId, propertyName }: PropertyTasksCar
       ).data,
     enabled: isNonEmptyId(propertyId),
     placeholderData: keepPreviousData,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => tasksService.remove(id),
+    onSuccess: (res) => {
+      toast.success(res.message || "Job deleted");
+      setConfirmDel(null);
+      queryClient.invalidateQueries({ queryKey: tasksQueryKey });
+    },
+    onError: (err) => notifyApiError(err, "Failed to delete job"),
   });
 
   const rows = data?.items ?? [];
@@ -149,6 +163,17 @@ export function PropertyTasksCard({ propertyId, propertyName }: PropertyTasksCar
           },
         ]
       : []),
+    ...(canDelete
+      ? [
+          {
+            id: "delete",
+            label: "Delete",
+            icon: <Trash2 className="h-4 w-4" />,
+            onClick: (task: ApiTask) => setConfirmDel(task),
+            danger: true,
+          },
+        ]
+      : []),
   ];
 
   const newJobButton = (
@@ -231,6 +256,32 @@ export function PropertyTasksCard({ propertyId, propertyName }: PropertyTasksCar
           action: !search && canModify ? newJobButton : undefined,
         }}
       />
+
+      {confirmDel ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+          <div className="card-elevated w-full max-w-md space-y-4 p-6">
+            <h3 className="font-display text-lg font-semibold">Delete job?</h3>
+            <p className="text-sm text-muted-foreground">
+              Soft-delete job{" "}
+              <strong>{confirmDel.taskNumber || confirmDel.id}</strong> for{" "}
+              <strong>{propertyName || confirmDel.propertyName}</strong>.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setConfirmDel(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate(confirmDel.id)}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
