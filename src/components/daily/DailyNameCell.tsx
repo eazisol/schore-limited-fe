@@ -61,7 +61,8 @@ export function DailyNameCell({ row, date, disabled = false }: DailyNameCellProp
   const { hasCapability } = usePermissions();
   const canSeeRates = hasCapability(CAPABILITY_CODES.seeRates);
   const operatives = row.nameOperatives ?? [];
-  const cellDisabled = disabled || row.isLocked;
+  // Lock blocks adding/assigning elsewhere; ticking existing items stays allowed.
+  const cellDisabled = disabled;
 
   if (operatives.length === 0) {
     return <span className="italic text-muted-foreground">No allocation</span>;

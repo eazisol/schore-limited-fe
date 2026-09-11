@@ -29,7 +29,7 @@ export function DailyItemsCell({ row, date, disabled = false }: DailyItemsCellPr
   const summary = dailyAssignmentSummary(assignedByOperative);
   const fullSummary = dailyAssignmentDetail(assignedByOperative);
   const hasAssigned = assignedByOperative.length > 0;
-  const cellDisabled = disabled || liveRow.isLocked;
+  // Locked rows may still open to tick existing items; panel blocks new assigns.
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -52,7 +52,7 @@ export function DailyItemsCell({ row, date, disabled = false }: DailyItemsCellPr
               open && "bg-accent/10 text-foreground",
             )}
             aria-label={`Assign items for ${liveRow.propertyName}`}
-            disabled={cellDisabled}
+            disabled={disabled}
           >
             <ChevronDown className="h-3.5 w-3.5" />
           </button>

@@ -136,7 +136,9 @@ export function DailyAssignmentPanel({
   const unassignedPackages = row.unassignedPackages ?? [];
   const unassignedAddOns = row.unassignedAddOns ?? [];
   const isPast = date < toYmd(new Date());
+  // Lock / past: block assign & structural edits; ticks stay allowed when locked.
   const cellDisabled = disabled || row.isLocked || isPast;
+  const completeDisabled = disabled || isPast;
 
   const timeSlotsQuery = useQuery({
     queryKey: ["tasks", "time-slots"],
@@ -721,6 +723,7 @@ export function DailyAssignmentPanel({
           groups={assignedByOperative}
           taskId={row.taskId}
           disabled={cellDisabled || pending}
+          completeDisabled={completeDisabled || pending}
           assigning={
             assignPackageMutation.isPending || assignAddOnMutation.isPending || certChecking
           }
@@ -800,6 +803,7 @@ function AssignedTree({
   groups,
   taskId,
   disabled,
+  completeDisabled,
   assigning,
   assignPick,
   onAssignPickChange,
@@ -816,6 +820,7 @@ function AssignedTree({
   groups: ApiDailyAssignedOperative[];
   taskId: string;
   disabled: boolean;
+  completeDisabled: boolean;
   assigning: boolean;
   assignPick: Record<string, AssignPick>;
   onAssignPickChange: (pickKey: string, pick: AssignPick) => void;
@@ -951,6 +956,7 @@ function AssignedTree({
                             key={item.itemId}
                             item={item}
                             disabled={disabled}
+                            completeDisabled={completeDisabled}
                             completing={completingItemId === item.itemId}
                             removing={removingItemId === item.itemId}
                             onComplete={() => onComplete(item.itemId)}
@@ -1018,6 +1024,7 @@ function AssignedTree({
                             <AssignedItemLine
                               item={item}
                               disabled={disabled}
+                              completeDisabled={completeDisabled}
                               completing={completingItemId === item.itemId}
                               removing={removingItemId === item.itemId}
                               unassigning={Boolean(productId && unassigningAddOnId === productId)}
@@ -1047,6 +1054,7 @@ function AssignedTree({
 function AssignedItemLine({
   item,
   disabled,
+  completeDisabled,
   completing,
   removing,
   unassigning = false,
@@ -1056,6 +1064,7 @@ function AssignedItemLine({
 }: {
   item: ApiDailyAssignedItemLine;
   disabled: boolean;
+  completeDisabled: boolean;
   completing: boolean;
   removing: boolean;
   unassigning?: boolean;
@@ -1085,7 +1094,7 @@ function AssignedItemLine({
           ) : (
             <Checkbox
               checked={isCompleted}
-              disabled={disabled || lineBusy || isCompleted}
+              disabled={completeDisabled || lineBusy || isCompleted}
               onCheckedChange={(checked) => {
                 if (checked === true) onComplete();
               }}
