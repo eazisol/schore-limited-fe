@@ -155,3 +155,8 @@ export async function getCatalogueCap(productId: string): Promise<number | null>
     return null;
   }
 }
+
+export function formatMoneyRate(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(Number(value))) return "0";
+  return String(Number(value));
+}

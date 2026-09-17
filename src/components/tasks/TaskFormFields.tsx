@@ -12,6 +12,7 @@ import { truncateWithEllipsis } from "@/lib/module-ui";
 import {
   emptyTaskItem,
   DESCRIPTION_MAX_LENGTH,
+  isBlankTaskItem,
   type TaskFormValues,
   type TaskItemFormValues,
 } from "@/lib/task-form";
@@ -22,7 +23,6 @@ import {
   fetchPropertyOptions,
   fetchSiteManagerOptions,
   fetchTaskStatusOptions,
-  fetchTradeOptions,
   packageOrAddonSelectionValue,
   parsePackageOrAddonValue,
 } from "@/lib/task-dropdowns";
@@ -33,6 +33,7 @@ import { productsService } from "@/lib/api/services/products";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { HoldDetailsModal, type HoldDetails } from "@/components/tasks/HoldDetailsModal";
+import { RemoveItemReasonModal } from "@/components/tasks/RemoveItemReasonModal";
 import { getTaskStatusCode, isHoldStatusCode } from "@/lib/task-hold";
 import { jobTypesService } from "@/lib/api/services/job-types";
 import { tasksService } from "@/lib/api/services/tasks";
@@ -42,6 +43,9 @@ import {
   type CertificationAssignWarning,
 } from "@/lib/operative-certifications";
 import { notifyApiError } from "@/lib/api/axios";
+import { RateCapReasonModal, type RateCapReasonContext } from "@/components/rates/RateCapReasonModal";
+import { formatMoneyRate, getCatalogueCap } from "@/lib/rate-overrides";
+import { formatResolvedRate } from "@/lib/api/services/daily-programme";
 
 /** Form grouping key for template lines that have no operative yet. */
 const UNASSIGNED_OPERATIVE_KEY = "__unassigned";
@@ -112,7 +116,7 @@ export function TaskFormFields({
   /** Keyed by existing TaskItem id (string). */
   itemSelectedLabels?: Record<string, TaskItemSelectedLabels>;
 }) {
-  const { control, setValue, getValues, unregister } = useFormContext<TaskFormValues>();
+  const { control, setValue, getValues } = useFormContext<TaskFormValues>();
   const { fields, append, replace } = useFieldArray<TaskFormValues, "items", "fieldKey">({
     control,
     name: "items",
@@ -122,6 +126,7 @@ export function TaskFormFields({
   const addControlsDisabled = disabled || itemsLocked;
   const jobTypeId = useWatch({ control, name: "jobTypeId" });
   const startDate = useWatch({ control, name: "startDate" });
+  const propertyId = useWatch({ control, name: "propertyId" });
   const templateSeededRef = useRef<string>("");
   const [activeOperativeId, setActiveOperativeId] = useState<string>("");
   const [activeOperativeLabel, setActiveOperativeLabel] = useState<string>("");
@@ -132,12 +137,15 @@ export function TaskFormFields({
   const [operativeAddState, setOperativeAddState] = useState<ItemAddState>(defaultAddState);
   const [operativeRates, setOperativeRates] = useState<Record<string, string>>({});
   const [operativeTrades, setOperativeTrades] = useState<Record<string, string>>({});
-  const defaultTradeIdRef = useRef<string>("");
   const [ratePrompt, setRatePrompt] = useState<{
     index: number;
     previousRate: string;
     nextRate: string;
   } | null>(null);
+  const [capPrompt, setCapPrompt] = useState<
+    (RateCapReasonContext & { index: number; previousRate: string; nextRate: string }) | null
+  >(null);
+  const rateCapCheckingRef = useRef(false);
   const [certAssignPrompt, setCertAssignPrompt] = useState<{
     indexes: number[];
     operativeId: string;
@@ -147,6 +155,11 @@ export function TaskFormFields({
   } | null>(null);
   const [certAssignChecking, setCertAssignChecking] = useState(false);
   const [holdOpen, setHoldOpen] = useState(false);
+  const [pendingRemove, setPendingRemove] = useState<{
+    index: number;
+    itemId: string;
+    label: string;
+  } | null>(null);
   /** Pending operative pick for assigning a package / add-on block (unassigned template lines). */
   const [assignPick, setAssignPick] = useState<Record<string, { id: string; label: string }>>({});
   const previousStatusIdRef = useRef(getValues("statusId") || "");
@@ -196,7 +209,7 @@ export function TaskFormFields({
     if (templateSeededRef.current === key) return;
 
     const existing = getValues("items") ?? [];
-    const hasPersisted = existing.some((item) => String(item.id || "").trim());
+    const hasPersisted = existing.some((item) => String(item?.id || "").trim());
     if (hasPersisted) {
       templateSeededRef.current = key;
       return;
@@ -294,12 +307,12 @@ export function TaskFormFields({
 
   useEffect(() => {
     for (const item of items) {
-      if (!item.id) continue;
+      if (!item?.id) continue;
       const meta = itemSelectedLabels[item.id];
       if (!meta) continue;
       if (meta.operative && item.operativeId) {
         setOperativeLabels((prev) =>
-          prev[item.operativeId] ? prev : { ...prev, [item.operativeId]: meta.operative! },
+          prev[item.operativeId!] ? prev : { ...prev, [item.operativeId!]: meta.operative! },
         );
       }
       if (meta.tradeGroup && item.tradeGroupId) {
@@ -315,17 +328,10 @@ export function TaskFormFields({
     }
   }, [items, itemSelectedLabels]);
 
-  useEffect(() => {
-    void (async () => {
-      if (defaultTradeIdRef.current) return;
-      const options = await fetchTradeOptions("");
-      defaultTradeIdRef.current = options[0]?.value ?? "";
-    })();
-  }, []);
-
   const grouped = useMemo(() => {
     const map = new Map<string, { name: string; indexes: number[] }>();
     items.forEach((item, index) => {
+      if (!item || isBlankTaskItem(item)) return;
       const key = item.operativeId || UNASSIGNED_OPERATIVE_KEY;
       const name = item.operativeId
         ? operativeLabels[item.operativeId] ||
@@ -345,7 +351,7 @@ export function TaskFormFields({
   }
 
   async function ensureOperativeMeta(operativeId: string, operativeName?: string) {
-    if (!operativeId) return { rate: "0", tradeId: defaultTradeIdRef.current || "" };
+    if (!operativeId) return { rate: "0", tradeId: "" };
     if (!operativeRates[operativeId] || !operativeTrades[operativeId]) {
       const user = (await usersService.get(operativeId)).data;
       const rate = user.dailyRate != null ? String(user.dailyRate) : "0";
@@ -361,6 +367,32 @@ export function TaskFormFields({
       rate: operativeRates[operativeId] ?? "0",
       tradeId: operativeTrades[operativeId] ?? "",
     };
+  }
+
+  async function resolveLineRate(params: {
+    productId: string;
+    tradeGroupId?: string;
+    operativeId?: string;
+    workDate?: string;
+    fallbackSalePrice?: number | null;
+  }): Promise<string> {
+    const fallback = formatMoneyRate(params.fallbackSalePrice);
+    const propId = String(propertyId || getValues("propertyId") || "").trim();
+    if (!propId || !params.productId.trim()) return fallback;
+
+    try {
+      const res = await tasksService.resolveRate({
+        propertyId: propId,
+        date: (params.workDate || startDate || getValues("startDate") || "").slice(0, 10)
+          || new Date().toISOString().slice(0, 10),
+        productId: params.productId,
+        operativeId: params.operativeId || undefined,
+      });
+      const resolved = formatResolvedRate(res.data?.rate);
+      return resolved || fallback;
+    } catch {
+      return fallback;
+    }
   }
 
   async function addForOperative(operativeId: string) {
@@ -391,24 +423,37 @@ export function TaskFormFields({
       const packageLabel = addState.tradeGroupLabel || group.name;
       setTradeGroupLabels((prev) => ({ ...prev, [String(group.id)]: packageLabel }));
 
-      const rows: TaskItemFormValues[] = groupItems.map((groupItem) => {
-        const productId = String(groupItem.productId);
-        const productName = groupItem.productName?.trim() || `Product ${productId}`;
-        setProductLabels((prev) =>
-          prev[productId] ? prev : { ...prev, [productId]: productName },
-        );
-        return {
-          ...emptyTaskItem(),
-          operativeId,
-          tradeId: String(group.tradeId),
-          itemKind: "tradeGroup",
-          tradeGroupId: String(group.id),
-          productId,
-          quantity: String(groupItem.quantity > 0 ? groupItem.quantity : 1),
-          rate: "0",
-          applyRatePermanently: false,
-        };
-      });
+      const workDate = (startDate || getValues("startDate") || "").slice(0, 10)
+        || new Date().toISOString().slice(0, 10);
+
+      const rows: TaskItemFormValues[] = await Promise.all(
+        groupItems.map(async (groupItem) => {
+          const productId = String(groupItem.productId);
+          const productName = groupItem.productName?.trim() || `Product ${productId}`;
+          setProductLabels((prev) =>
+            prev[productId] ? prev : { ...prev, [productId]: productName },
+          );
+          const rate = await resolveLineRate({
+            productId,
+            tradeGroupId: String(group.id),
+            operativeId,
+            workDate,
+            fallbackSalePrice: groupItem.salePrice,
+          });
+          return {
+            ...emptyTaskItem(),
+            operativeId,
+            workDate,
+            tradeId: String(group.tradeId),
+            itemKind: "tradeGroup" as const,
+            tradeGroupId: String(group.id),
+            productId,
+            quantity: String(groupItem.quantity > 0 ? groupItem.quantity : 1),
+            rate,
+            applyRatePermanently: false,
+          };
+        }),
+      );
       rows.forEach((row) => append(row));
       return;
     }
@@ -423,15 +468,24 @@ export function TaskFormFields({
       ...prev,
       [addState.productId]: addState.productLabel || product.name,
     }));
+    const workDate = (startDate || getValues("startDate") || "").slice(0, 10)
+      || new Date().toISOString().slice(0, 10);
+    const rate = await resolveLineRate({
+      productId: addState.productId,
+      operativeId,
+      workDate,
+      fallbackSalePrice: product.salePrice,
+    });
     append({
       ...emptyTaskItem(),
       operativeId,
-      tradeId: operativeMeta.tradeId || defaultTradeIdRef.current || "",
+      workDate,
+      tradeId: operativeMeta.tradeId || "",
       itemKind: "product",
       tradeGroupId: "",
       productId: addState.productId,
       quantity: "1",
-      rate: "0",
+      rate,
       applyRatePermanently: false,
     });
   }
@@ -763,10 +817,65 @@ export function TaskFormFields({
     }
     const current = getValues("items") ?? [];
     if (index < 0 || index >= current.length) return;
-    const next = snapshotItems(current.filter((_, i) => i !== index));
-    unregister(`items.${index}`);
+    const target = current[index];
+    if (!target || isBlankTaskItem(target)) {
+      // Drop leftover blank slots immediately.
+      applyRemoveAt(index);
+      return;
+    }
+    const persistedId = String(target.id ?? "").trim();
+    if (persistedId) {
+      setPendingRemove({ index, itemId: persistedId, label: itemRemoveLabel(target) });
+      return;
+    }
+    applyRemoveAt(index);
+  }
+
+  /** Rebuild the items array without the removed row (and without blank ghosts). */
+  function applyRemoveAt(index: number) {
+    const current = getValues("items") ?? [];
+    if (index < 0 || index >= current.length) return;
+
+    const next = snapshotItems(
+      current.filter(
+        (row, i) => i !== index && Boolean(row) && !isBlankTaskItem(row),
+      ) as TaskItemFormValues[],
+    );
+
+    // replace alone can leave an emptied ghost slot in useWatch; hard-set values after.
     replace(next);
-    setValue("items", next, { shouldDirty: true });
+    setValue("items", next, { shouldDirty: true, shouldValidate: false });
+  }
+
+  function confirmRemoveWithReason(reason: string) {
+    if (!pendingRemove) return;
+    const { index, itemId } = pendingRemove;
+    const existing = (getValues("itemRemovals") ?? []).filter(Boolean);
+    setValue(
+      "itemRemovals",
+      [...existing.filter((r) => r.itemId !== itemId), { itemId, reason }],
+      { shouldDirty: true },
+    );
+    setPendingRemove(null);
+
+    const current = getValues("items") ?? [];
+    let removeIndex = current.findIndex((row) => String(row?.id ?? "").trim() === itemId);
+    if (removeIndex < 0 && index >= 0 && index < current.length) {
+      removeIndex = index;
+    }
+    if (removeIndex < 0) return;
+    applyRemoveAt(removeIndex);
+  }
+
+  function itemRemoveLabel(item: TaskItemFormValues | undefined) {
+    if (!item) return "Item";
+    const labels = item.id ? itemSelectedLabels?.[item.id] : undefined;
+    if (labels?.product?.trim()) return labels.product.trim();
+    if (labels?.tradeGroup?.trim()) return labels.tradeGroup.trim();
+    if (item.productId && productLabels[item.productId]) return productLabels[item.productId];
+    if (item.tradeGroupId && tradeGroupLabels[item.tradeGroupId])
+      return tradeGroupLabels[item.tradeGroupId];
+    return "Item";
   }
 
   function resolveRatePrompt(permanent: boolean) {
@@ -783,7 +892,76 @@ export function TaskFormFields({
     setRatePrompt(null);
   }
 
-  const jobItemsTotal = items.reduce((sum, item) => {
+  function confirmCapReason(_reason: string) {
+    if (!capPrompt) return;
+    const { index, previousRate, nextRate } = capPrompt;
+    setCapPrompt(null);
+    setRatePrompt({ index, previousRate, nextRate });
+  }
+
+  function cancelCapReason() {
+    if (!capPrompt) return;
+    setValue(`items.${capPrompt.index}.rate`, capPrompt.previousRate, { shouldDirty: true });
+    setValue(`items.${capPrompt.index}.applyRatePermanently`, false, { shouldDirty: true });
+    setCapPrompt(null);
+  }
+
+  async function handleRateCommit(index: number, previousRate: string, nextRate: string) {
+    if (previousRate === nextRate || rateCapCheckingRef.current || capPrompt || ratePrompt) return;
+
+    setValue(`items.${index}.rate`, nextRate, { shouldDirty: true });
+
+    const item = getValues(`items.${index}`);
+    const productId = String(item?.productId || "").trim();
+    const next = Number(nextRate);
+    if (!productId || !Number.isFinite(next) || next < 0) {
+      setRatePrompt({ index, previousRate, nextRate });
+      return;
+    }
+
+    rateCapCheckingRef.current = true;
+    try {
+      let cap: number | null = null;
+      const propId = String(propertyId || getValues("propertyId") || "").trim();
+      if (propId) {
+        try {
+          const res = await tasksService.resolveRate({
+            propertyId: propId,
+            date:
+              String(item?.workDate || startDate || getValues("startDate") || "").slice(0, 10) ||
+              new Date().toISOString().slice(0, 10),
+            productId,
+            operativeId: item?.operativeId || undefined,
+          });
+          const resolvedCap = Number(res.data?.cap ?? res.data?.rate);
+          cap = Number.isFinite(resolvedCap) ? resolvedCap : null;
+        } catch {
+          cap = await getCatalogueCap(productId);
+        }
+      } else {
+        cap = await getCatalogueCap(productId);
+      }
+
+      if (cap != null && next > cap) {
+        setCapPrompt({
+          index,
+          previousRate,
+          nextRate,
+          productName: productLabels[productId] || itemRemoveLabel(item) || "Item",
+          rate: next,
+          cap,
+        });
+        return;
+      }
+
+      setRatePrompt({ index, previousRate, nextRate });
+    } finally {
+      rateCapCheckingRef.current = false;
+    }
+  }
+
+  const visibleItems = items.filter((row) => row && !isBlankTaskItem(row));
+  const jobItemsTotal = visibleItems.reduce((sum, item) => {
     const qty = Number(item?.quantity || 0);
     const rate = Number(item?.rate || 0);
     const line = qty * rate;
@@ -1015,9 +1193,7 @@ export function TaskFormFields({
                       removeDisabled={disabled || itemsLocked}
                       onRemove={removeItem}
                       onRateCommit={(index, previousRate, nextRate) => {
-                        if (previousRate === nextRate) return;
-                        setValue(`items.${index}.rate`, nextRate);
-                        setRatePrompt({ index, previousRate, nextRate });
+                        void handleRateCommit(index, previousRate, nextRate);
                       }}
                       getValues={getValues}
                       showAssignColumn={isUnassigned}
@@ -1032,11 +1208,11 @@ export function TaskFormFields({
             );
           })}
 
-          {items.length > 0 ? (
+          {visibleItems.length > 0 ? (
             <div className="flex items-center justify-end gap-3 border-t border-border pt-3">
               <div className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-3 py-2">
                 <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                  {items.length} item{items.length === 1 ? "" : "s"}
+                  {visibleItems.length} item{visibleItems.length === 1 ? "" : "s"}
                 </span>
                 <AppTooltip content={fmtGBP(jobItemsTotal)} asChild align="end">
                   <span className="font-display text-base font-semibold tabular-nums whitespace-nowrap">
@@ -1077,6 +1253,13 @@ export function TaskFormFields({
             </div>
           </Modal>
         ) : null}
+
+        <RateCapReasonModal
+          open={Boolean(capPrompt)}
+          context={capPrompt}
+          onCancel={cancelCapReason}
+          onConfirm={confirmCapReason}
+        />
 
         {certAssignPrompt ? (
           <Modal
@@ -1128,6 +1311,13 @@ export function TaskFormFields({
         open={holdOpen}
         onClose={handleHoldCancel}
         onConfirm={handleHoldConfirm}
+      />
+
+      <RemoveItemReasonModal
+        open={Boolean(pendingRemove)}
+        itemLabel={pendingRemove?.label}
+        onCancel={() => setPendingRemove(null)}
+        onConfirm={confirmRemoveWithReason}
       />
     </>
   );
@@ -1205,16 +1395,18 @@ function ProductLinesTable({
         </thead>
         <tbody>
           {indexes.map((index) => {
+            const item = items[index];
+            if (!item) return null;
             const fieldId = fields[index]?.fieldKey ?? `item-${index}`;
             return (
             <ProductLineRow
               key={fieldId}
               fieldId={fieldId}
               index={index}
-              item={items[index]}
+              item={item}
               productLabel={
-                items[index]?.productId
-                  ? productLabels[items[index].productId] || `Product #${items[index].productId}`
+                item.productId
+                  ? productLabels[item.productId] || `Product #${item.productId}`
                   : "—"
               }
               timeSlots={timeSlotsQuery.data ?? []}

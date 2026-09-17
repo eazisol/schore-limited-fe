@@ -85,6 +85,11 @@ export type TaskItemPayload = {
   imagePath?: string | null;
 };
 
+export type TaskItemRemovalPayload = {
+  itemId: string;
+  reason: string;
+};
+
 export type TaskPayload = {
   propertyId: string;
   startDate: string;
@@ -98,7 +103,22 @@ export type TaskPayload = {
   holdReasonId?: string | null;
   holdNotes?: string | null;
   items: TaskItemPayload[];
+  itemRemovals?: TaskItemRemovalPayload[];
 };
+
+export interface ApiTaskTimelineEntry {
+  id: string;
+  taskId: string;
+  taskItemId: string | null;
+  action: string;
+  summary: string | null;
+  reason: string | null;
+  actorUserId: string | null;
+  actorName: string;
+  itemLabel: string | null;
+  workDate: string | null;
+  createdDate: string;
+}
 
 export interface TaskListParams {
   page: number;
@@ -240,9 +260,27 @@ export const tasksService = {
     return { ...res, data: normalizeItemPaged(res.data) };
   },
   get: (id: string) => http.get<ApiEnvelope<ApiTask>>(`Tasks/${id}`),
+  getTimeline: (id: string) =>
+    http.get<ApiEnvelope<ApiTaskTimelineEntry[]>>(`Tasks/${id}/timeline`),
   create: (payload: TaskPayload) => http.post<ApiEnvelope<ApiTask>>("Tasks", payload),
   update: (id: string, payload: TaskPayload) =>
     http.put<ApiEnvelope<ApiTask>>(`Tasks/${id}`, payload),
   remove: (id: string) => http.delete<ApiEnvelope<null>>(`Tasks/${id}`),
   timeSlots: () => http.get<ApiEnvelope<ApiTimeSlot[]>>("Tasks/time-slots"),
+  resolveRate: (params: {
+    propertyId: string;
+    date: string;
+    productId?: string;
+    tradeGroupId?: string;
+    operativeId?: string;
+  }) =>
+    http.get<ApiEnvelope<{ rate: number; cap: number }>>("Tasks/resolve-rate", {
+      params: {
+        PropertyId: params.propertyId,
+        Date: params.date,
+        ...(params.productId ? { ProductId: params.productId } : {}),
+        ...(params.tradeGroupId ? { TradeGroupId: params.tradeGroupId } : {}),
+        ...(params.operativeId ? { OperativeId: params.operativeId } : {}),
+      },
+    }),
 };

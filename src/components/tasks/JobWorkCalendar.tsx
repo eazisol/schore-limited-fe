@@ -67,6 +67,8 @@ function stubDailyRowFromTask(task: ApiTask, isLocked = false): ApiDailyRow {
     statusName: task.statusName,
     tradeOrStatus: task.statusName,
     previousDayName: null,
+    previousDayTrades: null,
+    previousDayDetails: null,
     nameDisplay: null,
     notesDisplay: null,
     timeDisplay: null,
@@ -79,6 +81,8 @@ function stubDailyRowFromTask(task: ApiTask, isLocked = false): ApiDailyRow {
     assignedByOperative: [],
     nameOperatives: [],
     nextDay: null,
+    nextDayTrades: null,
+    nextDayDetails: null,
   };
 }
 

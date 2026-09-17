@@ -92,6 +92,8 @@ export interface DataTableProps<T> {
   density?: "compact" | "comfortable";
   /** Optional custom width for the actions column (defaults to 12.5rem). */
   actionsColumnWidth?: string;
+  /** Pin the actions column to the right while the table scrolls horizontally. */
+  stickyActions?: boolean;
   /**
    * When true, skips the elevated card chrome so the table can sit inside a parent card.
    */

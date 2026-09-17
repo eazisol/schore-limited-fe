@@ -28,6 +28,7 @@ import { fmtGBP } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Modal } from "@/components/Modal";
+import { RemoveItemReasonModal } from "@/components/tasks/RemoveItemReasonModal";
 import { usersService } from "@/lib/api/services/users";
 import {
   findCertificationWarningsForWorkDates,
@@ -35,6 +36,11 @@ import {
   type CertificationAssignWarning,
 } from "@/lib/operative-certifications";
 import { toYmd } from "@/lib/week-ending";
+import {
+  RateCapReasonModal,
+  type RateCapReasonContext,
+} from "@/components/rates/RateCapReasonModal";
+import { getCatalogueCap } from "@/lib/rate-overrides";
 
 type DayLine = {
   itemId: string;
@@ -134,7 +140,10 @@ export function JobDayItemsEditor({
   const [formMode, setFormMode] = useState<FormMode>(
     initialShowAdd && !locked ? { kind: "add" } : null,
   );
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [pendingRemove, setPendingRemove] = useState<{
+    itemId: string;
+    label: string;
+  } | null>(null);
 
   const lines = useMemo(() => linesFromTaskItems(task, date), [task, date]);
   const groups = useMemo(() => groupByOperative(lines), [lines]);
@@ -149,11 +158,11 @@ export function JobDayItemsEditor({
   }
 
   const removeMutation = useMutation({
-    mutationFn: (itemId: string) =>
-      dailyProgrammeService.removeItem(itemId, date),
+    mutationFn: ({ itemId, reason }: { itemId: string; reason: string }) =>
+      dailyProgrammeService.removeItem(itemId, date, reason),
     onSuccess: (res) => {
       invalidateAll(res.data);
-      setConfirmDeleteId(null);
+      setPendingRemove(null);
       toast.success("Item removed");
     },
     onError: (err) => notifyApiError(err, "Unable to remove item"),
@@ -245,10 +254,9 @@ export function JobDayItemsEditor({
                     </thead>
                     <tbody>
                       {group.items.map((line) => {
-                        const deleting = confirmDeleteId === line.itemId;
                         const busy =
                           removeMutation.isPending &&
-                          String(removeMutation.variables) === line.itemId;
+                          String(removeMutation.variables?.itemId) === line.itemId;
                         return (
                           <tr
                             key={line.itemId}
@@ -293,34 +301,7 @@ export function JobDayItemsEditor({
                             </td>
                             <td className="px-3 py-1">
                               <div className="flex items-center justify-end gap-0.5">
-                                {deleting ? (
-                                  <>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="destructive"
-                                      className="h-6 px-2 text-xs"
-                                      disabled={busy || locked}
-                                      onClick={() => removeMutation.mutate(line.itemId)}
-                                    >
-                                      {busy ? (
-                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                      ) : (
-                                        "Confirm"
-                                      )}
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-6 px-2 text-xs"
-                                      disabled={busy}
-                                      onClick={() => setConfirmDeleteId(null)}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </>
-                                ) : !line.isTicked ? (
+                                {!line.isTicked ? (
                                   <>
                                     <AppTooltip content="Edit" asChild>
                                       <Button
@@ -328,22 +309,31 @@ export function JobDayItemsEditor({
                                         size="icon"
                                         variant="ghost"
                                         className="h-6 w-6"
-                                        disabled={locked}
+                                        disabled={locked || busy}
                                         onClick={() => setFormMode({ kind: "edit", line })}
                                       >
                                         <Pencil className="h-3.5 w-3.5" />
                                       </Button>
                                     </AppTooltip>
-                                    <AppTooltip content="Delete" asChild>
+                                    <AppTooltip content="Remove" asChild>
                                       <Button
                                         type="button"
                                         size="icon"
                                         variant="ghost"
                                         className="h-6 w-6 text-destructive hover:text-destructive"
-                                        disabled={locked}
-                                        onClick={() => setConfirmDeleteId(line.itemId)}
+                                        disabled={locked || busy}
+                                        onClick={() =>
+                                          setPendingRemove({
+                                            itemId: line.itemId,
+                                            label: line.productName,
+                                          })
+                                        }
                                       >
-                                        <Trash2 className="h-3.5 w-3.5" />
+                                        {busy ? (
+                                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        ) : (
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        )}
                                       </Button>
                                     </AppTooltip>
                                   </>
@@ -361,6 +351,19 @@ export function JobDayItemsEditor({
           })}
         </div>
       )}
+
+      <RemoveItemReasonModal
+        open={Boolean(pendingRemove)}
+        pending={removeMutation.isPending}
+        itemLabel={pendingRemove?.label}
+        onCancel={() => {
+          if (!removeMutation.isPending) setPendingRemove(null);
+        }}
+        onConfirm={(reason) => {
+          if (!pendingRemove) return;
+          removeMutation.mutate({ itemId: pendingRemove.itemId, reason });
+        }}
+      />
     </div>
   );
 }
@@ -405,6 +408,8 @@ function ItemFormCard({
   const [timeSlotLabel, setTimeSlotLabel] = useState(editLine?.timeSlotName ?? "");
   const [certWarnings, setCertWarnings] = useState<CertificationAssignWarning[] | null>(null);
   const [certCheckPending, setCertCheckPending] = useState(false);
+  const [capPrompt, setCapPrompt] = useState<RateCapReasonContext | null>(null);
+  const [capReasonAccepted, setCapReasonAccepted] = useState(false);
 
   const timeSlotsQuery = useQuery({
     queryKey: ["tasks", "time-slots"],
@@ -440,7 +445,12 @@ function ItemFormCard({
     if (isEdit) return;
     rateTouchedRef.current = false;
     setRate("");
+    setCapReasonAccepted(false);
   }, [catalogKind, catalogId, isEdit]);
+
+  useEffect(() => {
+    setCapReasonAccepted(false);
+  }, [rate]);
 
   useEffect(() => {
     if (isEdit || rateTouchedRef.current || resolvedRateQuery.data == null) return;
@@ -496,29 +506,7 @@ function ItemFormCard({
       notifyApiError(err, isEdit ? "Unable to update item" : "Unable to add item"),
   });
 
-  function handleSave() {
-    if (date < toYmd(new Date())) {
-      toast.warning("Cannot add or edit tasks for past dates.");
-      return;
-    }
-    if (!operativeId) {
-      toast.warning("Select an operative.");
-      return;
-    }
-    if (!isEdit && !catalogId) {
-      toast.warning(catalogKind === "package" ? "Select a package." : "Select an add-on.");
-      return;
-    }
-    if (!timeSlotId) {
-      toast.warning("Select a time slot.");
-      return;
-    }
-    const quantity = Number(qty);
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      toast.warning("Enter a valid quantity.");
-      return;
-    }
-
+  function proceedSave() {
     const operativeChanged = !isEdit || operativeId !== (editLine?.operativeId ?? "");
     if (!operativeChanged) {
       saveMutation.mutate();
@@ -544,8 +532,99 @@ function ItemFormCard({
     })();
   }
 
+  async function ensureRateCapThenSave() {
+    const rateChanged = isEdit
+      ? Number(rate) !== Number(editLine?.rate ?? NaN)
+      : rateTouchedRef.current;
+    const shouldCheck = canSeeRates && rateChanged && Boolean(String(rate).trim());
+    if (!shouldCheck) {
+      proceedSave();
+      return;
+    }
+
+    const next = Number(rate);
+    if (!Number.isFinite(next) || next < 0) {
+      proceedSave();
+      return;
+    }
+
+    let cap =
+      resolvedRateQuery.data?.cap != null
+        ? Number(resolvedRateQuery.data.cap)
+        : resolvedRateQuery.data?.rate != null
+          ? Number(resolvedRateQuery.data.rate)
+          : null;
+
+    if (cap == null && (catalogKind === "addon" || editLine?.productId)) {
+      const productId = catalogKind === "addon" ? catalogId : editLine?.productId ?? "";
+      if (productId) cap = await getCatalogueCap(productId);
+    }
+
+    // Edit mode: resolve waterfall for current catalog selection / line product.
+    if (cap == null && isEdit && editLine?.productId) {
+      try {
+        const res = await dailyProgrammeService.resolveRate(taskId, {
+          date,
+          productId: editLine.productId,
+          operativeId: operativeId || undefined,
+        });
+        const resolvedCap = Number(res.data?.cap ?? res.data?.rate);
+        cap = Number.isFinite(resolvedCap) ? resolvedCap : null;
+      } catch {
+        /* fall through */
+      }
+    }
+
+    if (cap != null && next > cap && !capReasonAccepted) {
+      setCapPrompt({
+        productName: catalogLabel || editLine?.productName || editLine?.tradeGroupName || "Item",
+        rate: next,
+        cap,
+      });
+      return;
+    }
+
+    proceedSave();
+  }
+
+  function handleSave() {
+    if (date < toYmd(new Date())) {
+      toast.warning("Cannot add or edit tasks for past dates.");
+      return;
+    }
+    if (!operativeId) {
+      toast.warning("Select an operative.");
+      return;
+    }
+    if (!isEdit && !catalogId) {
+      toast.warning(catalogKind === "package" ? "Select a package." : "Select an add-on.");
+      return;
+    }
+    if (!timeSlotId) {
+      toast.warning("Select a time slot.");
+      return;
+    }
+    const quantity = Number(qty);
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      toast.warning("Enter a valid quantity.");
+      return;
+    }
+
+    void ensureRateCapThenSave();
+  }
+
   return (
     <div className="rounded-lg border border-accent/25 bg-accent/5 p-2">
+      <RateCapReasonModal
+        open={Boolean(capPrompt)}
+        context={capPrompt}
+        onCancel={() => setCapPrompt(null)}
+        onConfirm={() => {
+          setCapReasonAccepted(true);
+          setCapPrompt(null);
+          proceedSave();
+        }}
+      />
       {certWarnings ? (
         <Modal
           open

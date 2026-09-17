@@ -99,6 +99,8 @@ export interface ApiDailyRow {
   statusName: string;
   tradeOrStatus: string;
   previousDayName: string | null;
+  previousDayTrades: string | null;
+  previousDayDetails: string | null;
   nameDisplay: string | null;
   notesDisplay: string | null;
   timeDisplay: string | null;
@@ -111,6 +113,8 @@ export interface ApiDailyRow {
   assignedByOperative: ApiDailyAssignedOperative[];
   nameOperatives: ApiDailyNameOperative[];
   nextDay: string | null;
+  nextDayTrades: string | null;
+  nextDayDetails: string | null;
 }
 
 export interface ApiDailyProgramme {
@@ -175,6 +179,27 @@ export interface DailyProgrammeListParams {
 
 export interface ApiDailyResolvedRate {
   rate: number;
+  /** Parent-waterfall budget used as the rate cap for approval prompts. */
+  cap?: number;
+}
+
+export interface ApiDailyClientExportLine {
+  operativeName: string | null;
+  trade: string | null;
+  task: string | null;
+  attendancePeriod: string | null;
+}
+
+export interface ApiDailyClientExport {
+  programmeDate: string;
+  exportDate: string;
+  taskNumber: string;
+  propertyName: string;
+  propertyAddress: string | null;
+  propertyType: string | null;
+  client: string | null;
+  postCode: string | null;
+  lines: ApiDailyClientExportLine[];
 }
 
 export interface DailyResolveRateParams {
@@ -218,10 +243,12 @@ export const dailyProgrammeService = {
     http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/items/${itemId}/complete`, null, {
       params: { date },
     }),
-  removeItem: (itemId: string, date: string) =>
-    http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/items/${itemId}/remove`, null, {
-      params: { date },
-    }),
+  removeItem: (itemId: string, date: string, reason: string) =>
+    http.post<ApiEnvelope<ApiDailyRow>>(
+      `DailyProgramme/items/${itemId}/remove`,
+      { reason },
+      { params: { date } },
+    ),
   updateItem: (
     itemId: string,
     payload: {
@@ -268,5 +295,9 @@ export const dailyProgrammeService = {
         ...(params.tradeGroupId ? { TradeGroupId: params.tradeGroupId } : {}),
         ...(params.operativeId ? { OperativeId: params.operativeId } : {}),
       },
+    }),
+  clientNextDayExport: (taskId: string, date: string) =>
+    http.get<ApiEnvelope<ApiDailyClientExport>>(`DailyProgramme/tasks/${taskId}/client-export`, {
+      params: { date },
     }),
 };

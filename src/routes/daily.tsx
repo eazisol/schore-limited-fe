@@ -10,18 +10,25 @@ import { Modal } from "@/components/Modal";
 import { Pagination } from "@/components/Pagination";
 import {
   DataTable,
+  downloadCsv,
   useDebouncedSearch,
   type DataTableColumn,
+  type DataTableRowAction,
 } from "@/components/data-table";
 import {
   Lock,
   ChevronLeft,
   ChevronRight,
+  Download,
   Loader2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { dailyProgrammeService, type ApiDailyRow } from "@/lib/api/services/daily-programme";
+import {
+  dailyProgrammeService,
+  type ApiDailyClientExport,
+  type ApiDailyRow,
+} from "@/lib/api/services/daily-programme";
 import { tasksService, type ApiTaskItem } from "@/lib/api/services/tasks";
 import { propertiesService } from "@/lib/api/services/properties";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
@@ -62,6 +69,61 @@ function shiftDate(iso: string, days: number) {
   return d.toISOString().slice(0, 10);
 }
 
+function safeFilePart(value: string) {
+  return value.replace(/[^\w\-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "job";
+}
+
+function downloadClientNextDayCsv(data: ApiDailyClientExport) {
+  const exportDateLabel = formatUkDate(data.exportDate);
+  const filename = `next-day-${safeFilePart(data.propertyName || data.taskNumber)}-${data.exportDate}.csv`;
+  downloadCsv({
+    filename,
+    headers: [
+      "Export date",
+      "Job",
+      "Property",
+      "Address",
+      "Postcode",
+      "Property type",
+      "Client",
+      "Operative",
+      "Trade",
+      "Task",
+      "Attendance period",
+    ],
+    rows:
+      data.lines.length > 0
+        ? data.lines.map((line) => [
+            exportDateLabel,
+            data.taskNumber,
+            data.propertyName,
+            data.propertyAddress,
+            data.postCode,
+            data.propertyType,
+            data.client,
+            line.operativeName,
+            line.trade,
+            line.task,
+            line.attendancePeriod,
+          ])
+        : [
+            [
+              exportDateLabel,
+              data.taskNumber,
+              data.propertyName,
+              data.propertyAddress,
+              data.postCode,
+              data.propertyType,
+              data.client,
+              "",
+              "",
+              "",
+              "",
+            ],
+          ],
+  });
+}
+
 
 function matchesSearch(row: ApiDailyRow, search: string) {
   if (!search) return true;
@@ -78,6 +140,10 @@ function matchesSearch(row: ApiDailyRow, search: string) {
     row.tradeOrStatus,
     row.nameDisplay,
     row.notesDisplay,
+    row.previousDayTrades,
+    row.previousDayDetails,
+    row.nextDayTrades,
+    row.nextDayDetails,
     row.nextDay,
     ...(row.assignedByOperative ?? []).flatMap((op) => [
       ...op.packages.map((pkg) => pkg.tradeGroupName),
@@ -109,6 +175,7 @@ function Daily() {
   const [propertyLabel, setPropertyLabel] = useState<string | null>(null);
   const [statusId, setStatusId] = useState("");
   const [statusLabel, setStatusLabel] = useState<string | null>(null);
+  const [exportingTaskId, setExportingTaskId] = useState<string | null>(null);
   const filterStatusId = statusId.trim();
   const hasStatusFilter = filterStatusId.length > 0;
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
@@ -272,7 +339,7 @@ function Daily() {
             row.propertyName,
             row.propertyAddress,
             row.accessNotes,
-            row.previousDayName ? `Yesterday: ${row.previousDayName}` : null,
+            row.previousDayTrades ? `Previous day: ${row.previousDayTrades}` : null,
             row.isLocked ? "Locked — no tick on previous day" : null,
           ]
             .filter(Boolean)
@@ -282,7 +349,7 @@ function Daily() {
             row.propertyName,
             row.propertyAddress,
             row.accessNotes,
-            row.previousDayName ? `Yesterday: ${row.previousDayName}` : null,
+            row.previousDayTrades ? `Previous day: ${row.previousDayTrades}` : null,
             row.isLocked ? "Locked — no tick on previous day" : null,
           ]
             .filter(Boolean)
@@ -354,9 +421,58 @@ function Daily() {
         ),
       },
       {
+        id: "previousDay",
+        header: "Previous day",
+        width: "7rem",
+        truncate: false,
+        accessor: (row) => row.previousDayTrades || "—",
+        cell: (row) => {
+          const trades = row.previousDayTrades?.trim();
+          if (!trades) return "—";
+          const details = row.previousDayDetails?.trim() || trades;
+          return (
+            <AppTooltip
+              content={details}
+              contentClassName="whitespace-pre-line"
+              asChild
+              align="start"
+            >
+              <span className="block max-w-full cursor-default truncate font-mono text-xs uppercase">
+                {truncateWithEllipsis(trades, 16)}
+              </span>
+            </AppTooltip>
+          );
+        },
+      },
+      {
+        id: "nextDayCol",
+        header: "Next day",
+        width: "7rem",
+        truncate: false,
+        accessor: (row) => row.nextDayTrades || "—",
+        cell: (row) => {
+          const trades = row.nextDayTrades?.trim();
+          if (!trades) return "—";
+          const details = row.nextDayDetails?.trim() || trades;
+          return (
+            <AppTooltip
+              content={details}
+              contentClassName="whitespace-pre-line"
+              asChild
+              align="start"
+            >
+              <span className="block max-w-full cursor-default truncate font-mono text-xs uppercase">
+                {truncateWithEllipsis(trades, 16)}
+              </span>
+            </AppTooltip>
+          );
+        },
+      },
+      {
         id: "trade",
         header: "Trade",
         width: "6rem",
+        truncate: false,
         accessor: (row) => row.tradeOrStatus || "—",
         cell: (row) => {
           const value = row.tradeOrStatus?.trim() || "—";
@@ -434,6 +550,51 @@ function Daily() {
     ];
     return cols;
   }, [canModifyDaily, date]);
+
+  async function exportNextDayForClient(row: ApiDailyRow) {
+    if (exportingTaskId) return;
+    setExportingTaskId(row.taskId);
+    try {
+      const res = await dailyProgrammeService.clientNextDayExport(row.taskId, date);
+      const data = res.data;
+      if (!data) {
+        toast.error("Unable to export next-day schedule");
+        return;
+      }
+      if (!data.lines?.length) {
+        toast.warning("No task items scheduled for the next day on this job");
+      }
+      downloadClientNextDayCsv(data);
+      toast.success(
+        data.lines?.length
+          ? `Exported next-day schedule (${formatUkDate(data.exportDate)})`
+          : `Exported empty next-day schedule (${formatUkDate(data.exportDate)})`,
+      );
+    } catch (err) {
+      notifyApiError(err, "Unable to export next-day schedule");
+    } finally {
+      setExportingTaskId(null);
+    }
+  }
+
+  const getRowActions = useMemo(() => {
+    return (row: ApiDailyRow): DataTableRowAction<ApiDailyRow>[] => [
+      {
+        id: "export-next-day",
+        label: "Export next day (client)",
+        variant: "icon",
+        icon:
+          exportingTaskId === row.taskId ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Download className="h-3.5 w-3.5" />
+          ),
+        onClick: (actionRow) => {
+          void exportNextDayForClient(actionRow);
+        },
+      },
+    ];
+  }, [date, exportingTaskId]);
 
   const assignedProjects = query.data?.assignedProjects ?? [];
   const showProjectSwitcher = (query.data?.separateProjectViews ?? false) && assignedProjects.length > 0;
@@ -601,6 +762,9 @@ function Daily() {
         loading={query.isLoading}
         fetching={query.isFetching}
         loadingText="Loading daily programmer…"
+        stickyActions
+        actionsColumnWidth="3.25rem"
+        rowActions={getRowActions}
         error={
           query.isError
             ? {

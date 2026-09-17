@@ -34,6 +34,8 @@ export type TaskFormValues = {
   holdReasonId: string;
   holdNotes: string;
   items: TaskItemFormValues[];
+  /** Soft-deleted persisted items with reasons (sent on update). */
+  itemRemovals: { itemId: string; reason: string }[];
 };
 
 export const emptyTaskItem = (): TaskItemFormValues => ({
@@ -53,6 +55,18 @@ export const emptyTaskItem = (): TaskItemFormValues => ({
   notes: "",
 });
 
+/** Emptied leftover slots after field-array desync (no id / catalog). */
+export function isBlankTaskItem(
+  row: Partial<TaskItemFormValues> | null | undefined,
+): boolean {
+  if (!row) return true;
+  return (
+    !String(row.id ?? "").trim() &&
+    !String(row.productId ?? "").trim() &&
+    !String(row.tradeGroupId ?? "").trim()
+  );
+}
+
 export const taskFormDefaults: TaskFormValues = {
   propertyId: "",
   startDate: new Date().toISOString().slice(0, 10),
@@ -66,6 +80,7 @@ export const taskFormDefaults: TaskFormValues = {
   holdReasonId: "",
   holdNotes: "",
   items: [],
+  itemRemovals: [],
 };
 
 /** Parse a price like `1000`, `£1,000`, or `1000-2000` / `£1000 - £2000`. */
@@ -182,7 +197,23 @@ export const taskFormSchema = z
     holdDate: z.string(),
     holdReasonId: z.string(),
     holdNotes: z.string(),
-    items: z.array(taskItemSchema),
+    // Drop emptied ghost rows before item validation (they cause Zod "Required").
+    items: z.preprocess(
+      (val) =>
+        Array.isArray(val)
+          ? val.filter((row) => row && !isBlankTaskItem(row as TaskItemFormValues))
+          : [],
+      z.array(taskItemSchema),
+    ),
+    itemRemovals: z
+      .array(
+        z.object({
+          itemId: z.string().min(1, "Removed item id is required"),
+          reason: z.string().trim().min(1, "Reason is required").max(500),
+        }),
+      )
+      .optional()
+      .default([]),
   })
   .superRefine((values, ctx) => {
     if (values.handOverDate && values.handOverDate < values.startDate) {
@@ -238,6 +269,7 @@ export function taskToFormValues(task: ApiTask): TaskFormValues {
       isTicked: item.isTicked,
       notes: item.notes ?? "",
     })),
+    itemRemovals: [],
   };
 }
 
@@ -256,7 +288,9 @@ export function toTaskPayload(values: TaskFormValues): TaskPayload {
     holdDate: values.holdDate.trim() || null,
     holdReasonId,
     holdNotes: values.holdNotes.trim() || null,
-    items: values.items.map((item) => ({
+    items: values.items
+      .filter((item) => item && !isBlankTaskItem(item))
+      .map((item) => ({
       id: item.id.trim() || null,
       operativeId: item.operativeId.trim() || null,
       workDate: item.workDate,
@@ -271,6 +305,9 @@ export function toTaskPayload(values: TaskFormValues): TaskPayload {
       isTicked: item.isTicked,
       notes: item.notes.trim() || null,
     })),
+    itemRemovals: (values.itemRemovals ?? [])
+      .filter((r) => r?.itemId?.trim() && r?.reason?.trim())
+      .map((r) => ({ itemId: r.itemId, reason: r.reason.trim() })),
   };
 }
 

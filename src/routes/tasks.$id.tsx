@@ -23,6 +23,7 @@ import { dailyQueryKey } from "./daily";
 import type { ApiDailyProgramme } from "@/lib/api/services/daily-programme";
 import {
   formatPriceDisplay,
+  taskFormDefaults,
   taskFormSchema,
   taskToFormValues,
   toTaskPayload,
@@ -30,6 +31,7 @@ import {
 } from "@/lib/task-form";
 import { TaskFormFields } from "@/components/tasks/TaskFormFields";
 import { JobWorkCalendar } from "@/components/tasks/JobWorkCalendar";
+import { TaskTimelinePanel } from "@/components/tasks/TaskTimelinePanel";
 import { formatDateTime } from "@/lib/module-ui";
 import { z } from "zod";
 
@@ -168,6 +170,9 @@ function TaskDetail() {
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
+    defaultValues: {
+      ...taskFormDefaults,
+    },
   });
 
   useEffect(() => {
@@ -179,6 +184,7 @@ function TaskDetail() {
     onSuccess: (res) => {
       toast.success(res.message || "Job updated");
       queryClient.invalidateQueries({ queryKey: tasksQueryKey });
+      queryClient.invalidateQueries({ queryKey: ["tasks", id, "timeline"] });
       if (fromDaily) {
         queryClient.invalidateQueries({ queryKey: ["daily-programme"] });
         navigate({ to: "/daily" });
@@ -269,11 +275,15 @@ function TaskDetail() {
         ) : null}
 
         {isEdit ? (
-          <Form form={form} onSubmit={submit} className="min-w-0 w-full max-w-full">
+          <Form
+            form={form}
+            onSubmit={submit}
+            className="grid min-w-0 w-full max-w-full gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)] lg:items-start"
+          >
             <FormPageCard
               title={`Edit job ${task.taskNumber || ""}`.trim()}
               onBack={{ label: backLabel, onClick: goBack }}
-              maxWidth="w-full max-w-4xl"
+              maxWidth="w-full min-w-0"
               footer={
                 <div className="flex w-full flex-wrap items-center justify-end gap-2">
                   <Button
@@ -304,7 +314,6 @@ function TaskDetail() {
               <TaskFormFields
                 embedded
                 disabled={updateMutation.isPending}
-                itemsLocked={Boolean(task.isLocked)}
                 selectedLabels={{
                   property: task.propertyName,
                   jobType: task.jobTypeName,
@@ -323,6 +332,11 @@ function TaskDetail() {
                 )}
               />
             </FormPageCard>
+
+            <TaskTimelinePanel
+              taskId={String(task.id)}
+              className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
+            />
           </Form>
         ) : (
           <div className="min-w-0 w-full max-w-full space-y-4">

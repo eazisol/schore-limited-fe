@@ -73,6 +73,7 @@ export function DataTable<T>({
   className,
   density = "compact",
   actionsColumnWidth,
+  stickyActions = false,
   embedded = false,
 }: DataTableProps<T>) {
   const cellPadding = density === "compact" ? "py-1.5" : "py-3";
@@ -85,6 +86,9 @@ export function DataTable<T>({
         : null;
   const resolvedActionsWidth = actionsColumnWidth ?? ACTIONS_COLUMN_WIDTH;
   const tableMinWidthRem = estimateTableMinWidthRem(columns, Boolean(actions), resolvedActionsWidth);
+  const stickyActionsClass = stickyActions
+    ? "sticky right-0 z-20 border-l border-border bg-card shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.12)]"
+    : undefined;
   const statePadding = embedded ? "p-8" : "p-12";
 
   function handleSort(column: DataTableColumn<T>) {
@@ -190,9 +194,15 @@ export function DataTable<T>({
                     className={cn(
                       "whitespace-nowrap px-4 text-right font-medium",
                       headerPadding,
+                      stickyActionsClass,
+                      stickyActions && "bg-muted",
                     )}
                   >
-                    Actions
+                    {stickyActions ? (
+                      <span className="sr-only">Export</span>
+                    ) : (
+                      "Actions"
+                    )}
                   </th>
                 )}
               </tr>
@@ -252,7 +262,13 @@ export function DataTable<T>({
                       );
                     })}
                     {actions && (
-                      <td className={cn("whitespace-nowrap px-4 text-right align-middle", cellPadding)}>
+                      <td
+                        className={cn(
+                          "whitespace-nowrap px-4 text-right align-middle",
+                          cellPadding,
+                          stickyActionsClass,
+                        )}
+                      >
                         <DataTableRowActions row={row} actions={rowActionsForRow} />
                       </td>
                     )}

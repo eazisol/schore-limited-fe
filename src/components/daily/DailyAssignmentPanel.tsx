@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SearchableSelect } from "@/components/form";
 import { AppTooltip } from "@/components/AppTooltip";
 import { Modal } from "@/components/Modal";
+import { RemoveItemReasonModal } from "@/components/tasks/RemoveItemReasonModal";
 import {
   dailyProgrammeService,
   formatResolvedRate,
@@ -36,6 +37,11 @@ import { notifyApiError } from "@/lib/api/axios";
 import { fmtGBP } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import {
+  RateCapReasonModal,
+  type RateCapReasonContext,
+} from "@/components/rates/RateCapReasonModal";
+import { getCatalogueCap } from "@/lib/rate-overrides";
 
 type UnassignedKind = "package" | "addon";
 
@@ -130,7 +136,14 @@ export function DailyAssignmentPanel({
   const [existingAssignPick, setExistingAssignPick] = useState<Record<string, AssignPick>>({});
   const [certPrompt, setCertPrompt] = useState<PendingCertAssign | null>(null);
   const [certChecking, setCertChecking] = useState(false);
+  const [pendingRemove, setPendingRemove] = useState<{
+    itemId: string;
+    label: string;
+  } | null>(null);
+  const [capPrompt, setCapPrompt] = useState<RateCapReasonContext | null>(null);
+  const [capReasonAccepted, setCapReasonAccepted] = useState(false);
   const rateTouchedRef = useRef(false);
+  const pendingAfterCapRef = useRef<(() => void) | null>(null);
 
   const assignedByOperative = row.assignedByOperative ?? [];
   const unassignedPackages = row.unassignedPackages ?? [];
@@ -167,8 +180,15 @@ export function DailyAssignmentPanel({
     setAssignTimeSlotLabel("");
     setExistingAssignPick({});
     setCertPrompt(null);
+    setCapPrompt(null);
+    setCapReasonAccepted(false);
+    pendingAfterCapRef.current = null;
     rateTouchedRef.current = false;
   }, [date, row.taskId]);
+
+  useEffect(() => {
+    setCapReasonAccepted(false);
+  }, [assignRate, selectedKind, selectedId]);
 
   const resolvedRateQuery = useQuery({
     queryKey: [
@@ -298,13 +318,15 @@ export function DailyAssignmentPanel({
   });
 
   const removeMutation = useMutation({
-    mutationFn: (itemId: string) => dailyProgrammeService.removeItem(itemId, date),
+    mutationFn: ({ itemId, reason }: { itemId: string; reason: string }) =>
+      dailyProgrammeService.removeItem(itemId, date, reason),
     onSuccess: (res) => {
       if (res.data) {
         mergeRowInCache(qc, row.taskId, res.data);
         onRowUpdated?.(res.data);
       }
       invalidateAfterChange(qc, row.taskId);
+      setPendingRemove(null);
       toast.success("Item removed");
     },
     onError: (err) => notifyApiError(err, "Unable to remove item"),
@@ -348,6 +370,42 @@ export function DailyAssignmentPanel({
     } else {
       assignAddOnMutation.mutate({ productId: catalogId, ...base });
     }
+  }
+
+  async function ensureAssignRateCap(then: () => void) {
+    if (!rateTouchedRef.current || !canSeeRates) {
+      then();
+      return;
+    }
+    const rate = Number(assignRate);
+    if (!Number.isFinite(rate) || rate < 0) {
+      then();
+      return;
+    }
+
+    let cap =
+      resolvedRateQuery.data?.cap != null
+        ? Number(resolvedRateQuery.data.cap)
+        : resolvedRateQuery.data?.rate != null
+          ? Number(resolvedRateQuery.data.rate)
+          : null;
+
+    if (cap == null && selectedKind === "addon" && selectedId) {
+      cap = await getCatalogueCap(selectedId);
+    }
+
+    if (cap != null && rate > cap && !capReasonAccepted) {
+      const productName =
+        selectedKind === "package"
+          ? unassignedPackages.find((p) => p.tradeGroupId === selectedId)?.tradeGroupName ||
+            "Package"
+          : unassignedAddOns.find((a) => a.productId === selectedId)?.productName || "Add-on";
+      pendingAfterCapRef.current = then;
+      setCapPrompt({ productName, rate, cap });
+      return;
+    }
+
+    then();
   }
 
   function runExistingAssign(
@@ -428,21 +486,23 @@ export function DailyAssignmentPanel({
       return;
     }
 
-    const warnings = await checkCertificates(assignOperativeId, [date]);
-    if (warnings == null) return;
-    if (warnings.length > 0) {
-      setCertPrompt({
-        source: "catalog",
-        kind: selectedKind,
-        catalogId: selectedId,
-        operativeId: assignOperativeId,
-        operativeLabel: assignOperativeLabel,
-        warnings,
-      });
-      return;
-    }
+    await ensureAssignRateCap(async () => {
+      const warnings = await checkCertificates(assignOperativeId, [date]);
+      if (warnings == null) return;
+      if (warnings.length > 0) {
+        setCertPrompt({
+          source: "catalog",
+          kind: selectedKind,
+          catalogId: selectedId,
+          operativeId: assignOperativeId,
+          operativeLabel: assignOperativeLabel,
+          warnings,
+        });
+        return;
+      }
 
-    runCatalogAssign(selectedKind, selectedId, assignOperativeId);
+      runCatalogAssign(selectedKind, selectedId, assignOperativeId);
+    });
   }
 
   async function handleExistingAssign(
@@ -737,7 +797,9 @@ export function DailyAssignmentPanel({
           completingItemId={
             completeMutation.isPending ? completeMutation.variables : undefined
           }
-          removingItemId={removeMutation.isPending ? removeMutation.variables : undefined}
+          removingItemId={
+            removeMutation.isPending ? removeMutation.variables?.itemId : undefined
+          }
           unassigningPackageId={
             unassignPackageMutation.isPending ? unassignPackageMutation.variables : undefined
           }
@@ -745,11 +807,40 @@ export function DailyAssignmentPanel({
             unassignAddOnMutation.isPending ? unassignAddOnMutation.variables : undefined
           }
           onComplete={(itemId) => completeMutation.mutate(itemId)}
-          onRemove={(itemId) => removeMutation.mutate(itemId)}
+          onRemove={(itemId, label) => setPendingRemove({ itemId, label })}
           onUnassignPackage={(tradeGroupId) => unassignPackageMutation.mutate(tradeGroupId)}
           onUnassignAddOn={(productId) => unassignAddOnMutation.mutate(productId)}
         />
       </div>
+
+      <RemoveItemReasonModal
+        open={Boolean(pendingRemove)}
+        pending={removeMutation.isPending}
+        itemLabel={pendingRemove?.label}
+        onCancel={() => {
+          if (!removeMutation.isPending) setPendingRemove(null);
+        }}
+        onConfirm={(reason) => {
+          if (!pendingRemove) return;
+          removeMutation.mutate({ itemId: pendingRemove.itemId, reason });
+        }}
+      />
+
+      <RateCapReasonModal
+        open={Boolean(capPrompt)}
+        context={capPrompt}
+        onCancel={() => {
+          setCapPrompt(null);
+          pendingAfterCapRef.current = null;
+        }}
+        onConfirm={() => {
+          setCapReasonAccepted(true);
+          setCapPrompt(null);
+          const next = pendingAfterCapRef.current;
+          pendingAfterCapRef.current = null;
+          next?.();
+        }}
+      />
 
       {certPrompt ? (
         <Modal
@@ -837,7 +928,7 @@ function AssignedTree({
   unassigningPackageId: string | undefined;
   unassigningAddOnId: string | undefined;
   onComplete: (itemId: string) => void;
-  onRemove: (itemId: string) => void;
+  onRemove: (itemId: string, label: string) => void;
   onUnassignPackage: (tradeGroupId: string) => void;
   onUnassignAddOn: (productId: string) => void;
 }) {
@@ -960,7 +1051,7 @@ function AssignedTree({
                             completing={completingItemId === item.itemId}
                             removing={removingItemId === item.itemId}
                             onComplete={() => onComplete(item.itemId)}
-                            onRemove={() => onRemove(item.itemId)}
+                            onRemove={() => onRemove(item.itemId, item.productName || "Item")}
                           />
                         ))}
                       </ul>
@@ -1029,7 +1120,7 @@ function AssignedTree({
                               removing={removingItemId === item.itemId}
                               unassigning={Boolean(productId && unassigningAddOnId === productId)}
                               onComplete={() => onComplete(item.itemId)}
-                              onRemove={() => onRemove(item.itemId)}
+                              onRemove={() => onRemove(item.itemId, item.productName || "Item")}
                               onUnassign={
                                 !isUnassignedGroup && productId
                                   ? () => onUnassignAddOn(productId)
