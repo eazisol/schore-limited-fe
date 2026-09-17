@@ -137,11 +137,6 @@ export function TaskFormFields({
   const [operativeAddState, setOperativeAddState] = useState<ItemAddState>(defaultAddState);
   const [operativeRates, setOperativeRates] = useState<Record<string, string>>({});
   const [operativeTrades, setOperativeTrades] = useState<Record<string, string>>({});
-  const [ratePrompt, setRatePrompt] = useState<{
-    index: number;
-    previousRate: string;
-    nextRate: string;
-  } | null>(null);
   const [capPrompt, setCapPrompt] = useState<
     (RateCapReasonContext & { index: number; previousRate: string; nextRate: string }) | null
   >(null);
@@ -878,26 +873,12 @@ export function TaskFormFields({
     return "Item";
   }
 
-  function resolveRatePrompt(permanent: boolean) {
-    if (!ratePrompt) return;
-    setValue(`items.${ratePrompt.index}.rate`, ratePrompt.nextRate, { shouldDirty: true });
-    setValue(`items.${ratePrompt.index}.applyRatePermanently`, permanent, { shouldDirty: true });
-    setRatePrompt(null);
-  }
-
-  function cancelRatePrompt() {
-    if (!ratePrompt) return;
-    setValue(`items.${ratePrompt.index}.rate`, ratePrompt.previousRate, { shouldDirty: true });
-    setValue(`items.${ratePrompt.index}.applyRatePermanently`, false, { shouldDirty: true });
-    setRatePrompt(null);
-  }
-
   function confirmCapReason(reason: string) {
     if (!capPrompt) return;
-    const { index, previousRate, nextRate } = capPrompt;
+    const { index } = capPrompt;
     setValue(`items.${index}.rateCapReason`, reason, { shouldDirty: true, shouldTouch: true });
+    setValue(`items.${index}.applyRatePermanently`, false, { shouldDirty: true });
     setCapPrompt(null);
-    setRatePrompt({ index, previousRate, nextRate });
   }
 
   function cancelCapReason() {
@@ -908,18 +889,17 @@ export function TaskFormFields({
     setCapPrompt(null);
   }
 
+  /** Apply rate on the job line only — do not prompt to update catalogue. Persist via Save changes. */
   async function handleRateCommit(index: number, previousRate: string, nextRate: string) {
-    if (previousRate === nextRate || rateCapCheckingRef.current || capPrompt || ratePrompt) return;
+    if (previousRate === nextRate || rateCapCheckingRef.current || capPrompt) return;
 
     setValue(`items.${index}.rate`, nextRate, { shouldDirty: true });
+    setValue(`items.${index}.applyRatePermanently`, false, { shouldDirty: true });
 
     const item = getValues(`items.${index}`);
     const productId = String(item?.productId || "").trim();
     const next = Number(nextRate);
-    if (!productId || !Number.isFinite(next) || next < 0) {
-      setRatePrompt({ index, previousRate, nextRate });
-      return;
-    }
+    if (!productId || !Number.isFinite(next) || next < 0) return;
 
     rateCapCheckingRef.current = true;
     try {
@@ -957,7 +937,6 @@ export function TaskFormFields({
       }
 
       setValue(`items.${index}.rateCapReason`, "", { shouldDirty: true });
-      setRatePrompt({ index, previousRate, nextRate });
     } finally {
       rateCapCheckingRef.current = false;
     }
@@ -1226,36 +1205,6 @@ export function TaskFormFields({
             </div>
           ) : null}
         </div>
-
-        {ratePrompt ? (
-          <Modal
-            open
-            onClose={cancelRatePrompt}
-            title="Apply rate change?"
-            subtitle="Choose whether this rate update is one-off or permanent for the product catalogue."
-            size="sm"
-            showCloseButton={false}
-          >
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                New rate: £{Number(ratePrompt.nextRate || 0).toFixed(2)}
-              </p>
-              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => resolveRatePrompt(false)}
-                >
-                  Apply this time only
-                </Button>
-                <Button type="button" size="sm" onClick={() => resolveRatePrompt(true)}>
-                  Save as permanent product rate
-                </Button>
-              </div>
-            </div>
-          </Modal>
-        ) : null}
 
         <RateCapReasonModal
           open={Boolean(capPrompt)}
@@ -1539,6 +1488,9 @@ function ProductLineRow({
           onChange={(event) =>
             setValue(`items.${index}.quantity`, event.target.value, { shouldDirty: true })
           }
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.preventDefault();
+          }}
         />
       </td>
       <td className="px-1.5 py-1.5">
@@ -1564,6 +1516,9 @@ function ProductLineRow({
               setValue(`items.${index}.applyRatePermanently`, false);
             }
           }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.preventDefault();
+          }}
         />
       </td>
       <td className="px-1.5 py-1.5 font-medium">
@@ -1588,6 +1543,9 @@ function ProductLineRow({
               onChange={(event) =>
                 setValue(`items.${index}.notes`, event.target.value, { shouldDirty: true })
               }
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.preventDefault();
+              }}
             />
           </div>
         </AppTooltip>

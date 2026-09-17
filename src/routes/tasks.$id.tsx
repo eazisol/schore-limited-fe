@@ -1,14 +1,21 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { CodeBadge, CodeWithLabel } from "@/components/CodeBadge";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PageHeader } from "@/components/AppShell";
 import { FormPageCard } from "@/components/FormPageCard";
 import { AppTooltip } from "@/components/AppTooltip";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Pencil } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { ArrowLeft, History, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -58,6 +65,7 @@ function TaskDetail() {
   const queryClient = useQueryClient();
   const canModify = usePermission({ route: TASKS_ROUTE, action: "modify" });
   const isEdit = mode === "edit" && canModify;
+  const [timelineOpen, setTimelineOpen] = useState(false);
   const fromDaily = from === "daily";
   const fromCustomer = from === "customer" && Boolean(customerId);
   const fromProperty = from === "property" && Boolean(propertyId);
@@ -278,7 +286,7 @@ function TaskDetail() {
           <Form
             form={form}
             onSubmit={submit}
-            className="grid min-w-0 w-full max-w-full gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)] lg:items-start"
+            className="min-w-0 w-full max-w-full"
           >
             <FormPageCard
               title={`Edit job ${task.taskNumber || ""}`.trim()}
@@ -332,40 +340,76 @@ function TaskDetail() {
                 )}
               />
             </FormPageCard>
-
-            <TaskTimelinePanel
-              taskId={String(task.id)}
-              className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
-            />
           </Form>
         ) : (
           <div className="min-w-0 w-full max-w-full space-y-4">
-            <div className="card-elevated grid grid-cols-2 gap-x-4 gap-y-2 overflow-hidden px-4 py-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 [&>*]:min-w-0">
-              <Detail label="Job number" value={<CodeBadge code={task.taskNumber} />} />
-              <Detail label="Property" value={task.propertyName} />
-              <Detail label="Property type" value={task.jobTypeName} />
-              <Detail label="Client" value={<CodeWithLabel combined={customerDisplay} />} />
-              <Detail label="Post Code" value={postCodeDisplay} />
-              <Detail label="Start date" value={task.startDate?.slice(0, 10) || "—"} />
-              <Detail label="HO" value={task.handOverDate?.slice(0, 10) || "—"} />
-              <Detail label="Day" value={String(task.daysCount ?? 0)} />
-              <Detail label="Price" value={formatPriceDisplay(task.budget)} />
-              <Detail
-                label="Status"
-                value={
-                  task.statusName ? <StatusBadge status={task.statusName} /> : "—"
-                }
-              />
-              <Detail label="Site manager" value={task.siteManagerName || "—"} />
-              <Detail label="Created" value={formatDateTime(task.createdDate)} />
-              {task.description ? (
-                <div className="min-w-0 col-span-2 sm:col-span-3 lg:col-span-4 xl:col-span-6">
-                  <Detail label="Description" value={task.description} />
-                </div>
-              ) : null}
+            <div className="card-elevated relative overflow-hidden px-4 py-3 pr-12">
+              <AppTooltip content="View job timeline" asChild>
+                <button
+                  type="button"
+                  onClick={() => setTimelineOpen(true)}
+                  aria-label="View job timeline"
+                  className="absolute right-3 top-3 inline-grid h-8 w-8 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <History className="h-4 w-4" />
+                </button>
+              </AppTooltip>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 [&>*]:min-w-0">
+                <Detail label="Job number" value={<CodeBadge code={task.taskNumber} />} />
+                <Detail label="Property" value={task.propertyName} />
+                <Detail label="Property type" value={task.jobTypeName} />
+                <Detail label="Client" value={<CodeWithLabel combined={customerDisplay} />} />
+                <Detail label="Post Code" value={postCodeDisplay} />
+                <Detail label="Start date" value={task.startDate?.slice(0, 10) || "—"} />
+                <Detail label="HO" value={task.handOverDate?.slice(0, 10) || "—"} />
+                <Detail label="Day" value={String(task.daysCount ?? 0)} />
+                <Detail label="Price" value={formatPriceDisplay(task.budget)} />
+                <Detail
+                  label="Status"
+                  value={
+                    task.statusName ? <StatusBadge status={task.statusName} /> : "—"
+                  }
+                />
+                <Detail label="Site manager" value={task.siteManagerName || "—"} />
+                <Detail label="Created" value={formatDateTime(task.createdDate)} />
+                {task.description ? (
+                  <div className="min-w-0 col-span-2 sm:col-span-3 lg:col-span-4 xl:col-span-6">
+                    <Detail label="Description" value={task.description} />
+                  </div>
+                ) : null}
+              </div>
             </div>
 
             <JobWorkCalendar key={task.id} task={task} />
+
+            <Sheet open={timelineOpen} onOpenChange={setTimelineOpen}>
+              <SheetContent
+                side="right"
+                className="flex w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
+              >
+                <SheetHeader className="shrink-0 space-y-1 border-b border-border/70 bg-gradient-to-br from-accent/10 via-background to-background px-5 pb-4 pt-5 pr-12 text-left">
+                  <div className="flex items-center gap-2.5">
+                    <span className="inline-grid h-9 w-9 place-items-center rounded-lg bg-accent/15 text-accent">
+                      <History className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <SheetTitle className="text-base">Job timeline</SheetTitle>
+                      <SheetDescription className="text-xs">
+                        Activity history for {task.taskNumber || "this job"}
+                      </SheetDescription>
+                    </div>
+                  </div>
+                </SheetHeader>
+                <div className="min-h-0 flex-1 overflow-hidden px-4 py-4">
+                  <TaskTimelinePanel
+                    taskId={String(task.id)}
+                    variant="drawer"
+                    enabled={timelineOpen}
+                    className="h-full"
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         )}
       </div>

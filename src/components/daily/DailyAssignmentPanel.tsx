@@ -41,6 +41,7 @@ import {
   RateCapReasonModal,
   type RateCapReasonContext,
 } from "@/components/rates/RateCapReasonModal";
+import { isRateCapReasonRequiredError } from "@/components/rates/useRateCapReasonGate";
 import { getCatalogueCap } from "@/lib/rate-overrides";
 
 type UnassignedKind = "package" | "addon";
@@ -55,6 +56,7 @@ type PendingCertAssign =
     operativeId: string;
     operativeLabel: string;
     warnings: CertificationAssignWarning[];
+    rateCapReason?: string | null;
   }
   | {
     source: "existing";
@@ -66,6 +68,7 @@ type PendingCertAssign =
     quantity: number;
     timeSlotId: string | null;
     warnings: CertificationAssignWarning[];
+    rateCapReason?: string | null;
   };
 
 function mergeRowInCache(
@@ -144,7 +147,14 @@ export function DailyAssignmentPanel({
   const [capReasonAccepted, setCapReasonAccepted] = useState(false);
   const rateTouchedRef = useRef(false);
   const rateCapReasonRef = useRef("");
-  const pendingAfterCapRef = useRef<(() => void) | null>(null);
+  /** Continues assign after the user enters an over-cap reason (reason is passed in). */
+  const pendingAfterCapRef = useRef<((reason: string) => void) | null>(null);
+  /** Retry payload when the API returns ReasonRequired without a prior client-side prompt. */
+  const pendingCapRetryRef = useRef<{
+    kind: UnassignedKind;
+    catalogId: string;
+    operativeId: string;
+  } | null>(null);
 
   const assignedByOperative = row.assignedByOperative ?? [];
   const unassignedPackages = row.unassignedPackages ?? [];
@@ -184,6 +194,7 @@ export function DailyAssignmentPanel({
     setCapPrompt(null);
     setCapReasonAccepted(false);
     pendingAfterCapRef.current = null;
+    pendingCapRetryRef.current = null;
     rateTouchedRef.current = false;
     rateCapReasonRef.current = "";
   }, [date, row.taskId]);
@@ -272,7 +283,28 @@ export function DailyAssignmentPanel({
           ? "Package assigned — rate submitted for approval"
           : "Package assigned",
       ),
-    onError: (err) => notifyApiError(err, "Unable to assign package"),
+    onError: (err, variables) => {
+      if (isRateCapReasonRequiredError(err) && !variables.reason?.trim()) {
+        pendingCapRetryRef.current = {
+          kind: "package",
+          catalogId: variables.tradeGroupId,
+          operativeId: variables.operativeId,
+        };
+        const productName =
+          unassignedPackages.find((p) => p.tradeGroupId === variables.tradeGroupId)
+            ?.tradeGroupName || "Package";
+        const cap = Number(
+          resolvedRateQuery.data?.cap ?? resolvedRateQuery.data?.rate ?? variables.rate,
+        );
+        setCapPrompt({
+          productName,
+          rate: variables.rate,
+          cap: Number.isFinite(cap) ? cap : variables.rate,
+        });
+        return;
+      }
+      notifyApiError(err, "Unable to assign package");
+    },
   });
 
   const assignAddOnMutation = useMutation({
@@ -300,7 +332,28 @@ export function DailyAssignmentPanel({
           ? "Add-on assigned — rate submitted for approval"
           : "Add-on assigned",
       ),
-    onError: (err) => notifyApiError(err, "Unable to assign add-on"),
+    onError: (err, variables) => {
+      if (isRateCapReasonRequiredError(err) && !variables.reason?.trim()) {
+        pendingCapRetryRef.current = {
+          kind: "addon",
+          catalogId: variables.productId,
+          operativeId: variables.operativeId,
+        };
+        const productName =
+          unassignedAddOns.find((a) => a.productId === variables.productId)?.productName ||
+          "Add-on";
+        const cap = Number(
+          resolvedRateQuery.data?.cap ?? resolvedRateQuery.data?.rate ?? variables.rate,
+        );
+        setCapPrompt({
+          productName,
+          rate: variables.rate,
+          cap: Number.isFinite(cap) ? cap : variables.rate,
+        });
+        return;
+      }
+      notifyApiError(err, "Unable to assign add-on");
+    },
   });
 
   const unassignPackageMutation = useMutation({
@@ -377,13 +430,22 @@ export function DailyAssignmentPanel({
     }
   }
 
-  function runCatalogAssign(kind: UnassignedKind, catalogId: string, operativeId: string) {
+  function runCatalogAssign(
+    kind: UnassignedKind,
+    catalogId: string,
+    operativeId: string,
+    reason?: string | null,
+  ) {
+    const trimmedReason = (reason ?? rateCapReasonRef.current).trim() || null;
+    if (trimmedReason) {
+      rateCapReasonRef.current = trimmedReason;
+    }
     const base = {
       operativeId,
       rate: rateTouchedRef.current ? Number(assignRate) || 0 : 0,
       quantity: Number(assignQty) || 1,
       timeSlotId: assignTimeSlotId || null,
-      reason: rateCapReasonRef.current.trim() || null,
+      reason: trimmedReason,
     };
     if (kind === "package") {
       assignPackageMutation.mutate({ tradeGroupId: catalogId, ...base });
@@ -392,14 +454,14 @@ export function DailyAssignmentPanel({
     }
   }
 
-  async function ensureAssignRateCap(then: () => void) {
+  async function ensureAssignRateCap(then: (reason: string) => void) {
     if (!rateTouchedRef.current || !canSeeRates) {
-      then();
+      then(rateCapReasonRef.current.trim());
       return;
     }
     const rate = Number(assignRate);
     if (!Number.isFinite(rate) || rate < 0) {
-      then();
+      then(rateCapReasonRef.current.trim());
       return;
     }
 
@@ -425,7 +487,7 @@ export function DailyAssignmentPanel({
       return;
     }
 
-    then();
+    then(rateCapReasonRef.current.trim());
   }
 
   function runExistingAssign(
@@ -506,10 +568,11 @@ export function DailyAssignmentPanel({
       return;
     }
 
-    await ensureAssignRateCap(async () => {
+    await ensureAssignRateCap(async (reason) => {
       const warnings = await checkCertificates(assignOperativeId, [date]);
       if (warnings == null) return;
       if (warnings.length > 0) {
+        if (reason) rateCapReasonRef.current = reason;
         setCertPrompt({
           source: "catalog",
           kind: selectedKind,
@@ -517,11 +580,12 @@ export function DailyAssignmentPanel({
           operativeId: assignOperativeId,
           operativeLabel: assignOperativeLabel,
           warnings,
+          rateCapReason: reason || null,
         });
         return;
       }
 
-      runCatalogAssign(selectedKind, selectedId, assignOperativeId);
+      runCatalogAssign(selectedKind, selectedId, assignOperativeId, reason);
     });
   }
 
@@ -577,8 +641,16 @@ export function DailyAssignmentPanel({
     if (!certPrompt) return;
     const pendingAssign = certPrompt;
     setCertPrompt(null);
+    const reason =
+      (pendingAssign.rateCapReason ?? rateCapReasonRef.current).trim() || null;
+    if (reason) rateCapReasonRef.current = reason;
     if (pendingAssign.source === "catalog") {
-      runCatalogAssign(pendingAssign.kind, pendingAssign.catalogId, pendingAssign.operativeId);
+      runCatalogAssign(
+        pendingAssign.kind,
+        pendingAssign.catalogId,
+        pendingAssign.operativeId,
+        reason,
+      );
       return;
     }
     runExistingAssign(
@@ -852,15 +924,26 @@ export function DailyAssignmentPanel({
         onCancel={() => {
           setCapPrompt(null);
           pendingAfterCapRef.current = null;
+          pendingCapRetryRef.current = null;
           rateCapReasonRef.current = "";
+          setCapReasonAccepted(false);
         }}
         onConfirm={(reason) => {
           rateCapReasonRef.current = reason;
           setCapReasonAccepted(true);
           setCapPrompt(null);
+
+          const retry = pendingCapRetryRef.current;
+          pendingCapRetryRef.current = null;
+          if (retry) {
+            pendingAfterCapRef.current = null;
+            runCatalogAssign(retry.kind, retry.catalogId, retry.operativeId, reason);
+            return;
+          }
+
           const next = pendingAfterCapRef.current;
           pendingAfterCapRef.current = null;
-          next?.();
+          next?.(reason);
         }}
       />
 
