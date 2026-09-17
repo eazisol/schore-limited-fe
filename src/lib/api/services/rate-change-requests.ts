@@ -71,6 +71,8 @@ export function rateScopeLabel(scope: string): string {
       return "Project";
     case "OPERATIVE":
       return "Operative";
+    case "TASK":
+      return "Job item";
     default:
       return scope;
   }

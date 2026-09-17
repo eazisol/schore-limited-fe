@@ -15,6 +15,8 @@ export type TaskItemFormValues = {
   doneQty: string;
   rate: string;
   applyRatePermanently: boolean;
+  /** Reason when rate exceeds parent budget cap (sent for Rate Approvals). */
+  rateCapReason: string;
   timeSlotId: string;
   isTicked: boolean;
   notes: string;
@@ -50,6 +52,7 @@ export const emptyTaskItem = (): TaskItemFormValues => ({
   doneQty: "0",
   rate: "0",
   applyRatePermanently: false,
+  rateCapReason: "",
   timeSlotId: "",
   isTicked: false,
   notes: "",
@@ -138,6 +141,7 @@ const taskItemSchema = z
     doneQty: z.string().min(1, "Done qty is required").default("0"),
     rate: z.string().min(1, "Rate is required"),
     applyRatePermanently: z.boolean().default(false),
+    rateCapReason: z.string().default(""),
     timeSlotId: z.string().default(""),
     isTicked: z.boolean().default(false),
     notes: z.string().default(""),
@@ -265,6 +269,7 @@ export function taskToFormValues(task: ApiTask): TaskFormValues {
       doneQty: String(item.doneQty ?? 0),
       rate: String(item.rate),
       applyRatePermanently: false,
+      rateCapReason: "",
       timeSlotId: item.timeSlotId != null ? String(item.timeSlotId) : "",
       isTicked: item.isTicked,
       notes: item.notes ?? "",
@@ -301,6 +306,7 @@ export function toTaskPayload(values: TaskFormValues): TaskPayload {
       doneQty: Number(item.doneQty),
       rate: Number(item.rate),
       applyRatePermanently: item.applyRatePermanently,
+      reason: item.rateCapReason.trim() || null,
       timeSlotId: item.timeSlotId.trim() || null,
       isTicked: item.isTicked,
       notes: item.notes.trim() || null,

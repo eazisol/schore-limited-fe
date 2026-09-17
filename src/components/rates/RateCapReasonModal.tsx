@@ -71,7 +71,7 @@ export function RateCapReasonModal({
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">
           This rate is above the parent budget cap and will go to Rate approvals. Enter a reason for
-          this item, then click Continue. After that use Save changes on the form to submit.
+          this item, then continue. The line is saved at the cap until the rate is approved.
         </p>
         {context ? (
           <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">

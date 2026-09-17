@@ -892,9 +892,10 @@ export function TaskFormFields({
     setRatePrompt(null);
   }
 
-  function confirmCapReason(_reason: string) {
+  function confirmCapReason(reason: string) {
     if (!capPrompt) return;
     const { index, previousRate, nextRate } = capPrompt;
+    setValue(`items.${index}.rateCapReason`, reason, { shouldDirty: true, shouldTouch: true });
     setCapPrompt(null);
     setRatePrompt({ index, previousRate, nextRate });
   }
@@ -903,6 +904,7 @@ export function TaskFormFields({
     if (!capPrompt) return;
     setValue(`items.${capPrompt.index}.rate`, capPrompt.previousRate, { shouldDirty: true });
     setValue(`items.${capPrompt.index}.applyRatePermanently`, false, { shouldDirty: true });
+    setValue(`items.${capPrompt.index}.rateCapReason`, "", { shouldDirty: true });
     setCapPrompt(null);
   }
 
@@ -954,6 +956,7 @@ export function TaskFormFields({
         return;
       }
 
+      setValue(`items.${index}.rateCapReason`, "", { shouldDirty: true });
       setRatePrompt({ index, previousRate, nextRate });
     } finally {
       rateCapCheckingRef.current = false;

@@ -58,6 +58,9 @@ export function TaskTimelinePanel({ taskId, className }: Props) {
 
 function TimelineRow({ entry }: { entry: ApiTaskTimelineEntry }) {
   const title = ACTION_LABELS[entry.action] ?? entry.action;
+  const hasRateChange = entry.previousRate != null || entry.newRate != null;
+  const hasStatusChange = Boolean(entry.previousStatus || entry.newStatus);
+
   return (
     <li className="relative pb-4 last:pb-0">
       <span className="absolute -left-[1.15rem] top-1.5 h-2 w-2 rounded-full bg-accent" />
@@ -77,6 +80,18 @@ function TimelineRow({ entry }: { entry: ApiTaskTimelineEntry }) {
         {entry.summary && entry.summary !== ACTION_LABELS[entry.action] ? (
           <p className="mt-0.5 text-xs text-foreground/80">{entry.summary}</p>
         ) : null}
+        {hasRateChange ? (
+          <p className="mt-0.5 text-xs text-foreground/80">
+            <span className="font-medium text-muted-foreground">Rate: </span>
+            {formatMoney(entry.previousRate)} → {formatMoney(entry.newRate)}
+          </p>
+        ) : null}
+        {hasStatusChange ? (
+          <p className="mt-0.5 text-xs text-foreground/80">
+            <span className="font-medium text-muted-foreground">Status: </span>
+            {entry.previousStatus || "—"} → {entry.newStatus || "—"}
+          </p>
+        ) : null}
         {entry.reason ? (
           <p className="mt-1 rounded-md border bg-muted/30 px-2 py-1 text-xs">
             <span className="font-medium text-muted-foreground">Reason: </span>
@@ -87,4 +102,14 @@ function TimelineRow({ entry }: { entry: ApiTaskTimelineEntry }) {
       </div>
     </li>
   );
+}
+
+function formatMoney(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value)) {
+    return "—";
+  }
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }

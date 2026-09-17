@@ -157,6 +157,7 @@ export type DailyAssignPackagePayload = {
   quantity: number;
   timeSlotId?: string | null;
   applyRatePermanently?: boolean;
+  reason?: string | null;
 };
 
 export type DailyAssignAddOnPayload = {
@@ -167,6 +168,7 @@ export type DailyAssignAddOnPayload = {
   quantity: number;
   timeSlotId?: string | null;
   applyRatePermanently?: boolean;
+  reason?: string | null;
 };
 
 export interface DailyProgrammeListParams {
@@ -257,6 +259,7 @@ export const dailyProgrammeService = {
       rate: number;
       quantity: number;
       timeSlotId?: string | null;
+      reason?: string | null;
     },
   ) => http.put<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/items/${itemId}`, payload),
   assignPackage: (taskId: string, payload: DailyAssignPackagePayload) =>

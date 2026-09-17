@@ -77,6 +77,7 @@ export type TaskItemPayload = {
   doneQty?: number;
   rate: number;
   applyRatePermanently?: boolean;
+  reason?: string | null;
   statusId?: string | null;
   isTicked?: boolean;
   completedDate?: string | null;
@@ -117,6 +118,10 @@ export interface ApiTaskTimelineEntry {
   actorName: string;
   itemLabel: string | null;
   workDate: string | null;
+  previousRate: number | null;
+  newRate: number | null;
+  previousStatus: string | null;
+  newStatus: string | null;
   createdDate: string;
 }
 

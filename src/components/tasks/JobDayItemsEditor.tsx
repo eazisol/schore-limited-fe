@@ -410,6 +410,7 @@ function ItemFormCard({
   const [certCheckPending, setCertCheckPending] = useState(false);
   const [capPrompt, setCapPrompt] = useState<RateCapReasonContext | null>(null);
   const [capReasonAccepted, setCapReasonAccepted] = useState(false);
+  const rateCapReasonRef = useRef("");
 
   const timeSlotsQuery = useQuery({
     queryKey: ["tasks", "time-slots"],
@@ -446,10 +447,12 @@ function ItemFormCard({
     rateTouchedRef.current = false;
     setRate("");
     setCapReasonAccepted(false);
+    rateCapReasonRef.current = "";
   }, [catalogKind, catalogId, isEdit]);
 
   useEffect(() => {
     setCapReasonAccepted(false);
+    rateCapReasonRef.current = "";
   }, [rate]);
 
   useEffect(() => {
@@ -469,12 +472,14 @@ function ItemFormCard({
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const reason = rateCapReasonRef.current.trim() || null;
       const payloadBase = {
         date,
         operativeId,
         rate: isEdit || rateTouchedRef.current ? Number(rate) || 0 : 0,
         quantity: Number(qty) || 1,
         timeSlotId: timeSlotId || null,
+        reason,
       };
 
       if (isEdit && editLine) {
@@ -484,6 +489,7 @@ function ItemFormCard({
           rate: Number(rate) || 0,
           quantity: Number(qty) || 1,
           timeSlotId: timeSlotId || null,
+          reason,
         });
       }
 
@@ -499,7 +505,13 @@ function ItemFormCard({
       });
     },
     onSuccess: (res) => {
-      toast.success(isEdit ? "Item updated" : "Item added");
+      toast.success(
+        rateCapReasonRef.current.trim()
+          ? "Submitted for Rate approvals (line saved at cap until approved)"
+          : isEdit
+            ? "Item updated"
+            : "Item added",
+      );
       if (res.data) onSaved(res.data);
     },
     onError: (err) =>
@@ -619,7 +631,8 @@ function ItemFormCard({
         open={Boolean(capPrompt)}
         context={capPrompt}
         onCancel={() => setCapPrompt(null)}
-        onConfirm={() => {
+        onConfirm={(reason) => {
+          rateCapReasonRef.current = reason;
           setCapReasonAccepted(true);
           setCapPrompt(null);
           proceedSave();

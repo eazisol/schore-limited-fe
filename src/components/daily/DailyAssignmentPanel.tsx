@@ -143,6 +143,7 @@ export function DailyAssignmentPanel({
   const [capPrompt, setCapPrompt] = useState<RateCapReasonContext | null>(null);
   const [capReasonAccepted, setCapReasonAccepted] = useState(false);
   const rateTouchedRef = useRef(false);
+  const rateCapReasonRef = useRef("");
   const pendingAfterCapRef = useRef<(() => void) | null>(null);
 
   const assignedByOperative = row.assignedByOperative ?? [];
@@ -184,10 +185,12 @@ export function DailyAssignmentPanel({
     setCapReasonAccepted(false);
     pendingAfterCapRef.current = null;
     rateTouchedRef.current = false;
+    rateCapReasonRef.current = "";
   }, [date, row.taskId]);
 
   useEffect(() => {
     setCapReasonAccepted(false);
+    rateCapReasonRef.current = "";
   }, [assignRate, selectedKind, selectedId]);
 
   const resolvedRateQuery = useQuery({
@@ -251,6 +254,7 @@ export function DailyAssignmentPanel({
       rate: number;
       quantity: number;
       timeSlotId?: string | null;
+      reason?: string | null;
     }) =>
       dailyProgrammeService.assignPackage(row.taskId, {
         date,
@@ -259,8 +263,15 @@ export function DailyAssignmentPanel({
         rate: payload.rate,
         quantity: payload.quantity,
         timeSlotId: payload.timeSlotId,
+        reason: payload.reason,
       }),
-    onSuccess: (res) => applyUpdatedRow(res.data, "Package assigned"),
+    onSuccess: (res) =>
+      applyUpdatedRow(
+        res.data,
+        rateCapReasonRef.current.trim()
+          ? "Package assigned — rate submitted for approval"
+          : "Package assigned",
+      ),
     onError: (err) => notifyApiError(err, "Unable to assign package"),
   });
 
@@ -271,6 +282,7 @@ export function DailyAssignmentPanel({
       rate: number;
       quantity: number;
       timeSlotId?: string | null;
+      reason?: string | null;
     }) =>
       dailyProgrammeService.assignAddOn(row.taskId, {
         date,
@@ -279,8 +291,15 @@ export function DailyAssignmentPanel({
         rate: payload.rate,
         quantity: payload.quantity,
         timeSlotId: payload.timeSlotId,
+        reason: payload.reason,
       }),
-    onSuccess: (res) => applyUpdatedRow(res.data, "Add-on assigned"),
+    onSuccess: (res) =>
+      applyUpdatedRow(
+        res.data,
+        rateCapReasonRef.current.trim()
+          ? "Add-on assigned — rate submitted for approval"
+          : "Add-on assigned",
+      ),
     onError: (err) => notifyApiError(err, "Unable to assign add-on"),
   });
 
@@ -364,6 +383,7 @@ export function DailyAssignmentPanel({
       rate: rateTouchedRef.current ? Number(assignRate) || 0 : 0,
       quantity: Number(assignQty) || 1,
       timeSlotId: assignTimeSlotId || null,
+      reason: rateCapReasonRef.current.trim() || null,
     };
     if (kind === "package") {
       assignPackageMutation.mutate({ tradeGroupId: catalogId, ...base });
@@ -832,8 +852,10 @@ export function DailyAssignmentPanel({
         onCancel={() => {
           setCapPrompt(null);
           pendingAfterCapRef.current = null;
+          rateCapReasonRef.current = "";
         }}
-        onConfirm={() => {
+        onConfirm={(reason) => {
+          rateCapReasonRef.current = reason;
           setCapReasonAccepted(true);
           setCapPrompt(null);
           const next = pendingAfterCapRef.current;
