@@ -6,7 +6,11 @@ import { AppTooltip } from "@/components/AppTooltip";
 import { DailyAssignmentPanel } from "@/components/daily/DailyAssignmentPanel";
 import type { ApiDailyProgramme, ApiDailyRow } from "@/lib/api/services/daily-programme";
 import { dailyQueryKey } from "@/routes/daily";
-import { dailyAssignmentDetail, dailyAssignmentSummary } from "@/lib/daily-packages";
+import {
+  dailyAssignmentDetail,
+  dailyAssignmentSummary,
+  filterAssignedGroupsWithoutOpenApprovals,
+} from "@/lib/daily-packages";
 import { truncateWithEllipsis } from "@/lib/module-ui";
 import { cn } from "@/lib/utils";
 
@@ -26,9 +30,10 @@ export function DailyItemsCell({ row, date, disabled = false }: DailyItemsCellPr
   }, [row]);
 
   const assignedByOperative = liveRow.assignedByOperative ?? [];
+  const visibleAssigned = filterAssignedGroupsWithoutOpenApprovals(assignedByOperative);
   const summary = dailyAssignmentSummary(assignedByOperative);
   const fullSummary = dailyAssignmentDetail(assignedByOperative);
-  const hasAssigned = assignedByOperative.length > 0;
+  const hasAssigned = visibleAssigned.length > 0;
   // Locked rows may still open to tick existing items; panel blocks new assigns.
 
   return (

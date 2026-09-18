@@ -150,9 +150,10 @@ export function JobDayItemsEditor({
   const qc = useQueryClient();
   const { hasCapability } = usePermissions();
   const canSeeRates = hasCapability(CAPABILITY_CODES.seeRates);
+  const canSelectRateItems = hasCapability(CAPABILITY_CODES.selectRateItems);
   const todayYmd = toYmd(new Date());
   const isPast = Boolean(date && date < todayYmd);
-  const locked = disabled || row.isLocked || isPast;
+  const locked = disabled || row.isLocked || isPast || !canSelectRateItems;
   const [formMode, setFormMode] = useState<FormMode>(
     initialShowAdd && !locked ? { kind: "add" } : null,
   );

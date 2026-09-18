@@ -15,6 +15,7 @@ import { dailyQueryKey } from "@/routes/daily";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { CAPABILITY_CODES } from "@/lib/access";
 import { notifyApiError } from "@/lib/api/axios";
+import { filterNameOperativesWithoutOpenApprovals } from "@/lib/daily-packages";
 import { fmtGBP } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -60,7 +61,7 @@ function operativeInitials(name: string) {
 export function DailyNameCell({ row, date, disabled = false }: DailyNameCellProps) {
   const { hasCapability } = usePermissions();
   const canSeeRates = hasCapability(CAPABILITY_CODES.seeRates);
-  const operatives = row.nameOperatives ?? [];
+  const operatives = filterNameOperativesWithoutOpenApprovals(row.nameOperatives ?? []);
   // Lock blocks adding/assigning elsewhere; ticking existing items stays allowed.
   const cellDisabled = disabled;
 

@@ -48,27 +48,43 @@ export function TaskRateApprovalSections({
             </p>
           </div>
           <ul className="space-y-1 px-3 pb-2">
-            {pending.map((line) => (
-              <li
-                key={line.itemId}
-                className="rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1.5"
-              >
-                <p className="truncate text-sm font-medium">{line.productName}</p>
-                <p className="truncate text-[11px] text-muted-foreground">
-                  {[
-                    line.operativeName,
-                    `Qty ${line.quantity}`,
-                    line.timeSlotName || null,
-                    line.proposedRate != null
-                      ? `Proposed ${fmtGBP(line.proposedRate)}`
-                      : null,
-                    `At cap ${fmtGBP(line.rate)}`,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              </li>
-            ))}
+            {pending.map((line) => {
+              const detail = [
+                line.operativeName,
+                `Qty ${line.quantity}`,
+                line.timeSlotName || null,
+                line.proposedRate != null
+                  ? `Proposed ${fmtGBP(line.proposedRate)}`
+                  : null,
+                `At cap ${fmtGBP(line.rate)}`,
+              ]
+                .filter(Boolean)
+                .join(" · ");
+
+              return (
+                <li
+                  key={line.itemId}
+                  className="rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1.5"
+                >
+                  <AppTooltip
+                    content={
+                      <div className="space-y-0.5">
+                        <p className="font-medium">{line.productName}</p>
+                        <p className="font-normal text-muted-foreground">{detail}</p>
+                      </div>
+                    }
+                    asChild
+                    align="start"
+                    contentClassName="max-w-sm"
+                  >
+                    <div className="min-w-0 cursor-default">
+                      <p className="truncate text-sm font-medium">{line.productName}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">{detail}</p>
+                    </div>
+                  </AppTooltip>
+                </li>
+              );
+            })}
           </ul>
         </section>
       ) : null}

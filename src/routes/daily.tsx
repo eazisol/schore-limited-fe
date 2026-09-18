@@ -42,6 +42,10 @@ import { SearchableSelect } from "@/components/form";
 import { DailyItemsCell } from "@/components/daily/DailyItemsCell";
 import { DailyNameCell } from "@/components/daily/DailyNameCell";
 import {
+  dailyAssignmentSummary,
+  filterNameOperativesWithoutOpenApprovals,
+} from "@/lib/daily-packages";
+import {
   fetchPropertyOptions,
   fetchTaskStatusOptions,
 } from "@/lib/task-dropdowns";
@@ -436,20 +440,21 @@ function Daily() {
         header: "Previous day",
         width: "7rem",
         truncate: false,
-        accessor: (row) => row.previousDayTrades || "—",
+        accessor: (row) => row.previousDayTrades || row.previousDayDetails || "—",
         cell: (row) => {
           const trades = row.previousDayTrades?.trim();
-          if (!trades) return "—";
-          const details = row.previousDayDetails?.trim() || trades;
+          const details = row.previousDayDetails?.trim();
+          if (!trades && !details) return "—";
+          const label = trades || details!.split("\n")[0] || "—";
           return (
             <AppTooltip
-              content={details}
+              content={details || trades}
               contentClassName="whitespace-pre-line"
               asChild
               align="start"
             >
               <span className="block max-w-full cursor-default truncate font-mono text-xs uppercase">
-                {truncateWithEllipsis(trades, 16)}
+                {truncateWithEllipsis(label, 16)}
               </span>
             </AppTooltip>
           );
@@ -509,11 +514,9 @@ function Daily() {
         width: "9rem",
         truncate: false,
         accessor: (row) =>
-          (row.nameOperatives ?? [])
+          filterNameOperativesWithoutOpenApprovals(row.nameOperatives ?? [])
             .map((op) => op.operativeName)
-            .join(", ") ||
-          row.nameDisplay ||
-          "No allocation",
+            .join(", ") || "No allocation",
         cell: (row) => (
           <DailyNameCell row={row} date={date} disabled={!canModifyDaily} />
         ),
@@ -523,13 +526,7 @@ function Daily() {
         header: "Items",
         width: "10rem",
         truncate: false,
-        accessor: (row) => {
-          const names = (row.assignedByOperative ?? []).flatMap((op) => [
-            ...op.packages.map((pkg) => pkg.tradeGroupName),
-            ...op.addOns.map((a) => a.productName),
-          ]);
-          return [...new Set(names)].join(", ") || "No items";
-        },
+        accessor: (row) => dailyAssignmentSummary(row.assignedByOperative ?? []),
         cell: (row) => (
           <DailyItemsCell row={row} date={date} disabled={!canModifyDaily} />
         ),

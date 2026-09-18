@@ -1,12 +1,46 @@
 import type {
   ApiDailyAssignedOperative,
+  ApiDailyNameOperative,
   ApiDailyUnassignedAddOn,
   ApiDailyUnassignedPackage,
 } from "@/lib/api/services/daily-programme";
+import { isRateApprovalOpen } from "@/lib/rate-approval";
+
+/** Drop pending/rejected rate lines so Name/Items only reflect approved assignments. */
+export function filterAssignedGroupsWithoutOpenApprovals(
+  groups: ApiDailyAssignedOperative[],
+): ApiDailyAssignedOperative[] {
+  return groups
+    .map((op) => ({
+      ...op,
+      packages: op.packages
+        .map((pkg) => ({
+          ...pkg,
+          items: pkg.items.filter((item) => !isRateApprovalOpen(item.rateApprovalStatus)),
+        }))
+        .filter((pkg) => pkg.items.length > 0),
+      addOns: op.addOns.filter((item) => !isRateApprovalOpen(item.rateApprovalStatus)),
+    }))
+    .filter((op) => op.packages.length > 0 || op.addOns.length > 0);
+}
+
+export function filterNameOperativesWithoutOpenApprovals(
+  operatives: ApiDailyNameOperative[],
+): ApiDailyNameOperative[] {
+  return operatives
+    .map((op) => ({
+      ...op,
+      items: (op.items ?? []).filter(
+        (item) => !isRateApprovalOpen(item.rateApprovalStatus),
+      ),
+    }))
+    .filter((op) => op.items.length > 0);
+}
 
 export function dailyAssignmentSummary(groups: ApiDailyAssignedOperative[]) {
+  const visible = filterAssignedGroupsWithoutOpenApprovals(groups);
   const names: string[] = [];
-  for (const group of groups) {
+  for (const group of visible) {
     for (const pkg of group.packages) {
       names.push(pkg.tradeGroupName);
     }
@@ -21,8 +55,9 @@ export function dailyAssignmentSummary(groups: ApiDailyAssignedOperative[]) {
 }
 
 export function dailyAssignmentDetail(groups: ApiDailyAssignedOperative[]) {
+  const visible = filterAssignedGroupsWithoutOpenApprovals(groups);
   const names: string[] = [];
-  for (const group of groups) {
+  for (const group of visible) {
     for (const pkg of group.packages) {
       names.push(pkg.tradeGroupName);
     }

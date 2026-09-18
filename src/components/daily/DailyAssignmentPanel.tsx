@@ -24,6 +24,7 @@ import { usePermissions } from "@/contexts/PermissionContext";
 import { CAPABILITY_CODES } from "@/lib/access";
 import { tasksQueryKey } from "@/routes/tasks.index";
 import {
+  filterAssignedGroupsWithoutOpenApprovals,
   filterUnassignedAddOns,
   filterUnassignedPackages,
 } from "@/lib/daily-packages";
@@ -137,27 +138,6 @@ function toRateApprovalQueueLine(item: ApiDailyAssignedItemLine): RateApprovalQu
   };
 }
 
-function filterAssignedGroupsWithoutOpenApprovals(
-  groups: ApiDailyAssignedOperative[],
-): ApiDailyAssignedOperative[] {
-  return groups
-    .map((op) => ({
-      ...op,
-      packages: op.packages
-        .map((pkg) => ({
-          ...pkg,
-          items: pkg.items.filter((item) => !isRateApprovalOpenStatus(item.rateApprovalStatus)),
-        }))
-        .filter((pkg) => pkg.items.length > 0),
-      addOns: op.addOns.filter((item) => !isRateApprovalOpenStatus(item.rateApprovalStatus)),
-    }))
-    .filter((op) => op.packages.length > 0 || op.addOns.length > 0);
-}
-
-function isRateApprovalOpenStatus(status?: string | null) {
-  return isRateApprovalPending(status) || isRateApprovalRejected(status);
-}
-
 type DailyAssignmentPanelProps = {
   row: ApiDailyRow;
   date: string;
@@ -180,6 +160,7 @@ export function DailyAssignmentPanel({
   const qc = useQueryClient();
   const { hasCapability } = usePermissions();
   const canSeeRates = hasCapability(CAPABILITY_CODES.seeRates);
+  const canSelectRateItems = hasCapability(CAPABILITY_CODES.selectRateItems);
   const [unassignedSearch, setUnassignedSearch] = useState("");
   const [selectedKind, setSelectedKind] = useState<UnassignedKind | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -222,8 +203,8 @@ export function DailyAssignmentPanel({
   const unassignedPackages = row.unassignedPackages ?? [];
   const unassignedAddOns = row.unassignedAddOns ?? [];
   const isPast = date < toYmd(new Date());
-  // Lock / past: block assign & structural edits; ticks stay allowed when locked.
-  const cellDisabled = disabled || row.isLocked || isPast;
+  // Lock / past / no select-rate-items: block assign & structural edits; ticks stay allowed when locked.
+  const cellDisabled = disabled || row.isLocked || isPast || !canSelectRateItems;
   const completeDisabled = disabled || isPast;
 
   const allAssignedLines = useMemo(
