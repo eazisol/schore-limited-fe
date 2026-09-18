@@ -41,6 +41,7 @@ export const DOCUMENT_TYPE_CODE = {
   STATEMENT: "STATEMENT",
   STATEMENT_PAYMENT: "STATEMENT_PAYMENT",
   RATE_CHANGE: "RATE_CHANGE",
+  REPEAT_TASK: "REPEAT_TASK",
 } as const;
 
 const listQuery = (params: StatusListParams) => ({

@@ -341,6 +341,7 @@ function Daily() {
             row.accessNotes,
             row.previousDayTrades ? `Previous day: ${row.previousDayTrades}` : null,
             row.isLocked ? "Locked — no tick on previous day" : null,
+            row.isOverdue ? "Overdue — hand-over date passed" : null,
           ]
             .filter(Boolean)
             .join(" · "),
@@ -351,11 +352,21 @@ function Daily() {
             row.accessNotes,
             row.previousDayTrades ? `Previous day: ${row.previousDayTrades}` : null,
             row.isLocked ? "Locked — no tick on previous day" : null,
+            row.isOverdue ? "Overdue — hand-over date passed" : null,
           ]
             .filter(Boolean)
             .join(" · ");
           return (
             <div className="flex min-w-0 items-center gap-1.5">
+              {row.isOverdue ? (
+                <AppTooltip content="Overdue" asChild>
+                  <span
+                    className="inline-block h-2 w-2 shrink-0 rounded-full bg-destructive"
+                    aria-label="Overdue"
+                    role="img"
+                  />
+                </AppTooltip>
+              ) : null}
               {row.isLocked ? (
                 <Lock
                   className="h-3.5 w-3.5 shrink-0 text-warning-foreground"
@@ -763,6 +774,7 @@ function Daily() {
         fetching={query.isFetching}
         loadingText="Loading daily programmer…"
         stickyActions
+        actionsHeaderHidden
         actionsColumnWidth="3.25rem"
         rowActions={getRowActions}
         error={

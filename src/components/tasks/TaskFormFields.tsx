@@ -44,8 +44,18 @@ import {
 } from "@/lib/operative-certifications";
 import { notifyApiError } from "@/lib/api/axios";
 import { RateCapReasonModal, type RateCapReasonContext } from "@/components/rates/RateCapReasonModal";
+import {
+  TaskRateApprovalSections,
+  type RateApprovalQueueLine,
+} from "@/components/rates/TaskRateApprovalSections";
 import { formatMoneyRate, getCatalogueCap } from "@/lib/rate-overrides";
 import { formatResolvedRate } from "@/lib/api/services/daily-programme";
+import { usePermissions } from "@/contexts/PermissionContext";
+import { CAPABILITY_CODES } from "@/lib/access";
+import {
+  isRateApprovalPending,
+  isRateApprovalRejected,
+} from "@/lib/rate-approval";
 
 /** Form grouping key for template lines that have no operative yet. */
 const UNASSIGNED_OPERATIVE_KEY = "__unassigned";
@@ -66,9 +76,13 @@ function snapshotItems(rows: TaskItemFormValues[]): TaskItemFormValues[] {
     doneQty: row.doneQty ?? "0",
     rate: row.rate ?? "0",
     applyRatePermanently: Boolean(row.applyRatePermanently),
+    rateCapReason: row.rateCapReason ?? "",
     timeSlotId: row.timeSlotId ?? "",
     isTicked: Boolean(row.isTicked),
     notes: row.notes ?? "",
+    rateApprovalStatus: row.rateApprovalStatus ?? "",
+    proposedRate: row.proposedRate ?? "",
+    rateReviewReason: row.rateReviewReason ?? "",
   }));
 }
 
@@ -117,6 +131,8 @@ export function TaskFormFields({
   itemSelectedLabels?: Record<string, TaskItemSelectedLabels>;
 }) {
   const { control, setValue, getValues } = useFormContext<TaskFormValues>();
+  const { hasCapability } = usePermissions();
+  const canSeeRates = hasCapability(CAPABILITY_CODES.seeRates);
   const { fields, append, replace } = useFieldArray<TaskFormValues, "items", "fieldKey">({
     control,
     name: "items",
@@ -327,6 +343,12 @@ export function TaskFormFields({
     const map = new Map<string, { name: string; indexes: number[] }>();
     items.forEach((item, index) => {
       if (!item || isBlankTaskItem(item)) return;
+      if (
+        isRateApprovalPending(item.rateApprovalStatus) ||
+        isRateApprovalRejected(item.rateApprovalStatus)
+      ) {
+        return;
+      }
       const key = item.operativeId || UNASSIGNED_OPERATIVE_KEY;
       const name = item.operativeId
         ? operativeLabels[item.operativeId] ||
@@ -340,6 +362,56 @@ export function TaskFormFields({
     });
     return Array.from(map.entries());
   }, [items, operativeLabels, activeOperativeId, activeOperativeLabel]);
+
+  const pendingApprovalLines = useMemo(() => {
+    const lines: (RateApprovalQueueLine & { index: number })[] = [];
+    items.forEach((item, index) => {
+      if (!item || isBlankTaskItem(item) || !isRateApprovalPending(item.rateApprovalStatus)) {
+        return;
+      }
+      lines.push({
+        index,
+        itemId: item.id || `pending-${index}`,
+        productName:
+          (item.productId && productLabels[item.productId]) ||
+          (item.tradeGroupId && tradeGroupLabels[item.tradeGroupId]) ||
+          "Item",
+        quantity: Number(item.quantity) || 0,
+        rate: Number(item.rate) || 0,
+        proposedRate: item.proposedRate ? Number(item.proposedRate) : null,
+        rateReviewReason: item.rateReviewReason || null,
+        operativeName: item.operativeId
+          ? operativeLabels[item.operativeId] || `Operative #${item.operativeId}`
+          : "Unassigned",
+      });
+    });
+    return lines;
+  }, [items, productLabels, tradeGroupLabels, operativeLabels]);
+
+  const rejectedApprovalLines = useMemo(() => {
+    const lines: (RateApprovalQueueLine & { index: number })[] = [];
+    items.forEach((item, index) => {
+      if (!item || isBlankTaskItem(item) || !isRateApprovalRejected(item.rateApprovalStatus)) {
+        return;
+      }
+      lines.push({
+        index,
+        itemId: item.id || `rejected-${index}`,
+        productName:
+          (item.productId && productLabels[item.productId]) ||
+          (item.tradeGroupId && tradeGroupLabels[item.tradeGroupId]) ||
+          "Item",
+        quantity: Number(item.quantity) || 0,
+        rate: Number(item.rate) || 0,
+        proposedRate: item.proposedRate ? Number(item.proposedRate) : null,
+        rateReviewReason: item.rateReviewReason || null,
+        operativeName: item.operativeId
+          ? operativeLabels[item.operativeId] || `Operative #${item.operativeId}`
+          : "Unassigned",
+      });
+    });
+    return lines;
+  }, [items, productLabels, tradeGroupLabels, operativeLabels]);
 
   function patchAddState(patch: Partial<ItemAddState>) {
     setOperativeAddState((prev) => ({ ...prev, ...patch }));
@@ -875,10 +947,14 @@ export function TaskFormFields({
 
   function confirmCapReason(reason: string) {
     if (!capPrompt) return;
-    const { index } = capPrompt;
+    const { index, nextRate } = capPrompt;
     setValue(`items.${index}.rateCapReason`, reason, { shouldDirty: true, shouldTouch: true });
     setValue(`items.${index}.applyRatePermanently`, false, { shouldDirty: true });
+    setValue(`items.${index}.proposedRate`, nextRate, { shouldDirty: true });
+    setValue(`items.${index}.rateApprovalStatus`, "PENDING", { shouldDirty: true });
+    setValue(`items.${index}.rateReviewReason`, "", { shouldDirty: true });
     setCapPrompt(null);
+    toast.success("Rate queued for approval — save the job to submit");
   }
 
   function cancelCapReason() {
@@ -937,9 +1013,20 @@ export function TaskFormFields({
       }
 
       setValue(`items.${index}.rateCapReason`, "", { shouldDirty: true });
+      setValue(`items.${index}.proposedRate`, "", { shouldDirty: true });
+      setValue(`items.${index}.rateApprovalStatus`, "", { shouldDirty: true });
+      setValue(`items.${index}.rateReviewReason`, "", { shouldDirty: true });
     } finally {
       rateCapCheckingRef.current = false;
     }
+  }
+
+  function handleResubmitRejected(line: RateApprovalQueueLine, nextRate: number) {
+    const entry = rejectedApprovalLines.find((row) => row.itemId === line.itemId);
+    if (entry == null) return;
+    const previous = getValues(`items.${entry.index}.rate`) || "0";
+    setValue(`items.${entry.index}.proposedRate`, String(nextRate), { shouldDirty: true });
+    void handleRateCommit(entry.index, previous, String(nextRate));
   }
 
   const visibleItems = items.filter((row) => row && !isBlankTaskItem(row));
@@ -1097,7 +1184,19 @@ export function TaskFormFields({
             </div>
           </div>
 
-          {operativeCards.length === 0 ? (
+          {canSeeRates ? (
+            <TaskRateApprovalSections
+              pending={pendingApprovalLines}
+              rejected={rejectedApprovalLines}
+              disabled={disabled || itemsLocked}
+              onResubmitRejected={handleResubmitRejected}
+              className="card-elevated overflow-hidden"
+            />
+          ) : null}
+
+          {operativeCards.length === 0 &&
+          pendingApprovalLines.length === 0 &&
+          rejectedApprovalLines.length === 0 ? (
             <div className="card-elevated p-3 text-sm text-muted-foreground">
               No job items yet. Select a property type with a template, or use Add more to choose an
               operative and package / add-on.

@@ -75,7 +75,7 @@ function PermissionsPage() {
   const fromRoles = from === "roles";
   const qc = useQueryClient();
   const canModify = usePermission({ route: PERMISSIONS_ROUTE, action: "modify" });
-  const { refreshPermissions } = usePermissions();
+  const { refreshPermissions, hasCapability } = usePermissions();
   const [roleId, setRoleId] = useState<string | null>(roleIdFromSearch ?? null);
   const [draft, setDraft] = useState<PermissionTreeNode[]>([]);
   const [capabilityDraft, setCapabilityDraft] = useState<ApiCapabilityDefinition[]>([]);
@@ -473,7 +473,7 @@ function PermissionsPage() {
               <div className="flex items-center gap-1.5">
                 <h3 className="font-display text-sm font-semibold">Rates &amp; commercial</h3>
                 <AppTooltip
-                  content="Grant independently of menu access. Selected flags apply to every user with this role unless a user has their own override."
+                  content="Grant independently of menu access. You can only change flags you have yourself. Selected flags apply to every user with this role unless a user has their own override."
                   side="top"
                   align="start"
                   contentClassName="max-w-xs text-xs"
@@ -482,54 +482,79 @@ function PermissionsPage() {
                     type="button"
                     tabIndex={-1}
                     className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label="Grant independently of menu access. Selected flags apply to every user with this role unless a user has their own override."
+                    aria-label="Grant independently of menu access. You can only change flags you have yourself."
                   >
                     <Info className="h-3.5 w-3.5" aria-hidden />
                   </button>
                 </AppTooltip>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground"
-                disabled={!canModify || saving}
-                onClick={() => {
-                  const allGranted = capabilityDraft.every((item) => item.isGranted);
-                  setCapabilityDraft((prev) =>
-                    prev.map((row) => ({ ...row, isGranted: !allGranted })),
-                  );
-                }}
-              >
-                {capabilityDraft.every((item) => item.isGranted) ? "Deselect all" : "Select all"}
-              </Button>
+              {capabilityDraft.some((item) => hasCapability(item.code)) ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground"
+                  disabled={!canModify || saving}
+                  onClick={() => {
+                    const toggleable = capabilityDraft.filter((item) => hasCapability(item.code));
+                    const allGranted = toggleable.every((item) => item.isGranted);
+                    const toggleableCodes = new Set(
+                      toggleable.map((item) => item.code.toUpperCase()),
+                    );
+                    setCapabilityDraft((prev) =>
+                      prev.map((row) =>
+                        toggleableCodes.has(row.code.toUpperCase())
+                          ? { ...row, isGranted: !allGranted }
+                          : row,
+                      ),
+                    );
+                  }}
+                >
+                  {capabilityDraft
+                    .filter((item) => hasCapability(item.code))
+                    .every((item) => item.isGranted)
+                    ? "Deselect all"
+                    : "Select all"}
+                </Button>
+              ) : null}
             </div>
             <div className="space-y-0.5">
-              {capabilityDraft.map((item) => (
-                <label
-                  key={item.code}
-                  className={cn(
-                    "flex cursor-pointer select-none items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors",
-                    "hover:bg-accent/50",
-                    !canModify || saving ? "cursor-not-allowed opacity-60" : "",
-                  )}
-                >
-                  <Checkbox
-                    checked={item.isGranted}
-                    disabled={!canModify || saving}
-                    onCheckedChange={(checked) => {
-                      setCapabilityDraft((prev) =>
-                        prev.map((row) =>
-                          row.code === item.code ? { ...row, isGranted: Boolean(checked) } : row,
-                        ),
-                      );
-                    }}
-                  />
-                  <span className="text-sm font-medium leading-none text-foreground">
-                    {item.label}
-                  </span>
-                </label>
-              ))}
+              {capabilityDraft.map((item) => {
+                const locked = !canModify || saving || !hasCapability(item.code);
+                return (
+                  <label
+                    key={item.code}
+                    className={cn(
+                      "flex cursor-pointer select-none items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors",
+                      "hover:bg-accent/50",
+                      locked ? "cursor-not-allowed opacity-60" : "",
+                    )}
+                    title={
+                      canModify && !saving && !hasCapability(item.code)
+                        ? "You do not have this permission, so you cannot grant it"
+                        : undefined
+                    }
+                  >
+                    <Checkbox
+                      checked={item.isGranted}
+                      disabled={locked}
+                      onCheckedChange={(checked) => {
+                        if (!hasCapability(item.code)) return;
+                        setCapabilityDraft((prev) =>
+                          prev.map((row) =>
+                            row.code === item.code
+                              ? { ...row, isGranted: Boolean(checked) }
+                              : row,
+                          ),
+                        );
+                      }}
+                    />
+                    <span className="text-sm font-medium leading-none text-foreground">
+                      {item.label}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           </aside>
         ) : null}

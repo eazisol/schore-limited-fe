@@ -28,6 +28,12 @@ export interface ApiTaskItem {
   timeSlotCode: string | null;
   notes: string | null;
   imagePath: string | null;
+  /** PENDING | REJECTED when over-cap rate needs / was denied approval. */
+  rateApprovalStatus?: string | null;
+  rateChangeRequestId?: string | null;
+  proposedRate?: number | null;
+  rateChangeReason?: string | null;
+  rateReviewReason?: string | null;
 }
 
 export interface ApiTaskOperativeGroup {

@@ -24,6 +24,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RolesRouteImport } from './routes/roles'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as RepeatTaskApprovalsRouteImport } from './routes/repeat-task-approvals'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as RateApprovalsRouteImport } from './routes/rate-approvals'
 import { Route as PropertiesRouteImport } from './routes/properties'
@@ -182,6 +183,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RepeatTaskApprovalsRoute = RepeatTaskApprovalsRouteImport.update({
+  id: '/repeat-task-approvals',
+  path: '/repeat-task-approvals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RatesRoute = RatesRouteImport.update({
@@ -641,6 +647,7 @@ export interface FileRoutesByFullPath {
   '/properties': typeof PropertiesRouteWithChildren
   '/rate-approvals': typeof RateApprovalsRoute
   '/rates': typeof RatesRoute
+  '/repeat-task-approvals': typeof RepeatTaskApprovalsRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/roles': typeof RolesRoute
@@ -733,6 +740,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/rate-approvals': typeof RateApprovalsRoute
   '/rates': typeof RatesRoute
+  '/repeat-task-approvals': typeof RepeatTaskApprovalsRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/roles': typeof RolesRoute
@@ -827,6 +835,7 @@ export interface FileRoutesById {
   '/properties': typeof PropertiesRouteWithChildren
   '/rate-approvals': typeof RateApprovalsRoute
   '/rates': typeof RatesRoute
+  '/repeat-task-approvals': typeof RepeatTaskApprovalsRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/roles': typeof RolesRoute
@@ -930,6 +939,7 @@ export interface FileRouteTypes {
     | '/properties'
     | '/rate-approvals'
     | '/rates'
+    | '/repeat-task-approvals'
     | '/reports'
     | '/reset-password'
     | '/roles'
@@ -1022,6 +1032,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/rate-approvals'
     | '/rates'
+    | '/repeat-task-approvals'
     | '/reports'
     | '/reset-password'
     | '/roles'
@@ -1115,6 +1126,7 @@ export interface FileRouteTypes {
     | '/properties'
     | '/rate-approvals'
     | '/rates'
+    | '/repeat-task-approvals'
     | '/reports'
     | '/reset-password'
     | '/roles'
@@ -1217,6 +1229,7 @@ export interface RootRouteChildren {
   PropertiesRoute: typeof PropertiesRouteWithChildren
   RateApprovalsRoute: typeof RateApprovalsRoute
   RatesRoute: typeof RatesRoute
+  RepeatTaskApprovalsRoute: typeof RepeatTaskApprovalsRoute
   ReportsRoute: typeof ReportsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RolesRoute: typeof RolesRoute
@@ -1339,6 +1352,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/repeat-task-approvals': {
+      id: '/repeat-task-approvals'
+      path: '/repeat-task-approvals'
+      fullPath: '/repeat-task-approvals'
+      preLoaderRoute: typeof RepeatTaskApprovalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rates': {
@@ -2233,6 +2253,7 @@ const rootRouteChildren: RootRouteChildren = {
   PropertiesRoute: PropertiesRouteWithChildren,
   RateApprovalsRoute: RateApprovalsRoute,
   RatesRoute: RatesRoute,
+  RepeatTaskApprovalsRoute: RepeatTaskApprovalsRoute,
   ReportsRoute: ReportsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RolesRoute: RolesRoute,

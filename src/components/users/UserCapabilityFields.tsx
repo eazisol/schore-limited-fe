@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FormFieldHint } from "@/components/form/FormFieldLabel";
+import { usePermissions } from "@/contexts/PermissionContext";
 import { capabilitiesService } from "@/lib/api/services/access";
 import type { UserFormValues } from "@/lib/user-form";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ export function UserCapabilityFields({
   disabled?: boolean;
   resetKey?: string;
 }) {
+  const { hasCapability } = usePermissions();
   const { control, setValue } = useFormContext<UserFormValues>();
   const roleId = useWatch({ control, name: "roleId" })?.trim() ?? "";
   const overrides = useWatch({ control, name: "capabilityOverrides" }) ?? [];
@@ -43,6 +45,14 @@ export function UserCapabilityFields({
   const rows = mergeCapabilityRows(roleItems, overrides, ceo);
   const catalogReady = Boolean(roleId) && catalogQuery.data?.roleId === roleId;
   const selectedCodes = rows.filter((item) => item.isGranted).map((item) => item.code);
+  const canToggleCode = useCallback(
+    (code: string) => hasCapability(code),
+    [hasCapability],
+  );
+  const toggleableRows = useMemo(
+    () => rows.filter((item) => canToggleCode(item.code)),
+    [canToggleCode, rows],
+  );
 
   useEffect(() => {
     if (!catalogReady || !roleId) return;
@@ -99,7 +109,10 @@ export function UserCapabilityFields({
 
   const helpText = ceo
     ? "CEO always has every commercial permission. This list cannot be narrowed here."
-    : "Select extra commercial permissions for this user, or remove ones the role would grant.";
+    : "You can only grant commercial permissions you have yourself. Others stay disabled.";
+
+  const allToggleableGranted =
+    toggleableRows.length > 0 && toggleableRows.every((item) => item.isGranted);
 
   return (
     <div className="min-w-0 max-w-full space-y-2">
@@ -121,7 +134,7 @@ export function UserCapabilityFields({
               Reset to role
             </Button>
           ) : null}
-          {!ceo && (
+          {!ceo && toggleableRows.length > 0 ? (
             <Button
               type="button"
               variant="ghost"
@@ -129,40 +142,55 @@ export function UserCapabilityFields({
               className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground"
               disabled={disabled}
               onClick={() => {
-                const allGranted = rows.every((item) => item.isGranted);
-                applyGrantedCodes(allGranted ? [] : rows.map((r) => r.code));
+                const lockedGranted = rows
+                  .filter((item) => !canToggleCode(item.code) && item.isGranted)
+                  .map((item) => item.code);
+                applyGrantedCodes(
+                  allToggleableGranted
+                    ? lockedGranted
+                    : [...lockedGranted, ...toggleableRows.map((item) => item.code)],
+                );
               }}
             >
-              {rows.every((item) => item.isGranted) ? "Deselect all" : "Select all"}
+              {allToggleableGranted ? "Deselect all" : "Select all"}
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
       <div className="space-y-0.5">
-        {rows.map((item) => (
-          <label
-            key={item.code}
-            className={cn(
-              "flex cursor-pointer select-none items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors",
-              "hover:bg-accent/50",
-              disabled || ceo ? "cursor-not-allowed opacity-60" : "",
-            )}
-          >
-            <Checkbox
-              checked={item.isGranted}
-              disabled={disabled || ceo}
-              onCheckedChange={(checked) => {
-                const nextCodes = checked
-                  ? [...selectedCodes, item.code]
-                  : selectedCodes.filter((c) => c.toUpperCase() !== item.code.toUpperCase());
-                applyGrantedCodes(nextCodes);
-              }}
-            />
-            <span className="text-sm font-medium leading-none text-foreground">
-              {item.label}
-            </span>
-          </label>
-        ))}
+        {rows.map((item) => {
+          const locked = disabled || ceo || !canToggleCode(item.code);
+          return (
+            <label
+              key={item.code}
+              className={cn(
+                "flex cursor-pointer select-none items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors",
+                "hover:bg-accent/50",
+                locked ? "cursor-not-allowed opacity-60" : "",
+              )}
+              title={
+                !disabled && !ceo && !canToggleCode(item.code)
+                  ? "You do not have this permission, so you cannot grant it"
+                  : undefined
+              }
+            >
+              <Checkbox
+                checked={item.isGranted}
+                disabled={locked}
+                onCheckedChange={(checked) => {
+                  if (!canToggleCode(item.code)) return;
+                  const nextCodes = checked
+                    ? [...selectedCodes, item.code]
+                    : selectedCodes.filter((c) => c.toUpperCase() !== item.code.toUpperCase());
+                  applyGrantedCodes(nextCodes);
+                }}
+              />
+              <span className="text-sm font-medium leading-none text-foreground">
+                {item.label}
+              </span>
+            </label>
+          );
+        })}
       </div>
     </div>
   );

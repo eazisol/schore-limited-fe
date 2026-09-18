@@ -31,7 +31,6 @@ import { DOCUMENT_TYPE_CODE, statusesService } from "@/lib/api/services/statuses
 import { fmtGBPp } from "@/lib/data";
 import { formatDateTime } from "@/lib/module-ui";
 import { usePermission } from "@/components/Permission";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/rate-approvals")({
@@ -116,20 +115,38 @@ function RateApprovals() {
     {
       id: "item",
       header: "Item",
+      width: "14rem",
+      truncate: false,
       cell: (row) => (
-        <div>
-          <div className="font-medium">{row.productName || "Item"}</div>
-          <div className="text-xs text-muted-foreground">
+        <div className="min-w-0">
+          <div className="truncate font-medium">{row.productName || "Item"}</div>
+          <div className="truncate text-xs text-muted-foreground">
             {rateScopeLabel(row.scope)} · {row.parentLabel || "—"}
           </div>
         </div>
       ),
     },
     {
+      id: "property",
+      header: "Property",
+      width: "11rem",
+      accessor: (row) => row.propertyName || undefined,
+      cell: (row) => row.propertyName || "—",
+    },
+    {
+      id: "client",
+      header: "Client",
+      width: "11rem",
+      accessor: (row) => row.clientName || undefined,
+      cell: (row) => row.clientName || "—",
+    },
+    {
       id: "change",
       header: "Change",
+      width: "11rem",
+      truncate: false,
       cell: (row) => (
-        <div className="tabular-nums">
+        <div className="whitespace-nowrap tabular-nums">
           <span className="text-muted-foreground">
             {row.action.toUpperCase() === "REMOVE"
               ? "Remove"
@@ -152,34 +169,45 @@ function RateApprovals() {
     {
       id: "reason",
       header: "Reason",
-      cellClassName: "max-w-[16rem] text-muted-foreground",
-      cell: (row) => <span className="line-clamp-2">{row.reason || "—"}</span>,
+      width: "14rem",
+      accessor: (row) => row.reason?.trim() || undefined,
+      cell: (row) => row.reason?.trim() || "—",
     },
     {
       id: "requested",
       header: "Requested",
+      width: "10rem",
+      truncate: false,
       cell: (row) => (
-        <div>
-          <div>{row.requestedByName || "—"}</div>
-          <div className="text-xs text-muted-foreground">{formatDateTime(row.requestedDate)}</div>
+        <div className="min-w-0">
+          <div className="truncate">{row.requestedByName || "—"}</div>
+          <div className="truncate text-xs text-muted-foreground">
+            {formatDateTime(row.requestedDate)}
+          </div>
         </div>
       ),
     },
     {
       id: "status",
       header: "Status",
+      width: "8rem",
+      truncate: false,
       cell: (row) => <StatusBadge status={row.statusName || row.statusCode} />,
     },
     {
       id: "reviewed",
       header: "Reviewed",
+      width: "11rem",
+      truncate: false,
       cell: (row) =>
         row.reviewedByName ? (
-          <div>
-            <div>{row.reviewedByName}</div>
-            <div className="text-xs text-muted-foreground">{formatDateTime(row.reviewedDate)}</div>
+          <div className="min-w-0">
+            <div className="truncate">{row.reviewedByName}</div>
+            <div className="truncate text-xs text-muted-foreground">
+              {formatDateTime(row.reviewedDate)}
+            </div>
             {row.reviewReason ? (
-              <div className="text-xs text-muted-foreground">{row.reviewReason}</div>
+              <div className="truncate text-xs text-muted-foreground">{row.reviewReason}</div>
             ) : null}
           </div>
         ) : (
@@ -208,6 +236,8 @@ function RateApprovals() {
       },
     },
   ];
+
+  const hasActionableRows = rows.some((row) => canModify && row.canApprove);
 
   return (
     <div>
@@ -279,7 +309,9 @@ function RateApprovals() {
             </Button>
           ) : null,
         }}
-        rowActions={rowActions}
+        rowActions={hasActionableRows ? rowActions : undefined}
+        stickyActions={hasActionableRows}
+        actionsColumnWidth="8rem"
         pagination={{
           page,
           pageSize,

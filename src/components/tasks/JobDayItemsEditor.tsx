@@ -40,7 +40,15 @@ import {
   RateCapReasonModal,
   type RateCapReasonContext,
 } from "@/components/rates/RateCapReasonModal";
+import {
+  TaskRateApprovalSections,
+  type RateApprovalQueueLine,
+} from "@/components/rates/TaskRateApprovalSections";
 import { getCatalogueCap } from "@/lib/rate-overrides";
+import {
+  isRateApprovalPending,
+  isRateApprovalRejected,
+} from "@/lib/rate-approval";
 
 type DayLine = {
   itemId: string;
@@ -60,6 +68,9 @@ type DayLine = {
   tradeGroupName: string | null;
   productId: string | null;
   notes: string | null;
+  rateApprovalStatus?: string | null;
+  proposedRate?: number | null;
+  rateReviewReason?: string | null;
 };
 
 function linesFromTaskItems(task: ApiTask, date: string): DayLine[] {
@@ -90,6 +101,9 @@ function taskItemToLine(item: ApiTaskItem): DayLine {
     tradeGroupName: item.tradeGroupName,
     productId: item.productId != null ? String(item.productId) : null,
     notes: item.notes?.trim() || null,
+    rateApprovalStatus: item.rateApprovalStatus ?? null,
+    proposedRate: item.proposedRate ?? null,
+    rateReviewReason: item.rateReviewReason ?? null,
   };
 }
 
@@ -134,6 +148,8 @@ export function JobDayItemsEditor({
   onRowUpdated,
 }: JobDayItemsEditorProps) {
   const qc = useQueryClient();
+  const { hasCapability } = usePermissions();
+  const canSeeRates = hasCapability(CAPABILITY_CODES.seeRates);
   const todayYmd = toYmd(new Date());
   const isPast = Boolean(date && date < todayYmd);
   const locked = disabled || row.isLocked || isPast;
@@ -144,10 +160,62 @@ export function JobDayItemsEditor({
     itemId: string;
     label: string;
   } | null>(null);
+  const [capPrompt, setCapPrompt] = useState<RateCapReasonContext | null>(null);
+  const pendingResubmitRef = useRef<((reason: string) => void) | null>(null);
 
   const lines = useMemo(() => linesFromTaskItems(task, date), [task, date]);
-  const groups = useMemo(() => groupByOperative(lines), [lines]);
-  const total = lines.reduce((sum, line) => sum + (Number(line.amount) || 0), 0);
+  const pendingApprovalLines = useMemo(
+    () =>
+      lines
+        .filter((line) => isRateApprovalPending(line.rateApprovalStatus))
+        .map(
+          (line): RateApprovalQueueLine => ({
+            itemId: line.itemId,
+            productName: line.productName,
+            quantity: line.quantity,
+            timeSlotName: line.timeSlotName,
+            rate: line.rate,
+            proposedRate: line.proposedRate ?? null,
+            rateReviewReason: line.rateReviewReason ?? null,
+            operativeName: line.operativeName,
+          }),
+        ),
+    [lines],
+  );
+  const rejectedApprovalLines = useMemo(
+    () =>
+      lines
+        .filter((line) => isRateApprovalRejected(line.rateApprovalStatus))
+        .map(
+          (line): RateApprovalQueueLine => ({
+            itemId: line.itemId,
+            productName: line.productName,
+            quantity: line.quantity,
+            timeSlotName: line.timeSlotName,
+            rate: line.rate,
+            proposedRate: line.proposedRate ?? null,
+            rateReviewReason: line.rateReviewReason ?? null,
+            operativeName: line.operativeName,
+          }),
+        ),
+    [lines],
+  );
+  const assignedLines = useMemo(
+    () =>
+      lines.filter(
+        (line) =>
+          !isRateApprovalPending(line.rateApprovalStatus) &&
+          !isRateApprovalRejected(line.rateApprovalStatus),
+      ),
+    [lines],
+  );
+  const groups = useMemo(() => groupByOperative(assignedLines), [assignedLines]);
+  const total = assignedLines.reduce((sum, line) => sum + (Number(line.amount) || 0), 0);
+  const lineById = useMemo(() => {
+    const map = new Map<string, DayLine>();
+    for (const line of lines) map.set(line.itemId, line);
+    return map;
+  }, [lines]);
 
   function invalidateAll(updated?: ApiDailyRow | null) {
     if (updated) onRowUpdated(updated);
@@ -168,12 +236,90 @@ export function JobDayItemsEditor({
     onError: (err) => notifyApiError(err, "Unable to remove item"),
   });
 
+  const resubmitRateMutation = useMutation({
+    mutationFn: (payload: {
+      itemId: string;
+      operativeId: string;
+      rate: number;
+      quantity: number;
+      timeSlotId?: string | null;
+      reason?: string | null;
+    }) =>
+      dailyProgrammeService.updateItem(payload.itemId, {
+        date,
+        operativeId: payload.operativeId,
+        rate: payload.rate,
+        quantity: payload.quantity,
+        timeSlotId: payload.timeSlotId,
+        reason: payload.reason,
+      }),
+    onSuccess: (res, variables) => {
+      invalidateAll(res.data);
+      toast.success(
+        variables.reason?.trim()
+          ? "Rate resubmitted for approval"
+          : "Rate updated",
+      );
+    },
+    onError: (err) => notifyApiError(err, "Unable to update rate"),
+  });
+
+  async function handleResubmitRejected(queueLine: RateApprovalQueueLine, nextRate: number) {
+    const source = lineById.get(queueLine.itemId);
+    if (!source?.operativeId) {
+      toast.warning("Assign an operative before updating the rate.");
+      return;
+    }
+
+    const run = (reason: string) => {
+      resubmitRateMutation.mutate({
+        itemId: source.itemId,
+        operativeId: source.operativeId,
+        rate: nextRate,
+        quantity: source.quantity,
+        timeSlotId: source.timeSlotId,
+        reason: reason || null,
+      });
+    };
+
+    let cap: number | null = null;
+    try {
+      const resolved = await dailyProgrammeService.resolveRate(row.taskId, {
+        date,
+        productId: source.productId ?? undefined,
+        tradeGroupId: source.tradeGroupId ?? undefined,
+        operativeId: source.operativeId || undefined,
+      });
+      cap =
+        resolved.data?.cap != null
+          ? Number(resolved.data.cap)
+          : resolved.data?.rate != null
+            ? Number(resolved.data.rate)
+            : null;
+    } catch {
+      if (source.productId) cap = await getCatalogueCap(source.productId);
+    }
+
+    if (canSeeRates && cap != null && nextRate > cap) {
+      pendingResubmitRef.current = run;
+      setCapPrompt({
+        productName: queueLine.productName,
+        rate: nextRate,
+        cap,
+      });
+      return;
+    }
+
+    run("");
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-semibold">
-            {lines.length} item{lines.length === 1 ? "" : "s"} · {groups.length} operative
+            {assignedLines.length} item{assignedLines.length === 1 ? "" : "s"} · {groups.length}{" "}
+            operative
             {groups.length === 1 ? "" : "s"}
           </p>
           <p className="text-xs text-muted-foreground tabular-nums">{fmtGBP(total)} total</p>
@@ -192,6 +338,23 @@ export function JobDayItemsEditor({
         )}
       </div>
 
+      {canSeeRates ? (
+        <TaskRateApprovalSections
+          pending={pendingApprovalLines}
+          rejected={rejectedApprovalLines}
+          disabled={locked || resubmitRateMutation.isPending}
+          updatingItemId={
+            resubmitRateMutation.isPending
+              ? resubmitRateMutation.variables?.itemId
+              : null
+          }
+          onResubmitRejected={(line, nextRate) => {
+            void handleResubmitRejected(line, nextRate);
+          }}
+          className="rounded-lg border border-border/70"
+        />
+      ) : null}
+
       {formMode ? (
         <ItemFormCard
           mode={formMode}
@@ -205,6 +368,21 @@ export function JobDayItemsEditor({
           }}
         />
       ) : null}
+
+      <RateCapReasonModal
+        open={Boolean(capPrompt)}
+        context={capPrompt}
+        onCancel={() => {
+          setCapPrompt(null);
+          pendingResubmitRef.current = null;
+        }}
+        onConfirm={(reason) => {
+          setCapPrompt(null);
+          const next = pendingResubmitRef.current;
+          pendingResubmitRef.current = null;
+          next?.(reason);
+        }}
+      />
 
       {lines.length === 0 && !formMode ? (
         <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-8 text-center">
@@ -505,14 +683,29 @@ function ItemFormCard({
       });
     },
     onSuccess: (res) => {
+      const outcome = res.data as
+        | ApiDailyRow
+        | { row: ApiDailyRow; repeatApprovalPending?: boolean }
+        | undefined;
+      const row =
+        outcome && "row" in outcome && outcome.row
+          ? outcome.row
+          : (outcome as ApiDailyRow | undefined);
+      const repeatPending =
+        outcome && "repeatApprovalPending" in outcome
+          ? Boolean(outcome.repeatApprovalPending)
+          : false;
+
       toast.success(
-        rateCapReasonRef.current.trim()
-          ? "Submitted for Rate approvals (line saved at cap until approved)"
-          : isEdit
-            ? "Item updated"
-            : "Item added",
+        repeatPending
+          ? res.message || "Repeat task submitted for approval"
+          : rateCapReasonRef.current.trim()
+            ? "Submitted for Rate approvals (line saved at cap until approved)"
+            : isEdit
+              ? "Item updated"
+              : "Item added",
       );
-      if (res.data) onSaved(res.data);
+      if (row) onSaved(row);
     },
     onError: (err) =>
       notifyApiError(err, isEdit ? "Unable to update item" : "Unable to add item"),

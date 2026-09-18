@@ -4,6 +4,7 @@ import { Loader2, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/form";
 import { AppTooltip } from "@/components/AppTooltip";
 import { Modal } from "@/components/Modal";
@@ -42,7 +43,15 @@ import {
   type RateCapReasonContext,
 } from "@/components/rates/RateCapReasonModal";
 import { isRateCapReasonRequiredError } from "@/components/rates/useRateCapReasonGate";
+import {
+  TaskRateApprovalSections,
+  type RateApprovalQueueLine,
+} from "@/components/rates/TaskRateApprovalSections";
 import { getCatalogueCap } from "@/lib/rate-overrides";
+import {
+  isRateApprovalPending,
+  isRateApprovalRejected,
+} from "@/lib/rate-approval";
 
 type UnassignedKind = "package" | "addon";
 
@@ -105,6 +114,50 @@ function operativeInitials(name: string) {
     .toUpperCase();
 }
 
+function flattenAssignedLines(groups: ApiDailyAssignedOperative[]): ApiDailyAssignedItemLine[] {
+  return groups.flatMap((op) =>
+    [...op.packages.flatMap((pkg) => pkg.items), ...op.addOns].map((item) => ({
+      ...item,
+      operativeId: item.operativeId ?? op.operativeId,
+      operativeName: item.operativeName || op.operativeName,
+    })),
+  );
+}
+
+function toRateApprovalQueueLine(item: ApiDailyAssignedItemLine): RateApprovalQueueLine {
+  return {
+    itemId: item.itemId,
+    productName: item.productName,
+    quantity: item.quantity,
+    timeSlotName: item.timeSlotName,
+    rate: item.rate,
+    proposedRate: item.proposedRate ?? null,
+    rateReviewReason: item.rateReviewReason ?? null,
+    operativeName: item.operativeName ?? null,
+  };
+}
+
+function filterAssignedGroupsWithoutOpenApprovals(
+  groups: ApiDailyAssignedOperative[],
+): ApiDailyAssignedOperative[] {
+  return groups
+    .map((op) => ({
+      ...op,
+      packages: op.packages
+        .map((pkg) => ({
+          ...pkg,
+          items: pkg.items.filter((item) => !isRateApprovalOpenStatus(item.rateApprovalStatus)),
+        }))
+        .filter((pkg) => pkg.items.length > 0),
+      addOns: op.addOns.filter((item) => !isRateApprovalOpenStatus(item.rateApprovalStatus)),
+    }))
+    .filter((op) => op.packages.length > 0 || op.addOns.length > 0);
+}
+
+function isRateApprovalOpenStatus(status?: string | null) {
+  return isRateApprovalPending(status) || isRateApprovalRejected(status);
+}
+
 type DailyAssignmentPanelProps = {
   row: ApiDailyRow;
   date: string;
@@ -145,6 +198,15 @@ export function DailyAssignmentPanel({
   } | null>(null);
   const [capPrompt, setCapPrompt] = useState<RateCapReasonContext | null>(null);
   const [capReasonAccepted, setCapReasonAccepted] = useState(false);
+  const [isRepeat, setIsRepeat] = useState(false);
+  const [repeatPromptOpen, setRepeatPromptOpen] = useState(false);
+  const [repeatReasonDraft, setRepeatReasonDraft] = useState("");
+  const pendingRepeatAssignRef = useRef<{
+    kind: UnassignedKind;
+    catalogId: string;
+    operativeId: string;
+    rateCapReason?: string | null;
+  } | null>(null);
   const rateTouchedRef = useRef(false);
   const rateCapReasonRef = useRef("");
   /** Continues assign after the user enters an over-cap reason (reason is passed in). */
@@ -163,6 +225,34 @@ export function DailyAssignmentPanel({
   // Lock / past: block assign & structural edits; ticks stay allowed when locked.
   const cellDisabled = disabled || row.isLocked || isPast;
   const completeDisabled = disabled || isPast;
+
+  const allAssignedLines = useMemo(
+    () => flattenAssignedLines(assignedByOperative),
+    [assignedByOperative],
+  );
+  const pendingApprovalLines = useMemo(
+    () =>
+      allAssignedLines
+        .filter((item) => isRateApprovalPending(item.rateApprovalStatus))
+        .map(toRateApprovalQueueLine),
+    [allAssignedLines],
+  );
+  const rejectedApprovalLines = useMemo(
+    () =>
+      allAssignedLines
+        .filter((item) => isRateApprovalRejected(item.rateApprovalStatus))
+        .map(toRateApprovalQueueLine),
+    [allAssignedLines],
+  );
+  const assignedForTree = useMemo(
+    () => filterAssignedGroupsWithoutOpenApprovals(assignedByOperative),
+    [assignedByOperative],
+  );
+  const lineById = useMemo(() => {
+    const map = new Map<string, ApiDailyAssignedItemLine>();
+    for (const line of allAssignedLines) map.set(line.itemId, line);
+    return map;
+  }, [allAssignedLines]);
 
   const timeSlotsQuery = useQuery({
     queryKey: ["tasks", "time-slots"],
@@ -266,6 +356,8 @@ export function DailyAssignmentPanel({
       quantity: number;
       timeSlotId?: string | null;
       reason?: string | null;
+      isRepeat?: boolean;
+      repeatReason?: string | null;
     }) =>
       dailyProgrammeService.assignPackage(row.taskId, {
         date,
@@ -275,14 +367,28 @@ export function DailyAssignmentPanel({
         quantity: payload.quantity,
         timeSlotId: payload.timeSlotId,
         reason: payload.reason,
+        isRepeat: payload.isRepeat,
+        repeatReason: payload.repeatReason,
       }),
-    onSuccess: (res) =>
+    onSuccess: (res) => {
+      if (res.data?.repeatApprovalPending) {
+        applyUpdatedRow(
+          res.data.row,
+          res.message || "Repeat task submitted for approval",
+        );
+        setIsRepeat(false);
+        setRepeatReasonDraft("");
+        return;
+      }
       applyUpdatedRow(
-        res.data,
+        res.data?.row,
         rateCapReasonRef.current.trim()
           ? "Package assigned — rate submitted for approval"
           : "Package assigned",
-      ),
+      );
+      setIsRepeat(false);
+      setRepeatReasonDraft("");
+    },
     onError: (err, variables) => {
       if (isRateCapReasonRequiredError(err) && !variables.reason?.trim()) {
         pendingCapRetryRef.current = {
@@ -315,6 +421,8 @@ export function DailyAssignmentPanel({
       quantity: number;
       timeSlotId?: string | null;
       reason?: string | null;
+      isRepeat?: boolean;
+      repeatReason?: string | null;
     }) =>
       dailyProgrammeService.assignAddOn(row.taskId, {
         date,
@@ -324,14 +432,28 @@ export function DailyAssignmentPanel({
         quantity: payload.quantity,
         timeSlotId: payload.timeSlotId,
         reason: payload.reason,
+        isRepeat: payload.isRepeat,
+        repeatReason: payload.repeatReason,
       }),
-    onSuccess: (res) =>
+    onSuccess: (res) => {
+      if (res.data?.repeatApprovalPending) {
+        applyUpdatedRow(
+          res.data.row,
+          res.message || "Repeat task submitted for approval",
+        );
+        setIsRepeat(false);
+        setRepeatReasonDraft("");
+        return;
+      }
       applyUpdatedRow(
-        res.data,
+        res.data?.row,
         rateCapReasonRef.current.trim()
           ? "Add-on assigned — rate submitted for approval"
           : "Add-on assigned",
-      ),
+      );
+      setIsRepeat(false);
+      setRepeatReasonDraft("");
+    },
     onError: (err, variables) => {
       if (isRateCapReasonRequiredError(err) && !variables.reason?.trim()) {
         pendingCapRetryRef.current = {
@@ -404,6 +526,38 @@ export function DailyAssignmentPanel({
     onError: (err) => notifyApiError(err, "Unable to remove item"),
   });
 
+  const resubmitRateMutation = useMutation({
+    mutationFn: (payload: {
+      itemId: string;
+      operativeId: string;
+      rate: number;
+      quantity: number;
+      timeSlotId?: string | null;
+      reason?: string | null;
+    }) =>
+      dailyProgrammeService.updateItem(payload.itemId, {
+        date,
+        operativeId: payload.operativeId,
+        rate: payload.rate,
+        quantity: payload.quantity,
+        timeSlotId: payload.timeSlotId,
+        reason: payload.reason,
+      }),
+    onSuccess: (res, variables) => {
+      if (res.data) {
+        mergeRowInCache(qc, row.taskId, res.data);
+        onRowUpdated?.(res.data);
+      }
+      invalidateAfterChange(qc, row.taskId);
+      toast.success(
+        variables.reason?.trim()
+          ? "Rate resubmitted for approval"
+          : "Rate updated",
+      );
+    },
+    onError: (err) => notifyApiError(err, "Unable to update rate"),
+  });
+
   const pending =
     assignPackageMutation.isPending ||
     assignAddOnMutation.isPending ||
@@ -411,6 +565,7 @@ export function DailyAssignmentPanel({
     unassignAddOnMutation.isPending ||
     completeMutation.isPending ||
     removeMutation.isPending ||
+    resubmitRateMutation.isPending ||
     certChecking;
 
   async function checkCertificates(
@@ -435,17 +590,26 @@ export function DailyAssignmentPanel({
     catalogId: string,
     operativeId: string,
     reason?: string | null,
+    repeatReason?: string | null,
   ) {
     const trimmedReason = (reason ?? rateCapReasonRef.current).trim() || null;
     if (trimmedReason) {
       rateCapReasonRef.current = trimmedReason;
     }
+    const requiresRepeat =
+      kind === "package"
+        ? Boolean(
+            unassignedPackages.find((p) => p.tradeGroupId === catalogId)?.requiresRepeat,
+          )
+        : Boolean(unassignedAddOns.find((a) => a.productId === catalogId)?.requiresRepeat);
     const base = {
       operativeId,
       rate: rateTouchedRef.current ? Number(assignRate) || 0 : 0,
       quantity: Number(assignQty) || 1,
       timeSlotId: assignTimeSlotId || null,
       reason: trimmedReason,
+      isRepeat: requiresRepeat && isRepeat,
+      repeatReason: requiresRepeat && isRepeat ? (repeatReason ?? "").trim() || null : null,
     };
     if (kind === "package") {
       assignPackageMutation.mutate({ tradeGroupId: catalogId, ...base });
@@ -488,6 +652,61 @@ export function DailyAssignmentPanel({
     }
 
     then(rateCapReasonRef.current.trim());
+  }
+
+  async function handleResubmitRejected(line: RateApprovalQueueLine, nextRate: number) {
+    const source = lineById.get(line.itemId);
+    if (!source?.operativeId) {
+      toast.warning("Assign an operative before updating the rate.");
+      return;
+    }
+
+    const run = (reason: string) => {
+      resubmitRateMutation.mutate({
+        itemId: line.itemId,
+        operativeId: source.operativeId!,
+        rate: nextRate,
+        quantity: source.quantity,
+        timeSlotId: source.timeSlotId,
+        reason: reason || null,
+      });
+    };
+
+    if (!canSeeRates) {
+      run("");
+      return;
+    }
+
+    let cap: number | null = null;
+    try {
+      const resolved = await dailyProgrammeService.resolveRate(row.taskId, {
+        date,
+        productId: source.productId ?? undefined,
+        operativeId: source.operativeId ?? undefined,
+      });
+      cap =
+        resolved.data?.cap != null
+          ? Number(resolved.data.cap)
+          : resolved.data?.rate != null
+            ? Number(resolved.data.rate)
+            : null;
+    } catch {
+      if (source.productId) {
+        cap = await getCatalogueCap(source.productId);
+      }
+    }
+
+    if (cap != null && nextRate > cap) {
+      pendingAfterCapRef.current = run;
+      setCapPrompt({
+        productName: line.productName,
+        rate: nextRate,
+        cap,
+      });
+      return;
+    }
+
+    run("");
   }
 
   function runExistingAssign(
@@ -537,6 +756,7 @@ export function DailyAssignmentPanel({
     setAssignOperativeLabel("");
     setAssignRate("");
     setAssignQty("1");
+    setIsRepeat(false);
     rateTouchedRef.current = false;
   }
 
@@ -545,6 +765,7 @@ export function DailyAssignmentPanel({
     setSelectedId(id);
     setAssignRate("");
     setAssignQty("1");
+    setIsRepeat(false);
     rateTouchedRef.current = false;
   }
 
@@ -568,6 +789,19 @@ export function DailyAssignmentPanel({
       return;
     }
 
+    const requiresRepeat =
+      selectedKind === "package"
+        ? Boolean(
+            unassignedPackages.find((p) => p.tradeGroupId === selectedId)?.requiresRepeat,
+          )
+        : Boolean(
+            unassignedAddOns.find((a) => a.productId === selectedId)?.requiresRepeat,
+          );
+    if (requiresRepeat && !isRepeat) {
+      toast.warning("This item was already used on this job. Check Repeat Task to continue.");
+      return;
+    }
+
     await ensureAssignRateCap(async (reason) => {
       const warnings = await checkCertificates(assignOperativeId, [date]);
       if (warnings == null) return;
@@ -582,6 +816,18 @@ export function DailyAssignmentPanel({
           warnings,
           rateCapReason: reason || null,
         });
+        return;
+      }
+
+      if (requiresRepeat && isRepeat) {
+        pendingRepeatAssignRef.current = {
+          kind: selectedKind,
+          catalogId: selectedId,
+          operativeId: assignOperativeId,
+          rateCapReason: reason || null,
+        };
+        setRepeatReasonDraft("");
+        setRepeatPromptOpen(true);
         return;
       }
 
@@ -645,6 +891,27 @@ export function DailyAssignmentPanel({
       (pendingAssign.rateCapReason ?? rateCapReasonRef.current).trim() || null;
     if (reason) rateCapReasonRef.current = reason;
     if (pendingAssign.source === "catalog") {
+      const requiresRepeat =
+        pendingAssign.kind === "package"
+          ? Boolean(
+              unassignedPackages.find((p) => p.tradeGroupId === pendingAssign.catalogId)
+                ?.requiresRepeat,
+            )
+          : Boolean(
+              unassignedAddOns.find((a) => a.productId === pendingAssign.catalogId)
+                ?.requiresRepeat,
+            );
+      if (requiresRepeat && isRepeat) {
+        pendingRepeatAssignRef.current = {
+          kind: pendingAssign.kind,
+          catalogId: pendingAssign.catalogId,
+          operativeId: pendingAssign.operativeId,
+          rateCapReason: reason,
+        };
+        setRepeatReasonDraft("");
+        setRepeatPromptOpen(true);
+        return;
+      }
       runCatalogAssign(
         pendingAssign.kind,
         pendingAssign.catalogId,
@@ -681,6 +948,15 @@ export function DailyAssignmentPanel({
       : selectedKind === "addon"
         ? unassignedAddOns.find((a) => a.productId === selectedId)?.productName
         : null;
+
+  const selectedRequiresRepeat =
+    selectedKind === "package"
+      ? Boolean(
+          unassignedPackages.find((p) => p.tradeGroupId === selectedId)?.requiresRepeat,
+        )
+      : selectedKind === "addon"
+        ? Boolean(unassignedAddOns.find((a) => a.productId === selectedId)?.requiresRepeat)
+        : false;
 
   return (
     <>
@@ -785,6 +1061,22 @@ export function DailyAssignmentPanel({
                   />
                 </div>
               ) : null}
+              {selectedRequiresRepeat ? (
+                <label className="flex items-start gap-2 text-xs">
+                  <Checkbox
+                    checked={isRepeat}
+                    onCheckedChange={(v) => setIsRepeat(v === true)}
+                    disabled={cellDisabled || pending}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="font-medium">Repeat task</span>
+                    <span className="block text-muted-foreground">
+                      Already used on this job — submit for approval to add again.
+                    </span>
+                  </span>
+                </label>
+              ) : null}
               <Button
                 type="button"
                 size="sm"
@@ -796,6 +1088,8 @@ export function DailyAssignmentPanel({
                   assignAddOnMutation.isPending ||
                   certChecking ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : isRepeat && selectedRequiresRepeat ? (
+                  "Submit for approval"
                 ) : (
                   "Assign to roll"
                 )}
@@ -871,38 +1165,55 @@ export function DailyAssignmentPanel({
           </div>
         </div>
 
-        <AssignedTree
-          groups={assignedByOperative}
-          taskId={row.taskId}
-          disabled={cellDisabled || pending}
-          completeDisabled={completeDisabled || pending}
-          assigning={
-            assignPackageMutation.isPending || assignAddOnMutation.isPending || certChecking
-          }
-          assignPick={existingAssignPick}
-          onAssignPickChange={(pickKey, pick) =>
-            setExistingAssignPick((prev) => ({ ...prev, [pickKey]: pick }))
-          }
-          onAssignExisting={(kind, catalogId, pickKey, items, opId, opLabel) =>
-            void handleExistingAssign(kind, catalogId, pickKey, items, opId, opLabel)
-          }
-          completingItemId={
-            completeMutation.isPending ? completeMutation.variables : undefined
-          }
-          removingItemId={
-            removeMutation.isPending ? removeMutation.variables?.itemId : undefined
-          }
-          unassigningPackageId={
-            unassignPackageMutation.isPending ? unassignPackageMutation.variables : undefined
-          }
-          unassigningAddOnId={
-            unassignAddOnMutation.isPending ? unassignAddOnMutation.variables : undefined
-          }
-          onComplete={(itemId) => completeMutation.mutate(itemId)}
-          onRemove={(itemId, label) => setPendingRemove({ itemId, label })}
-          onUnassignPackage={(tradeGroupId) => unassignPackageMutation.mutate(tradeGroupId)}
-          onUnassignAddOn={(productId) => unassignAddOnMutation.mutate(productId)}
-        />
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {canSeeRates ? (
+            <TaskRateApprovalSections
+              pending={pendingApprovalLines}
+              rejected={rejectedApprovalLines}
+              disabled={cellDisabled || pending}
+              updatingItemId={
+                resubmitRateMutation.isPending
+                  ? resubmitRateMutation.variables?.itemId
+                  : null
+              }
+              onResubmitRejected={(line, nextRate) => {
+                void handleResubmitRejected(line, nextRate);
+              }}
+            />
+          ) : null}
+          <AssignedTree
+            groups={assignedForTree}
+            taskId={row.taskId}
+            disabled={cellDisabled || pending}
+            completeDisabled={completeDisabled || pending}
+            assigning={
+              assignPackageMutation.isPending || assignAddOnMutation.isPending || certChecking
+            }
+            assignPick={existingAssignPick}
+            onAssignPickChange={(pickKey, pick) =>
+              setExistingAssignPick((prev) => ({ ...prev, [pickKey]: pick }))
+            }
+            onAssignExisting={(kind, catalogId, pickKey, items, opId, opLabel) =>
+              void handleExistingAssign(kind, catalogId, pickKey, items, opId, opLabel)
+            }
+            completingItemId={
+              completeMutation.isPending ? completeMutation.variables : undefined
+            }
+            removingItemId={
+              removeMutation.isPending ? removeMutation.variables?.itemId : undefined
+            }
+            unassigningPackageId={
+              unassignPackageMutation.isPending ? unassignPackageMutation.variables : undefined
+            }
+            unassigningAddOnId={
+              unassignAddOnMutation.isPending ? unassignAddOnMutation.variables : undefined
+            }
+            onComplete={(itemId) => completeMutation.mutate(itemId)}
+            onRemove={(itemId, label) => setPendingRemove({ itemId, label })}
+            onUnassignPackage={(tradeGroupId) => unassignPackageMutation.mutate(tradeGroupId)}
+            onUnassignAddOn={(productId) => unassignAddOnMutation.mutate(productId)}
+          />
+        </div>
       </div>
 
       <RemoveItemReasonModal
@@ -917,6 +1228,82 @@ export function DailyAssignmentPanel({
           removeMutation.mutate({ itemId: pendingRemove.itemId, reason });
         }}
       />
+
+      <Modal
+        open={repeatPromptOpen}
+        onClose={() => {
+          if (assignPackageMutation.isPending || assignAddOnMutation.isPending) return;
+          setRepeatPromptOpen(false);
+          pendingRepeatAssignRef.current = null;
+          setRepeatReasonDraft("");
+        }}
+        title="Repeat task approval"
+        subtitle="Explain why this item needs to be added again. Assignment happens only after approval."
+        size="sm"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={assignPackageMutation.isPending || assignAddOnMutation.isPending}
+              onClick={() => {
+                setRepeatPromptOpen(false);
+                pendingRepeatAssignRef.current = null;
+                setRepeatReasonDraft("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={
+                assignPackageMutation.isPending ||
+                assignAddOnMutation.isPending ||
+                !repeatReasonDraft.trim()
+              }
+              onClick={() => {
+                const pending = pendingRepeatAssignRef.current;
+                if (!pending || !repeatReasonDraft.trim()) {
+                  toast.warning("Enter a reason for the repeat task.");
+                  return;
+                }
+                setRepeatPromptOpen(false);
+                pendingRepeatAssignRef.current = null;
+                runCatalogAssign(
+                  pending.kind,
+                  pending.catalogId,
+                  pending.operativeId,
+                  pending.rateCapReason,
+                  repeatReasonDraft.trim(),
+                );
+                setRepeatReasonDraft("");
+              }}
+            >
+              {assignPackageMutation.isPending || assignAddOnMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Submit for approval"
+              )}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-muted-foreground" htmlFor="repeat-reason">
+            Reason
+          </label>
+          <Textarea
+            id="repeat-reason"
+            value={repeatReasonDraft}
+            onChange={(e) => setRepeatReasonDraft(e.target.value)}
+            placeholder="Why does this task need to be repeated?"
+            rows={3}
+            maxLength={500}
+          />
+        </div>
+      </Modal>
 
       <RateCapReasonModal
         open={Boolean(capPrompt)}
@@ -937,6 +1324,27 @@ export function DailyAssignmentPanel({
           pendingCapRetryRef.current = null;
           if (retry) {
             pendingAfterCapRef.current = null;
+            const requiresRepeat =
+              retry.kind === "package"
+                ? Boolean(
+                    unassignedPackages.find((p) => p.tradeGroupId === retry.catalogId)
+                      ?.requiresRepeat,
+                  )
+                : Boolean(
+                    unassignedAddOns.find((a) => a.productId === retry.catalogId)
+                      ?.requiresRepeat,
+                  );
+            if (requiresRepeat && isRepeat) {
+              pendingRepeatAssignRef.current = {
+                kind: retry.kind,
+                catalogId: retry.catalogId,
+                operativeId: retry.operativeId,
+                rateCapReason: reason,
+              };
+              setRepeatReasonDraft("");
+              setRepeatPromptOpen(true);
+              return;
+            }
             runCatalogAssign(retry.kind, retry.catalogId, retry.operativeId, reason);
             return;
           }

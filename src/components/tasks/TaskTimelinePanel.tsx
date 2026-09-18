@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
 import {
+  BadgeCheck,
   CalendarClock,
   History,
   Loader2,
@@ -10,8 +11,10 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Send,
   Tag,
   Trash2,
+  XCircle,
 } from "lucide-react";
 import { tasksService, type ApiTaskTimelineEntry } from "@/lib/api/services/tasks";
 import { formatDateTime } from "@/lib/module-ui";
@@ -25,6 +28,10 @@ const ACTION_LABELS: Record<string, string> = {
   ItemAdded: "Item added",
   ItemUpdated: "Item updated",
   ItemRemoved: "Item removed",
+  RateSubmitted: "Rate submitted for approval",
+  RateApproved: "Rate approved",
+  RateRejected: "Rate rejected",
+  RateResubmitted: "Rate resubmitted for approval",
 };
 
 type Props = {
@@ -190,6 +197,11 @@ function ActivityRow({ entry }: { entry: ApiTaskTimelineEntry }) {
           {detail ? (
             <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{detail}</p>
           ) : null}
+          {entry.reason?.trim() ? (
+            <p className="mt-0.5 text-xs font-bold leading-snug text-foreground">
+              {entry.reason.trim()}
+            </p>
+          ) : null}
         </div>
       </div>
     </li>
@@ -232,10 +244,9 @@ function PanelTimelineRow({ entry }: { entry: ApiTaskTimelineEntry }) {
             {entry.previousStatus || "—"} → {entry.newStatus || "—"}
           </p>
         ) : null}
-        {entry.reason ? (
-          <p className="mt-1 rounded-md border bg-muted/30 px-2 py-1 text-xs">
-            <span className="font-medium text-muted-foreground">Reason: </span>
-            {entry.reason}
+        {entry.reason?.trim() ? (
+          <p className="mt-1 text-xs font-bold leading-snug text-foreground">
+            {entry.reason.trim()}
           </p>
         ) : null}
         <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -288,6 +299,30 @@ function actionVisual(action: string): {
         Icon: PackageMinus,
         iconWrap: "bg-stone-500/10 text-stone-600 dark:text-stone-300",
       };
+    case "RateSubmitted":
+      return {
+        phrase: "Rate submitted for approval",
+        Icon: Send,
+        iconWrap: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+      };
+    case "RateResubmitted":
+      return {
+        phrase: "Rate resubmitted for approval",
+        Icon: RefreshCw,
+        iconWrap: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+      };
+    case "RateApproved":
+      return {
+        phrase: "Rate approved",
+        Icon: BadgeCheck,
+        iconWrap: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+      };
+    case "RateRejected":
+      return {
+        phrase: "Rate rejected",
+        Icon: XCircle,
+        iconWrap: "bg-destructive/10 text-destructive",
+      };
     default:
       return {
         phrase: ACTION_LABELS[action] ?? action,
@@ -322,10 +357,6 @@ function activityDetail(entry: ApiTaskTimelineEntry): string | null {
   if (entry.summary?.trim() && entry.summary.trim() !== ACTION_LABELS[entry.action]) {
     const summary = entry.summary.trim();
     if (!bits.includes(summary)) bits.push(summary);
-  }
-
-  if (entry.reason?.trim()) {
-    bits.push(`Reason: ${entry.reason.trim()}`);
   }
 
   return bits.length ? bits.join(" · ") : null;

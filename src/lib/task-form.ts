@@ -20,6 +20,9 @@ export type TaskItemFormValues = {
   timeSlotId: string;
   isTicked: boolean;
   notes: string;
+  rateApprovalStatus: string;
+  proposedRate: string;
+  rateReviewReason: string;
 };
 
 export type TaskFormValues = {
@@ -56,6 +59,9 @@ export const emptyTaskItem = (): TaskItemFormValues => ({
   timeSlotId: "",
   isTicked: false,
   notes: "",
+  rateApprovalStatus: "",
+  proposedRate: "",
+  rateReviewReason: "",
 });
 
 /** Emptied leftover slots after field-array desync (no id / catalog). */
@@ -145,6 +151,9 @@ const taskItemSchema = z
     timeSlotId: z.string().default(""),
     isTicked: z.boolean().default(false),
     notes: z.string().default(""),
+    rateApprovalStatus: z.string().default(""),
+    proposedRate: z.string().default(""),
+    rateReviewReason: z.string().default(""),
   })
   .superRefine((item, ctx) => {
     if (item.itemKind === "tradeGroup" && !item.tradeGroupId.trim()) {
@@ -273,6 +282,12 @@ export function taskToFormValues(task: ApiTask): TaskFormValues {
       timeSlotId: item.timeSlotId != null ? String(item.timeSlotId) : "",
       isTicked: item.isTicked,
       notes: item.notes ?? "",
+      rateApprovalStatus: item.rateApprovalStatus ?? "",
+      proposedRate:
+        item.proposedRate != null && Number.isFinite(Number(item.proposedRate))
+          ? String(item.proposedRate)
+          : "",
+      rateReviewReason: item.rateReviewReason ?? "",
     })),
     itemRemovals: [],
   };

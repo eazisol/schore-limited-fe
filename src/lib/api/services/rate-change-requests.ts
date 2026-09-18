@@ -12,6 +12,8 @@ export interface ApiRateChangeRequest {
   productId: string;
   productName: string;
   parentLabel: string;
+  propertyName: string;
+  clientName: string;
   previousRate: number | null;
   proposedRate: number;
   effectiveFrom: string;

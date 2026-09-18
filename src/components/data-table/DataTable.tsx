@@ -11,6 +11,7 @@ import {
   type DataTableAlign,
   type DataTableColumn,
   type DataTableProps,
+  type DataTableRowAction,
 } from "./types";
 
 const ALIGN_CLASS: Record<DataTableAlign, string> = {
@@ -74,6 +75,8 @@ export function DataTable<T>({
   density = "compact",
   actionsColumnWidth,
   stickyActions = false,
+  actionsPosition = "right",
+  actionsHeaderHidden = false,
   embedded = false,
 }: DataTableProps<T>) {
   const cellPadding = density === "compact" ? "py-1.5" : "py-3";
@@ -85,17 +88,64 @@ export function DataTable<T>({
         ? () => rowActions
         : null;
   const resolvedActionsWidth = actionsColumnWidth ?? ACTIONS_COLUMN_WIDTH;
+  const actionsOnLeft = actionsPosition === "left";
   const tableMinWidthRem = estimateTableMinWidthRem(columns, Boolean(actions), resolvedActionsWidth);
   const stickyActionsClass = stickyActions
-    ? "sticky right-0 z-20 border-l border-border bg-card shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.12)]"
+    ? actionsOnLeft
+      ? "sticky left-0 z-20 border-r border-border bg-card shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)] group-hover:bg-muted/30"
+      : "sticky right-0 z-20 border-l border-border bg-card shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.12)] group-hover:bg-muted/30"
     : undefined;
   const statePadding = embedded ? "p-8" : "p-12";
+  const firstDataColumnId = columns[0]?.id;
+  const dataColumnPad = (columnId: string) =>
+    !actionsOnLeft && columnId === firstDataColumnId ? "px-5" : "px-3";
 
   function handleSort(column: DataTableColumn<T>) {
     if (!column.sortable || !sort?.onSortChange) return;
     const nextDir =
       sort.sortBy === column.id && sort.sortDir === "asc" ? "desc" : "asc";
     sort.onSortChange(column.id, nextDir);
+  }
+
+  function renderActionsHeader() {
+    if (!actions) return null;
+    return (
+      <th
+        className={cn(
+          "whitespace-nowrap px-4 font-medium",
+          actionsOnLeft ? "text-left" : "text-right",
+          headerPadding,
+          stickyActionsClass,
+          stickyActions && (actionsOnLeft ? "bg-muted/50" : "bg-muted"),
+        )}
+      >
+        {actionsHeaderHidden ? (
+          <span className="sr-only">Actions</span>
+        ) : (
+          "Actions"
+        )}
+      </th>
+    );
+  }
+
+  function renderActionsCell(row: T, rowActionsForRow: DataTableRowAction<T>[]) {
+    if (!actions) return null;
+    return (
+      <td
+        className={cn(
+          "whitespace-nowrap px-4 align-middle",
+          actionsOnLeft ? "text-left" : "text-right",
+          cellPadding,
+          stickyActionsClass,
+        )}
+      >
+        <DataTableRowActions
+          row={row}
+          actions={rowActionsForRow}
+          align={actionsOnLeft ? "left" : "right"}
+        />
+      </td>
+    );
   }
 
   return (
@@ -144,14 +194,20 @@ export function DataTable<T>({
             style={{ minWidth: `${tableMinWidthRem}rem` }}
           >
             <colgroup>
+              {actionsOnLeft && actions ? (
+                <col style={{ width: resolvedActionsWidth }} />
+              ) : null}
               {columns.map((column) => {
                 const width = resolveColumnWidth(column);
                 return <col key={column.id} style={width ? { width } : undefined} />;
               })}
-              {actions ? <col style={{ width: resolvedActionsWidth }} /> : null}
+              {!actionsOnLeft && actions ? (
+                <col style={{ width: resolvedActionsWidth }} />
+              ) : null}
             </colgroup>
             <thead className="bg-muted/50 text-xs text-muted-foreground">
               <tr>
+                {actionsOnLeft ? renderActionsHeader() : null}
                 {columns.map((column) => {
                   const align = column.align ?? "left";
                   const isSorted = sort?.sortBy === column.id;
@@ -161,7 +217,7 @@ export function DataTable<T>({
                       className={cn(
                         "whitespace-nowrap font-medium",
                         headerPadding,
-                        column.id === columns[0]?.id ? "px-5" : "px-3",
+                        dataColumnPad(column.id),
                         ALIGN_CLASS[align],
                         column.headerClassName,
                       )}
@@ -189,29 +245,15 @@ export function DataTable<T>({
                     </th>
                   );
                 })}
-                {actions && (
-                  <th
-                    className={cn(
-                      "whitespace-nowrap px-4 text-right font-medium",
-                      headerPadding,
-                      stickyActionsClass,
-                      stickyActions && "bg-muted",
-                    )}
-                  >
-                    {stickyActions ? (
-                      <span className="sr-only">Export</span>
-                    ) : (
-                      "Actions"
-                    )}
-                  </th>
-                )}
+                {!actionsOnLeft ? renderActionsHeader() : null}
               </tr>
             </thead>
             <tbody className="divide-y">
               {rows.map((row) => {
                 const rowActionsForRow = actions?.(row) ?? [];
                 return (
-                  <tr key={getRowId(row)} className="hover:bg-muted/30">
+                  <tr key={getRowId(row)} className="group hover:bg-muted/30">
+                    {actionsOnLeft ? renderActionsCell(row, rowActionsForRow) : null}
                     {columns.map((column) => {
                       const align = column.align ?? "left";
                       const isNowrapColumn = NOWRAP_COLUMN_IDS.has(column.id);
@@ -231,7 +273,7 @@ export function DataTable<T>({
                           className={cn(
                             "align-middle max-w-0 overflow-hidden",
                             cellPadding,
-                            column.id === columns[0]?.id ? "px-5" : "px-3",
+                            dataColumnPad(column.id),
                             ALIGN_CLASS[align],
                             column.cellClassName,
                           )}
@@ -261,17 +303,7 @@ export function DataTable<T>({
                         </td>
                       );
                     })}
-                    {actions && (
-                      <td
-                        className={cn(
-                          "whitespace-nowrap px-4 text-right align-middle",
-                          cellPadding,
-                          stickyActionsClass,
-                        )}
-                      >
-                        <DataTableRowActions row={row} actions={rowActionsForRow} />
-                      </td>
-                    )}
+                    {!actionsOnLeft ? renderActionsCell(row, rowActionsForRow) : null}
                   </tr>
                 );
               })}

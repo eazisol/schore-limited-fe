@@ -28,6 +28,15 @@ export interface ApiDailyAssignedItemLine {
   workDate: string;
   isToday: boolean;
   isTicked?: boolean;
+  isRepeat?: boolean;
+  /** PENDING | REJECTED when over-cap rate needs / was denied approval. */
+  rateApprovalStatus?: string | null;
+  rateChangeRequestId?: string | null;
+  proposedRate?: number | null;
+  rateChangeReason?: string | null;
+  rateReviewReason?: string | null;
+  operativeId?: string | null;
+  operativeName?: string | null;
 }
 
 export interface ApiDailyAssignedPackageGroup {
@@ -63,6 +72,7 @@ export interface ApiDailyUnassignedPackage {
   tradeGroupId: string;
   tradeGroupName: string;
   tradeName: string | null;
+  requiresRepeat?: boolean;
 }
 
 export interface ApiDailyAssignedAddOn {
@@ -78,6 +88,7 @@ export interface ApiDailyAssignedAddOn {
 export interface ApiDailyUnassignedAddOn {
   productId: string;
   productName: string;
+  requiresRepeat?: boolean;
 }
 
 export interface ApiDailyRow {
@@ -105,6 +116,8 @@ export interface ApiDailyRow {
   notesDisplay: string | null;
   timeDisplay: string | null;
   isLocked: boolean;
+  /** Planned HO on/before programme date and status is not Handed Over. */
+  isOverdue: boolean;
   allocations: ApiDailyAllocation[];
   assignedPackages: ApiDailyAssignedPackage[];
   unassignedPackages: ApiDailyUnassignedPackage[];
@@ -158,6 +171,8 @@ export type DailyAssignPackagePayload = {
   timeSlotId?: string | null;
   applyRatePermanently?: boolean;
   reason?: string | null;
+  isRepeat?: boolean;
+  repeatReason?: string | null;
 };
 
 export type DailyAssignAddOnPayload = {
@@ -169,7 +184,14 @@ export type DailyAssignAddOnPayload = {
   timeSlotId?: string | null;
   applyRatePermanently?: boolean;
   reason?: string | null;
+  isRepeat?: boolean;
+  repeatReason?: string | null;
 };
+
+export interface ApiDailyAssignOutcome {
+  row: ApiDailyRow;
+  repeatApprovalPending: boolean;
+}
 
 export interface DailyProgrammeListParams {
   date: string;
@@ -263,9 +285,15 @@ export const dailyProgrammeService = {
     },
   ) => http.put<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/items/${itemId}`, payload),
   assignPackage: (taskId: string, payload: DailyAssignPackagePayload) =>
-    http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/assign-package`, payload),
+    http.post<ApiEnvelope<ApiDailyAssignOutcome>>(
+      `DailyProgramme/tasks/${taskId}/assign-package`,
+      payload,
+    ),
   assignAddOn: (taskId: string, payload: DailyAssignAddOnPayload) =>
-    http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/assign-addon`, payload),
+    http.post<ApiEnvelope<ApiDailyAssignOutcome>>(
+      `DailyProgramme/tasks/${taskId}/assign-addon`,
+      payload,
+    ),
   unassignPackage: (taskId: string, payload: { date: string; tradeGroupId: string }) =>
     http.post<ApiEnvelope<ApiDailyRow>>(`DailyProgramme/tasks/${taskId}/unassign-package`, payload),
   unassignAddOn: (taskId: string, payload: { date: string; productId: string }) =>

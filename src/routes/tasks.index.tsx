@@ -4,6 +4,13 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { StatusBadge } from "@/components/StatusBadge";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Can, usePermission } from "@/components/Permission";
 import {
   DataTable,
@@ -11,12 +18,13 @@ import {
   type DataTableColumn,
   type DataTableRowAction,
 } from "@/components/data-table";
-import { Plus, Eye, Pencil, Trash2 } from "lucide-react";
+import { Plus, Eye, History, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { tasksService, type ApiTask } from "@/lib/api/services/tasks";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { formatDateTime, truncateWithEllipsis } from "@/lib/module-ui";
 import { TASKS_ROUTE } from "@/lib/tasks";
+import { TaskTimelinePanel } from "@/components/tasks/TaskTimelinePanel";
 
 export const Route = createFileRoute("/tasks/")({
   head: () => ({ meta: [{ title: "Jobs | Schore" }] }),
@@ -33,6 +41,7 @@ function TasksList() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [confirmDel, setConfirmDel] = useState<ApiTask | null>(null);
+  const [timelineTask, setTimelineTask] = useState<ApiTask | null>(null);
   const { searchInput, setSearchInput, search } = useDebouncedSearch({
     onPageReset: () => setPage(1),
   });
@@ -140,6 +149,12 @@ function TasksList() {
           },
         ]
       : []),
+    {
+      id: "timeline",
+      label: "View timeline",
+      icon: <History className="h-4 w-4" />,
+      onClick: (task) => setTimelineTask(task),
+    },
     ...(canDelete
       ? [
           {
@@ -211,6 +226,42 @@ function TasksList() {
           description: "Create a job against a property to allocate work.",
         }}
       />
+
+      <Sheet
+        open={Boolean(timelineTask)}
+        onOpenChange={(open) => {
+          if (!open) setTimelineTask(null);
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
+        >
+          <SheetHeader className="shrink-0 space-y-1 border-b border-border/70 bg-gradient-to-br from-accent/10 via-background to-background px-5 pb-4 pt-5 pr-12 text-left">
+            <div className="flex items-center gap-2.5">
+              <span className="inline-grid h-9 w-9 place-items-center rounded-lg bg-accent/15 text-accent">
+                <History className="h-4 w-4" />
+              </span>
+              <div className="min-w-0">
+                <SheetTitle className="text-base">Job timeline</SheetTitle>
+                <SheetDescription className="text-xs">
+                  Activity history for {timelineTask?.taskNumber || "this job"}
+                </SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 overflow-hidden px-4 py-4">
+            {timelineTask ? (
+              <TaskTimelinePanel
+                taskId={String(timelineTask.id)}
+                variant="drawer"
+                enabled={Boolean(timelineTask)}
+                className="h-full"
+              />
+            ) : null}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {confirmDel ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">

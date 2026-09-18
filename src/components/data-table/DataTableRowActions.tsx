@@ -6,15 +6,22 @@ import type { DataTableRowAction } from "./types";
 export function DataTableRowActions<T>({
   row,
   actions,
+  align = "right",
 }: {
   row: T;
   actions: DataTableRowAction<T>[];
+  align?: "left" | "right";
 }) {
   const visible = actions.filter((action) => !action.hidden?.(row));
   if (visible.length === 0) return null;
 
   return (
-    <div className="flex items-center justify-end gap-1.5">
+    <div
+      className={cn(
+        "flex items-center gap-1.5",
+        align === "left" ? "justify-start" : "justify-end",
+      )}
+    >
       {visible.map((action) => {
         const isApprove = action.variant === "approve" || action.id === "approve";
         const isReject =
