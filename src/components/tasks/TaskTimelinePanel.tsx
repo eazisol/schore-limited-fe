@@ -27,6 +27,7 @@ const ACTION_LABELS: Record<string, string> = {
   Deleted: "Job deleted",
   ItemAdded: "Item added",
   ItemUpdated: "Item updated",
+  ItemCompleted: "Item completed",
   ItemRemoved: "Item removed",
   RateSubmitted: "Rate submitted for approval",
   RateApproved: "Rate approved",
@@ -293,6 +294,12 @@ function actionVisual(action: string): {
         Icon: Tag,
         iconWrap: "bg-orange-500/10 text-orange-700 dark:text-orange-400",
       };
+    case "ItemCompleted":
+      return {
+        phrase: "Item completed",
+        Icon: BadgeCheck,
+        iconWrap: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+      };
     case "ItemRemoved":
       return {
         phrase: "Item removed",
@@ -346,6 +353,7 @@ function activityDetail(entry: ApiTaskTimelineEntry): string | null {
   if (entry.itemLabel?.trim()) {
     const label = entry.itemLabel.trim();
     if (entry.action === "ItemAdded") bits.push(`Added: ${label}`);
+    else if (entry.action === "ItemCompleted") bits.push(`Completed: ${label}`);
     else if (entry.action === "ItemRemoved") bits.push(`Removed: ${label}`);
     else if (!bits.some((b) => b.includes(label))) bits.push(label);
   }

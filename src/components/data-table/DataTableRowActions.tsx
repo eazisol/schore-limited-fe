@@ -31,35 +31,37 @@ export function DataTableRowActions<T>({
 
         if (isApprove) {
           return (
-            <button
-              key={action.id}
-              type="button"
-              onClick={() => action.onClick(row)}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50",
-                action.className,
-              )}
-            >
-              {action.icon}
-              <span>{action.label}</span>
-            </button>
+            <AppTooltip key={action.id} content={action.label} asChild>
+              <button
+                type="button"
+                onClick={() => action.onClick(row)}
+                aria-label={action.label}
+                className={cn(
+                  "inline-grid h-7 w-7 place-items-center rounded-md border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50",
+                  action.className,
+                )}
+              >
+                {action.icon}
+              </button>
+            </AppTooltip>
           );
         }
 
         if (isReject) {
           return (
-            <button
-              key={action.id}
-              type="button"
-              onClick={() => action.onClick(row)}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100 transition-colors focus:outline-none focus:ring-1 focus:ring-rose-500 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/50",
-                action.className,
-              )}
-            >
-              {action.icon}
-              <span>{action.label}</span>
-            </button>
+            <AppTooltip key={action.id} content={action.label} asChild>
+              <button
+                type="button"
+                onClick={() => action.onClick(row)}
+                aria-label={action.label}
+                className={cn(
+                  "inline-grid h-7 w-7 place-items-center rounded-md border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors focus:outline-none focus:ring-1 focus:ring-rose-500 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/50",
+                  action.className,
+                )}
+              >
+                {action.icon}
+              </button>
+            </AppTooltip>
           );
         }
 

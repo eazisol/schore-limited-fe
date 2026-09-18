@@ -223,6 +223,7 @@ export function JobDayItemsEditor({
     void qc.invalidateQueries({ queryKey: dailyQueryKey });
     void qc.invalidateQueries({ queryKey: tasksQueryKey });
     void qc.invalidateQueries({ queryKey: ["tasks", String(task.id)] });
+    void qc.invalidateQueries({ queryKey: ["tasks", String(task.id), "timeline"] });
     void qc.invalidateQueries({ queryKey: ["daily-programme", "job-calendar-day"] });
   }
 

@@ -46,6 +46,7 @@ function invalidateDailyQueries(qc: ReturnType<typeof useQueryClient>, taskId: n
   void qc.invalidateQueries({ queryKey: dailyQueryKey });
   void qc.invalidateQueries({ queryKey: ["daily-programme", "cost-budget"] });
   void qc.invalidateQueries({ queryKey: ["tasks", taskId] });
+  void qc.invalidateQueries({ queryKey: ["tasks", String(taskId), "timeline"] });
 }
 
 function operativeInitials(name: string) {

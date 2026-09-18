@@ -103,6 +103,7 @@ function invalidateAfterChange(qc: ReturnType<typeof useQueryClient>, taskId: st
   void qc.invalidateQueries({ queryKey: ["daily-programme", "cost-budget"] });
   void qc.invalidateQueries({ queryKey: tasksQueryKey });
   void qc.invalidateQueries({ queryKey: ["tasks", String(taskId)] });
+  void qc.invalidateQueries({ queryKey: ["tasks", String(taskId), "timeline"] });
 }
 
 function operativeInitials(name: string) {
