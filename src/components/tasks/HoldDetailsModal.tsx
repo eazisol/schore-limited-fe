@@ -76,7 +76,7 @@ export function HoldDetailsModal({
   async function submit(values: Values) {
     await onConfirm({
       holdDate: values.holdDate,
-      holdReasonId: Number(values.holdReasonId),
+      holdReasonId: values.holdReasonId,
       holdNotes: values.holdNotes.trim() || null,
     });
   }

@@ -34,8 +34,35 @@ export function formatUkDate(isoDate: string | null | undefined): string {
   return `${d}/${m}/${y}`;
 }
 
-export function invoiceNo(id: number): string {
-  return `WS-${String(id).padStart(4, "0")}`;
+/** Wage sheet style: 16.01.2026 */
+export function formatUkDateDots(isoDate: string | null | undefined): string {
+  if (!isoDate) return "—";
+  const [y, m, d] = isoDate.slice(0, 10).split("-");
+  if (!y || !m || !d) return isoDate;
+  return `${d}.${m}.${y}`;
+}
+
+/** Wage sheet week range: 16.01 – 23.01.2026 */
+export function formatWageWeekRange(
+  weekStart: string | null | undefined,
+  weekEnding: string | null | undefined,
+): string {
+  if (!weekStart || !weekEnding) return "—";
+  const [sy, sm, sd] = weekStart.slice(0, 10).split("-");
+  const [ey, em, ed] = weekEnding.slice(0, 10).split("-");
+  if (!sy || !sm || !sd || !ey || !em || !ed) {
+    return `${formatUkDateDots(weekStart)} – ${formatUkDateDots(weekEnding)}`;
+  }
+  return `${sd}.${sm} – ${ed}.${em}.${ey}`;
+}
+
+export function invoiceNo(id: string | number): string {
+  const raw = String(id);
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length > 0 && digits.length <= 8) {
+    return `WS-${digits.padStart(4, "0")}`;
+  }
+  return `WS-${raw.slice(0, 8).toUpperCase()}`;
 }
 
 export function downloadCsv(filename: string, rows: string[][]) {

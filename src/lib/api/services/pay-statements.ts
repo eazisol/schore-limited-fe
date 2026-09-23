@@ -55,6 +55,11 @@ export interface ApiPayStatementLine {
 export interface ApiPayStatementDetail extends ApiPayStatementSummary {
   operativeEmail: string | null;
   operativeTradeCode: string | null;
+  /** Site / contract header, e.g. "Basildon — MS". */
+  siteContract: string | null;
+  siteManagerName: string | null;
+  operativeUtr: string | null;
+  operativeNiNumber: string | null;
   sentBy: number | null;
   sentByName: string | null;
   respondedBy: number | null;

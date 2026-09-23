@@ -5,6 +5,7 @@ import { Check, Loader2, X } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -49,6 +50,8 @@ function RateApprovals() {
   const [statusId, setStatusId] = useState<string | null>(null);
   const [rejectRow, setRejectRow] = useState<ApiRateChangeRequest | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [approveRow, setApproveRow] = useState<ApiRateChangeRequest | null>(null);
+  const [approveRate, setApproveRate] = useState("");
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
     onPageReset: () => setPage(1),
   });
@@ -86,9 +89,12 @@ function RateApprovals() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: (id: string) => rateChangeRequestsService.approve(id),
+    mutationFn: ({ id, approvedRate }: { id: string; approvedRate?: number }) =>
+      rateChangeRequestsService.approve(id, approvedRate),
     onSuccess: (res) => {
       toast.success(res.message || "Rate change approved");
+      setApproveRow(null);
+      setApproveRate("");
       qc.invalidateQueries({ queryKey: rateChangeRequestsQueryKey });
     },
     onError: (err) => notifyApiError(err, "Unable to approve"),
@@ -109,7 +115,19 @@ function RateApprovals() {
   const rows = query.data?.items ?? [];
   const totalCount = query.data?.totalCount ?? 0;
   const totalPages = query.data?.totalPages ?? 1;
-  const busyId = approveMutation.isPending ? approveMutation.variables : undefined;
+  const busyId = approveMutation.isPending ? approveMutation.variables?.id : undefined;
+  const parsedApproveRate = Number(approveRate);
+  const approveRateValid =
+    approveRate.trim() !== "" && Number.isFinite(parsedApproveRate) && parsedApproveRate >= 0;
+
+  function openApprove(row: ApiRateChangeRequest) {
+    if (row.action.toUpperCase() === "REMOVE") {
+      approveMutation.mutate({ id: row.id });
+      return;
+    }
+    setApproveRate(String(row.proposedRate ?? ""));
+    setApproveRow(row);
+  }
 
   const columns: DataTableColumn<ApiRateChangeRequest>[] = [
     {
@@ -222,7 +240,7 @@ function RateApprovals() {
       label: "Approve",
       icon: <Check className="h-3.5 w-3.5" />,
       hidden: (row) => !canModify || !row.canApprove,
-      onClick: (row) => approveMutation.mutate(row.id),
+      onClick: (row) => openApprove(row),
     },
     {
       id: "reject",
@@ -332,6 +350,74 @@ function RateApprovals() {
         <p className="sr-only">
           <Loader2 className="h-4 w-4 animate-spin" /> Approving…
         </p>
+      ) : null}
+
+      {approveRow ? (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+          onClick={() => !approveMutation.isPending && setApproveRow(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg border bg-card p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-display text-lg font-semibold">Approve this rate change?</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {approveRow.productName} on {approveRow.parentLabel}. You can keep the proposed rate
+              or enter a different amount to approve.
+            </p>
+            <p className="mt-3 text-sm tabular-nums text-muted-foreground">
+              Proposed{" "}
+              <span className="font-medium text-foreground">
+                {fmtGBPp(approveRow.proposedRate)}
+              </span>
+              {approveRow.previousRate != null ? (
+                <>
+                  {" "}
+                  · was {fmtGBPp(approveRow.previousRate)}
+                </>
+              ) : null}
+            </p>
+            <label className="mt-4 block text-xs font-medium text-muted-foreground">
+              Approved rate (£) <span className="text-destructive">*</span>
+            </label>
+            <Input
+              className="mt-1"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="0.01"
+              value={approveRate}
+              onChange={(e) => setApproveRate(e.target.value)}
+              placeholder="0.00"
+              autoFocus
+            />
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setApproveRow(null)}
+                disabled={approveMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={approveMutation.isPending || !approveRateValid}
+                onClick={() =>
+                  approveMutation.mutate({
+                    id: approveRow.id,
+                    approvedRate: parsedApproveRate,
+                  })
+                }
+              >
+                {approveMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Approve"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {rejectRow ? (

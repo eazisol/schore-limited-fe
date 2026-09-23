@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import {
   dailyProgrammeService,
   type ApiDailyClientExport,
+  type ApiDailyClientExportBulk,
   type ApiDailyRow,
 } from "@/lib/api/services/daily-programme";
 import { tasksService, type ApiTaskItem } from "@/lib/api/services/tasks";
@@ -49,6 +50,7 @@ import {
   fetchPropertyOptions,
   fetchTaskStatusOptions,
 } from "@/lib/task-dropdowns";
+import { StatusBadge } from "@/components/StatusBadge";
 
 const dailySearchSchema = z.object({
   propertyId: z.string().optional(),
@@ -77,54 +79,83 @@ function safeFilePart(value: string) {
   return value.replace(/[^\w\-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "job";
 }
 
+const CLIENT_EXPORT_HEADERS = [
+  "Export date",
+  "Job",
+  "Property",
+  "Address",
+  "Postcode",
+  "Property type",
+  "Client",
+  "Status",
+  "Reason",
+  "Operative",
+  "Trade",
+  "Task",
+  "Attendance period",
+] as const;
+
+function buildClientExportRows(data: ApiDailyClientExport, exportDateLabel: string) {
+  const status = data.status ?? "";
+  const reason = data.reason ?? "";
+  if (data.lines.length > 0) {
+    return data.lines.map((line) => [
+      exportDateLabel,
+      data.taskNumber,
+      data.propertyName,
+      data.propertyAddress,
+      data.postCode,
+      data.propertyType,
+      data.client,
+      status,
+      reason,
+      line.operativeName,
+      line.trade,
+      line.task,
+      line.attendancePeriod,
+    ]);
+  }
+
+  return [
+    [
+      exportDateLabel,
+      data.taskNumber,
+      data.propertyName,
+      data.propertyAddress,
+      data.postCode,
+      data.propertyType,
+      data.client,
+      status,
+      reason,
+      "",
+      "",
+      "",
+      "",
+    ],
+  ];
+}
+
 function downloadClientNextDayCsv(data: ApiDailyClientExport) {
   const exportDateLabel = formatUkDate(data.exportDate);
   const filename = `next-day-${safeFilePart(data.propertyName || data.taskNumber)}-${data.exportDate}.csv`;
   downloadCsv({
     filename,
-    headers: [
-      "Export date",
-      "Job",
-      "Property",
-      "Address",
-      "Postcode",
-      "Property type",
-      "Client",
-      "Operative",
-      "Trade",
-      "Task",
-      "Attendance period",
-    ],
-    rows:
-      data.lines.length > 0
-        ? data.lines.map((line) => [
-            exportDateLabel,
-            data.taskNumber,
-            data.propertyName,
-            data.propertyAddress,
-            data.postCode,
-            data.propertyType,
-            data.client,
-            line.operativeName,
-            line.trade,
-            line.task,
-            line.attendancePeriod,
-          ])
-        : [
-            [
-              exportDateLabel,
-              data.taskNumber,
-              data.propertyName,
-              data.propertyAddress,
-              data.postCode,
-              data.propertyType,
-              data.client,
-              "",
-              "",
-              "",
-              "",
-            ],
-          ],
+    headers: [...CLIENT_EXPORT_HEADERS],
+    rows: buildClientExportRows(data, exportDateLabel),
+  });
+}
+
+function downloadClientNextDayBulkCsv(data: ApiDailyClientExportBulk) {
+  const exportDateLabel = formatUkDate(data.exportDate);
+  const filename = `next-day-filtered-${data.exportDate}.csv`;
+  const rows =
+    data.jobs.length > 0
+      ? data.jobs.flatMap((job) => buildClientExportRows(job, exportDateLabel))
+      : [];
+  downloadCsv({
+    filename,
+    headers: [...CLIENT_EXPORT_HEADERS],
+    rows,
   });
 }
 
@@ -141,6 +172,7 @@ function matchesSearch(row: ApiDailyRow, search: string) {
     row.type,
     row.statusName,
     row.statusCode,
+    row.reason,
     row.tradeOrStatus,
     row.nameDisplay,
     row.notesDisplay,
@@ -180,6 +212,7 @@ function Daily() {
   const [statusId, setStatusId] = useState("");
   const [statusLabel, setStatusLabel] = useState<string | null>(null);
   const [exportingTaskId, setExportingTaskId] = useState<string | null>(null);
+  const [exportingBulk, setExportingBulk] = useState(false);
   const filterStatusId = statusId.trim();
   const hasStatusFilter = filterStatusId.length > 0;
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
@@ -550,6 +583,36 @@ function Daily() {
         },
       },
       {
+        id: "status",
+        header: "Status",
+        width: "8rem",
+        truncate: false,
+        accessor: (row) => row.statusName || row.statusCode || "—",
+        cell: (row) => {
+          const label = row.statusName?.trim() || row.statusCode?.trim();
+          if (!label) return "—";
+          return <StatusBadge status={label} />;
+        },
+      },
+      {
+        id: "reason",
+        header: "Reason",
+        width: "10rem",
+        truncate: false,
+        accessor: (row) => row.reason || "—",
+        cell: (row) => {
+          const reason = row.reason?.trim();
+          if (!reason) return "—";
+          return (
+            <AppTooltip content={reason} asChild align="start">
+              <span className="block max-w-full cursor-default truncate text-muted-foreground">
+                {truncateWithEllipsis(reason, 36)}
+              </span>
+            </AppTooltip>
+          );
+        },
+      },
+      {
         id: "time",
         header: "Time",
         width: "6rem",
@@ -560,7 +623,7 @@ function Daily() {
   }, [canModifyDaily, date]);
 
   async function exportNextDayForClient(row: ApiDailyRow) {
-    if (exportingTaskId) return;
+    if (exportingTaskId || exportingBulk) return;
     setExportingTaskId(row.taskId);
     try {
       const res = await dailyProgrammeService.clientNextDayExport(row.taskId, date);
@@ -585,6 +648,38 @@ function Daily() {
     }
   }
 
+  async function exportFilteredNextDay() {
+    if (exportingBulk || exportingTaskId) return;
+    if (filteredRows.length === 0) {
+      toast.warning("No properties match the current filters");
+      return;
+    }
+    setExportingBulk(true);
+    try {
+      const res = await dailyProgrammeService.clientNextDayExportBulk(
+        date,
+        filteredRows.map((row) => row.taskId),
+      );
+      const data = res.data;
+      if (!data) {
+        toast.error("Unable to export next-day schedule");
+        return;
+      }
+      const lineCount = data.jobs.reduce((sum, job) => sum + (job.lines?.length ?? 0), 0);
+      if (lineCount === 0) {
+        toast.warning("No task items scheduled for the next day on the filtered jobs");
+      }
+      downloadClientNextDayBulkCsv(data);
+      toast.success(
+        `Exported ${data.jobs.length} job${data.jobs.length === 1 ? "" : "s"} (${formatUkDate(data.exportDate)})`,
+      );
+    } catch (err) {
+      notifyApiError(err, "Unable to export next-day schedule");
+    } finally {
+      setExportingBulk(false);
+    }
+  }
+
   const getRowActions = useMemo(() => {
     return (row: ApiDailyRow): DataTableRowAction<ApiDailyRow>[] => [
       {
@@ -602,7 +697,7 @@ function Daily() {
         },
       },
     ];
-  }, [date, exportingTaskId]);
+  }, [date, exportingTaskId, exportingBulk]);
 
   const assignedProjects = query.data?.assignedProjects ?? [];
   const showProjectSwitcher = (query.data?.separateProjectViews ?? false) && assignedProjects.length > 0;
@@ -791,6 +886,24 @@ function Daily() {
           placeholder: "Search property, client, trade…",
           "aria-label": "Search daily programmer",
         }}
+        toolbarActions={
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={exportingBulk || exportingTaskId != null || filteredRows.length === 0}
+            onClick={() => {
+              void exportFilteredNextDay();
+            }}
+          >
+            {exportingBulk ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Download className="h-3.5 w-3.5" />
+            )}
+            Export
+          </Button>
+        }
         emptyState={{
           title: hasActiveFilters ? "No rows match your filters" : "No properties on today's roll",
           description: hasActiveFilters ? "Try clearing the search or filters." : undefined,

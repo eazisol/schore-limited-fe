@@ -108,6 +108,8 @@ export interface ApiDailyRow {
   heldDaysCount: number;
   statusCode: string;
   statusName: string;
+  /** Hold reason (+ notes) when status is On Hold. */
+  reason?: string | null;
   tradeOrStatus: string;
   previousDayName: string | null;
   previousDayTrades: string | null;
@@ -223,7 +225,15 @@ export interface ApiDailyClientExport {
   propertyType: string | null;
   client: string | null;
   postCode: string | null;
+  status?: string | null;
+  reason?: string | null;
   lines: ApiDailyClientExportLine[];
+}
+
+export interface ApiDailyClientExportBulk {
+  programmeDate: string;
+  exportDate: string;
+  jobs: ApiDailyClientExport[];
 }
 
 export interface DailyResolveRateParams {
@@ -331,4 +341,10 @@ export const dailyProgrammeService = {
     http.get<ApiEnvelope<ApiDailyClientExport>>(`DailyProgramme/tasks/${taskId}/client-export`, {
       params: { date },
     }),
+  clientNextDayExportBulk: (date: string, taskIds: string[]) =>
+    http.post<ApiEnvelope<ApiDailyClientExportBulk>>(
+      "DailyProgramme/client-export",
+      { taskIds },
+      { params: { date } },
+    ),
 };

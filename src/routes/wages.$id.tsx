@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Send, Check, X, Banknote, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { fmtGBPp } from "@/lib/data";
-import { payStatementsService, type ApiPayStatementDetail } from "@/lib/api/services/pay-statements";
+import { payStatementsService, type ApiPayStatementDetail, type ApiPayStatementDay } from "@/lib/api/services/pay-statements";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermission } from "@/components/Permission";
-import { formatUkDate, invoiceNo } from "@/lib/week-ending";
+import { formatUkDate, formatUkDateDots, formatWageWeekRange, invoiceNo } from "@/lib/week-ending";
 import { payStatementsQueryKey } from "./payroll";
 
 export const Route = createFileRoute("/wages/$id")({
@@ -200,7 +200,7 @@ function WageSheetView() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {w.days.map((day) => (
+              {w.days.map((day: ApiPayStatementDay) => (
                 <tr key={day.id}>
                   <td className="px-5 py-2">{formatUkDate(day.workDate)}</td>
                   <td className="px-3 py-2 text-right font-mono">{fmtGBPp(day.priceWork)}</td>
@@ -290,78 +290,163 @@ function WageSheetView() {
 }
 
 function WageSheet({ w }: { w: ApiPayStatementDetail }) {
-  const weekLabel = `${formatUkDate(w.weekStart)} – ${formatUkDate(w.weekEnding)}`;
+  const weekLabel = formatWageWeekRange(w.weekStart, w.weekEnding);
+  const utrNi =
+    [w.operativeUtr, w.operativeNiNumber].filter(Boolean).join(" / ") || null;
+  const minRows = 8;
+  const emptyRows = Math.max(0, minRows - w.lines.length);
+
   return (
-    <div className="card-elevated max-w-4xl p-8 md:p-10">
-      <div className="flex items-start justify-between border-b pb-6">
-        <div>
-          <h2 className="font-display text-2xl font-bold tracking-tight">SCHORE LIMITED</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Weekly Wage Sheet</p>
-          <p className="text-[11px] text-muted-foreground">Construction & Maintenance</p>
+    <div className="max-w-4xl overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-900 shadow-sm print:border-0 print:shadow-none">
+      <div className="px-8 pb-8 pt-8 md:px-10 md:pt-10">
+        <div className="border-b-[3px] pb-3" style={{ borderColor: "#1e3a5f" }}>
+          <h2 className="text-[1.65rem] font-bold tracking-tight" style={{ color: "#1e3a5f" }}>
+            SCHORE LIMITED{" "}
+            <span className="font-semibold" style={{ color: "#1e3a5f" }}>Weekly Wage Sheet</span>
+          </h2>
         </div>
-        <div className="space-y-0.5 text-right text-xs">
-          <div>
-            <span className="text-muted-foreground">Invoice No:</span>{" "}
-            <strong className="font-mono">{invoiceNo(w.id)}</strong>
+
+        <div className="mt-5 grid gap-8 sm:grid-cols-2">
+          <div className="space-y-1.5 text-[13px] leading-relaxed">
+            <HeaderLine label="Name" value={w.operativeName} />
+            <HeaderLine label="Trade" value={w.tradeName ?? w.operativeTradeCode} />
+            <HeaderLine label="Site / Contract" value={w.siteContract ?? w.customerNames} />
+            <HeaderLine label="Site Manager" value={w.siteManagerName} />
+            <HeaderLine label="UTR / NINO" value={utrNi} blank />
           </div>
-          <div>
-            <span className="text-muted-foreground">Week:</span> <strong>{weekLabel}</strong>
+          <div className="space-y-1.5 text-[13px] leading-relaxed sm:text-right">
+            <div>
+              <span className="text-slate-500">Invoice No:</span>{" "}
+              <span className="font-semibold tabular-nums">{invoiceNo(w.id)}</span>
+            </div>
+            <div>
+              <span className="text-slate-500">Week:</span>{" "}
+              <span className="font-semibold tabular-nums">{weekLabel}</span>
+            </div>
+            <div className="pt-1 text-slate-600 sm:ml-auto sm:max-w-[16rem]">
+              <div className="font-medium text-slate-800">Bill To: Schore Limited</div>
+              <div>Unit E, The Business Center</div>
+              <div>Faringdon Avenue</div>
+              <div>Romford, Essex, RM3 8EN</div>
+              <div className="mt-1 text-[12px]">07982138777 · office@schore.co.uk</div>
+            </div>
           </div>
-          <div className="mt-2 text-muted-foreground">Bill To: Schore Limited</div>
+        </div>
+
+        <h3 className="mb-2 mt-7 text-[15px] font-semibold text-slate-900">Work completed</h3>
+        <table className="w-full border-collapse text-[13px]">
+          <thead>
+            <tr className="text-white" style={{ backgroundColor: "#1e3a5f" }}>
+              <th className="px-3 py-2 text-left font-semibold">Property</th>
+              <th className="w-28 px-3 py-2 text-left font-semibold">Date</th>
+              <th className="px-3 py-2 text-left font-semibold">Task</th>
+              <th className="w-28 px-3 py-2 text-right font-semibold">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {w.lines.map((line, i) => (
+              <tr
+                key={line.id}
+                className={i % 2 === 0 ? "bg-white" : "bg-slate-50/80"}
+              >
+                <td className="border-b border-slate-200 px-3 py-2.5">
+                  {line.propertyName ?? "—"}
+                </td>
+                <td className="border-b border-slate-200 px-3 py-2.5 tabular-nums text-slate-700">
+                  {formatUkDateDots(line.lineDate)}
+                </td>
+                <td className="border-b border-slate-200 px-3 py-2.5">
+                  {line.description}
+                  {line.isTopUp ? (
+                    <span className="ml-1.5 text-[11px] text-slate-400">top-up</span>
+                  ) : null}
+                </td>
+                <td className="border-b border-slate-200 px-3 py-2.5 text-right font-medium tabular-nums">
+                  {fmtGBPp(line.amount)}
+                </td>
+              </tr>
+            ))}
+            {w.lines.length === 0 && (
+              <tr>
+                <td
+                  colSpan={4}
+                  className="border-b border-slate-200 px-3 py-8 text-center text-slate-400"
+                >
+                  No lines on this sheet.
+                </td>
+              </tr>
+            )}
+            {Array.from({ length: emptyRows }).map((_, i) => (
+              <tr key={`empty-${i}`} className={(w.lines.length + i) % 2 === 0 ? "bg-white" : "bg-slate-50/80"}>
+                <td className="border-b border-slate-200 px-3 py-2.5">&nbsp;</td>
+                <td className="border-b border-slate-200 px-3 py-2.5" />
+                <td className="border-b border-slate-200 px-3 py-2.5" />
+                <td className="border-b border-slate-200 px-3 py-2.5" />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="mt-5 flex justify-end">
+          <table className="w-56 border-collapse text-[13px]">
+            <tbody>
+              <tr>
+                <td className="border border-slate-200 px-3 py-1.5 text-slate-600">Gross Pay</td>
+                <td className="border border-slate-200 px-3 py-1.5 text-right font-medium tabular-nums">
+                  {fmtGBPp(w.gross)}
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-slate-200 px-3 py-1.5 text-slate-600">CIS Rate</td>
+                <td className="border border-slate-200 px-3 py-1.5 text-right tabular-nums">
+                  {w.cisRate}%
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-slate-200 px-3 py-1.5 text-slate-600">CIS Tax</td>
+                <td className="border border-slate-200 px-3 py-1.5 text-right tabular-nums text-slate-600">
+                  −{fmtGBPp(w.cisDeduction)}
+                </td>
+              </tr>
+              <tr className="bg-emerald-50">
+                <td className="border border-slate-200 px-3 py-2 font-semibold">Net Pay</td>
+                <td className="border border-slate-200 px-3 py-2 text-right text-base font-bold tabular-nums text-emerald-800">
+                  {fmtGBPp(w.net)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-10 border-t border-slate-200 pt-6 text-[13px] text-slate-600">
+          <div className="mb-8">
+            Signed: <span className="inline-block min-w-[14rem] border-b border-slate-400">&nbsp;</span>
+          </div>
+          <p className="italic text-slate-500">Thank you for your business!</p>
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="grid grid-cols-2 gap-6 border-b py-6 text-sm">
-        <KV label="Name" value={w.operativeName} />
-        <KV label="Trade" value={w.tradeName ?? w.operativeTradeCode ?? "—"} />
-        <KV label="Client" value={w.customerNames ?? "—"} />
-        <KV label="CIS rate" value={`${w.cisRate}%`} />
-      </div>
-
-      <h3 className="mb-3 mt-6 font-display font-semibold">Work completed</h3>
-      <table className="w-full text-sm">
-        <thead className="border-y bg-muted/30 text-xs">
-          <tr>
-            <th className="px-3 py-2 text-left font-medium">Property</th>
-            <th className="px-3 py-2 text-left font-medium">Date</th>
-            <th className="px-3 py-2 text-left font-medium">Task</th>
-            <th className="px-3 py-2 text-right font-medium">Amount</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {w.lines.map((line) => (
-            <tr key={line.id}>
-              <td className="px-3 py-2.5">{line.propertyName ?? "—"}</td>
-              <td className="px-3 py-2.5 font-mono text-xs">{formatUkDate(line.lineDate)}</td>
-              <td className="px-3 py-2.5">
-                {line.description}
-                {line.isTopUp ? <span className="ml-2 text-[11px] text-muted-foreground">top-up</span> : null}
-              </td>
-              <td className="px-3 py-2.5 text-right font-mono tabular-nums">{fmtGBPp(line.amount)}</td>
-            </tr>
-          ))}
-          {w.lines.length === 0 && (
-            <tr>
-              <td colSpan={4} className="px-3 py-8 text-center text-muted-foreground">No lines on this sheet.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      <div className="ml-auto mt-6 max-w-xs space-y-2 text-sm">
-        <Row k="Gross Pay" v={fmtGBPp(w.gross)} />
-        <Row k="CIS Rate" v={`${w.cisRate}%`} />
-        <Row k="CIS Tax" v={`−${fmtGBPp(w.cisDeduction)}`} muted />
-        <div className="border-t pt-2">
-          <Row k="Net Pay" v={fmtGBPp(w.net)} bold />
-        </div>
-      </div>
-
-      <div className="mt-10 border-t pt-6 text-xs text-muted-foreground">
-        <div className="mb-8">Signed: ______________________________</div>
-        <p className="italic">Thank you for your business.</p>
-        {/* <p className="mt-1 text-[10px]">One sheet per operative per week. Line dates use the tick (CompletedDate).</p> */}
-      </div>
+function HeaderLine({
+  label,
+  value,
+  blank,
+}: {
+  label: string;
+  value: string | null | undefined;
+  blank?: boolean;
+}) {
+  const showBlank = blank && !value;
+  return (
+    <div>
+      <span className="text-slate-500">{label}:</span>{" "}
+      {showBlank ? (
+        <span className="inline-block min-w-[10rem] border-b border-slate-300 align-bottom">&nbsp;</span>
+      ) : (
+        <span className="font-medium text-slate-900">{value || "—"}</span>
+      )}
     </div>
   );
 }
@@ -394,24 +479,6 @@ function ConfirmDialog({
           </Button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function KV({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="font-medium">{value}</div>
-    </div>
-  );
-}
-
-function Row({ k, v, bold, muted }: { k: string; v: string; bold?: boolean; muted?: boolean }) {
-  return (
-    <div className="flex justify-between">
-      <span className={muted ? "text-muted-foreground" : ""}>{k}</span>
-      <span className={`font-mono tabular-nums ${bold ? "text-lg font-bold" : ""}`}>{v}</span>
     </div>
   );
 }

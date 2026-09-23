@@ -57,8 +57,10 @@ export const rateChangeRequestsService = {
         ...(params.operativeId ? { OperativeId: params.operativeId } : {}),
       },
     }),
-  approve: (id: string) =>
-    http.post<ApiEnvelope<ApiRateChangeRequest>>(`RateChangeRequests/${id}/approve`),
+  approve: (id: string, approvedRate?: number) =>
+    http.post<ApiEnvelope<ApiRateChangeRequest>>(`RateChangeRequests/${id}/approve`, {
+      ...(approvedRate != null ? { approvedRate } : {}),
+    }),
   reject: (id: string, reason: string) =>
     http.post<ApiEnvelope<ApiRateChangeRequest>>(`RateChangeRequests/${id}/reject`, { reason }),
 };

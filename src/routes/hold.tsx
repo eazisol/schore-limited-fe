@@ -256,9 +256,9 @@ function AddHoldForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
   const mutation = useMutation({
     mutationFn: (values: Values) =>
       taskHoldsService.create({
-        taskId: Number(values.taskId),
+        taskId: values.taskId,
         holdDate: values.holdDate,
-        holdReasonId: Number(values.holdReasonId),
+        holdReasonId: values.holdReasonId,
         notes: values.notes.trim() || null,
       }),
     onSuccess: (res) => {
