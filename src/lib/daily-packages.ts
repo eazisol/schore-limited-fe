@@ -30,8 +30,10 @@ export function filterNameOperativesWithoutOpenApprovals(
   return operatives
     .map((op) => ({
       ...op,
+      // Keep every completed line; only hide open work still blocked on rate approval.
       items: (op.items ?? []).filter(
-        (item) => !isRateApprovalOpen(item.rateApprovalStatus),
+        (item) =>
+          Boolean(item.isTicked) || !isRateApprovalOpen(item.rateApprovalStatus),
       ),
     }))
     .filter((op) => op.items.length > 0);

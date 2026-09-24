@@ -47,18 +47,21 @@ import {
 import { uploadPendingCertificationFiles } from "@/lib/upload-certification-files";
 import { useRateCapReasonGate } from "@/components/rates/useRateCapReasonGate";
 
-export function UserDetailPage() {
+export function UserDetailPage({ selfViewUserId }: { selfViewUserId?: string } = {}) {
   const mode = useUserModuleMode();
   const cfg = userModuleConfig(mode);
   const params = useParams({ strict: false }) as { id?: string };
   const search = useSearch({ strict: false }) as { mode?: "edit" | "view"; tab?: OperativeFormTab };
-  const id = String(params.id ?? "");
+  const isSelfView = Boolean(selfViewUserId);
+  const id = String(selfViewUserId ?? params.id ?? "");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user: sessionUser } = useAuth();
   const { refreshPermissions } = usePermissions();
-  const canModify = usePermission({ route: cfg.permissionRoute, action: "modify" });
-  const canDelete = usePermission({ route: cfg.permissionRoute, action: "delete" });
+  const modifyAllowed = usePermission({ route: cfg.permissionRoute, action: "modify" });
+  const deleteAllowed = usePermission({ route: cfg.permissionRoute, action: "delete" });
+  const canModify = !isSelfView && modifyAllowed;
+  const canDelete = !isSelfView && deleteAllowed;
   const [confirmDel, setConfirmDel] = useState(false);
   const [clientEditOpen, setClientEditOpen] = useState(false);
   const isKnownOperativeTab = (tab: unknown): tab is OperativeFormTab =>
@@ -395,49 +398,53 @@ export function UserDetailPage() {
         </Form>
       ) : (
         <>
-          <DetailProfileHero
-            className="w-full"
-            title={cfg.labels.viewTitle}
-            backLabel={cfg.labels.backLabel}
-            backTo={cfg.listPath}
-            headerActions={
-              <>
-                {canModify && (
-                  <Button variant="outline" size="sm" onClick={() => openEdit()}>
-                    <Pencil className="h-4 w-4" />
-                    {cfg.labels.editButton}
-                  </Button>
-                )}
-                <Can route={cfg.permissionRoute} action="delete">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-destructive/30 text-destructive hover:bg-destructive/5"
-                    onClick={() => setConfirmDel(true)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </Button>
-                </Can>
-              </>
-            }
-            name={profileHeroNameText}
-            subtitle={profileHeroSubtitle}
-            tags={profileHeroTags}
-            imageUrl={profileImageUrl || undefined}
-            imageAlt={`${cfg.labels.entityTitle} profile`}
-            status={
-              cfg.isOperative || mode === "user"
-                ? undefined
-                : <ActiveStatusBadge isActive={user.isActive} />
-            }
-            email={user.email}
-            phone={user.phone}
-            dateOfBirth={profileDateOfBirth}
-            joiningDate={profileJoiningDate}
-            location={profileHeroLocation}
-            highlights={profileHeroHighlights}
-          />
+          {isSelfView ? (
+            <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          ) : (
+            <DetailProfileHero
+              className="w-full"
+              title={cfg.labels.viewTitle}
+              backLabel={cfg.labels.backLabel}
+              backTo={cfg.listPath}
+              headerActions={
+                <>
+                  {canModify && (
+                    <Button variant="outline" size="sm" onClick={() => openEdit()}>
+                      <Pencil className="h-4 w-4" />
+                      {cfg.labels.editButton}
+                    </Button>
+                  )}
+                  <Can route={cfg.permissionRoute} action="delete">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-destructive/30 text-destructive hover:bg-destructive/5"
+                      onClick={() => setConfirmDel(true)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </Button>
+                  </Can>
+                </>
+              }
+              name={profileHeroNameText}
+              subtitle={profileHeroSubtitle}
+              tags={profileHeroTags}
+              imageUrl={profileImageUrl || undefined}
+              imageAlt={`${cfg.labels.entityTitle} profile`}
+              status={
+                cfg.isOperative || mode === "user"
+                  ? undefined
+                  : <ActiveStatusBadge isActive={user.isActive} />
+              }
+              email={user.email}
+              phone={user.phone}
+              dateOfBirth={profileDateOfBirth}
+              joiningDate={profileJoiningDate}
+              location={profileHeroLocation}
+              highlights={profileHeroHighlights}
+            />
+          )}
 
           {cfg.isOperative ? (
             <OperativeDetailExtras

@@ -17,6 +17,10 @@ import { usersService } from "@/lib/api/services/users";
 import { buildAuthorizedMenus } from "@/lib/authorization";
 import { accessService, type ApiCurrentAccess } from "@/lib/api/services/access";
 import { hasCapability } from "@/lib/access";
+import {
+  buildOperativePortalMenus,
+  isOperativeUserType,
+} from "@/lib/operative-portal";
 
 interface PermissionCache {
   userId: string | null;
@@ -43,7 +47,7 @@ export const PERMISSION_UPDATED_STORAGE_KEY = "schore.permissions.updated";
 const PermissionContext = createContext<PermissionContextValue | null>(null);
 
 export function PermissionProvider({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated, isHydrated } = useAuth();
+  const { user, isAuthenticated, isHydrated, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const [menus, setMenus] = useState<ApiMenu[]>([]);
   const [access, setAccess] = useState<ApiCurrentAccess | null>(null);
@@ -103,11 +107,24 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
       const permissionResponses = await Promise.all(
         roleIds.map((roleId) => permissionsService.getByRole(roleId)),
       );
-      const nextMenus = buildAuthorizedMenus(
-        menuTree,
-        permissionResponses.map((response) => response.data ?? []),
-        apiUser.menuPermissionOverrides,
-      );
+      const nextMenus =
+        roleIds.length === 0 && isOperativeUserType(apiUser.userTypeCode)
+          ? buildOperativePortalMenus(menuTree)
+          : buildAuthorizedMenus(
+              menuTree,
+              permissionResponses.map((response) => response.data ?? []),
+              apiUser.menuPermissionOverrides,
+            );
+
+      if (
+        (apiUser.userTypeCode && apiUser.userTypeCode !== user?.userTypeCode) ||
+        (apiUser.userTypeId != null && apiUser.userTypeId !== user?.userTypeId)
+      ) {
+        updateUser({
+          userTypeCode: apiUser.userTypeCode,
+          userTypeId: apiUser.userTypeId,
+        });
+      }
 
       if (requestId === requestIdRef.current) {
         setMenus(nextMenus);
@@ -121,7 +138,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, [isAuthenticated, menus.length, queryClient, userId]);
+  }, [isAuthenticated, menus.length, queryClient, updateUser, user?.userTypeCode, user?.userTypeId, userId]);
 
   useEffect(() => {
     if (!isHydrated) return;

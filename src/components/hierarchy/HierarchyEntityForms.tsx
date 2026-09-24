@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -658,12 +658,13 @@ export function JobEntityForm({
     },
   });
 
+  const { reset } = form;
   useEffect(() => {
-    form.reset({
+    reset({
       ...taskFormDefaults,
       ...defaultValues,
     });
-  }, [defaultValues, form]);
+  }, [defaultValues, reset]);
 
   const mutation = useMutation({
     mutationFn: (payload: ReturnType<typeof toTaskPayload>) => tasksService.create(payload),
@@ -673,6 +674,11 @@ export function JobEntityForm({
     },
     onError: (err) => notifyApiError(err, "Failed to create job"),
   });
+
+  const selectedLabels = useMemo(
+    () => ({ property: propertySelectedLabel }),
+    [propertySelectedLabel],
+  );
 
   return (
     <Form
@@ -686,7 +692,7 @@ export function JobEntityForm({
         embedded
         compact
         disabled={mutation.isPending}
-        selectedLabels={{ property: propertySelectedLabel }}
+        selectedLabels={selectedLabels}
       />
       <HierarchyFormFooter
         onCancel={onCancel}

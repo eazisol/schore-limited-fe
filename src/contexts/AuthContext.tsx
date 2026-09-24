@@ -28,6 +28,8 @@ function toAuthUser(d: ApiLoginData): AuthUser {
     fullName,
     roles: d.roles ?? [],
     role: d.roles?.[0] ?? "",
+    userTypeId: d.userTypeId,
+    userTypeCode: d.userTypeCode,
   };
 }
 

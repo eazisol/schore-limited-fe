@@ -26,6 +26,7 @@ export interface ApiDailyAssignedItemLine {
   rate: number;
   amount: number;
   workDate: string;
+  completedDate?: string | null;
   isToday: boolean;
   isTicked?: boolean;
   isRepeat?: boolean;
@@ -127,9 +128,31 @@ export interface ApiDailyRow {
   unassignedAddOns: ApiDailyUnassignedAddOn[];
   assignedByOperative: ApiDailyAssignedOperative[];
   nameOperatives: ApiDailyNameOperative[];
+  /** Open repeat-task approvals (PENDING / REJECTED) for this job. */
+  repeatApprovals?: ApiDailyRepeatApprovalLine[];
   nextDay: string | null;
   nextDayTrades: string | null;
   nextDayDetails: string | null;
+}
+
+export interface ApiDailyRepeatApprovalLine {
+  id: string;
+  kind: string;
+  tradeGroupId?: string | null;
+  productId?: string | null;
+  itemLabel: string;
+  operativeId: string;
+  operativeName: string;
+  workDate: string;
+  rate: number;
+  quantity: number;
+  timeSlotId?: string | null;
+  timeSlotName?: string | null;
+  applyRatePermanently?: boolean;
+  reason: string;
+  rateReason?: string | null;
+  statusCode: string;
+  reviewReason?: string | null;
 }
 
 export interface ApiDailyProgramme {

@@ -202,6 +202,8 @@ export function RepeatTaskApprovalsPanel() {
     },
   ];
 
+  const hasActionableRows = rows.some((row) => canModify && row.canApprove);
+
   return (
     <div>
       <DataTable
@@ -229,7 +231,7 @@ export function RepeatTaskApprovalsPanel() {
         search={{
           value: searchInput,
           onChange: setSearchInput,
-          placeholder: "Search job, item, reason…",
+          placeholder: "Search job, item, property, client…",
           "aria-label": "Search repeat task approvals",
         }}
         filters={
@@ -270,7 +272,8 @@ export function RepeatTaskApprovalsPanel() {
             </Button>
           ) : null,
         }}
-        rowActions={rowActions}
+        rowActions={hasActionableRows ? rowActions : undefined}
+        stickyActions={hasActionableRows}
         pagination={{
           page,
           pageSize,

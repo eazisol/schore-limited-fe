@@ -346,6 +346,12 @@ export function canAccessPath(menus: ApiMenu[], pathname: string): boolean {
     return Boolean(rates?.read || repeat?.read);
   }
 
+  // Operative self-dashboard (menu name Dashboard, route /operatives/me).
+  if (path === "/operatives/me" || path.startsWith("/operatives/me/")) {
+    const home = findMenuByCode(menus, "OPERATIVE_HOME");
+    return Boolean(home?.read);
+  }
+
   const menu = resolveMenuForAppPath(menus, path);
   if (!menu) return false;
   return Boolean(menu.read);

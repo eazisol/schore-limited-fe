@@ -35,6 +35,7 @@ export interface ApiUser {
   isActive: boolean;
   userTypeId: number;
   userTypeName: string;
+  userTypeCode?: string;
   roleIds: string[];
   roleNames: string[];
   tradeId?: string | null;

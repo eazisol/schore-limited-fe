@@ -23,6 +23,8 @@ export interface ApiLoginData {
   email: string;
   firstName: string;
   lastName: string;
+  userTypeId?: number;
+  userTypeCode?: string;
   roles: string[];
   menus: ApiMenu[];
   access?: ApiCurrentAccess;

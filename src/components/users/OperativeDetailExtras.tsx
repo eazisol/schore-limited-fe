@@ -503,16 +503,18 @@ export function OperativeDetailExtras({
                           <StatusBadge status={itemStatusLabel(item.statusName, item.statusCode, item.isTicked)} />
                         </td>
                         <td className="px-4 py-2.5 text-right">
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
-                            <Link
-                              to="/tasks/$id"
-                              params={{ id: String(item.taskId) }}
-                              search={{ mode: "view", from: "operative", operativeId }}
-                              aria-label={`View ${item.taskNumber}`}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Link>
-                          </Button>
+                          {canEdit ? (
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                              <Link
+                                to="/tasks/$id"
+                                params={{ id: String(item.taskId) }}
+                                search={{ mode: "view", from: "operative", operativeId }}
+                                aria-label={`View ${item.taskNumber}`}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          ) : null}
                         </td>
                       </tr>
                     ))}

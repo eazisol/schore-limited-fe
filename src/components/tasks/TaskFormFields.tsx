@@ -3,9 +3,11 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { TextField, TextareaField, CreatableSearchableSelectField } from "@/components/form";
 import { SearchableSelect } from "@/components/form/SearchableSelect";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { Modal } from "@/components/Modal";
 import { AppTooltip } from "@/components/AppTooltip";
-import { Plus, Trash2, Undo2, User, X } from "lucide-react";
+import { Loader2, Plus, Trash2, Undo2, User, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtGBP } from "@/lib/data";
 import { truncateWithEllipsis } from "@/lib/module-ui";
@@ -30,13 +32,13 @@ import type { SearchableSelectOption } from "@/components/form";
 import { usersService } from "@/lib/api/services/users";
 import { tradeGroupsService } from "@/lib/api/services/trade-groups";
 import { productsService } from "@/lib/api/services/products";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { HoldDetailsModal, type HoldDetails } from "@/components/tasks/HoldDetailsModal";
 import { RemoveItemReasonModal } from "@/components/tasks/RemoveItemReasonModal";
 import { getTaskStatusCode, isHoldStatusCode } from "@/lib/task-hold";
 import { jobTypesService } from "@/lib/api/services/job-types";
-import { tasksService } from "@/lib/api/services/tasks";
+import { tasksService, type ApiTaskRepeatApprovalLine } from "@/lib/api/services/tasks";
 import {
   findCertificationWarningsForWorkDates,
   formatCertificationWarningSubtitle,
@@ -48,14 +50,30 @@ import {
   TaskRateApprovalSections,
   type RateApprovalQueueLine,
 } from "@/components/rates/TaskRateApprovalSections";
+import {
+  TaskRepeatApprovalSections,
+  type RepeatApprovalQueueLine,
+} from "@/components/rates/TaskRepeatApprovalSections";
 import { formatMoneyRate, getCatalogueCap } from "@/lib/rate-overrides";
-import { formatResolvedRate } from "@/lib/api/services/daily-programme";
+import {
+  dailyProgrammeService,
+  formatResolvedRate,
+} from "@/lib/api/services/daily-programme";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { CAPABILITY_CODES } from "@/lib/access";
 import {
   isRateApprovalPending,
   isRateApprovalRejected,
 } from "@/lib/rate-approval";
+import {
+  isRepeatApprovalOpen,
+  isRepeatApprovalPending,
+  isRepeatApprovalRejected,
+  isRepeatPackageKind,
+} from "@/lib/repeat-approval";
+import { tasksQueryKey } from "@/routes/tasks.index";
+import { dailyQueryKey } from "@/routes/daily";
+import { toYmd } from "@/lib/week-ending";
 
 /** Form grouping key for template lines that have no operative yet. */
 const UNASSIGNED_OPERATIVE_KEY = "__unassigned";
@@ -116,13 +134,20 @@ const defaultAddState = (): ItemAddState => ({
   productLabel: "",
 });
 
+/** Stable empties — default `= []` / `= {}` create new refs every render and loop with sync effects. */
+const EMPTY_REPEAT_APPROVALS: ApiTaskRepeatApprovalLine[] = [];
+const EMPTY_ITEM_SELECTED_LABELS: Record<string, TaskItemSelectedLabels> = {};
+const EMPTY_TIME_SLOTS: { id: number; name: string }[] = [];
+
 export function TaskFormFields({
   disabled = false,
   embedded = false,
   compact = false,
   itemsLocked = false,
   selectedLabels,
-  itemSelectedLabels = {},
+  itemSelectedLabels = EMPTY_ITEM_SELECTED_LABELS,
+  taskId,
+  repeatApprovals: repeatApprovalsProp = EMPTY_REPEAT_APPROVALS,
 }: {
   disabled?: boolean;
   embedded?: boolean;
@@ -133,8 +158,13 @@ export function TaskFormFields({
   selectedLabels?: TaskFormSelectedLabels;
   /** Keyed by existing TaskItem id (string). */
   itemSelectedLabels?: Record<string, TaskItemSelectedLabels>;
+  /** Existing job id — required for repeat resubmit. */
+  taskId?: string;
+  /** Open repeat approvals from task GET. */
+  repeatApprovals?: ApiTaskRepeatApprovalLine[];
 }) {
   const { control, setValue, getValues } = useFormContext<TaskFormValues>();
+  const qc = useQueryClient();
   const { hasCapability } = usePermissions();
   const canSeeRates = hasCapability(CAPABILITY_CODES.seeRates);
   const { fields, append, replace } = useFieldArray<TaskFormValues, "items", "fieldKey">({
@@ -144,6 +174,16 @@ export function TaskFormFields({
     keyName: "fieldKey",
   });
   const addControlsDisabled = disabled || itemsLocked;
+  const [repeatApprovals, setRepeatApprovals] = useState(repeatApprovalsProp);
+  const [resubmittingRepeatId, setResubmittingRepeatId] = useState<string | null>(null);
+  const [isRepeatAdd, setIsRepeatAdd] = useState(false);
+  const [repeatPromptOpen, setRepeatPromptOpen] = useState(false);
+  const [repeatReasonDraft, setRepeatReasonDraft] = useState("");
+
+  useEffect(() => {
+    setRepeatApprovals(repeatApprovalsProp);
+  }, [repeatApprovalsProp]);
+
   const jobTypeId = useWatch({ control, name: "jobTypeId" });
   const startDate = useWatch({ control, name: "startDate" });
   const propertyId = useWatch({ control, name: "propertyId" });
@@ -417,8 +457,110 @@ export function TaskFormFields({
     return lines;
   }, [items, productLabels, tradeGroupLabels, operativeLabels]);
 
+  const pendingRepeatLines = useMemo(
+    () =>
+      repeatApprovals
+        .filter((item) => isRepeatApprovalPending(item.statusCode))
+        .map(
+          (item): RepeatApprovalQueueLine => ({
+            id: item.id,
+            kind: item.kind,
+            tradeGroupId: item.tradeGroupId,
+            productId: item.productId,
+            itemLabel: item.itemLabel,
+            operativeId: item.operativeId,
+            operativeName: item.operativeName,
+            workDate: item.workDate,
+            rate: item.rate,
+            quantity: item.quantity,
+            timeSlotId: item.timeSlotId,
+            timeSlotName: item.timeSlotName,
+            applyRatePermanently: item.applyRatePermanently,
+            reason: item.reason,
+            rateReason: item.rateReason,
+            statusCode: item.statusCode,
+            reviewReason: item.reviewReason,
+          }),
+        ),
+    [repeatApprovals],
+  );
+  const rejectedRepeatLines = useMemo(
+    () =>
+      repeatApprovals
+        .filter((item) => isRepeatApprovalRejected(item.statusCode))
+        .map(
+          (item): RepeatApprovalQueueLine => ({
+            id: item.id,
+            kind: item.kind,
+            tradeGroupId: item.tradeGroupId,
+            productId: item.productId,
+            itemLabel: item.itemLabel,
+            operativeId: item.operativeId,
+            operativeName: item.operativeName,
+            workDate: item.workDate,
+            rate: item.rate,
+            quantity: item.quantity,
+            timeSlotId: item.timeSlotId,
+            timeSlotName: item.timeSlotName,
+            applyRatePermanently: item.applyRatePermanently,
+            reason: item.reason,
+            rateReason: item.rateReason,
+            statusCode: item.statusCode,
+            reviewReason: item.reviewReason,
+          }),
+        ),
+    [repeatApprovals],
+  );
+
   function patchAddState(patch: Partial<ItemAddState>) {
     setOperativeAddState((prev) => ({ ...prev, ...patch }));
+    if (
+      "tradeGroupId" in patch ||
+      "productId" in patch ||
+      "itemKind" in patch
+    ) {
+      setIsRepeatAdd(false);
+    }
+  }
+
+  function catalogRequiresRepeat(addState: ItemAddState): boolean {
+    const isUsed = (item: (typeof items)[number]) =>
+      Boolean(item && !isBlankTaskItem(item) && (item.operativeId || item.isTicked));
+
+    if (addState.itemKind === "tradeGroup" && addState.tradeGroupId) {
+      const usedOnJob = items.some(
+        (item) => isUsed(item) && item.tradeGroupId === addState.tradeGroupId,
+      );
+      const openApproval = repeatApprovals.some(
+        (row) =>
+          isRepeatPackageKind(row.kind) &&
+          row.tradeGroupId === addState.tradeGroupId &&
+          isRepeatApprovalOpen(row.statusCode),
+      );
+      return usedOnJob || openApproval;
+    }
+    if (addState.itemKind === "product" && addState.productId) {
+      // Match product whether it was added as a standalone add-on OR as a package line.
+      const usedOnJob = items.some(
+        (item) => isUsed(item) && item.productId === addState.productId,
+      );
+      const openApproval = repeatApprovals.some(
+        (row) =>
+          row.productId === addState.productId && isRepeatApprovalOpen(row.statusCode),
+      );
+      return usedOnJob || openApproval;
+    }
+    return false;
+  }
+
+  async function refreshRepeatApprovals() {
+    if (!taskId) return;
+    try {
+      const refreshed = (await tasksService.get(taskId)).data;
+      setRepeatApprovals(refreshed?.repeatApprovals ?? []);
+    } catch {
+      /* keep local list until parent refetch */
+    }
   }
 
   async function ensureOperativeMeta(operativeId: string, operativeName?: string) {
@@ -580,7 +722,143 @@ export function TaskFormFields({
       return;
     }
     ensureOperativeMetaOnly();
+
+    const requiresRepeat = catalogRequiresRepeat(operativeAddState);
+    if (requiresRepeat && !isRepeatAdd) {
+      toast.warning(
+        "This item was already used on this job. Check Repeat Task to continue.",
+      );
+      return;
+    }
+    if (requiresRepeat && isRepeatAdd) {
+      if (!taskId) {
+        toast.warning("Save the job first before submitting a repeat task.");
+        return;
+      }
+      setRepeatReasonDraft("");
+      setRepeatPromptOpen(true);
+      return;
+    }
+
     await addForOperative(activeOperativeId);
+  }
+
+  const submitRepeatAddMutation = useMutation({
+    mutationFn: async (payload: {
+      kind: "tradeGroup" | "product";
+      catalogId: string;
+      operativeId: string;
+      rate: number;
+      quantity: number;
+      timeSlotId?: string | null;
+      rateReason?: string | null;
+      repeatReason: string;
+      workDate: string;
+    }) => {
+      if (!taskId) throw new Error("Task id required");
+      const date = payload.workDate?.slice(0, 10) || toYmd(new Date());
+      if (payload.kind === "tradeGroup") {
+        return dailyProgrammeService.assignPackage(taskId, {
+          date,
+          tradeGroupId: payload.catalogId,
+          operativeId: payload.operativeId,
+          rate: payload.rate,
+          quantity: payload.quantity,
+          timeSlotId: payload.timeSlotId,
+          reason: payload.rateReason,
+          isRepeat: true,
+          repeatReason: payload.repeatReason,
+        });
+      }
+      return dailyProgrammeService.assignAddOn(taskId, {
+        date,
+        productId: payload.catalogId,
+        operativeId: payload.operativeId,
+        rate: payload.rate,
+        quantity: payload.quantity,
+        timeSlotId: payload.timeSlotId,
+        reason: payload.rateReason,
+        isRepeat: true,
+        repeatReason: payload.repeatReason,
+      });
+    },
+    onSuccess: async (res) => {
+      toast.success(res.message || "Repeat task submitted for approval");
+      setRepeatPromptOpen(false);
+      setRepeatReasonDraft("");
+      setIsRepeatAdd(false);
+      setOperativeAddState(defaultAddState());
+      if (taskId) {
+        void qc.invalidateQueries({ queryKey: [...tasksQueryKey, taskId] });
+        void qc.invalidateQueries({ queryKey: dailyQueryKey });
+        await refreshRepeatApprovals();
+      }
+    },
+    onError: (err) => notifyApiError(err, "Unable to submit repeat task"),
+  });
+
+  async function confirmRepeatAdd(reason: string) {
+    if (!taskId || !activeOperativeId) return;
+    const addState = operativeAddState;
+    const workDate =
+      (startDate || getValues("startDate") || "").slice(0, 10) || toYmd(new Date());
+
+    try {
+      if (addState.itemKind === "tradeGroup") {
+        if (!addState.tradeGroupId) {
+          toast.warning("Select a package first.");
+          return;
+        }
+        const group = (await tradeGroupsService.get(addState.tradeGroupId)).data;
+        const first = [...(group.items ?? [])].sort((a, b) => a.orderBy - b.orderBy)[0];
+        const rate = first
+          ? Number(
+              await resolveLineRate({
+                productId: String(first.productId),
+                tradeGroupId: String(group.id),
+                operativeId: activeOperativeId,
+                workDate,
+                fallbackSalePrice: first.salePrice,
+              }),
+            ) || 0
+          : 0;
+        submitRepeatAddMutation.mutate({
+          kind: "tradeGroup",
+          catalogId: addState.tradeGroupId,
+          operativeId: activeOperativeId,
+          rate,
+          quantity: 1,
+          repeatReason: reason,
+          workDate,
+        });
+        return;
+      }
+
+      if (!addState.productId) {
+        toast.warning("Select an add-on first.");
+        return;
+      }
+      const product = (await productsService.get(addState.productId)).data;
+      const rate = Number(
+        await resolveLineRate({
+          productId: addState.productId,
+          operativeId: activeOperativeId,
+          workDate,
+          fallbackSalePrice: product.salePrice,
+        }),
+      ) || 0;
+      submitRepeatAddMutation.mutate({
+        kind: "product",
+        catalogId: addState.productId,
+        operativeId: activeOperativeId,
+        rate,
+        quantity: 1,
+        repeatReason: reason,
+        workDate,
+      });
+    } catch (err) {
+      notifyApiError(err, "Unable to prepare repeat task");
+    }
   }
 
   function applyOperativeAssignment(
@@ -762,6 +1040,8 @@ export function TaskFormFields({
       (addState.itemKind === "tradeGroup"
         ? Boolean(addState.tradeGroupId)
         : Boolean(addState.productId));
+    const requiresRepeat = catalogRequiresRepeat(addState);
+    const repeatSubmitting = submitRepeatAddMutation.isPending;
 
     function applyPackageOrAddonSelection(value: string, label: string) {
       const parsed = parsePackageOrAddonValue(value);
@@ -795,73 +1075,100 @@ export function TaskFormFields({
     }
 
     return (
-      <div className="flex w-full min-w-0 flex-wrap items-end gap-2">
-        <div className="w-[160px] shrink-0">
-          <label className="mb-0.5 block text-[11px] text-muted-foreground">Active operative</label>
-          <SearchableSelect
-            value={activeOperativeId}
-            onValueChange={setActiveOperativeId}
-            onSelect={(opt) => {
-              setActiveOperativeLabel(opt.label);
-              if (opt.value) {
-                setOperativeLabels((prev) => ({ ...prev, [opt.value]: opt.label }));
-                void ensureOperativeMeta(opt.value, opt.label);
-              }
+      <div className="flex w-full min-w-0 flex-col gap-2">
+        <div className="flex w-full min-w-0 flex-wrap items-end gap-2">
+          <div className="w-[160px] shrink-0">
+            <label className="mb-0.5 block text-[11px] text-muted-foreground">Active operative</label>
+            <SearchableSelect
+              value={activeOperativeId}
+              onValueChange={setActiveOperativeId}
+              onSelect={(opt) => {
+                setActiveOperativeLabel(opt.label);
+                if (opt.value) {
+                  setOperativeLabels((prev) => ({ ...prev, [opt.value]: opt.label }));
+                  void ensureOperativeMeta(opt.value, opt.label);
+                }
+              }}
+              placeholder="Select operative"
+              searchPlaceholder="Search operatives…"
+              queryKey={["lookups", "operatives", "active"]}
+              fetchOptions={fetchOperativeOptions}
+              selectedLabel={activeOperativeLabel || null}
+              disabled={addControlsDisabled}
+              triggerClassName="h-8 text-xs"
+            />
+          </div>
+          <div className="w-[220px] shrink-0">
+            <label className="mb-0.5 block text-[11px] text-muted-foreground">Package / Add-on</label>
+            <SearchableSelect
+              value={selectionValue}
+              onValueChange={(value) => {
+                if (!value) {
+                  patchAddState({
+                    itemKind: "tradeGroup",
+                    tradeGroupId: "",
+                    tradeGroupLabel: "",
+                    productId: "",
+                    productLabel: "",
+                  });
+                }
+              }}
+              onSelect={(opt) => applyPackageOrAddonSelection(opt.value, opt.label)}
+              placeholder="Select package or add-on"
+              searchPlaceholder="Search packages & add-ons…"
+              queryKey={["lookups", "packages-or-addons"]}
+              fetchOptions={fetchPackageOrAddonOptions}
+              selectedLabel={selectionLabel}
+              disabled={addControlsDisabled}
+              triggerClassName="h-8 text-xs"
+            />
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 shrink-0 px-2.5 text-xs"
+            onClick={() => void addFromTop()}
+            disabled={!canAdd || addControlsDisabled || repeatSubmitting}
+          >
+            {repeatSubmitting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Plus className="h-3.5 w-3.5" />
+            )}
+            {requiresRepeat && isRepeatAdd ? "Submit for approval" : "Add item"}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-8 shrink-0 px-2 text-xs text-muted-foreground"
+            onClick={() => {
+              setShowAddComposer(false);
+              setOperativeAddState(defaultAddState());
+              setIsRepeatAdd(false);
             }}
-            placeholder="Select operative"
-            searchPlaceholder="Search operatives…"
-            queryKey={["lookups", "operatives", "active"]}
-            fetchOptions={fetchOperativeOptions}
-            selectedLabel={activeOperativeLabel || null}
-            disabled={addControlsDisabled}
-            triggerClassName="h-8 text-xs"
-          />
+            disabled={addControlsDisabled || repeatSubmitting}
+          >
+            <X className="h-3.5 w-3.5" />
+            Close
+          </Button>
         </div>
-        <div className="w-[220px] shrink-0">
-          <label className="mb-0.5 block text-[11px] text-muted-foreground">Package / Add-on</label>
-          <SearchableSelect
-            value={selectionValue}
-            onValueChange={(value) => {
-              if (!value) {
-                patchAddState({
-                  itemKind: "tradeGroup",
-                  tradeGroupId: "",
-                  tradeGroupLabel: "",
-                  productId: "",
-                  productLabel: "",
-                });
-              }
-            }}
-            onSelect={(opt) => applyPackageOrAddonSelection(opt.value, opt.label)}
-            placeholder="Select package or add-on"
-            searchPlaceholder="Search packages & add-ons…"
-            queryKey={["lookups", "packages-or-addons"]}
-            fetchOptions={fetchPackageOrAddonOptions}
-            selectedLabel={selectionLabel}
-            disabled={addControlsDisabled}
-            triggerClassName="h-8 text-xs"
-          />
-        </div>
-        <Button
-          type="button"
-          size="sm"
-          className="h-8 shrink-0 px-2.5 text-xs"
-          onClick={() => void addFromTop()}
-          disabled={!canAdd || addControlsDisabled}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Add item
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-foreground"
-          onClick={() => setShowAddComposer(false)}
-          aria-label="Close add item"
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        {requiresRepeat ? (
+          <label className="flex max-w-xl items-start gap-2 text-xs">
+            <Checkbox
+              checked={isRepeatAdd}
+              onCheckedChange={(v) => setIsRepeatAdd(v === true)}
+              disabled={addControlsDisabled || repeatSubmitting}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium">Repeat task</span>
+              <span className="block text-muted-foreground">
+                Already used on this job — submit for approval to add again.
+              </span>
+            </span>
+          </label>
+        ) : null}
       </div>
     );
   }
@@ -1031,6 +1338,87 @@ export function TaskFormFields({
     const previous = getValues(`items.${entry.index}.rate`) || "0";
     setValue(`items.${entry.index}.proposedRate`, String(nextRate), { shouldDirty: true });
     void handleRateCommit(entry.index, previous, String(nextRate));
+  }
+
+  const resubmitRepeatMutation = useMutation({
+    mutationFn: async (payload: {
+      id: string;
+      kind: string;
+      tradeGroupId?: string | null;
+      productId?: string | null;
+      operativeId: string;
+      rate: number;
+      quantity: number;
+      timeSlotId?: string | null;
+      rateReason?: string | null;
+      repeatReason: string;
+      workDate: string;
+    }) => {
+      if (!taskId) throw new Error("Task id required");
+      const date = payload.workDate?.slice(0, 10) || toYmd(new Date());
+      if (isRepeatPackageKind(payload.kind)) {
+        if (!payload.tradeGroupId) throw new Error("Package is missing");
+        return dailyProgrammeService.assignPackage(taskId, {
+          date,
+          tradeGroupId: payload.tradeGroupId,
+          operativeId: payload.operativeId,
+          rate: payload.rate,
+          quantity: payload.quantity,
+          timeSlotId: payload.timeSlotId,
+          reason: payload.rateReason,
+          isRepeat: true,
+          repeatReason: payload.repeatReason,
+        });
+      }
+      if (!payload.productId) throw new Error("Add-on is missing");
+      return dailyProgrammeService.assignAddOn(taskId, {
+        date,
+        productId: payload.productId,
+        operativeId: payload.operativeId,
+        rate: payload.rate,
+        quantity: payload.quantity,
+        timeSlotId: payload.timeSlotId,
+        reason: payload.rateReason,
+        isRepeat: true,
+        repeatReason: payload.repeatReason,
+      });
+    },
+    onSuccess: async (res) => {
+      toast.success(res.message || "Repeat task resubmitted for approval");
+      if (taskId) {
+        void qc.invalidateQueries({ queryKey: [...tasksQueryKey, taskId] });
+        void qc.invalidateQueries({ queryKey: dailyQueryKey });
+        try {
+          const refreshed = (await tasksService.get(taskId)).data;
+          setRepeatApprovals(refreshed?.repeatApprovals ?? []);
+        } catch {
+          /* keep local list until parent refetch */
+        }
+      }
+    },
+    onError: (err) => notifyApiError(err, "Unable to resubmit repeat task"),
+    onSettled: () => setResubmittingRepeatId(null),
+  });
+
+  function handleResubmitRejectedRepeat(line: RepeatApprovalQueueLine, reason: string) {
+    if (!taskId) {
+      toast.warning("Save the job before resubmitting a repeat task.");
+      return;
+    }
+    setResubmittingRepeatId(line.id);
+    resubmitRepeatMutation.mutate({
+      id: line.id,
+      kind: line.kind,
+      tradeGroupId: line.tradeGroupId,
+      productId: line.productId,
+      operativeId: line.operativeId,
+      rate: line.rate,
+      quantity: line.quantity,
+      timeSlotId: line.timeSlotId,
+      rateReason: line.rateReason,
+      repeatReason: reason,
+      workDate: line.workDate,
+    });
   }
 
   const visibleItems = items.filter((row) => row && !isBlankTaskItem(row));
@@ -1262,9 +1650,22 @@ export function TaskFormFields({
             />
           ) : null}
 
+          <TaskRepeatApprovalSections
+            pending={pendingRepeatLines}
+            rejected={rejectedRepeatLines}
+            disabled={disabled || itemsLocked || !taskId}
+            updatingId={resubmittingRepeatId}
+            onResubmitRejected={(line, reason) => {
+              handleResubmitRejectedRepeat(line, reason);
+            }}
+            className="card-elevated overflow-hidden"
+          />
+
           {operativeCards.length === 0 &&
           pendingApprovalLines.length === 0 &&
-          rejectedApprovalLines.length === 0 ? (
+          rejectedApprovalLines.length === 0 &&
+          pendingRepeatLines.length === 0 &&
+          rejectedRepeatLines.length === 0 ? (
             <div className="card-elevated p-3 text-sm text-muted-foreground">
               No job items yet. Select a property type with a template, or use Add more to choose an
               operative and package / add-on.
@@ -1432,6 +1833,66 @@ export function TaskFormFields({
         onConfirm={handleHoldConfirm}
       />
 
+      <Modal
+        open={repeatPromptOpen}
+        onClose={() => {
+          if (submitRepeatAddMutation.isPending) return;
+          setRepeatPromptOpen(false);
+          setRepeatReasonDraft("");
+        }}
+        title="Repeat task approval"
+        subtitle="Explain why this item needs to be added again. Assignment happens only after approval."
+        size="sm"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={submitRepeatAddMutation.isPending}
+              onClick={() => {
+                setRepeatPromptOpen(false);
+                setRepeatReasonDraft("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={submitRepeatAddMutation.isPending || !repeatReasonDraft.trim()}
+              onClick={() => {
+                if (!repeatReasonDraft.trim()) {
+                  toast.warning("Enter a reason for the repeat task.");
+                  return;
+                }
+                void confirmRepeatAdd(repeatReasonDraft.trim());
+              }}
+            >
+              {submitRepeatAddMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Submit for approval"
+              )}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-muted-foreground" htmlFor="job-repeat-reason">
+            Reason
+          </label>
+          <Textarea
+            id="job-repeat-reason"
+            value={repeatReasonDraft}
+            onChange={(e) => setRepeatReasonDraft(e.target.value)}
+            placeholder="Why does this need to be repeated?"
+            className="min-h-[88px] text-sm"
+            disabled={submitRepeatAddMutation.isPending}
+          />
+        </div>
+      </Modal>
+
       <RemoveItemReasonModal
         open={Boolean(pendingRemove)}
         itemLabel={pendingRemove?.label}
@@ -1528,7 +1989,7 @@ function ProductLinesTable({
                   ? productLabels[item.productId] || `Product #${item.productId}`
                   : "—"
               }
-              timeSlots={timeSlotsQuery.data ?? []}
+              timeSlots={timeSlotsQuery.data ?? EMPTY_TIME_SLOTS}
               setValue={setValue}
               control={control}
               getValues={getValues}
@@ -1601,8 +2062,9 @@ function ProductLineRow({
     }
   }, [fieldId, getValues, index, setValue, timeSlots]);
 
-  const doneQty = Number(useWatch({ control, name: `items.${index}.doneQty` }) || item?.doneQty || 0);
-  const isDone = doneQty > 0;
+  const isTicked = Boolean(
+    useWatch({ control, name: `items.${index}.isTicked` }) ?? item?.isTicked,
+  );
 
   return (
     <tr className="align-middle border-b border-border/50">
@@ -1620,6 +2082,13 @@ function ProductLineRow({
             <AppTooltip content="Repeated task" asChild>
               <span className="shrink-0 rounded border border-border bg-secondary px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-secondary-foreground">
                 Repeat
+              </span>
+            </AppTooltip>
+          ) : null}
+          {isTicked ? (
+            <AppTooltip content="Task completed" asChild>
+              <span className="shrink-0 rounded border border-border bg-secondary px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-secondary-foreground">
+                Completed
               </span>
             </AppTooltip>
           ) : null}
@@ -1727,7 +2196,7 @@ function ProductLineRow({
         </AppTooltip>
       </td>
       <td className="px-0.5 py-1.5">
-        {!isDone ? (
+        {!isTicked ? (
           <button
             type="button"
             className="inline-flex h-6 w-6 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"

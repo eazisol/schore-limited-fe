@@ -243,7 +243,7 @@ function StatusFormPanel({
     await mutation.mutateAsync({
       name: values.name.trim(),
       code: values.code.trim().toUpperCase(),
-      documentTypeId: Number(values.documentTypeId),
+      documentTypeId: values.documentTypeId,
       description: values.description.trim() || null,
       orderBy: existing?.orderBy ?? 0,
       isActive: values.isActive,

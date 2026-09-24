@@ -334,6 +334,8 @@ function TaskDetail() {
               <TaskFormFields
                 embedded
                 disabled={updateMutation.isPending}
+                taskId={String(task.id)}
+                repeatApprovals={task.repeatApprovals ?? []}
                 selectedLabels={{
                   property: task.propertyName,
                   jobType: task.jobTypeName,

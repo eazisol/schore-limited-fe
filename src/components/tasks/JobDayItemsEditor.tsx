@@ -4,7 +4,9 @@ import { Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { AppTooltip } from "@/components/AppTooltip";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/form";
 import {
   dailyProgrammeService,
@@ -44,11 +46,21 @@ import {
   TaskRateApprovalSections,
   type RateApprovalQueueLine,
 } from "@/components/rates/TaskRateApprovalSections";
+import {
+  TaskRepeatApprovalSections,
+  type RepeatApprovalQueueLine,
+} from "@/components/rates/TaskRepeatApprovalSections";
 import { getCatalogueCap } from "@/lib/rate-overrides";
 import {
   isRateApprovalPending,
   isRateApprovalRejected,
 } from "@/lib/rate-approval";
+import {
+  isRepeatApprovalOpen,
+  isRepeatApprovalPending,
+  isRepeatApprovalRejected,
+  isRepeatPackageKind,
+} from "@/lib/repeat-approval";
 
 type DayLine = {
   itemId: string;
@@ -68,6 +80,7 @@ type DayLine = {
   tradeGroupName: string | null;
   productId: string | null;
   notes: string | null;
+  isRepeat?: boolean;
   rateApprovalStatus?: string | null;
   proposedRate?: number | null;
   rateReviewReason?: string | null;
@@ -101,6 +114,7 @@ function taskItemToLine(item: ApiTaskItem): DayLine {
     tradeGroupName: item.tradeGroupName,
     productId: item.productId != null ? String(item.productId) : null,
     notes: item.notes?.trim() || null,
+    isRepeat: Boolean(item.isRepeat),
     rateApprovalStatus: item.rateApprovalStatus ?? null,
     proposedRate: item.proposedRate ?? null,
     rateReviewReason: item.rateReviewReason ?? null,
@@ -122,6 +136,48 @@ function groupByOperative(lines: DayLine[]) {
     }
   }
   return Array.from(map.values());
+}
+
+/** True when catalog was already used on this job (package line or add-on). */
+function catalogRequiresRepeat(
+  kind: "package" | "addon",
+  catalogId: string,
+  task: ApiTask,
+  row: ApiDailyRow,
+): boolean {
+  if (!catalogId) return false;
+
+  const items = task.items ?? [];
+  if (kind === "package") {
+    const usedOnJob = items.some(
+      (item) =>
+        String(item.tradeGroupId ?? "") === catalogId &&
+        (Boolean(item.operativeId) || Boolean(item.isTicked)),
+    );
+    const fromFlag = Boolean(
+      row.unassignedPackages?.find((p) => p.tradeGroupId === catalogId)?.requiresRepeat,
+    );
+    const openApproval = (row.repeatApprovals ?? []).some(
+      (a) =>
+        isRepeatPackageKind(a.kind) &&
+        a.tradeGroupId === catalogId &&
+        isRepeatApprovalOpen(a.statusCode),
+    );
+    return usedOnJob || fromFlag || openApproval;
+  }
+
+  const usedOnJob = items.some(
+    (item) =>
+      String(item.productId ?? "") === catalogId &&
+      (Boolean(item.operativeId) || Boolean(item.isTicked)),
+  );
+  const fromFlag = Boolean(
+    row.unassignedAddOns?.find((a) => a.productId === catalogId)?.requiresRepeat,
+  );
+  const openApproval = (row.repeatApprovals ?? []).some(
+    (a) => a.productId === catalogId && isRepeatApprovalOpen(a.statusCode),
+  );
+  return usedOnJob || fromFlag || openApproval;
 }
 
 type FormMode =
@@ -162,6 +218,7 @@ export function JobDayItemsEditor({
     label: string;
   } | null>(null);
   const [capPrompt, setCapPrompt] = useState<RateCapReasonContext | null>(null);
+  const [resubmittingRepeatId, setResubmittingRepeatId] = useState<string | null>(null);
   const pendingResubmitRef = useRef<((reason: string) => void) | null>(null);
 
   const lines = useMemo(() => linesFromTaskItems(task, date), [task, date]);
@@ -200,6 +257,60 @@ export function JobDayItemsEditor({
           }),
         ),
     [lines],
+  );
+  const pendingRepeatLines = useMemo(
+    () =>
+      (row.repeatApprovals ?? [])
+        .filter((item) => isRepeatApprovalPending(item.statusCode))
+        .map(
+          (item): RepeatApprovalQueueLine => ({
+            id: item.id,
+            kind: item.kind,
+            tradeGroupId: item.tradeGroupId,
+            productId: item.productId,
+            itemLabel: item.itemLabel,
+            operativeId: item.operativeId,
+            operativeName: item.operativeName,
+            workDate: item.workDate,
+            rate: item.rate,
+            quantity: item.quantity,
+            timeSlotId: item.timeSlotId,
+            timeSlotName: item.timeSlotName,
+            applyRatePermanently: item.applyRatePermanently,
+            reason: item.reason,
+            rateReason: item.rateReason,
+            statusCode: item.statusCode,
+            reviewReason: item.reviewReason,
+          }),
+        ),
+    [row.repeatApprovals],
+  );
+  const rejectedRepeatLines = useMemo(
+    () =>
+      (row.repeatApprovals ?? [])
+        .filter((item) => isRepeatApprovalRejected(item.statusCode))
+        .map(
+          (item): RepeatApprovalQueueLine => ({
+            id: item.id,
+            kind: item.kind,
+            tradeGroupId: item.tradeGroupId,
+            productId: item.productId,
+            itemLabel: item.itemLabel,
+            operativeId: item.operativeId,
+            operativeName: item.operativeName,
+            workDate: item.workDate,
+            rate: item.rate,
+            quantity: item.quantity,
+            timeSlotId: item.timeSlotId,
+            timeSlotName: item.timeSlotName,
+            applyRatePermanently: item.applyRatePermanently,
+            reason: item.reason,
+            rateReason: item.rateReason,
+            statusCode: item.statusCode,
+            reviewReason: item.reviewReason,
+          }),
+        ),
+    [row.repeatApprovals],
   );
   const assignedLines = useMemo(
     () =>
@@ -315,6 +426,78 @@ export function JobDayItemsEditor({
     run("");
   }
 
+  const resubmitRepeatMutation = useMutation({
+    mutationFn: async (payload: {
+      id: string;
+      kind: string;
+      tradeGroupId?: string | null;
+      productId?: string | null;
+      operativeId: string;
+      rate: number;
+      quantity: number;
+      timeSlotId?: string | null;
+      rateReason?: string | null;
+      repeatReason: string;
+    }) => {
+      if (isRepeatPackageKind(payload.kind)) {
+        if (!payload.tradeGroupId) throw new Error("Package is missing");
+        return dailyProgrammeService.assignPackage(row.taskId, {
+          date,
+          tradeGroupId: payload.tradeGroupId,
+          operativeId: payload.operativeId,
+          rate: payload.rate,
+          quantity: payload.quantity,
+          timeSlotId: payload.timeSlotId,
+          reason: payload.rateReason,
+          isRepeat: true,
+          repeatReason: payload.repeatReason,
+        });
+      }
+      if (!payload.productId) throw new Error("Add-on is missing");
+      return dailyProgrammeService.assignAddOn(row.taskId, {
+        date,
+        productId: payload.productId,
+        operativeId: payload.operativeId,
+        rate: payload.rate,
+        quantity: payload.quantity,
+        timeSlotId: payload.timeSlotId,
+        reason: payload.rateReason,
+        isRepeat: true,
+        repeatReason: payload.repeatReason,
+      });
+    },
+    onSuccess: (res) => {
+      const outcome = res.data as
+        | ApiDailyRow
+        | { row: ApiDailyRow; repeatApprovalPending?: boolean }
+        | undefined;
+      const updated =
+        outcome && "row" in outcome && outcome.row
+          ? outcome.row
+          : (outcome as ApiDailyRow | undefined);
+      invalidateAll(updated);
+      toast.success(res.message || "Repeat task resubmitted for approval");
+    },
+    onError: (err) => notifyApiError(err, "Unable to resubmit repeat task"),
+    onSettled: () => setResubmittingRepeatId(null),
+  });
+
+  function handleResubmitRejectedRepeat(line: RepeatApprovalQueueLine, reason: string) {
+    setResubmittingRepeatId(line.id);
+    resubmitRepeatMutation.mutate({
+      id: line.id,
+      kind: line.kind,
+      tradeGroupId: line.tradeGroupId,
+      productId: line.productId,
+      operativeId: line.operativeId,
+      rate: line.rate,
+      quantity: line.quantity,
+      timeSlotId: line.timeSlotId,
+      rateReason: line.rateReason,
+      repeatReason: reason,
+    });
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
@@ -357,11 +540,24 @@ export function JobDayItemsEditor({
         />
       ) : null}
 
+      <TaskRepeatApprovalSections
+        pending={pendingRepeatLines}
+        rejected={rejectedRepeatLines}
+        disabled={locked || resubmitRepeatMutation.isPending}
+        updatingId={resubmittingRepeatId}
+        onResubmitRejected={(line, reason) => {
+          handleResubmitRejectedRepeat(line, reason);
+        }}
+        className="rounded-lg border border-border/70"
+      />
+
       {formMode ? (
         <ItemFormCard
           mode={formMode}
           date={date}
           taskId={row.taskId}
+          task={task}
+          row={row}
           disabled={locked}
           onCancel={() => setFormMode(null)}
           onSaved={(updated) => {
@@ -450,6 +646,11 @@ export function JobDayItemsEditor({
                                 {line.isRepeat ? (
                                   <span className="rounded border border-border px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
                                     Repeat
+                                  </span>
+                                ) : null}
+                                {line.isTicked ? (
+                                  <span className="rounded border border-border px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Completed
                                   </span>
                                 ) : null}
                               </span>
@@ -559,6 +760,8 @@ function ItemFormCard({
   mode,
   date,
   taskId,
+  task,
+  row,
   disabled,
   onCancel,
   onSaved,
@@ -566,6 +769,8 @@ function ItemFormCard({
   mode: Exclude<FormMode, null>;
   date: string;
   taskId: string;
+  task: ApiTask;
+  row: ApiDailyRow;
   disabled: boolean;
   onCancel: () => void;
   onSaved: (row: ApiDailyRow) => void;
@@ -598,6 +803,12 @@ function ItemFormCard({
   const [capPrompt, setCapPrompt] = useState<RateCapReasonContext | null>(null);
   const [capReasonAccepted, setCapReasonAccepted] = useState(false);
   const rateCapReasonRef = useRef("");
+  const [isRepeat, setIsRepeat] = useState(false);
+  const [repeatPromptOpen, setRepeatPromptOpen] = useState(false);
+  const [repeatReasonDraft, setRepeatReasonDraft] = useState("");
+
+  const requiresRepeat =
+    !isEdit && catalogRequiresRepeat(catalogKind, catalogId, task, row);
 
   const timeSlotsQuery = useQuery({
     queryKey: ["tasks", "time-slots"],
@@ -635,6 +846,7 @@ function ItemFormCard({
     setRate("");
     setCapReasonAccepted(false);
     rateCapReasonRef.current = "";
+    setIsRepeat(false);
   }, [catalogKind, catalogId, isEdit]);
 
   useEffect(() => {
@@ -658,8 +870,9 @@ function ItemFormCard({
   }, [timeSlotId, timeSlotsQuery.data]);
 
   const saveMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (opts?: { repeatReason?: string | null }) => {
       const reason = rateCapReasonRef.current.trim() || null;
+      const repeatReason = opts?.repeatReason?.trim() || null;
       const payloadBase = {
         date,
         operativeId,
@@ -684,11 +897,15 @@ function ItemFormCard({
         return dailyProgrammeService.assignPackage(taskId, {
           ...payloadBase,
           tradeGroupId: catalogId,
+          isRepeat: requiresRepeat && isRepeat,
+          repeatReason: requiresRepeat && isRepeat ? repeatReason : null,
         });
       }
       return dailyProgrammeService.assignAddOn(taskId, {
         ...payloadBase,
         productId: catalogId,
+        isRepeat: requiresRepeat && isRepeat,
+        repeatReason: requiresRepeat && isRepeat ? repeatReason : null,
       });
     },
     onSuccess: (res) => {
@@ -696,7 +913,7 @@ function ItemFormCard({
         | ApiDailyRow
         | { row: ApiDailyRow; repeatApprovalPending?: boolean }
         | undefined;
-      const row =
+      const nextRow =
         outcome && "row" in outcome && outcome.row
           ? outcome.row
           : (outcome as ApiDailyRow | undefined);
@@ -714,16 +931,19 @@ function ItemFormCard({
               ? "Item updated"
               : "Item added",
       );
-      if (row) onSaved(row);
+      setRepeatPromptOpen(false);
+      setRepeatReasonDraft("");
+      setIsRepeat(false);
+      if (nextRow) onSaved(nextRow);
     },
     onError: (err) =>
       notifyApiError(err, isEdit ? "Unable to update item" : "Unable to add item"),
   });
 
-  function proceedSave() {
+  function proceedSave(repeatReason?: string | null) {
     const operativeChanged = !isEdit || operativeId !== (editLine?.operativeId ?? "");
     if (!operativeChanged) {
-      saveMutation.mutate();
+      saveMutation.mutate({ repeatReason });
       return;
     }
 
@@ -737,7 +957,7 @@ function ItemFormCard({
           setCertWarnings(warnings);
           return;
         }
-        saveMutation.mutate();
+        saveMutation.mutate({ repeatReason });
       } catch (err) {
         notifyApiError(err, "Unable to check operative certificates");
       } finally {
@@ -746,19 +966,19 @@ function ItemFormCard({
     })();
   }
 
-  async function ensureRateCapThenSave() {
+  async function ensureRateCapThenSave(repeatReason?: string | null) {
     const rateChanged = isEdit
       ? Number(rate) !== Number(editLine?.rate ?? NaN)
       : rateTouchedRef.current;
     const shouldCheck = canSeeRates && rateChanged && Boolean(String(rate).trim());
     if (!shouldCheck) {
-      proceedSave();
+      proceedSave(repeatReason);
       return;
     }
 
     const next = Number(rate);
     if (!Number.isFinite(next) || next < 0) {
-      proceedSave();
+      proceedSave(repeatReason);
       return;
     }
 
@@ -774,7 +994,6 @@ function ItemFormCard({
       if (productId) cap = await getCatalogueCap(productId);
     }
 
-    // Edit mode: resolve waterfall for current catalog selection / line product.
     if (cap == null && isEdit && editLine?.productId) {
       try {
         const res = await dailyProgrammeService.resolveRate(taskId, {
@@ -798,7 +1017,7 @@ function ItemFormCard({
       return;
     }
 
-    proceedSave();
+    proceedSave(repeatReason);
   }
 
   function handleSave() {
@@ -823,6 +1042,15 @@ function ItemFormCard({
       toast.warning("Enter a valid quantity.");
       return;
     }
+    if (requiresRepeat && !isRepeat) {
+      toast.warning("This item was already used on this job. Check Repeat Task to continue.");
+      return;
+    }
+    if (requiresRepeat && isRepeat) {
+      setRepeatReasonDraft("");
+      setRepeatPromptOpen(true);
+      return;
+    }
 
     void ensureRateCapThenSave();
   }
@@ -837,9 +1065,76 @@ function ItemFormCard({
           rateCapReasonRef.current = reason;
           setCapReasonAccepted(true);
           setCapPrompt(null);
+          if (requiresRepeat && isRepeat) {
+            setRepeatReasonDraft("");
+            setRepeatPromptOpen(true);
+            return;
+          }
           proceedSave();
         }}
       />
+      <Modal
+        open={repeatPromptOpen}
+        onClose={() => {
+          if (saveMutation.isPending) return;
+          setRepeatPromptOpen(false);
+          setRepeatReasonDraft("");
+        }}
+        title="Repeat task approval"
+        subtitle="Explain why this item needs to be added again. Assignment happens only after approval."
+        size="sm"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={saveMutation.isPending}
+              onClick={() => {
+                setRepeatPromptOpen(false);
+                setRepeatReasonDraft("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={saveMutation.isPending || !repeatReasonDraft.trim()}
+              onClick={() => {
+                if (!repeatReasonDraft.trim()) {
+                  toast.warning("Enter a reason for the repeat task.");
+                  return;
+                }
+                void ensureRateCapThenSave(repeatReasonDraft.trim());
+              }}
+            >
+              {saveMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Submit for approval"
+              )}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          <label
+            className="text-xs font-medium text-muted-foreground"
+            htmlFor="job-day-repeat-reason"
+          >
+            Reason
+          </label>
+          <Textarea
+            id="job-day-repeat-reason"
+            value={repeatReasonDraft}
+            onChange={(e) => setRepeatReasonDraft(e.target.value)}
+            placeholder="Why does this task need to be repeated?"
+            rows={3}
+            disabled={saveMutation.isPending}
+          />
+        </div>
+      </Modal>
       {certWarnings ? (
         <Modal
           open
@@ -865,7 +1160,10 @@ function ItemFormCard({
                         : "text-amber-600 dark:text-amber-400",
                     )}
                   >
-                    {w.statusLabel || (w.isExpired ? `Expired ${w.displayExpiry}` : `Expires ${w.displayExpiry}`)}
+                    {w.statusLabel ||
+                      (w.isExpired
+                        ? `Expired ${w.displayExpiry}`
+                        : `Expires ${w.displayExpiry}`)}
                   </span>
                 </li>
               ))}
@@ -879,7 +1177,10 @@ function ItemFormCard({
                 size="sm"
                 onClick={() => {
                   setCertWarnings(null);
-                  saveMutation.mutate();
+                  saveMutation.mutate({
+                    repeatReason:
+                      requiresRepeat && isRepeat ? repeatReasonDraft.trim() || null : null,
+                  });
                 }}
               >
                 Confirm assign
@@ -942,7 +1243,6 @@ function ItemFormCard({
         </button>
       </div>
 
-      {/* package · operative · qty · time · rate · action */}
       <div className="flex flex-wrap items-end gap-1.5">
         <div className="min-w-0 flex-1 basis-[7.5rem]">
           <label className="mb-0.5 block text-[11px] text-muted-foreground">
@@ -1062,11 +1362,30 @@ function ItemFormCard({
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : isEdit ? (
             "Save"
+          ) : requiresRepeat && isRepeat ? (
+            "Submit for approval"
           ) : (
             "Add item"
           )}
         </Button>
       </div>
+
+      {requiresRepeat ? (
+        <label className="mt-2 flex max-w-xl items-start gap-2 text-xs">
+          <Checkbox
+            checked={isRepeat}
+            onCheckedChange={(v) => setIsRepeat(v === true)}
+            disabled={disabled || saveMutation.isPending}
+            className="mt-0.5"
+          />
+          <span>
+            <span className="font-medium">Repeat task</span>
+            <span className="block text-muted-foreground">
+              Already used on this job — submit for approval to add again.
+            </span>
+          </span>
+        </label>
+      ) : null}
     </div>
   );
 }

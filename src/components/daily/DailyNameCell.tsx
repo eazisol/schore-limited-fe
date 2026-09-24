@@ -17,8 +17,15 @@ import { CAPABILITY_CODES } from "@/lib/access";
 import { notifyApiError } from "@/lib/api/axios";
 import { filterNameOperativesWithoutOpenApprovals } from "@/lib/daily-packages";
 import { fmtGBP } from "@/lib/data";
+import { formatUkDate } from "@/lib/week-ending";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+function completedSortKey(item: ApiDailyAssignedItemLine) {
+  const raw = item.completedDate || item.workDate;
+  const time = new Date(raw).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
 
 type DailyNameCellProps = {
   row: ApiDailyRow;
@@ -106,7 +113,10 @@ function OperativeAvatarPopover({
   const [open, setOpen] = useState(false);
   const initials = operativeInitials(operative.operativeName);
   const incomplete = (operative.items ?? []).filter((i) => !i.isTicked);
-  const complete = (operative.items ?? []).filter((i) => i.isTicked);
+  const complete = (operative.items ?? [])
+    .filter((i) => i.isTicked)
+    .slice()
+    .sort((a, b) => completedSortKey(b) - completedSortKey(a));
 
   const completeMutation = useMutation({
     mutationFn: (itemId: string) => dailyProgrammeService.completeItem(itemId, date),
@@ -135,7 +145,7 @@ function OperativeAvatarPopover({
         </PopoverTrigger>
       </AppTooltip>
       <PopoverContent
-        className="flex max-h-[min(24rem,var(--radix-popover-content-available-height))] w-72 flex-col overflow-hidden p-0"
+        className="flex max-h-[min(28rem,var(--radix-popover-content-available-height))] w-80 flex-col overflow-hidden p-0"
         side="bottom"
         align="start"
         collisionPadding={12}
@@ -200,11 +210,11 @@ function ItemSection({
       <ul className="space-y-1 px-2">
         {items.map((item) => {
           const meta = [
+            completed ? formatUkDate(item.completedDate || item.workDate) : null,
             `Qty ${item.quantity}`,
             item.timeSlotName ?? "—",
             canSeeRates ? fmtGBP(item.rate) : null,
-            !item.isToday ? "carry-over" : null,
-            item.isRepeat ? "repeat" : null,
+            !item.isToday && !completed ? "carry-over" : null,
           ]
             .filter(Boolean)
             .join(" · ");

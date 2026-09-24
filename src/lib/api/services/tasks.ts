@@ -70,8 +70,30 @@ export interface ApiTask {
   isLocked: boolean;
   items: ApiTaskItem[];
   itemsByOperative: ApiTaskOperativeGroup[];
+  /** Open repeat-task approvals (PENDING / REJECTED) for this job. */
+  repeatApprovals?: ApiTaskRepeatApprovalLine[];
   createdDate: string;
   editDate: string | null;
+}
+
+export interface ApiTaskRepeatApprovalLine {
+  id: string;
+  kind: string;
+  tradeGroupId?: string | null;
+  productId?: string | null;
+  itemLabel: string;
+  operativeId: string;
+  operativeName: string;
+  workDate: string;
+  rate: number;
+  quantity: number;
+  timeSlotId?: string | null;
+  timeSlotName?: string | null;
+  applyRatePermanently?: boolean;
+  reason: string;
+  rateReason?: string | null;
+  statusCode: string;
+  reviewReason?: string | null;
 }
 
 export type TaskItemPayload = {

@@ -8,6 +8,7 @@ import {
   resolveMenuForAppPath,
   type MenuAction,
 } from "@/lib/authorization";
+import { isOperativeUserType } from "@/lib/operative-portal";
 
 export type PermissionTarget = {
   /** Menu code from the permission-backed menu tree (e.g. `USERS`). */
@@ -103,7 +104,7 @@ export function RoutePermissionGuard({
   pathname: string;
   children: ReactNode;
 }) {
-  const { isHydrated, isAuthenticated } = useAuth();
+  const { isHydrated, isAuthenticated, user } = useAuth();
   const { menus, isLoading } = usePermissions();
   const navigate = useNavigate();
   const permissionsBlocking = isLoading && menus.length === 0;
@@ -112,10 +113,17 @@ export function RoutePermissionGuard({
 
   useEffect(() => {
     if (!isHydrated || !isAuthenticated || permissionsBlocking) return;
-    if (!canAccessPath(menus, pathname)) {
-      navigate({ to: "/forbidden" });
+    if (canAccessPath(menus, pathname)) return;
+    // Operatives without ops Dashboard land on `/` → send to self portal.
+    if (
+      (pathname === "/" || pathname === "/dashboard") &&
+      isOperativeUserType(user?.userTypeCode)
+    ) {
+      navigate({ to: "/operatives/me", replace: true });
+      return;
     }
-  }, [isHydrated, isAuthenticated, permissionsBlocking, menus, pathname, navigate]);
+    navigate({ to: "/forbidden" });
+  }, [isHydrated, isAuthenticated, permissionsBlocking, menus, pathname, navigate, user?.userTypeCode]);
 
   if (!allowed) return null;
   return <>{children}</>;

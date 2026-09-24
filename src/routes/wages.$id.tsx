@@ -12,7 +12,14 @@ import { payStatementsService, type ApiPayStatementDetail, type ApiPayStatementD
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermission } from "@/components/Permission";
-import { formatUkDate, formatUkDateDots, formatWageWeekRange, invoiceNo } from "@/lib/week-ending";
+import { usePermissions } from "@/contexts/PermissionContext";
+import { isOperativePortalUser } from "@/lib/operative-portal";
+import {
+  formatUkDate,
+  formatWageSheetDayMonth,
+  formatWageWeekRange,
+  invoiceNo,
+} from "@/lib/week-ending";
 import { payStatementsQueryKey } from "./payroll";
 
 const wageDetailSearchSchema = z.object({
@@ -40,12 +47,16 @@ function WageSheetView() {
   const wagesListSearch = weekEnding ? { weekEnding } : {};
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const isOffice = usePermission({ pathname: "/wages", action: "read" })
-    || usePermission({ pathname: "/payroll", action: "read" })
-    || usePermission({ pathname: "/statements", action: "read" });
-  const canModify = usePermission({ pathname: "/wages", action: "modify" })
-    || usePermission({ pathname: "/payroll", action: "modify" })
-    || usePermission({ pathname: "/statements", action: "modify" });
+  const { menus } = usePermissions();
+  const isPortal = isOperativePortalUser(user?.userTypeCode, menus);
+  const wagesRead = usePermission({ pathname: "/wages", action: "read" });
+  const payrollRead = usePermission({ pathname: "/payroll", action: "read" });
+  const statementsRead = usePermission({ pathname: "/statements", action: "read" });
+  const wagesModify = usePermission({ pathname: "/wages", action: "modify" });
+  const payrollModify = usePermission({ pathname: "/payroll", action: "modify" });
+  const statementsModify = usePermission({ pathname: "/statements", action: "modify" });
+  const isOffice = !isPortal && (wagesRead || payrollRead || statementsRead);
+  const canModify = !isPortal && (wagesModify || payrollModify || statementsModify);
   const [confirmSend, setConfirmSend] = useState(false);
   const [confirmResend, setConfirmResend] = useState(false);
   const [refuseOpen, setRefuseOpen] = useState(false);
@@ -143,7 +154,7 @@ function WageSheetView() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-4xl space-y-3">
       {from === "payroll" ? (
         <Link to="/payroll" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-3 w-3" /> Payroll Engine
@@ -166,13 +177,24 @@ function WageSheetView() {
             <StatusBadge status={w.statusName} />
             <StatusBadge status={w.paymentStatusName} />
             {canSend && (
-              <Button size="sm" onClick={() => setConfirmSend(true)}>
-                <Send className="h-4 w-4" />Send to operative
+              <Button
+                size="sm"
+                className="bg-[#1e3a5f] text-white hover:bg-[#162d4a]"
+                onClick={() => setConfirmSend(true)}
+              >
+                <Send className="h-3.5 w-3.5" />
+                Send to operative
               </Button>
             )}
             {canResend && (
-              <Button size="sm" variant="outline" onClick={() => setConfirmResend(true)}>
-                <Send className="h-4 w-4" />Resend to operative
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/10"
+                onClick={() => setConfirmResend(true)}
+              >
+                <Send className="h-3.5 w-3.5" />
+                Resend to operative
               </Button>
             )}
             {canRespond && (
@@ -183,16 +205,27 @@ function WageSheetView() {
                   className="border-destructive/30 text-destructive"
                   onClick={() => setRefuseOpen(true)}
                 >
-                  <X className="h-4 w-4" />Refuse
+                  <X className="h-3.5 w-3.5" />
+                  Refuse
                 </Button>
-                <Button size="sm" onClick={() => respondMutation.mutate({ accepted: true })}>
-                  <Check className="h-4 w-4" />Accept
+                <Button
+                  size="sm"
+                  className="bg-[#1e3a5f] text-white hover:bg-[#162d4a]"
+                  onClick={() => respondMutation.mutate({ accepted: true })}
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  Accept
                 </Button>
               </>
             )}
             {canMarkPaid && (
-              <Button size="sm" onClick={() => setPaidOpen(true)}>
-                <Banknote className="h-4 w-4" />Mark paid
+              <Button
+                size="sm"
+                className="bg-[#1e3a5f] text-white hover:bg-[#162d4a]"
+                onClick={() => setPaidOpen(true)}
+              >
+                <Banknote className="h-3.5 w-3.5" />
+                Mark paid
               </Button>
             )}
           </>
@@ -202,26 +235,26 @@ function WageSheetView() {
       <WageSheet w={w} />
 
       {w.days.length > 0 && (
-        <div className="card-elevated max-w-4xl overflow-hidden">
-          <div className="border-b px-5 py-3 font-semibold">Day MAX breakdown</div>
+        <div className="card-elevated overflow-hidden">
+          <div className="border-b px-4 py-2.5 text-sm font-semibold">Day MAX breakdown</div>
           <table className="w-full text-sm">
             <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-5 py-2 text-left">Date</th>
+                <th className="px-4 py-2 text-left">Date</th>
                 <th className="px-3 py-2 text-right">Price work</th>
                 <th className="px-3 py-2 text-left">Daily rate</th>
                 <th className="px-3 py-2 text-right">Top-up</th>
-                <th className="px-5 py-2 text-right">Day pay</th>
+                <th className="px-4 py-2 text-right">Day pay</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {w.days.map((day: ApiPayStatementDay) => (
                 <tr key={day.id}>
-                  <td className="px-5 py-2">{formatUkDate(day.workDate)}</td>
+                  <td className="px-4 py-2">{formatUkDate(day.workDate)}</td>
                   <td className="px-3 py-2 text-right font-mono">{fmtGBPp(day.priceWork)}</td>
                   <td className="px-3 py-2">{day.isDailyTicked ? "Yes" : "No"}</td>
                   <td className="px-3 py-2 text-right font-mono">{fmtGBPp(day.topUp)}</td>
-                  <td className="px-5 py-2 text-right font-mono font-medium">{fmtGBPp(day.dayPay)}</td>
+                  <td className="px-4 py-2 text-right font-mono font-medium">{fmtGBPp(day.dayPay)}</td>
                 </tr>
               ))}
             </tbody>
@@ -230,7 +263,7 @@ function WageSheetView() {
       )}
 
       {w.refusalReason && (
-        <div className="card-elevated max-w-4xl border-destructive/30 p-4 text-sm">
+        <div className="card-elevated border-destructive/30 p-4 text-sm">
           <div className="font-medium text-destructive">Refusal reason</div>
           <p className="mt-1 text-muted-foreground">{w.refusalReason}</p>
         </div>
@@ -308,124 +341,148 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
   const weekLabel = formatWageWeekRange(w.weekStart, w.weekEnding);
   const utrNi =
     [w.operativeUtr, w.operativeNiNumber].filter(Boolean).join(" / ") || null;
+  const invoice = invoiceNo(w.id);
   const minRows = 8;
   const emptyRows = Math.max(0, minRows - w.lines.length);
+  const brandBlue = "#1e3a5f";
+  const contactBlue = "#4a7ab0";
 
   return (
-    <div className="max-w-4xl overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-900 shadow-sm print:border-0 print:shadow-none">
-      <div className="px-8 pb-8 pt-8 md:px-10 md:pt-10">
-        <div className="border-b-[3px] pb-3" style={{ borderColor: "#1e3a5f" }}>
-          <h2 className="text-[1.65rem] font-bold tracking-tight" style={{ color: "#1e3a5f" }}>
-            SCHORE LIMITED{" "}
-            <span className="font-semibold" style={{ color: "#1e3a5f" }}>Weekly Wage Sheet</span>
-          </h2>
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-900 shadow-sm print:border-0 print:shadow-none">
+      <div className="px-5 py-5 md:px-6 md:py-6">
+        {/* Section 1 — header + info box */}
+        <div>
+          <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+            <h2
+              className="text-[1.4rem] font-bold uppercase tracking-tight leading-none"
+              style={{ color: brandBlue }}
+            >
+              SCHORE LIMITED
+            </h2>
+            <span className="text-[0.95rem] font-normal text-slate-500">
+              Weekly Wage Sheet
+            </span>
+          </div>
+          <div className="mt-1.5 h-[2.5px] w-full" style={{ backgroundColor: brandBlue }} />
+          <p className="mt-1 text-[11px] text-slate-500">
+            Construction & Maintenance — Basildon, Essex
+          </p>
+
+          <div className="mt-3 grid gap-4 bg-[#f2f2f2] px-4 py-3 text-[12.5px] leading-snug sm:grid-cols-2 sm:gap-8">
+            <div className="space-y-0.5">
+              <HeaderLine label="Name" value={w.operativeName} />
+              <HeaderLine label="Trade" value={w.tradeName ?? w.operativeTradeCode} />
+              <HeaderLine label="Site / Contract" value={w.siteContract ?? w.customerNames} />
+              <HeaderLine label="Site Manager" value={w.siteManagerName} />
+              <HeaderLine label="UTR / NINO" value={utrNi} blank />
+            </div>
+            <div className="space-y-0.5">
+              <HeaderLine label="Invoice No" value={invoice} blank={!invoice} />
+              <HeaderLine label="Week" value={weekLabel} />
+              <div>
+                <span className="font-bold text-black">Bill To:</span>{" "}
+                <span className="text-black">Schore Limited</span>
+              </div>
+              <div className="text-black">
+                <div>Unit E, The Business Center, Faringdon</div>
+                <div>Avenue,</div>
+                <div>Romford, Essex, RM3 8EN</div>
+              </div>
+              <div className="pt-0.5 text-[11.5px]" style={{ color: contactBlue }}>
+                07982138777 · office@schore.co.uk
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-5 grid gap-8 sm:grid-cols-2">
-          <div className="space-y-1.5 text-[13px] leading-relaxed">
-            <HeaderLine label="Name" value={w.operativeName} />
-            <HeaderLine label="Trade" value={w.tradeName ?? w.operativeTradeCode} />
-            <HeaderLine label="Site / Contract" value={w.siteContract ?? w.customerNames} />
-            <HeaderLine label="Site Manager" value={w.siteManagerName} />
-            <HeaderLine label="UTR / NINO" value={utrNi} blank />
-          </div>
-          <div className="space-y-1.5 text-[13px] leading-relaxed sm:text-right">
-            <div>
-              <span className="text-slate-500">Invoice No:</span>{" "}
-              <span className="font-semibold tabular-nums">{invoiceNo(w.id)}</span>
-            </div>
-            <div>
-              <span className="text-slate-500">Week:</span>{" "}
-              <span className="font-semibold tabular-nums">{weekLabel}</span>
-            </div>
-            <div className="pt-1 text-slate-600 sm:ml-auto sm:max-w-[16rem]">
-              <div className="font-medium text-slate-800">Bill To: Schore Limited</div>
-              <div>Unit E, The Business Center</div>
-              <div>Faringdon Avenue</div>
-              <div>Romford, Essex, RM3 8EN</div>
-              <div className="mt-1 text-[12px]">07982138777 · office@schore.co.uk</div>
-            </div>
-          </div>
-        </div>
-
-        <h3 className="mb-2 mt-7 text-[15px] font-semibold text-slate-900">Work completed</h3>
-        <table className="w-full border-collapse text-[13px]">
+        {/* Section 2 — Work completed */}
+        <h3
+          className="mb-1.5 mt-4 text-[14px] font-bold"
+          style={{ color: brandBlue }}
+        >
+          Work completed
+        </h3>
+        <table className="w-full border-collapse text-[12.5px]">
           <thead>
-            <tr className="text-white" style={{ backgroundColor: "#1e3a5f" }}>
-              <th className="px-3 py-2 text-left font-semibold">Property</th>
-              <th className="w-28 px-3 py-2 text-left font-semibold">Date</th>
-              <th className="px-3 py-2 text-left font-semibold">Task</th>
-              <th className="w-28 px-3 py-2 text-right font-semibold">Amount</th>
+            <tr className="text-white" style={{ backgroundColor: brandBlue }}>
+              <th className="border border-slate-300 px-2.5 py-1.5 text-left font-semibold">
+                Property
+              </th>
+              <th className="w-20 border border-slate-300 px-2.5 py-1.5 text-center font-semibold">
+                Date
+              </th>
+              <th className="border border-slate-300 px-2.5 py-1.5 text-left font-semibold">
+                Task
+              </th>
+              <th className="w-24 border border-slate-300 px-2.5 py-1.5 text-right font-semibold">
+                Amount
+              </th>
             </tr>
           </thead>
           <tbody>
             {w.lines.map((line, i) => (
               <tr
                 key={line.id}
-                className={i % 2 === 0 ? "bg-white" : "bg-slate-50/80"}
+                className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}
               >
-                <td className="border-b border-slate-200 px-3 py-2.5">
+                <td className="border border-slate-200 px-2.5 py-1.5 text-black">
                   {line.propertyName ?? "—"}
                 </td>
-                <td className="border-b border-slate-200 px-3 py-2.5 tabular-nums text-slate-700">
-                  {formatUkDateDots(line.lineDate)}
+                <td className="border border-slate-200 px-2.5 py-1.5 text-center tabular-nums text-black">
+                  {formatWageSheetDayMonth(line.lineDate)}
                 </td>
-                <td className="border-b border-slate-200 px-3 py-2.5">
+                <td className="border border-slate-200 px-2.5 py-1.5 text-black">
                   {line.description}
                   {line.isTopUp ? (
-                    <span className="ml-1.5 text-[11px] text-slate-400">top-up</span>
+                    <span className="ml-1.5 text-[10px] text-slate-400">top-up</span>
                   ) : null}
                 </td>
-                <td className="border-b border-slate-200 px-3 py-2.5 text-right font-medium tabular-nums">
+                <td className="border border-slate-200 px-2.5 py-1.5 text-right tabular-nums text-black">
                   {fmtGBPp(line.amount)}
                 </td>
               </tr>
             ))}
-            {w.lines.length === 0 && (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="border-b border-slate-200 px-3 py-8 text-center text-slate-400"
-                >
-                  No lines on this sheet.
-                </td>
-              </tr>
-            )}
             {Array.from({ length: emptyRows }).map((_, i) => (
-              <tr key={`empty-${i}`} className={(w.lines.length + i) % 2 === 0 ? "bg-white" : "bg-slate-50/80"}>
-                <td className="border-b border-slate-200 px-3 py-2.5">&nbsp;</td>
-                <td className="border-b border-slate-200 px-3 py-2.5" />
-                <td className="border-b border-slate-200 px-3 py-2.5" />
-                <td className="border-b border-slate-200 px-3 py-2.5" />
+              <tr
+                key={`empty-${i}`}
+                className={(w.lines.length + i) % 2 === 0 ? "bg-white" : "bg-slate-50"}
+              >
+                <td className="border border-slate-200 px-2.5 py-1.5">&nbsp;</td>
+                <td className="border border-slate-200 px-2.5 py-1.5" />
+                <td className="border border-slate-200 px-2.5 py-1.5" />
+                <td className="border border-slate-200 px-2.5 py-1.5" />
               </tr>
             ))}
           </tbody>
         </table>
 
-        <div className="mt-5 flex justify-end">
-          <table className="w-56 border-collapse text-[13px]">
+        {/* Section 3 — totals, signature, footer */}
+        <div className="mt-3 flex justify-end">
+          <table className="w-48 border-collapse text-[12.5px]">
             <tbody>
-              <tr>
-                <td className="border border-slate-200 px-3 py-1.5 text-slate-600">Gross Pay</td>
-                <td className="border border-slate-200 px-3 py-1.5 text-right font-medium tabular-nums">
+              <tr className="bg-slate-50">
+                <td className="border border-slate-200 px-2.5 py-1 text-black">Gross Pay</td>
+                <td className="border border-slate-200 px-2.5 py-1 text-right tabular-nums text-black">
                   {fmtGBPp(w.gross)}
                 </td>
               </tr>
-              <tr>
-                <td className="border border-slate-200 px-3 py-1.5 text-slate-600">CIS Rate</td>
-                <td className="border border-slate-200 px-3 py-1.5 text-right tabular-nums">
+              <tr className="bg-white">
+                <td className="border border-slate-200 px-2.5 py-1 text-black">CIS Rate</td>
+                <td className="border border-slate-200 px-2.5 py-1 text-right tabular-nums text-black">
                   {w.cisRate}%
                 </td>
               </tr>
-              <tr>
-                <td className="border border-slate-200 px-3 py-1.5 text-slate-600">CIS Tax</td>
-                <td className="border border-slate-200 px-3 py-1.5 text-right tabular-nums text-slate-600">
+              <tr className="bg-slate-50">
+                <td className="border border-slate-200 px-2.5 py-1 text-black">CIS Tax</td>
+                <td className="border border-slate-200 px-2.5 py-1 text-right tabular-nums text-black">
                   −{fmtGBPp(w.cisDeduction)}
                 </td>
               </tr>
-              <tr className="bg-emerald-50">
-                <td className="border border-slate-200 px-3 py-2 font-semibold">Net Pay</td>
-                <td className="border border-slate-200 px-3 py-2 text-right text-base font-bold tabular-nums text-emerald-800">
+              <tr style={{ backgroundColor: "#e8f5e9" }}>
+                <td className="border border-slate-200 px-2.5 py-1.5 font-bold text-black">
+                  Net Pay
+                </td>
+                <td className="border border-slate-200 px-2.5 py-1.5 text-right font-bold tabular-nums text-black">
                   {fmtGBPp(w.net)}
                 </td>
               </tr>
@@ -433,11 +490,20 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
           </table>
         </div>
 
-        <div className="mt-10 border-t border-slate-200 pt-6 text-[13px] text-slate-600">
-          <div className="mb-8">
-            Signed: <span className="inline-block min-w-[14rem] border-b border-slate-400">&nbsp;</span>
+        <div className="mt-6 text-[12.5px] text-slate-700">
+          <div className="mb-6">
+            Signed:{" "}
+            <span className="inline-block min-w-[14rem] border-b border-slate-500 align-bottom">
+              &nbsp;
+            </span>
           </div>
-          <p className="italic text-slate-500">Thank you for your business!</p>
+          <div className="text-center">
+            <p className="italic text-slate-500">Thank you for your business!</p>
+            <p className="mt-0.5 text-[10.5px] italic text-slate-400">
+              Template — one sheet per operative, per contract, per week. Each sheet
+              self-contained.
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -456,11 +522,11 @@ function HeaderLine({
   const showBlank = blank && !value;
   return (
     <div>
-      <span className="text-slate-500">{label}:</span>{" "}
+      <span className="font-bold text-black">{label}:</span>{" "}
       {showBlank ? (
-        <span className="inline-block min-w-[10rem] border-b border-slate-300 align-bottom">&nbsp;</span>
+        <span className="inline-block min-w-[10rem] border-b border-slate-400 align-bottom">&nbsp;</span>
       ) : (
-        <span className="font-medium text-slate-900">{value || "—"}</span>
+        <span className="font-normal text-black">{value || "—"}</span>
       )}
     </div>
   );
@@ -488,7 +554,11 @@ function ConfirmDialog({
         <p className="mt-2 text-sm text-muted-foreground">{body}</p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="outline" onClick={onCancel}>Cancel</Button>
-          <Button disabled={pending} onClick={onConfirm}>
+          <Button
+            disabled={pending}
+            className="bg-[#1e3a5f] text-white hover:bg-[#162d4a]"
+            onClick={onConfirm}
+          >
             <Send className="h-4 w-4" />
             {confirmLabel}
           </Button>

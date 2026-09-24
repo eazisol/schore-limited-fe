@@ -42,6 +42,14 @@ export function formatUkDateDots(isoDate: string | null | undefined): string {
   return `${d}.${m}.${y}`;
 }
 
+/** Work-completed table date: 21/01 */
+export function formatWageSheetDayMonth(isoDate: string | null | undefined): string {
+  if (!isoDate) return "—";
+  const [, m, d] = isoDate.slice(0, 10).split("-");
+  if (!m || !d) return isoDate;
+  return `${d}/${m}`;
+}
+
 /** Wage sheet week range: 16.01 – 23.01.2026 */
 export function formatWageWeekRange(
   weekStart: string | null | undefined,

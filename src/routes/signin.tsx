@@ -5,8 +5,10 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/contexts/PermissionContext";
 import { AuthLayout } from "@/components/AuthLayout";
 import { Form, TextField, PasswordField, CheckboxField, SubmitButton } from "@/components/form";
+import { isOperativePortalUser, isOperativeUserType, operativeHomePathFromMenus } from "@/lib/operative-portal";
 
 const signinSearchSchema = z.object({ redirect: z.string().optional() });
 
@@ -31,6 +33,7 @@ function SignIn() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/signin" });
   const { signIn } = useAuth();
+  const { menus } = usePermissions();
 
   const form = useForm<SignInValues>({
     resolver: zodResolver(signinSchema),
@@ -50,7 +53,16 @@ function SignIn() {
     toast.success(
       result.message || `Welcome back, ${result.user.firstName || result.user.username}`,
     );
-    const target = search.redirect && search.redirect.startsWith("/") ? search.redirect : "/";
+    const explicit =
+      search.redirect && search.redirect.startsWith("/") ? search.redirect : null;
+    const portalHome = isOperativePortalUser(result.user.userTypeCode, menus)
+      ? operativeHomePathFromMenus(menus)
+      : null;
+    const target =
+      explicit ??
+      (isOperativeUserType(result.user.userTypeCode) ? "/operatives/me" : null) ??
+      portalHome ??
+      "/";
     navigate({ to: target });
   }
 

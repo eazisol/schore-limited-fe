@@ -48,11 +48,20 @@ import {
   TaskRateApprovalSections,
   type RateApprovalQueueLine,
 } from "@/components/rates/TaskRateApprovalSections";
+import {
+  TaskRepeatApprovalSections,
+  type RepeatApprovalQueueLine,
+} from "@/components/rates/TaskRepeatApprovalSections";
 import { getCatalogueCap } from "@/lib/rate-overrides";
 import {
   isRateApprovalPending,
   isRateApprovalRejected,
 } from "@/lib/rate-approval";
+import {
+  isRepeatApprovalPending,
+  isRepeatApprovalRejected,
+  isRepeatPackageKind,
+} from "@/lib/repeat-approval";
 
 type UnassignedKind = "package" | "addon";
 
@@ -139,6 +148,30 @@ function toRateApprovalQueueLine(item: ApiDailyAssignedItemLine): RateApprovalQu
   };
 }
 
+function toRepeatApprovalQueueLine(
+  item: NonNullable<ApiDailyRow["repeatApprovals"]>[number],
+): RepeatApprovalQueueLine {
+  return {
+    id: item.id,
+    kind: item.kind,
+    tradeGroupId: item.tradeGroupId,
+    productId: item.productId,
+    itemLabel: item.itemLabel,
+    operativeId: item.operativeId,
+    operativeName: item.operativeName,
+    workDate: item.workDate,
+    rate: item.rate,
+    quantity: item.quantity,
+    timeSlotId: item.timeSlotId,
+    timeSlotName: item.timeSlotName,
+    applyRatePermanently: item.applyRatePermanently,
+    reason: item.reason,
+    rateReason: item.rateReason,
+    statusCode: item.statusCode,
+    reviewReason: item.reviewReason,
+  };
+}
+
 type DailyAssignmentPanelProps = {
   row: ApiDailyRow;
   date: string;
@@ -183,6 +216,7 @@ export function DailyAssignmentPanel({
   const [isRepeat, setIsRepeat] = useState(false);
   const [repeatPromptOpen, setRepeatPromptOpen] = useState(false);
   const [repeatReasonDraft, setRepeatReasonDraft] = useState("");
+  const [resubmittingRepeatId, setResubmittingRepeatId] = useState<string | null>(null);
   const pendingRepeatAssignRef = useRef<{
     kind: UnassignedKind;
     catalogId: string;
@@ -203,9 +237,12 @@ export function DailyAssignmentPanel({
   const assignedByOperative = row.assignedByOperative ?? [];
   const unassignedPackages = row.unassignedPackages ?? [];
   const unassignedAddOns = row.unassignedAddOns ?? [];
-  const isPast = date < toYmd(new Date());
-  // Lock / past / no select-rate-items: block assign & structural edits; ticks stay allowed when locked.
-  const cellDisabled = disabled || row.isLocked || isPast || !canSelectRateItems;
+  const todayYmd = toYmd(new Date());
+  const isPast = date < todayYmd;
+  /** Past-day view may still assign; new work is dated today. */
+  const assignWorkDate = isPast ? todayYmd : date;
+  // Past view assigns to today — do not gate on the past row's lock (backend enforces today's lock).
+  const cellDisabled = disabled || (!isPast && row.isLocked) || !canSelectRateItems;
   const completeDisabled = disabled || isPast;
 
   const allAssignedLines = useMemo(
@@ -225,6 +262,20 @@ export function DailyAssignmentPanel({
         .filter((item) => isRateApprovalRejected(item.rateApprovalStatus))
         .map(toRateApprovalQueueLine),
     [allAssignedLines],
+  );
+  const pendingRepeatLines = useMemo(
+    () =>
+      (row.repeatApprovals ?? [])
+        .filter((item) => isRepeatApprovalPending(item.statusCode))
+        .map(toRepeatApprovalQueueLine),
+    [row.repeatApprovals],
+  );
+  const rejectedRepeatLines = useMemo(
+    () =>
+      (row.repeatApprovals ?? [])
+        .filter((item) => isRepeatApprovalRejected(item.statusCode))
+        .map(toRepeatApprovalQueueLine),
+    [row.repeatApprovals],
   );
   const assignedForTree = useMemo(
     () => filterAssignedGroupsWithoutOpenApprovals(assignedByOperative),
@@ -281,7 +332,7 @@ export function DailyAssignmentPanel({
       "daily-programme",
       "resolve-rate",
       row.taskId,
-      date,
+      assignWorkDate,
       selectedKind,
       selectedId,
       assignOperativeId || null,
@@ -289,7 +340,7 @@ export function DailyAssignmentPanel({
     enabled: canSeeRates && selectedKind != null && selectedId != null,
     queryFn: async () => {
       const res = await dailyProgrammeService.resolveRate(row.taskId, {
-        date,
+        date: assignWorkDate,
         productId: selectedKind === "addon" ? selectedId ?? undefined : undefined,
         tradeGroupId: selectedKind === "package" ? selectedId ?? undefined : undefined,
         operativeId: assignOperativeId || undefined,
@@ -314,8 +365,15 @@ export function DailyAssignmentPanel({
     }
   }, [assignTimeSlotId, timeSlotsQuery.data]);
 
-  const applyUpdatedRow = (updatedRow: ApiDailyRow | null | undefined, message: string) => {
-    if (updatedRow) {
+  const applyUpdatedRow = (
+    updatedRow: ApiDailyRow | null | undefined,
+    message: string,
+    options?: { assignedOnDate?: string },
+  ) => {
+    const assignedOn = options?.assignedOnDate ?? date;
+    const assignedToOtherDay = assignedOn !== date;
+    // Past-day assign returns today's row — do not merge into the past programme cache.
+    if (updatedRow && !assignedToOtherDay) {
       mergeRowInCache(qc, row.taskId, updatedRow);
       onRowUpdated?.(updatedRow);
     }
@@ -327,7 +385,9 @@ export function DailyAssignmentPanel({
     setAssignRate("");
     setAssignQty("1");
     rateTouchedRef.current = false;
-    toast.success(message);
+    toast.success(
+      assignedToOtherDay ? `${message} (for today)` : message,
+    );
   };
 
   const assignPackageMutation = useMutation({
@@ -342,7 +402,7 @@ export function DailyAssignmentPanel({
       repeatReason?: string | null;
     }) =>
       dailyProgrammeService.assignPackage(row.taskId, {
-        date,
+        date: assignWorkDate,
         tradeGroupId: payload.tradeGroupId,
         operativeId: payload.operativeId,
         rate: payload.rate,
@@ -357,6 +417,7 @@ export function DailyAssignmentPanel({
         applyUpdatedRow(
           res.data.row,
           res.message || "Repeat task submitted for approval",
+          { assignedOnDate: assignWorkDate },
         );
         setIsRepeat(false);
         setRepeatReasonDraft("");
@@ -367,6 +428,7 @@ export function DailyAssignmentPanel({
         rateCapReasonRef.current.trim()
           ? "Package assigned — rate submitted for approval"
           : "Package assigned",
+        { assignedOnDate: assignWorkDate },
       );
       setIsRepeat(false);
       setRepeatReasonDraft("");
@@ -407,7 +469,7 @@ export function DailyAssignmentPanel({
       repeatReason?: string | null;
     }) =>
       dailyProgrammeService.assignAddOn(row.taskId, {
-        date,
+        date: assignWorkDate,
         productId: payload.productId,
         operativeId: payload.operativeId,
         rate: payload.rate,
@@ -422,6 +484,7 @@ export function DailyAssignmentPanel({
         applyUpdatedRow(
           res.data.row,
           res.message || "Repeat task submitted for approval",
+          { assignedOnDate: assignWorkDate },
         );
         setIsRepeat(false);
         setRepeatReasonDraft("");
@@ -432,6 +495,7 @@ export function DailyAssignmentPanel({
         rateCapReasonRef.current.trim()
           ? "Add-on assigned — rate submitted for approval"
           : "Add-on assigned",
+        { assignedOnDate: assignWorkDate },
       );
       setIsRepeat(false);
       setRepeatReasonDraft("");
@@ -691,6 +755,52 @@ export function DailyAssignmentPanel({
     run("");
   }
 
+  function handleResubmitRejectedRepeat(line: RepeatApprovalQueueLine, reason: string) {
+    setResubmittingRepeatId(line.id);
+    const clear = () => setResubmittingRepeatId(null);
+
+    if (isRepeatPackageKind(line.kind)) {
+      if (!line.tradeGroupId) {
+        toast.warning("Package is missing for this repeat request.");
+        clear();
+        return;
+      }
+      assignPackageMutation.mutate(
+        {
+          tradeGroupId: line.tradeGroupId,
+          operativeId: line.operativeId,
+          rate: line.rate,
+          quantity: line.quantity,
+          timeSlotId: line.timeSlotId,
+          reason: line.rateReason ?? null,
+          isRepeat: true,
+          repeatReason: reason,
+        },
+        { onSettled: clear },
+      );
+      return;
+    }
+
+    if (!line.productId) {
+      toast.warning("Add-on is missing for this repeat request.");
+      clear();
+      return;
+    }
+    assignAddOnMutation.mutate(
+      {
+        productId: line.productId,
+        operativeId: line.operativeId,
+        rate: line.rate,
+        quantity: line.quantity,
+        timeSlotId: line.timeSlotId,
+        reason: line.rateReason ?? null,
+        isRepeat: true,
+        repeatReason: reason,
+      },
+      { onSettled: clear },
+    );
+  }
+
   function runExistingAssign(
     kind: UnassignedKind,
     catalogId: string,
@@ -785,7 +895,7 @@ export function DailyAssignmentPanel({
     }
 
     await ensureAssignRateCap(async (reason) => {
-      const warnings = await checkCertificates(assignOperativeId, [date]);
+      const warnings = await checkCertificates(assignOperativeId, [assignWorkDate]);
       if (warnings == null) return;
       if (warnings.length > 0) {
         if (reason) rateCapReasonRef.current = reason;
@@ -953,6 +1063,11 @@ export function DailyAssignmentPanel({
       >
         <div className="flex min-h-0 flex-col border-b border-border sm:border-b-0 sm:border-r">
           <div className="shrink-0 border-b border-border px-3 py-2">
+            {isPast ? (
+              <p className="mb-1.5 text-[11px] text-amber-700 dark:text-amber-400">
+                Viewing a past day — new assignments are added for <span className="font-medium">today</span>.
+              </p>
+            ) : null}
             <Input
               value={unassignedSearch}
               onChange={(e) => setUnassignedSearch(e.target.value)}
@@ -1163,6 +1278,15 @@ export function DailyAssignmentPanel({
               }}
             />
           ) : null}
+          <TaskRepeatApprovalSections
+            pending={pendingRepeatLines}
+            rejected={rejectedRepeatLines}
+            disabled={cellDisabled || pending}
+            updatingId={resubmittingRepeatId}
+            onResubmitRejected={(line, reason) => {
+              handleResubmitRejectedRepeat(line, reason);
+            }}
+          />
           <AssignedTree
             groups={assignedForTree}
             taskId={row.taskId}
@@ -1667,7 +1791,6 @@ function AssignedItemLine({
     item.timeSlotName ?? "—",
     canSeeRates ? fmtGBP(item.rate) : null,
     !item.isToday ? "carry-over" : null,
-    item.isRepeat ? "repeat" : null,
   ]
     .filter(Boolean)
     .join(" · ");

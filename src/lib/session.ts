@@ -7,6 +7,8 @@ export interface AuthUser {
   fullName: string;
   roles: string[];
   role: string;
+  userTypeId?: number;
+  userTypeCode?: string;
 }
 
 export interface SessionShape {

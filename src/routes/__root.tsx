@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ApiProvider } from "@/contexts/ApiContext";
 import { PermissionProvider } from "@/contexts/PermissionContext";
 import { isPublicPath } from "@/lib/authorization";
+import { isOperativeUserType } from "@/lib/operative-portal";
 import { AUTH_BOOTSTRAP_SCRIPT, getStoredSession } from "@/lib/session";
 
 
@@ -108,7 +109,7 @@ const AUTH_ROUTES = ["/signin", "/forgot-password", "/reset-password"] as const;
 function AppRouter() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { isHydrated, isAuthenticated } = useAuth();
+  const { isHydrated, isAuthenticated, user } = useAuth();
   const isAuthRoute = AUTH_ROUTES.includes(pathname as (typeof AUTH_ROUTES)[number]);
 
   useEffect(() => {
@@ -118,9 +119,10 @@ function AppRouter() {
       return;
     }
     if (isAuthenticated && pathname === "/signin") {
-      navigate({ to: "/", replace: true });
+      const home = isOperativeUserType(user?.userTypeCode) ? "/operatives/me" : "/";
+      navigate({ to: home, replace: true });
     }
-  }, [isHydrated, isAuthenticated, pathname, navigate]);
+  }, [isHydrated, isAuthenticated, pathname, navigate, user?.userTypeCode]);
 
   // Never paint protected UI until we know session state.
   if (!isHydrated) {
