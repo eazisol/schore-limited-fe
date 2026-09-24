@@ -21,6 +21,7 @@ export function PropertyFormFields({
   lockCustomer = false,
   lockSite = false,
   lockProject = false,
+  gateChildSelectOnParent = true,
   customerSelectedLabel,
   siteSelectedLabel,
   projectSelectedLabel,
@@ -34,6 +35,11 @@ export function PropertyFormFields({
   lockSite?: boolean;
   /** When true, project cannot be changed (e.g. hierarchy wizard). */
   lockProject?: boolean;
+  /**
+   * When true (default), Site waits for Client and Project waits for Site.
+   * Daily Programme free navigation sets false so all selects stay enabled.
+   */
+  gateChildSelectOnParent?: boolean;
   customerSelectedLabel?: string | null;
   siteSelectedLabel?: string | null;
   projectSelectedLabel?: string | null;
@@ -115,12 +121,14 @@ export function PropertyFormFields({
             name="siteId"
             label="Site"
             required
-            placeholder={customerId ? "Select site" : "Select client first"}
+            placeholder={
+              gateChildSelectOnParent && !customerId ? "Select client first" : "Select site"
+            }
             searchPlaceholder="Search sites…"
             queryKey={["sites", "dropdown", customerId]}
             selectedLabel={siteSelectedLabel ?? siteLabel}
             fetchOptions={fetchSites}
-            disabled={lockSite || !customerId}
+            disabled={lockSite || (gateChildSelectOnParent && !customerId)}
             lookupType={lockSite ? undefined : "site"}
             lookupContext={{ customerId, customerLabel }}
             onSelect={(option) => setSiteLabel(option.label)}
@@ -131,12 +139,14 @@ export function PropertyFormFields({
             name="projectId"
             label="Project"
             required
-            placeholder={siteId ? "Select project" : "Select site first"}
+            placeholder={
+              gateChildSelectOnParent && !siteId ? "Select site first" : "Select project"
+            }
             searchPlaceholder="Search projects…"
             queryKey={["projects", "dropdown", siteId, customerId]}
             selectedLabel={projectSelectedLabel}
             fetchOptions={fetchProjects}
-            disabled={lockProject || !siteId}
+            disabled={lockProject || (gateChildSelectOnParent && !siteId)}
             lookupType={lockProject ? undefined : "project"}
             lookupContext={{ siteId, siteLabel, customerId }}
           />

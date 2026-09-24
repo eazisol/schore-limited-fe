@@ -13,7 +13,6 @@ import {
   downloadCsv,
   useDebouncedSearch,
   type DataTableColumn,
-  type DataTableRowAction,
 } from "@/components/data-table";
 import {
   Lock,
@@ -21,6 +20,7 @@ import {
   ChevronRight,
   Download,
   Loader2,
+  Plus,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -33,7 +33,7 @@ import {
 import { tasksService, type ApiTaskItem } from "@/lib/api/services/tasks";
 import { propertiesService } from "@/lib/api/services/properties";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
-import { usePermission } from "@/components/Permission";
+import { Can, usePermission } from "@/components/Permission";
 import { DAILY_ROUTE } from "@/lib/daily";
 import { truncateWithEllipsis } from "@/lib/module-ui";
 import { fmtGBP } from "@/lib/data";
@@ -51,6 +51,7 @@ import {
   fetchTaskStatusOptions,
 } from "@/lib/task-dropdowns";
 import { StatusBadge } from "@/components/StatusBadge";
+import { HierarchyCreateWizard } from "@/components/hierarchy/HierarchyCreateWizard";
 
 const dailySearchSchema = z.object({
   propertyId: z.string().optional(),
@@ -73,10 +74,6 @@ function shiftDate(iso: string, days: number) {
   const d = new Date(`${iso}T12:00:00`);
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
-}
-
-function safeFilePart(value: string) {
-  return value.replace(/[^\w\-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "job";
 }
 
 const CLIENT_EXPORT_HEADERS = [
@@ -133,16 +130,6 @@ function buildClientExportRows(data: ApiDailyClientExport, exportDateLabel: stri
       "",
     ],
   ];
-}
-
-function downloadClientNextDayCsv(data: ApiDailyClientExport) {
-  const exportDateLabel = formatUkDate(data.exportDate);
-  const filename = `next-day-${safeFilePart(data.propertyName || data.taskNumber)}-${data.exportDate}.csv`;
-  downloadCsv({
-    filename,
-    headers: [...CLIENT_EXPORT_HEADERS],
-    rows: buildClientExportRows(data, exportDateLabel),
-  });
 }
 
 function downloadClientNextDayBulkCsv(data: ApiDailyClientExportBulk) {
@@ -211,8 +198,8 @@ function Daily() {
   const [propertyLabel, setPropertyLabel] = useState<string | null>(null);
   const [statusId, setStatusId] = useState("");
   const [statusLabel, setStatusLabel] = useState<string | null>(null);
-  const [exportingTaskId, setExportingTaskId] = useState<string | null>(null);
   const [exportingBulk, setExportingBulk] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const filterStatusId = statusId.trim();
   const hasStatusFilter = filterStatusId.length > 0;
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
@@ -237,8 +224,9 @@ function Daily() {
         await dailyProgrammeService.get({
           date,
           showHandedOver: showHO,
+          // Checkbox mode is exclusive — don't AND with status dropdown.
           propertyId: hasPropertyFilter ? filterPropertyId : undefined,
-          statusId: hasStatusFilter ? filterStatusId : undefined,
+          statusId: showHO ? undefined : hasStatusFilter ? filterStatusId : undefined,
           projectId: projectIdSearch || undefined,
         })
       ).data,
@@ -351,7 +339,6 @@ function Daily() {
 
   const today = todayIso();
   const isDateFiltered = date !== today;
-  const isAtOrPastToday = date >= today;
   const hasActiveFilters = Boolean(
     search || showHO || isDateFiltered || hasPropertyFilter || hasStatusFilter,
   );
@@ -622,34 +609,8 @@ function Daily() {
     return cols;
   }, [canModifyDaily, date]);
 
-  async function exportNextDayForClient(row: ApiDailyRow) {
-    if (exportingTaskId || exportingBulk) return;
-    setExportingTaskId(row.taskId);
-    try {
-      const res = await dailyProgrammeService.clientNextDayExport(row.taskId, date);
-      const data = res.data;
-      if (!data) {
-        toast.error("Unable to export next-day schedule");
-        return;
-      }
-      if (!data.lines?.length) {
-        toast.warning("No task items scheduled for the next day on this job");
-      }
-      downloadClientNextDayCsv(data);
-      toast.success(
-        data.lines?.length
-          ? `Exported next-day schedule (${formatUkDate(data.exportDate)})`
-          : `Exported empty next-day schedule (${formatUkDate(data.exportDate)})`,
-      );
-    } catch (err) {
-      notifyApiError(err, "Unable to export next-day schedule");
-    } finally {
-      setExportingTaskId(null);
-    }
-  }
-
   async function exportFilteredNextDay() {
-    if (exportingBulk || exportingTaskId) return;
+    if (exportingBulk) return;
     if (filteredRows.length === 0) {
       toast.warning("No properties match the current filters");
       return;
@@ -679,25 +640,6 @@ function Daily() {
       setExportingBulk(false);
     }
   }
-
-  const getRowActions = useMemo(() => {
-    return (row: ApiDailyRow): DataTableRowAction<ApiDailyRow>[] => [
-      {
-        id: "export-next-day",
-        label: "Export next day (client)",
-        variant: "icon",
-        icon:
-          exportingTaskId === row.taskId ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Download className="h-3.5 w-3.5" />
-          ),
-        onClick: (actionRow) => {
-          void exportNextDayForClient(actionRow);
-        },
-      },
-    ];
-  }, [date, exportingTaskId, exportingBulk]);
 
   const assignedProjects = query.data?.assignedProjects ?? [];
   const showProjectSwitcher = (query.data?.separateProjectViews ?? false) && assignedProjects.length > 0;
@@ -737,6 +679,7 @@ function Daily() {
         title="Daily Programmer"
         actions={
           <>
+            {!showHO ? (
             <div className="flex items-center gap-1 rounded-md border border-input bg-background">
               <button
                 type="button"
@@ -752,11 +695,10 @@ function Daily() {
               <input
                 type="date"
                 value={date}
-                max={today}
                 onChange={(e) => {
                   const next = e.target.value;
                   if (!next) return;
-                  setDate(next > today ? today : next);
+                  setDate(next);
                   setPage(1);
                 }}
                 className="h-9 border-x border-input bg-transparent px-2 text-sm outline-none"
@@ -764,13 +706,9 @@ function Daily() {
               />
               <button
                 type="button"
-                className="grid h-9 w-9 place-items-center hover:bg-accent/10 disabled:pointer-events-none disabled:opacity-40"
-                disabled={isAtOrPastToday}
+                className="grid h-9 w-9 place-items-center hover:bg-accent/10"
                 onClick={() => {
-                  setDate((d) => {
-                    const next = shiftDate(d, 1);
-                    return next > today ? today : next;
-                  });
+                  setDate((d) => shiftDate(d, 1));
                   setPage(1);
                 }}
                 aria-label="Next day"
@@ -792,11 +730,20 @@ function Daily() {
                 </button>
               </AppTooltip>
             </div>
+            ) : (
+              <span className="inline-flex h-9 items-center rounded-md border border-input bg-muted/40 px-3 text-xs text-muted-foreground">
+                All handed-over jobs
+              </span>
+            )}
             <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-xs">
               <Checkbox
                 checked={showHO}
                 onCheckedChange={(checked) => {
-                  setShowHO(checked === true);
+                  const on = checked === true;
+                  setShowHO(on);
+                  if (on) {
+                    clearStatusFilter();
+                  }
                   setPage(1);
                 }}
                 aria-label="Show handed-over"
@@ -825,6 +772,7 @@ function Daily() {
               className="w-full min-w-[11rem] sm:w-52"
               triggerClassName="h-9 [&>span]:whitespace-nowrap"
             />
+            {!showHO ? (
             <SearchableSelect
               value={statusId}
               onValueChange={(value) => {
@@ -854,6 +802,7 @@ function Daily() {
               className="w-full min-w-[11rem] sm:w-52"
               triggerClassName="h-9 [&>span]:whitespace-nowrap"
             />
+            ) : null}
           </>
         }
       />
@@ -865,10 +814,6 @@ function Daily() {
         loading={query.isLoading}
         fetching={query.isFetching}
         loadingText="Loading daily programmer…"
-        stickyActions
-        actionsHeaderHidden
-        actionsColumnWidth="3.25rem"
-        rowActions={getRowActions}
         error={
           query.isError
             ? {
@@ -887,22 +832,30 @@ function Daily() {
           "aria-label": "Search daily programmer",
         }}
         toolbarActions={
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={exportingBulk || exportingTaskId != null || filteredRows.length === 0}
-            onClick={() => {
-              void exportFilteredNextDay();
-            }}
-          >
-            {exportingBulk ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Download className="h-3.5 w-3.5" />
-            )}
-            Export
-          </Button>
+          <div className="flex items-center gap-2">
+            <Can route="/customers" action="modify">
+              <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Add Project
+              </Button>
+            </Can>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={exportingBulk || filteredRows.length === 0}
+              onClick={() => {
+                void exportFilteredNextDay();
+              }}
+            >
+              {exportingBulk ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
+              Export
+            </Button>
+          </div>
         }
         emptyState={{
           title: hasActiveFilters ? "No rows match your filters" : "No properties on today's roll",
@@ -989,6 +942,17 @@ function Daily() {
           items={completedItemsQuery.data?.items ?? []}
         />
       </Modal>
+
+      {createOpen ? (
+        <HierarchyCreateWizard
+          freeNavigation
+          customersQueryKey={["users", "customers"]}
+          onClose={() => {
+            setCreateOpen(false);
+            void query.refetch();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

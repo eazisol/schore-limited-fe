@@ -16,6 +16,8 @@ export interface ApiRepeatTaskApproval {
   operativeId: string;
   operativeName: string;
   workDate: string;
+  propertyName?: string | null;
+  clientName?: string | null;
   rate: number;
   quantity: number;
   timeSlotId: string | null;

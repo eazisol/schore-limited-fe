@@ -23,6 +23,11 @@ type ProjectFormFieldsProps = {
   lockCustomer?: boolean;
   /** When true, site cannot be changed (e.g. hierarchy wizard). */
   lockSite?: boolean;
+  /**
+   * When true (default), Site waits for Client.
+   * Daily Programme free navigation sets false so Site stays enabled.
+   */
+  gateChildSelectOnParent?: boolean;
   customerSelectedLabel?: string | null;
   siteSelectedLabel?: string | null;
   assigneeSelectedLabels?: Record<string, string>;
@@ -32,6 +37,7 @@ export function ProjectFormFields({
   disabled,
   lockCustomer,
   lockSite,
+  gateChildSelectOnParent = true,
   customerSelectedLabel,
   siteSelectedLabel,
   assigneeSelectedLabels,
@@ -84,7 +90,9 @@ export function ProjectFormFields({
           name="siteId"
           label="Site"
           required
-          placeholder={customerId ? "Select site" : "Select client first"}
+          placeholder={
+            gateChildSelectOnParent && !customerId ? "Select client first" : "Select site"
+          }
           searchPlaceholder="Search sites…"
           queryKey={["sites", "dropdown", "project-form", customerId]}
           selectedLabel={siteLabel ?? siteSelectedLabel}
@@ -92,7 +100,7 @@ export function ProjectFormFields({
           lookupType={lockSite ? undefined : "site"}
           lookupContext={{ customerId, customerLabel: customerLabel ?? customerSelectedLabel ?? undefined }}
           onSelect={(option) => setSiteLabel(option.label)}
-          disabled={disabled || lockSite || !customerId}
+          disabled={disabled || lockSite || (gateChildSelectOnParent && !customerId)}
         />
       </div>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

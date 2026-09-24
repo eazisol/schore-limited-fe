@@ -77,6 +77,7 @@ export interface PayStatementListParams {
   customerId?: string;
   statusId?: string;
   paymentStatusId?: string;
+  search?: string;
   page?: number;
   pageSize?: number;
 }
@@ -111,9 +112,14 @@ const listQuery = (params: PayStatementListParams) => ({
   Page: params.page ?? 1,
   PageSize: params.pageSize ?? 100,
   ...(params.weekEnding ? { WeekEnding: params.weekEnding } : {}),
-  ...(params.customerId != null ? { CustomerId: params.customerId } : {}),
-  ...(params.statusId != null ? { StatusId: params.statusId } : {}),
-  ...(params.paymentStatusId != null ? { PaymentStatusId: params.paymentStatusId } : {}),
+  ...(params.customerId != null && params.customerId !== ""
+    ? { CustomerId: params.customerId }
+    : {}),
+  ...(params.statusId != null && params.statusId !== "" ? { StatusId: params.statusId } : {}),
+  ...(params.paymentStatusId != null && params.paymentStatusId !== ""
+    ? { PaymentStatusId: params.paymentStatusId }
+    : {}),
+  ...(params.search?.trim() ? { Search: params.search.trim() } : {}),
 });
 
 export const payStatementsService = {
@@ -133,11 +139,13 @@ export const payStatementsService = {
     if (payload.file) form.append("referenceFile", payload.file);
     return http.post<ApiEnvelope<ApiPayStatementDetail>>(`pay-statements/${id}/mark-paid`, form);
   },
-  export: (params: { weekEnding: string; customerId?: number }) =>
+  export: (params: { weekEnding: string; customerId?: string }) =>
     http.get<ApiEnvelope<ApiPayStatementExport>>("pay-statements/export", {
       params: {
         WeekEnding: params.weekEnding,
-        ...(params.customerId != null ? { CustomerId: params.customerId } : {}),
+        ...(params.customerId != null && params.customerId !== ""
+          ? { CustomerId: params.customerId }
+          : {}),
       },
     }),
   respond: (id: string, payload: { accepted: boolean; reason?: string }) =>

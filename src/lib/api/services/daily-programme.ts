@@ -198,6 +198,8 @@ export interface ApiDailyAssignOutcome {
 export interface DailyProgrammeListParams {
   date: string;
   showHandedOver?: boolean;
+  /** Bypass Handed Over status filter (job calendar / refresh). */
+  includeAllStatuses?: boolean;
   propertyId?: string;
   statusId?: string;
   projectId?: string;
@@ -252,6 +254,7 @@ export const dailyProgrammeService = {
   get: ({
     date,
     showHandedOver = false,
+    includeAllStatuses = false,
     propertyId,
     statusId,
     projectId,
@@ -260,6 +263,7 @@ export const dailyProgrammeService = {
       params: {
         Date: date,
         ShowHandedOver: showHandedOver,
+        ...(includeAllStatuses ? { IncludeAllStatuses: true } : {}),
         ...(propertyId != null ? { PropertyId: propertyId } : {}),
         ...(statusId != null ? { StatusId: statusId } : {}),
         ...(projectId != null ? { ProjectId: projectId } : {}),

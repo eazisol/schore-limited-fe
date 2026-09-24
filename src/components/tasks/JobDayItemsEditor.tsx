@@ -443,8 +443,15 @@ export function JobDayItemsEditor({
                             className="border-b border-border/40 last:border-b-0"
                           >
                             <td className="px-3 py-1">
-                              <span className="rounded-md bg-secondary px-1.5 py-0.5 font-mono text-xs font-semibold">
-                                {line.productName}
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="rounded-md bg-secondary px-1.5 py-0.5 font-mono text-xs font-semibold">
+                                  {line.productName}
+                                </span>
+                                {line.isRepeat ? (
+                                  <span className="rounded border border-border px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Repeat
+                                  </span>
+                                ) : null}
                               </span>
                             </td>
                             <td className="whitespace-nowrap px-3 py-1 text-muted-foreground">

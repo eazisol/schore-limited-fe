@@ -22,6 +22,8 @@ export interface ApiTaskItem {
   statusId: string | null;
   statusName: string | null;
   isTicked: boolean;
+  /** True when this line was created as a repeat assignment. */
+  isRepeat?: boolean;
   completedDate: string | null;
   timeSlotId: string | null;
   timeSlotName: string | null;

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
 import { PageHeader } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -14,9 +15,13 @@ import { usePermission } from "@/components/Permission";
 import { formatUkDate, formatUkDateDots, formatWageWeekRange, invoiceNo } from "@/lib/week-ending";
 import { payStatementsQueryKey } from "./payroll";
 
+const wageDetailSearchSchema = z.object({
+  from: z.enum(["payroll"]).optional(),
+  weekEnding: z.string().optional(),
+});
+
 export const Route = createFileRoute("/wages/$id")({
-  validateSearch: (s: Record<string, unknown>) =>
-    ({ from: s.from === "payroll" ? "payroll" : undefined }) as { from?: "payroll" },
+  validateSearch: wageDetailSearchSchema,
   head: () => ({ meta: [{ title: "Wage Sheet | Schore" }] }),
   notFoundComponent: () => (
     <div className="card-elevated p-12 text-center">
@@ -31,7 +36,8 @@ export const Route = createFileRoute("/wages/$id")({
 
 function WageSheetView() {
   const { id } = Route.useParams();
-  const { from } = Route.useSearch();
+  const { from, weekEnding } = Route.useSearch();
+  const wagesListSearch = weekEnding ? { weekEnding } : {};
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isOffice = usePermission({ pathname: "/wages", action: "read" })
@@ -125,7 +131,12 @@ function WageSheetView() {
           {err?.message ?? "This statement is not available."}
         </p>
         <Button className="mt-4" asChild>
-          <Link to={from === "payroll" ? "/payroll" : "/wages"}>Back</Link>
+          <Link
+            to={from === "payroll" ? "/payroll" : "/wages"}
+            search={from === "payroll" ? undefined : wagesListSearch}
+          >
+            Back
+          </Link>
         </Button>
       </div>
     );
@@ -138,7 +149,11 @@ function WageSheetView() {
           <ArrowLeft className="h-3 w-3" /> Payroll Engine
         </Link>
       ) : (
-        <Link to="/wages" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+        <Link
+          to="/wages"
+          search={wagesListSearch}
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+        >
           <ArrowLeft className="h-3 w-3" /> All wage sheets
         </Link>
       )}

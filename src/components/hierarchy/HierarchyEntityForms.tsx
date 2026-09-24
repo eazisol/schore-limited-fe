@@ -33,6 +33,14 @@ import {
   toPropertyPayload,
   type PropertyFormValues,
 } from "@/lib/property-form";
+import {
+  taskFormDefaults,
+  taskFormSchema,
+  toTaskPayload,
+  type TaskFormValues,
+} from "@/lib/task-form";
+import { TaskFormFields } from "@/components/tasks/TaskFormFields";
+import { tasksService } from "@/lib/api/services/tasks";
 
 export const HIERARCHY_STEPS = [
   { id: "client", label: "Client" },
@@ -41,7 +49,18 @@ export const HIERARCHY_STEPS = [
   { id: "property", label: "Property" },
 ] as const;
 
-export type HierarchyStepId = (typeof HIERARCHY_STEPS)[number]["id"];
+export const HIERARCHY_JOB_STEP = { id: "job", label: "Job" } as const;
+
+export type HierarchyStepId =
+  | (typeof HIERARCHY_STEPS)[number]["id"]
+  | (typeof HIERARCHY_JOB_STEP)["id"];
+
+export type HierarchyStepDef = { id: HierarchyStepId; label: string };
+
+/** Daily Programme free-nav wizard can append Job; Ops Management keeps 4 steps. */
+export function getHierarchySteps(includeJob = false): readonly HierarchyStepDef[] {
+  return includeJob ? [...HIERARCHY_STEPS, HIERARCHY_JOB_STEP] : HIERARCHY_STEPS;
+}
 
 /** After a successful save in the create wizard. */
 export type HierarchySaveAction = "continue" | "close";
@@ -49,16 +68,22 @@ export type HierarchySaveAction = "continue" | "close";
 export function HierarchyStepper({
   currentIndex,
   onStepClick,
+  freeNavigation = false,
+  steps = HIERARCHY_STEPS,
 }: {
   currentIndex: number;
   onStepClick?: (stepIndex: number, stepId: HierarchyStepId) => void;
+  /** When true, any step is clickable (Daily Programme). Default: only completed steps. */
+  freeNavigation?: boolean;
+  steps?: readonly HierarchyStepDef[];
 }) {
   return (
     <ol className="flex items-center gap-1 sm:gap-2" aria-label="Setup steps">
-      {HIERARCHY_STEPS.map((s, index) => {
+      {steps.map((s, index) => {
         const done = index < currentIndex;
         const active = index === currentIndex;
-        const canClick = done && Boolean(onStepClick);
+        const canClick =
+          Boolean(onStepClick) && (freeNavigation ? !active : done);
         return (
           <li key={s.id} className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
             <button
@@ -90,7 +115,7 @@ export function HierarchyStepper({
                 {s.label}
               </span>
             </button>
-            {index < HIERARCHY_STEPS.length - 1 ? (
+            {index < steps.length - 1 ? (
               <div
                 className={cn(
                   "mx-1 hidden h-px flex-1 sm:block",
@@ -109,6 +134,7 @@ export function HierarchyStepper({
 export function HierarchyFormFooter({
   onCancel,
   onPrevious,
+  onNext,
   submitLabel,
   pending,
   allowSaveAndClose = false,
@@ -117,6 +143,7 @@ export function HierarchyFormFooter({
 }: {
   onCancel: () => void;
   onPrevious?: () => void;
+  onNext?: () => void;
   submitLabel: string;
   pending: boolean;
   allowSaveAndClose?: boolean;
@@ -125,7 +152,7 @@ export function HierarchyFormFooter({
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-2">
-      <div>
+      <div className="flex flex-wrap items-center gap-2">
         {onPrevious ? (
           <Button
             type="button"
@@ -135,6 +162,11 @@ export function HierarchyFormFooter({
             disabled={pending}
           >
             Previous
+          </Button>
+        ) : null}
+        {onNext ? (
+          <Button type="button" variant="outline" size="sm" onClick={onNext} disabled={pending}>
+            Next
           </Button>
         ) : null}
       </div>
@@ -167,6 +199,7 @@ export function ClientEntityForm({
   defaultValues = emptyUserFormValues,
   onCancel,
   onPrevious,
+  onNext,
   onSaved,
   submitLabel,
   allowSaveAndClose = false,
@@ -176,6 +209,7 @@ export function ClientEntityForm({
   defaultValues?: UserFormValues;
   onCancel: () => void;
   onPrevious?: () => void;
+  onNext?: () => void;
   onSaved: (
     next: { customerId: string; customerLabel: string },
     action: HierarchySaveAction,
@@ -245,6 +279,7 @@ export function ClientEntityForm({
       <HierarchyFormFooter
         onCancel={onCancel}
         onPrevious={onPrevious}
+        onNext={onNext}
         submitLabel={resolvedSubmitLabel}
         pending={mutation.isPending}
         allowSaveAndClose={allowSaveAndClose}
@@ -271,6 +306,7 @@ export function SiteEntityForm({
   allowSaveAndClose = false,
   onCancel,
   onPrevious,
+  onNext,
   onSaved,
 }: {
   mode: "create" | "edit";
@@ -282,6 +318,7 @@ export function SiteEntityForm({
   allowSaveAndClose?: boolean;
   onCancel: () => void;
   onPrevious?: () => void;
+  onNext?: () => void;
   onSaved: (
     next: { siteId: string; siteLabel: string },
     action: HierarchySaveAction,
@@ -346,6 +383,7 @@ export function SiteEntityForm({
       <HierarchyFormFooter
         onCancel={onCancel}
         onPrevious={onPrevious}
+        onNext={onNext}
         submitLabel={resolvedSubmitLabel}
         pending={mutation.isPending}
         allowSaveAndClose={allowSaveAndClose}
@@ -371,10 +409,12 @@ export function ProjectEntityForm({
   assigneeSelectedLabels,
   lockCustomer = false,
   lockSite = false,
+  gateChildSelectOnParent = true,
   submitLabel,
   allowSaveAndClose = false,
   onCancel,
   onPrevious,
+  onNext,
   onSaved,
 }: {
   mode: "create" | "edit";
@@ -385,10 +425,12 @@ export function ProjectEntityForm({
   assigneeSelectedLabels?: Record<string, string>;
   lockCustomer?: boolean;
   lockSite?: boolean;
+  gateChildSelectOnParent?: boolean;
   submitLabel?: string;
   allowSaveAndClose?: boolean;
   onCancel: () => void;
   onPrevious?: () => void;
+  onNext?: () => void;
   onSaved: (
     next: { projectId: string; projectLabel: string },
     action: HierarchySaveAction,
@@ -448,6 +490,7 @@ export function ProjectEntityForm({
       <ProjectFormFields
         lockCustomer={lockCustomer}
         lockSite={lockSite}
+        gateChildSelectOnParent={gateChildSelectOnParent}
         customerSelectedLabel={customerSelectedLabel}
         siteSelectedLabel={siteSelectedLabel}
         assigneeSelectedLabels={assigneeSelectedLabels}
@@ -456,6 +499,7 @@ export function ProjectEntityForm({
       <HierarchyFormFooter
         onCancel={onCancel}
         onPrevious={onPrevious}
+        onNext={onNext}
         submitLabel={resolvedSubmitLabel}
         pending={mutation.isPending}
         allowSaveAndClose={allowSaveAndClose}
@@ -482,9 +526,12 @@ export function PropertyEntityForm({
   lockCustomer = false,
   lockSite = false,
   lockProject = false,
+  gateChildSelectOnParent = true,
   submitLabel,
+  allowSaveAndClose = false,
   onCancel,
   onPrevious,
+  onNext,
   onSaved,
 }: {
   mode: "create" | "edit";
@@ -496,13 +543,20 @@ export function PropertyEntityForm({
   lockCustomer?: boolean;
   lockSite?: boolean;
   lockProject?: boolean;
+  gateChildSelectOnParent?: boolean;
   submitLabel?: string;
+  allowSaveAndClose?: boolean;
   onCancel: () => void;
   onPrevious?: () => void;
-  onSaved: () => void;
+  onNext?: () => void;
+  onSaved: (
+    next: { propertyId: string; propertyLabel: string },
+    action: HierarchySaveAction,
+  ) => void;
 }) {
   const resolvedSubmitLabel =
     submitLabel ?? (mode === "edit" ? "Save changes" : "Create Property");
+  const saveActionRef = useRef<HierarchySaveAction>("continue");
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertyFormSchema),
     mode: "onBlur",
@@ -520,8 +574,19 @@ export function PropertyEntityForm({
         ? propertiesService.update(propertyId, payload)
         : propertiesService.create(payload),
     onSuccess: (res) => {
+      const saved = res.data;
+      if (!saved) {
+        notifyApiError(new Error("Property save returned empty data"), "Failed to save property");
+        return;
+      }
       toast.success(res.message || (mode === "edit" ? "Property updated" : "Property created"));
-      onSaved();
+      onSaved(
+        {
+          propertyId: String(saved.id),
+          propertyLabel: saved.propertyName,
+        },
+        mode === "edit" ? "close" : saveActionRef.current,
+      );
     },
     onError: (err) => notifyApiError(err, "Failed to save property"),
   });
@@ -543,6 +608,7 @@ export function PropertyEntityForm({
         lockCustomer={lockCustomer}
         lockSite={lockSite}
         lockProject={lockProject}
+        gateChildSelectOnParent={gateChildSelectOnParent}
         customerSelectedLabel={customerSelectedLabel}
         siteSelectedLabel={siteSelectedLabel}
         projectSelectedLabel={projectSelectedLabel}
@@ -552,7 +618,80 @@ export function PropertyEntityForm({
       <HierarchyFormFooter
         onCancel={onCancel}
         onPrevious={onPrevious}
+        onNext={onNext}
         submitLabel={resolvedSubmitLabel}
+        pending={mutation.isPending}
+        allowSaveAndClose={allowSaveAndClose}
+        onIntentContinue={() => {
+          saveActionRef.current = "continue";
+        }}
+        onIntentClose={() => {
+          saveActionRef.current = "close";
+        }}
+      />
+    </Form>
+  );
+}
+
+export function JobEntityForm({
+  defaultValues,
+  propertySelectedLabel,
+  submitLabel = "Create Job",
+  onCancel,
+  onPrevious,
+  onSaved,
+}: {
+  defaultValues?: Partial<TaskFormValues>;
+  propertySelectedLabel?: string | null;
+  submitLabel?: string;
+  onCancel: () => void;
+  onPrevious?: () => void;
+  onSaved: () => void;
+}) {
+  const form = useForm<TaskFormValues>({
+    resolver: zodResolver(taskFormSchema),
+    mode: "onBlur",
+    reValidateMode: "onChange",
+    defaultValues: {
+      ...taskFormDefaults,
+      ...defaultValues,
+    },
+  });
+
+  useEffect(() => {
+    form.reset({
+      ...taskFormDefaults,
+      ...defaultValues,
+    });
+  }, [defaultValues, form]);
+
+  const mutation = useMutation({
+    mutationFn: (payload: ReturnType<typeof toTaskPayload>) => tasksService.create(payload),
+    onSuccess: (res) => {
+      toast.success(res.message || `Job for ${res.data?.propertyName || "property"} created`);
+      onSaved();
+    },
+    onError: (err) => notifyApiError(err, "Failed to create job"),
+  });
+
+  return (
+    <Form
+      form={form}
+      onSubmit={async (values) => {
+        await mutation.mutateAsync(toTaskPayload(values));
+      }}
+      className="space-y-2"
+    >
+      <TaskFormFields
+        embedded
+        compact
+        disabled={mutation.isPending}
+        selectedLabels={{ property: propertySelectedLabel }}
+      />
+      <HierarchyFormFooter
+        onCancel={onCancel}
+        onPrevious={onPrevious}
+        submitLabel={submitLabel}
         pending={mutation.isPending}
       />
     </Form>

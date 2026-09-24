@@ -20,6 +20,8 @@ export type TaskItemFormValues = {
   timeSlotId: string;
   isTicked: boolean;
   notes: string;
+  /** Read-only: set when the line was created as a repeat assignment. */
+  isRepeat: boolean;
   rateApprovalStatus: string;
   proposedRate: string;
   rateReviewReason: string;
@@ -59,6 +61,7 @@ export const emptyTaskItem = (): TaskItemFormValues => ({
   timeSlotId: "",
   isTicked: false,
   notes: "",
+  isRepeat: false,
   rateApprovalStatus: "",
   proposedRate: "",
   rateReviewReason: "",
@@ -151,6 +154,7 @@ const taskItemSchema = z
     timeSlotId: z.string().default(""),
     isTicked: z.boolean().default(false),
     notes: z.string().default(""),
+    isRepeat: z.boolean().default(false),
     rateApprovalStatus: z.string().default(""),
     proposedRate: z.string().default(""),
     rateReviewReason: z.string().default(""),
@@ -282,6 +286,7 @@ export function taskToFormValues(task: ApiTask): TaskFormValues {
       timeSlotId: item.timeSlotId != null ? String(item.timeSlotId) : "",
       isTicked: item.isTicked,
       notes: item.notes ?? "",
+      isRepeat: Boolean(item.isRepeat),
       rateApprovalStatus: item.rateApprovalStatus ?? "",
       proposedRate:
         item.proposedRate != null && Number.isFinite(Number(item.proposedRate))

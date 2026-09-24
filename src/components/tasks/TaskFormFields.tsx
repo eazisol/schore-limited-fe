@@ -80,6 +80,7 @@ function snapshotItems(rows: TaskItemFormValues[]): TaskItemFormValues[] {
     timeSlotId: row.timeSlotId ?? "",
     isTicked: Boolean(row.isTicked),
     notes: row.notes ?? "",
+    isRepeat: Boolean(row.isRepeat),
     rateApprovalStatus: row.rateApprovalStatus ?? "",
     proposedRate: row.proposedRate ?? "",
     rateReviewReason: row.rateReviewReason ?? "",
@@ -118,12 +119,15 @@ const defaultAddState = (): ItemAddState => ({
 export function TaskFormFields({
   disabled = false,
   embedded = false,
+  compact = false,
   itemsLocked = false,
   selectedLabels,
   itemSelectedLabels = {},
 }: {
   disabled?: boolean;
   embedded?: boolean;
+  /** Wizard / modal: 2 fields per row (matches hierarchy entity forms). */
+  compact?: boolean;
   /** When true, add-item controls are disabled (daily per-task lock). */
   itemsLocked?: boolean;
   selectedLabels?: TaskFormSelectedLabels;
@@ -1047,6 +1051,69 @@ export function TaskFormFields({
               : "card-elevated min-w-0 w-full space-y-2 overflow-hidden p-3"
           }
         >
+          {compact ? (
+            <>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <CreatableSearchableSelectField<TaskFormValues>
+                  name="propertyId"
+                  label="Property"
+                  required
+                  placeholder="Select property"
+                  searchPlaceholder="Search properties…"
+                  queryKey={["lookups", "properties"]}
+                  selectedLabel={selectedLabels?.property}
+                  fetchOptions={fetchPropertyOptions}
+                  lookupType="property"
+                />
+                <CreatableSearchableSelectField<TaskFormValues>
+                  name="jobTypeId"
+                  label="Property type"
+                  required
+                  placeholder="Select property type"
+                  searchPlaceholder="Search property types…"
+                  queryKey={["lookups", "job-types"]}
+                  selectedLabel={selectedLabels?.jobType}
+                  fetchOptions={fetchJobTypeOptions}
+                  lookupType="jobType"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <TextField<TaskFormValues>
+                  name="startDate"
+                  label="Start date"
+                  type="date"
+                  required
+                />
+                <TextField<TaskFormValues>
+                  name="handOverDate"
+                  label="Hand over date"
+                  description="Auto from property type"
+                  type="date"
+                  disabled
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <CreatableSearchableSelectField<TaskFormValues>
+                  name="statusId"
+                  label="Status"
+                  required
+                  placeholder="Select status"
+                  searchPlaceholder="Search statuses…"
+                  queryKey={["lookups", "statuses", "TASK"]}
+                  selectedLabel={selectedLabels?.status}
+                  fetchOptions={fetchTaskStatusOptions}
+                  onSelect={handleStatusSelect}
+                  lookupType="status"
+                />
+              </div>
+              <TextareaField<TaskFormValues>
+                name="description"
+                label="Description"
+                rows={2}
+                maxLength={DESCRIPTION_MAX_LENGTH}
+              />
+            </>
+          ) : (
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-12 [&>*]:min-w-0">
             <div className="sm:col-span-4">
               <CreatableSearchableSelectField<TaskFormValues>
@@ -1125,6 +1192,7 @@ export function TaskFormFields({
               />
             </div>
           </div>
+          )}
           {/* Temporarily hidden: Budget — re-enable when needed */}
           {false && (
             <TextField<TaskFormValues>
@@ -1546,7 +1614,16 @@ function ProductLineRow({
         </td>
       ) : null}
       <td className="min-w-0 px-1.5 py-1.5 font-medium">
-        <TruncatedTooltip text={productLabel} maxChars={22} />
+        <div className="flex min-w-0 items-center gap-1.5">
+          <TruncatedTooltip text={productLabel} maxChars={22} />
+          {item?.isRepeat ? (
+            <AppTooltip content="Repeated task" asChild>
+              <span className="shrink-0 rounded border border-border bg-secondary px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-secondary-foreground">
+                Repeat
+              </span>
+            </AppTooltip>
+          ) : null}
+        </div>
       </td>
       <td className="px-1.5 py-1.5">
         <input

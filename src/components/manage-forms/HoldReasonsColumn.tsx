@@ -37,6 +37,12 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
+const emptyValues: Values = {
+  name: "",
+  description: "",
+  isActive: true,
+};
+
 type Mode =
   | { kind: "create" }
   | { kind: "edit"; item: ApiHoldReason }
@@ -47,6 +53,7 @@ export function HoldReasonsColumn() {
   const { canModify, canDelete } = useManageFormsPermissions();
   const [page, setPage] = useState(1);
   const [mode, setMode] = useState<Mode>({ kind: "create" });
+  const [createKey, setCreateKey] = useState(0);
   const [confirmDel, setConfirmDel] = useState<ApiHoldReason | null>(null);
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
     onPageReset: () => setPage(1),
@@ -76,7 +83,7 @@ export function HoldReasonsColumn() {
       toast.success(res.message || "Hold reason deleted");
       setConfirmDel(null);
       if (mode.kind !== "create" && confirmDel && mode.item.id === confirmDel.id) {
-        setMode({ kind: "create" });
+        startNew();
       }
       qc.invalidateQueries({ queryKey: holdReasonsQueryKey });
       qc.invalidateQueries({ queryKey: lookupsKey });
@@ -84,10 +91,15 @@ export function HoldReasonsColumn() {
     onError: (err) => notifyApiError(err, "Failed to delete hold reason"),
   });
 
+  function startNew() {
+    setCreateKey((k) => k + 1);
+    setMode({ kind: "create" });
+  }
+
   function handleSaved() {
     qc.invalidateQueries({ queryKey: holdReasonsQueryKey });
     qc.invalidateQueries({ queryKey: lookupsKey });
-    setMode({ kind: "create" });
+    startNew();
   }
 
   return (
@@ -101,7 +113,7 @@ export function HoldReasonsColumn() {
             searchPlaceholder="Search reasons…"
             searchAriaLabel="Search hold reasons"
             canAdd={canModify}
-            onAdd={() => setMode({ kind: "create" })}
+            onAdd={startNew}
             addAriaLabel="Add hold reason"
             loading={query.isLoading}
             fetching={query.isFetching}
@@ -162,9 +174,9 @@ export function HoldReasonsColumn() {
         }
         form={
           <HoldReasonFormPanel
-            key={mode.kind === "create" ? "create" : `${mode.kind}-${mode.item.id}`}
+            key={mode.kind === "create" ? `create-${createKey}` : `${mode.kind}-${mode.item.id}`}
             mode={mode}
-            onCancel={() => setMode({ kind: "create" })}
+            onNew={startNew}
             onSaved={handleSaved}
           />
         }
@@ -184,11 +196,11 @@ export function HoldReasonsColumn() {
 
 function HoldReasonFormPanel({
   mode,
-  onCancel,
+  onNew,
   onSaved,
 }: {
   mode: Mode;
-  onCancel: () => void;
+  onNew: () => void;
   onSaved: () => void;
 }) {
   const isView = mode.kind === "view";
@@ -241,20 +253,29 @@ function HoldReasonFormPanel({
         headerActions={<SwitchField<Values> name="isActive" label="Active" disabled={isView} />}
         footer={
           <div className="flex justify-end gap-2">
-            {mode.kind !== "create" ? (
-              <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+            {!isView ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  form.reset(emptyValues);
+                  onNew();
+                }}
+                disabled={mutation.isPending}
+              >
                 New
               </Button>
-            ) : null}
+            ) : (
+              <Button type="button" variant="outline" size="sm" onClick={onNew}>
+                New
+              </Button>
+            )}
             {!isView ? (
               <SubmitButton size="sm" loadingText="Saving…">
                 {mode.kind === "edit" ? "Update reason" : "Create reason"}
               </SubmitButton>
-            ) : (
-              <Button type="button" variant="outline" size="sm" onClick={onCancel}>
-                Close
-              </Button>
-            )}
+            ) : null}
           </div>
         }
       >

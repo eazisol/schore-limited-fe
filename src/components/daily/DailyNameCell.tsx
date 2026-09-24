@@ -204,6 +204,7 @@ function ItemSection({
             item.timeSlotName ?? "—",
             canSeeRates ? fmtGBP(item.rate) : null,
             !item.isToday ? "carry-over" : null,
+            item.isRepeat ? "repeat" : null,
           ]
             .filter(Boolean)
             .join(" · ");
@@ -242,11 +243,16 @@ function ItemSection({
               <div className="min-w-0 flex-1">
                 <p
                   className={cn(
-                    "truncate text-sm font-medium",
+                    "flex min-w-0 items-center gap-1.5 text-sm font-medium",
                     completed && "text-muted-foreground line-through",
                   )}
                 >
-                  {item.productName}
+                  <span className="truncate">{item.productName}</span>
+                  {item.isRepeat ? (
+                    <span className="shrink-0 rounded border border-border bg-secondary px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-secondary-foreground">
+                      Repeat
+                    </span>
+                  ) : null}
                 </p>
                 <p className="truncate text-[11px] text-muted-foreground">{meta}</p>
               </div>

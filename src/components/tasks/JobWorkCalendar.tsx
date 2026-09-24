@@ -195,7 +195,7 @@ export function JobWorkCalendar({ task }: JobWorkCalendarProps) {
       const withProperty = (
         await dailyProgrammeService.get({
           date: selectedYmd!,
-          showHandedOver: true,
+          includeAllStatuses: true,
           propertyId: task.propertyId,
         })
       ).data;
@@ -204,7 +204,7 @@ export function JobWorkCalendar({ task }: JobWorkCalendarProps) {
       return (
         await dailyProgrammeService.get({
           date: selectedYmd!,
-          showHandedOver: true,
+          includeAllStatuses: true,
         })
       ).data;
     },

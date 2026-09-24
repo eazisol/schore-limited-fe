@@ -1,12 +1,11 @@
+import { useEffect } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Modal } from "@/components/Modal";
-import { TextField, TextareaField } from "@/components/form";
+import { TextField, TextareaField, SearchableSelectField } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { holdReasonsService } from "@/lib/api/services/hold-reasons";
 import { Loader2 } from "lucide-react";
@@ -32,6 +31,13 @@ function todayLocalYmd() {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+async function fetchHoldReasonOptions(search: string) {
+  const res = await holdReasonsService.list({ page: 1, pageSize: 50, search: search.trim() });
+  return (res.data.items ?? [])
+    .filter((r) => r.isActive)
+    .map((r) => ({ value: String(r.id), label: r.name }));
 }
 
 export function HoldDetailsModal({
@@ -67,12 +73,6 @@ export function HoldDetailsModal({
     }
   }, [open, defaultDate, form]);
 
-  const reasonsQuery = useQuery({
-    queryKey: ["lookups", "hold-reasons"],
-    queryFn: async () => (await holdReasonsService.list({ page: 1, pageSize: 100 })).data.items,
-    enabled: open,
-  });
-
   async function submit(values: Values) {
     await onConfirm({
       holdDate: values.holdDate,
@@ -103,7 +103,7 @@ export function HoldDetailsModal({
       onClose={onClose}
       title="Hold details"
       subtitle="This day will be excluded from DAYS and KPI counts."
-      size="md"
+      size="sm"
       showCloseButton={false}
     >
       <FormProvider {...form}>
@@ -118,35 +118,16 @@ export function HoldDetailsModal({
           }}
         >
           <TextField<Values> name="holdDate" label="Hold date" type="date" required autoFocus />
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Hold reason <span className="text-destructive">*</span>
-            </label>
-            <select
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-              value={form.watch("holdReasonId")}
-              onChange={(e) =>
-                form.setValue("holdReasonId", e.target.value, {
-                  shouldDirty: true,
-                  shouldValidate: true,
-                })
-              }
-            >
-              <option value="">Select reason…</option>
-              {(reasonsQuery.data ?? [])
-                .filter((r) => r.isActive)
-                .map((r) => (
-                  <option key={r.id} value={String(r.id)}>
-                    {r.name}
-                  </option>
-                ))}
-            </select>
-            {form.formState.errors.holdReasonId ? (
-              <p className="mt-1 text-xs text-destructive">
-                {form.formState.errors.holdReasonId.message}
-              </p>
-            ) : null}
-          </div>
+          <SearchableSelectField<Values>
+            name="holdReasonId"
+            label="Hold reason"
+            required
+            placeholder="Select reason…"
+            searchPlaceholder="Search reasons…"
+            queryKey={["lookups", "hold-reasons", "hold-details"]}
+            fetchOptions={fetchHoldReasonOptions}
+            disabled={isSubmitting}
+          />
           <TextareaField<Values> name="holdNotes" label="Notes" rows={3} />
           <div className="flex justify-end gap-2 border-t pt-2">
             <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>

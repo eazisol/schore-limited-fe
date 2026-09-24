@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, TextField, TextareaField, SubmitButton } from "@/components/form";
+import { Form, TextField, TextareaField, SubmitButton, SearchableSelectField } from "@/components/form";
 import { Can, usePermission } from "@/components/Permission";
 import {
   DataTable,
@@ -248,11 +248,6 @@ function AddHoldForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
         .data.items,
   });
 
-  const reasonsQuery = useQuery({
-    queryKey: ["lookups", "hold-reasons"],
-    queryFn: async () => (await holdReasonsService.list({ page: 1, pageSize: 100 })).data.items,
-  });
-
   const mutation = useMutation({
     mutationFn: (values: Values) =>
       taskHoldsService.create({
@@ -296,27 +291,25 @@ function AddHoldForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
           </select>
         </div>
         <TextField<Values> name="holdDate" label="Date" type="date" required />
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">
-            Hold reason <span className="text-destructive">*</span>
-          </label>
-          <select
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-            value={form.watch("holdReasonId")}
-            onChange={(e) =>
-              form.setValue("holdReasonId", e.target.value, { shouldValidate: true })
-            }
-          >
-            <option value="">Select reason…</option>
-            {(reasonsQuery.data ?? [])
+        <SearchableSelectField<Values>
+          name="holdReasonId"
+          label="Hold reason"
+          required
+          placeholder="Select reason…"
+          searchPlaceholder="Search reasons…"
+          queryKey={["lookups", "hold-reasons", "hold-page"]}
+          fetchOptions={async (search) => {
+            const res = await holdReasonsService.list({
+              page: 1,
+              pageSize: 50,
+              search: search.trim(),
+            });
+            return (res.data.items ?? [])
               .filter((r) => r.isActive)
-              .map((r) => (
-                <option key={r.id} value={String(r.id)}>
-                  {r.name}
-                </option>
-              ))}
-          </select>
-        </div>
+              .map((r) => ({ value: String(r.id), label: r.name }));
+          }}
+          className="md:col-span-2"
+        />
         <TextareaField<Values> name="notes" label="Notes" rows={2} />
       </div>
       <div className="flex justify-end gap-2">

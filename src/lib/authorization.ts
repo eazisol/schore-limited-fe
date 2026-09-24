@@ -152,7 +152,45 @@ function rebuildSidebarTree(flat: ApiMenu[]): ApiMenu[] {
 
 /** Main sidebar menus: `read` only, nested via Menu API `parentMenuId`. */
 export function buildNavMenus(menus: ApiMenu[]): ApiMenu[] {
-  return rebuildSidebarTree(flattenMenus(menus));
+  const flat = flattenMenus(menus);
+  const rates = flat.find((m) => normalizeCode(m.code) === "RATE_APPROVALS");
+  const repeat = flat.find((m) => normalizeCode(m.code) === "REPEAT_TASK_APPROVALS");
+  const hasApprovals = Boolean(rates?.read || repeat?.read);
+
+  const prepared: ApiMenu[] = [];
+  let approvalsInserted = false;
+
+  for (const menu of flat) {
+    const code = normalizeCode(menu.code);
+    if (code === "REPEAT_TASK_APPROVALS") continue;
+    if (code === "RATE_APPROVALS") {
+      if (!hasApprovals) continue;
+      prepared.push({
+        ...menu,
+        name: "Approvals",
+        route: "/rate-approvals",
+        read: true,
+      });
+      approvalsInserted = true;
+      continue;
+    }
+    prepared.push(menu);
+  }
+
+  // Repeat-only roles still need a single Approvals nav entry.
+  if (hasApprovals && !approvalsInserted && repeat) {
+    prepared.push({
+      ...repeat,
+      code: rates?.code ?? "RATE_APPROVALS",
+      name: "Approvals",
+      route: "/rate-approvals",
+      read: true,
+      modify: Boolean(rates?.modify || repeat.modify),
+      delete: Boolean(rates?.delete || repeat.delete),
+    });
+  }
+
+  return rebuildSidebarTree(prepared);
 }
 
 /** Readable child menus of a parent (by code), for container redirects. */
@@ -298,6 +336,13 @@ export function canAccessPath(menus: ApiMenu[], pathname: string): boolean {
     if (tasksMenu) return Boolean(tasksMenu.read);
     const dailyMenu = resolveMenuForAppPath(menus, "/daily") ?? findMenuByCode(menus, "DAILY");
     return Boolean(dailyMenu?.read);
+  }
+
+  // Unified Approvals page: either Rate or Repeat Task menu grants access.
+  if (path === "/rate-approvals" || path.startsWith("/rate-approvals/")) {
+    const rates = findMenuByCode(menus, "RATE_APPROVALS");
+    const repeat = findMenuByCode(menus, "REPEAT_TASK_APPROVALS");
+    return Boolean(rates?.read || repeat?.read);
   }
 
   const menu = resolveMenuForAppPath(menus, path);
