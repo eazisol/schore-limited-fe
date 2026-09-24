@@ -21,7 +21,6 @@ import { usePermissions } from "@/contexts/PermissionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchCustomerOptions } from "@/lib/user-dropdowns";
 import { isOperativePortalUser } from "@/lib/operative-portal";
-import { cn } from "@/lib/utils";
 import {
   downloadCsv,
   formatUkDate,
@@ -209,18 +208,6 @@ function WagesList() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const totals = useMemo(
-    () =>
-      rows.reduce(
-        (acc, w) => ({
-          gross: acc.gross + w.gross,
-          cis: acc.cis + w.cisDeduction,
-          net: acc.net + w.net,
-        }),
-        { gross: 0, cis: 0, net: 0 },
-      ),
-    [rows],
-  );
   const weekLabel = weekendQuery.data?.weekEndingDayName ?? "configured last working day";
   const confirmPending =
     confirmAction?.type === "send"
@@ -235,12 +222,6 @@ function WagesList() {
         title="Wage Sheets"
         subtitle={`One sheet per operative per week · Week ending is ${weekLabel.toLowerCase()}`}
       />
-
-      <div className="flex flex-wrap gap-3">
-        <Tot label="Gross" value={fmtGBP(totals.gross)} tone="neutral" />
-        <Tot label="CIS deducted" value={fmtGBP(totals.cis)} tone="warning" />
-        <Tot label="Net pay" value={fmtGBP(totals.net)} tone="accent" />
-      </div>
 
       <div className="card-elevated overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2.5 sm:gap-3 sm:px-4">
@@ -596,40 +577,6 @@ function ConfirmDialog({
             {confirmLabel}
           </Button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function Tot({
-  label,
-  value,
-  tone = "neutral",
-}: {
-  label: string;
-  value: string;
-  tone?: "neutral" | "warning" | "accent";
-}) {
-  return (
-    <div
-      className={cn(
-        "min-w-[9.5rem] rounded-lg border px-4 py-3 shadow-sm",
-        tone === "neutral" && "border-border bg-card",
-        tone === "warning" && "border-warning/35 bg-warning/5",
-        tone === "accent" && "border-accent/40 bg-accent/5",
-      )}
-    >
-      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </div>
-      <div
-        className={cn(
-          "mt-1 font-display text-xl font-semibold tabular-nums tracking-tight",
-          tone === "warning" && "text-warning-foreground",
-          tone === "accent" && "text-accent",
-        )}
-      >
-        {value}
       </div>
     </div>
   );

@@ -90,6 +90,7 @@ const CLIENT_EXPORT_HEADERS = [
   "Trade",
   "Task",
   "Attendance period",
+  "Notes",
 ] as const;
 
 function buildClientExportRows(data: ApiDailyClientExport, exportDateLabel: string) {
@@ -110,6 +111,7 @@ function buildClientExportRows(data: ApiDailyClientExport, exportDateLabel: stri
       line.trade,
       line.task,
       line.attendancePeriod,
+      line.notes ?? "",
     ]);
   }
 
@@ -124,6 +126,7 @@ function buildClientExportRows(data: ApiDailyClientExport, exportDateLabel: stri
       data.client,
       status,
       reason,
+      "",
       "",
       "",
       "",

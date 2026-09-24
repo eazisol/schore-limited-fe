@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { AuthLayout } from "@/components/AuthLayout";
 import { Form, TextField, PasswordField, CheckboxField, SubmitButton } from "@/components/form";
+import { canAccessPath, getDefaultHomePath } from "@/lib/authorization";
 import { isOperativePortalUser, isOperativeUserType, operativeHomePathFromMenus } from "@/lib/operative-portal";
 
 const signinSearchSchema = z.object({ redirect: z.string().optional() });
@@ -58,11 +59,25 @@ function SignIn() {
     const portalHome = isOperativePortalUser(result.user.userTypeCode, menus)
       ? operativeHomePathFromMenus(menus)
       : null;
-    const target =
-      explicit ??
+
+    // Staff without Dashboard land on `/` first; RoutePermissionGuard then sends
+    // them to their first allowed menu (e.g. Daily Programme for Labour Planner).
+    let target =
       (isOperativeUserType(result.user.userTypeCode) ? "/operatives/me" : null) ??
       portalHome ??
       "/";
+
+    if (explicit) {
+      // Only honour return URLs the current menu set already allows; otherwise `/`
+      // avoids bouncing into Access denied before permissions finish loading.
+      if (menus.length === 0 || canAccessPath(menus, explicit)) {
+        target = explicit;
+      }
+    } else if (menus.length > 0 && !isOperativeUserType(result.user.userTypeCode)) {
+      const home = getDefaultHomePath(menus);
+      if (canAccessPath(menus, home)) target = home;
+    }
+
     navigate({ to: target });
   }
 

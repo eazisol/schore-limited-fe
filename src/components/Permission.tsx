@@ -4,8 +4,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionContext";
 import {
   canAccessPath,
+  getDefaultHomePath,
   getMenuPermission,
+  isAppHomePath,
   resolveMenuForAppPath,
+  toAppPath,
   type MenuAction,
 } from "@/lib/authorization";
 import { isOperativeUserType } from "@/lib/operative-portal";
@@ -114,14 +117,21 @@ export function RoutePermissionGuard({
   useEffect(() => {
     if (!isHydrated || !isAuthenticated || permissionsBlocking) return;
     if (canAccessPath(menus, pathname)) return;
-    // Operatives without ops Dashboard land on `/` → send to self portal.
-    if (
-      (pathname === "/" || pathname === "/dashboard") &&
-      isOperativeUserType(user?.userTypeCode)
-    ) {
-      navigate({ to: "/operatives/me", replace: true });
-      return;
+
+    // Default landing (`/` / dashboard) is not granted for every role — send them
+    // to the first menu they can open instead of the Access denied screen.
+    if (isAppHomePath(pathname)) {
+      if (isOperativeUserType(user?.userTypeCode)) {
+        navigate({ to: "/operatives/me", replace: true });
+        return;
+      }
+      const home = getDefaultHomePath(menus);
+      if (home !== toAppPath(pathname)) {
+        navigate({ to: home, replace: true });
+        return;
+      }
     }
+
     navigate({ to: "/forbidden" });
   }, [isHydrated, isAuthenticated, permissionsBlocking, menus, pathname, navigate, user?.userTypeCode]);
 

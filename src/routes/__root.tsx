@@ -9,8 +9,8 @@ import { AppShell } from "@/components/AppShell";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ApiProvider } from "@/contexts/ApiContext";
-import { PermissionProvider } from "@/contexts/PermissionContext";
-import { isPublicPath } from "@/lib/authorization";
+import { PermissionProvider, usePermissions } from "@/contexts/PermissionContext";
+import { getDefaultHomePath, isPublicPath } from "@/lib/authorization";
 import { isOperativeUserType } from "@/lib/operative-portal";
 import { AUTH_BOOTSTRAP_SCRIPT, getStoredSession } from "@/lib/session";
 
@@ -110,6 +110,7 @@ function AppRouter() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const { isHydrated, isAuthenticated, user } = useAuth();
+  const { menus } = usePermissions();
   const isAuthRoute = AUTH_ROUTES.includes(pathname as (typeof AUTH_ROUTES)[number]);
 
   useEffect(() => {
@@ -119,10 +120,14 @@ function AppRouter() {
       return;
     }
     if (isAuthenticated && pathname === "/signin") {
-      const home = isOperativeUserType(user?.userTypeCode) ? "/operatives/me" : "/";
+      const home = isOperativeUserType(user?.userTypeCode)
+        ? "/operatives/me"
+        : menus.length > 0
+          ? getDefaultHomePath(menus)
+          : "/";
       navigate({ to: home, replace: true });
     }
-  }, [isHydrated, isAuthenticated, pathname, navigate, user?.userTypeCode]);
+  }, [isHydrated, isAuthenticated, pathname, navigate, user?.userTypeCode, menus]);
 
   // Never paint protected UI until we know session state.
   if (!isHydrated) {

@@ -3,7 +3,7 @@ import { ShieldAlert, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/AppShell";
 import { usePermissions } from "@/contexts/PermissionContext";
-import { buildNavMenus, toAppPath } from "@/lib/authorization";
+import { buildNavMenus, getDefaultHomePath } from "@/lib/authorization";
 
 export const Route = createFileRoute("/forbidden")({
   head: () => ({ meta: [{ title: "Access denied | Schore" }] }),
@@ -13,7 +13,7 @@ export const Route = createFileRoute("/forbidden")({
 function Forbidden() {
   const { menus } = usePermissions();
   const firstReadable = buildNavMenus(menus)[0];
-  const safeTo = firstReadable ? toAppPath(firstReadable.route) : "/profile";
+  const safeTo = getDefaultHomePath(menus);
 
   return (
     <div>

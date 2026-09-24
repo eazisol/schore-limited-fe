@@ -356,3 +356,32 @@ export function canAccessPath(menus: ApiMenu[], pathname: string): boolean {
   if (!menu) return false;
   return Boolean(menu.read);
 }
+
+/**
+ * First sidebar destination the user can open (depth-first through nav menus).
+ * Used after login / when `/` is not permitted, so roles without Dashboard
+ * (e.g. Labour Planner) land on Daily Programme instead of `/forbidden`.
+ */
+export function getDefaultHomePath(menus: ApiMenu[]): string {
+  const walk = (items: ApiMenu[]): string | null => {
+    for (const item of sortByOrder(items)) {
+      const children = item.children ?? [];
+      if (children.length > 0) {
+        const nested = walk(children);
+        if (nested) return nested;
+      }
+      if (!item.read) continue;
+      const route = toAppPath(item.route);
+      if (!route) continue;
+      return route;
+    }
+    return null;
+  };
+
+  return walk(buildNavMenus(menus)) ?? "/profile";
+}
+
+export function isAppHomePath(pathname: string): boolean {
+  const path = toAppPath(pathname);
+  return path === "/" || path === "/dashboard";
+}

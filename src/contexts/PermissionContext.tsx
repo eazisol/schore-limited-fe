@@ -39,7 +39,7 @@ interface PermissionContextValue {
     menuTree?: ApiMenuDefinition[];
     /** Force a fresh Menus/tree fetch (ignores cache). */
     forceMenuTree?: boolean;
-  }) => Promise<void>;
+  }) => Promise<ApiMenu[]>;
 }
 
 export const PERMISSION_UPDATED_STORAGE_KEY = "schore.permissions.updated";
@@ -65,12 +65,12 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
     background?: boolean;
     menuTree?: ApiMenuDefinition[];
     forceMenuTree?: boolean;
-  }) => {
+  }): Promise<ApiMenu[]> => {
     if (!isAuthenticated || userId == null) {
       setMenus([]);
       setAccess(null);
       setError(null);
-      return;
+      return [];
     }
 
     const requestId = ++requestIdRef.current;
@@ -130,6 +130,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
         setMenus(nextMenus);
         setAccess(accessResponse);
       }
+      return nextMenus;
     } catch (nextError) {
       if (requestId === requestIdRef.current) {
         setError(nextError);

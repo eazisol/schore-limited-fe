@@ -239,6 +239,7 @@ export interface ApiDailyClientExportLine {
   trade: string | null;
   task: string | null;
   attendancePeriod: string | null;
+  notes: string | null;
 }
 
 export interface ApiDailyClientExport {

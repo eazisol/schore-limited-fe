@@ -31,18 +31,18 @@ export function AppTooltip({
   delayDuration?: number;
   className?: string;
   contentClassName?: string;
-  /** When true, renders children without a tooltip. */
+  /** When true, suppresses the tooltip without remounting children. */
   disabled?: boolean;
   /** When true, merges trigger props onto the child element (for links/buttons). */
   asChild?: boolean;
 }) {
-  if (disabled || content == null || content === "") {
-    return <>{children}</>;
-  }
+  // Keep the same wrapper tree when disabled so children (e.g. inputs) are not
+  // remounted when content appears — remounting steals focus after the first keystroke.
+  const isDisabled = disabled || content == null || content === "";
 
   return (
     <TooltipProvider delayDuration={delayDuration}>
-      <Tooltip>
+      <Tooltip open={isDisabled ? false : undefined}>
         <TooltipTrigger asChild>
           {asChild ? (
             children
@@ -52,16 +52,18 @@ export function AppTooltip({
             </span>
           )}
         </TooltipTrigger>
-        <TooltipContent
-          side={side}
-          align={align}
-          className={cn(
-            "max-w-xs border border-border bg-card px-3 py-2 text-xs font-medium text-foreground shadow-md",
-            contentClassName,
-          )}
-        >
-          {content}
-        </TooltipContent>
+        {!isDisabled ? (
+          <TooltipContent
+            side={side}
+            align={align}
+            className={cn(
+              "max-w-xs border border-border bg-card px-3 py-2 text-xs font-medium text-foreground shadow-md",
+              contentClassName,
+            )}
+          >
+            {content}
+          </TooltipContent>
+        ) : null}
       </Tooltip>
     </TooltipProvider>
   );

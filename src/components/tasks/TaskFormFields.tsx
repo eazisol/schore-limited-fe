@@ -1903,8 +1903,8 @@ export function TaskFormFields({
   );
 }
 
-const PRODUCT_LINE_TABLE_MIN_WIDTH = "736px";
-const PRODUCT_LINE_TABLE_MIN_WIDTH_WITH_ASSIGN = "812px";
+const PRODUCT_LINE_TABLE_MIN_WIDTH = "856px";
+const PRODUCT_LINE_TABLE_MIN_WIDTH_WITH_ASSIGN = "932px";
 
 function ProductLinesTable({
   indexes,
@@ -1949,7 +1949,7 @@ function ProductLinesTable({
       >
         <colgroup>
           {showAssignColumn ? <col style={{ width: "56px" }} /> : null}
-          <col style={{ width: "120px" }} />
+          <col style={{ width: "220px" }} />
           <col style={{ width: "132px" }} />
           <col style={{ width: "96px" }} />
           <col style={{ width: "56px" }} />
@@ -2076,21 +2076,25 @@ function ProductLineRow({
         </td>
       ) : null}
       <td className="min-w-0 px-1.5 py-1.5 font-medium">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <TruncatedTooltip text={productLabel} maxChars={22} />
-          {item?.isRepeat ? (
-            <AppTooltip content="Repeated task" asChild>
-              <span className="shrink-0 rounded border border-border bg-secondary px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-secondary-foreground">
-                Repeat
-              </span>
-            </AppTooltip>
-          ) : null}
-          {isTicked ? (
-            <AppTooltip content="Task completed" asChild>
-              <span className="shrink-0 rounded border border-border bg-secondary px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-secondary-foreground">
-                Completed
-              </span>
-            </AppTooltip>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <TruncatedTooltip text={productLabel} maxChars={48} className="max-w-full" />
+          {item?.isRepeat || isTicked ? (
+            <div className="flex flex-wrap gap-1">
+              {item?.isRepeat ? (
+                <AppTooltip content="Repeated task" asChild>
+                  <span className="shrink-0 rounded border border-border bg-secondary px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-secondary-foreground">
+                    Repeat
+                  </span>
+                </AppTooltip>
+              ) : null}
+              {isTicked ? (
+                <AppTooltip content="Task completed" asChild>
+                  <span className="shrink-0 rounded border border-border bg-secondary px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-secondary-foreground">
+                    Completed
+                  </span>
+                </AppTooltip>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </td>
@@ -2213,14 +2217,25 @@ function ProductLineRow({
   );
 }
 
-function TruncatedTooltip({ text, maxChars = 24 }: { text: string; maxChars?: number }) {
+function TruncatedTooltip({
+  text,
+  maxChars = 24,
+  className,
+}: {
+  text: string;
+  maxChars?: number;
+  className?: string;
+}) {
   const value = text.trim();
   if (!value) return <span>—</span>;
   const truncated = truncateWithEllipsis(value, maxChars);
-  const label = <span className="block min-w-0 max-w-[8.5rem] truncate">{truncated}</span>;
+  const widthClass = className ?? "max-w-[8.5rem]";
+  const label = (
+    <span className={cn("block min-w-0 truncate", widthClass)}>{truncated}</span>
+  );
   return (
     <AppTooltip content={value} asChild align="start">
-      <span className="block min-w-0 max-w-[8.5rem] cursor-default">{label}</span>
+      <span className={cn("block min-w-0 cursor-default", widthClass)}>{label}</span>
     </AppTooltip>
   );
 }
