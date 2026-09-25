@@ -223,6 +223,8 @@ export interface DailyProgrammeListParams {
   showHandedOver?: boolean;
   /** Bypass Handed Over status filter (job calendar / refresh). */
   includeAllStatuses?: boolean;
+  /** Only jobs with the overdue (red-dot) indicator for the programme date. */
+  overdueOnly?: boolean;
   propertyId?: string;
   statusId?: string;
   projectId?: string;
@@ -279,6 +281,7 @@ export const dailyProgrammeService = {
     date,
     showHandedOver = false,
     includeAllStatuses = false,
+    overdueOnly = false,
     propertyId,
     statusId,
     projectId,
@@ -288,6 +291,7 @@ export const dailyProgrammeService = {
         Date: date,
         ShowHandedOver: showHandedOver,
         ...(includeAllStatuses ? { IncludeAllStatuses: true } : {}),
+        ...(overdueOnly ? { OverdueOnly: true } : {}),
         ...(propertyId != null ? { PropertyId: propertyId } : {}),
         ...(statusId != null ? { StatusId: statusId } : {}),
         ...(projectId != null ? { ProjectId: projectId } : {}),

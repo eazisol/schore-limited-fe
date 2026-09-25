@@ -259,7 +259,7 @@ function ItemSection({
                 >
                   <span className="truncate">{item.productName}</span>
                   {item.isRepeat ? (
-                    <span className="shrink-0 rounded border border-border bg-secondary px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-secondary-foreground">
+                    <span className="shrink-0 rounded border border-red-200 bg-red-50 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-red-700">
                       Repeat
                     </span>
                   ) : null}

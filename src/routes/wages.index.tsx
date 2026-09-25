@@ -341,7 +341,8 @@ function WagesList() {
               <tr>
                 <th className="px-4 py-2 text-left font-medium">Invoice</th>
                 <th className="px-3 py-2 text-left font-medium">Operative</th>
-                <th className="px-3 py-2 text-left font-medium">Client(s)</th>
+                <th className="px-3 py-2 text-left font-medium">Project</th>
+                <th className="px-3 py-2 text-left font-medium">Client</th>
                 <th className="px-3 py-2 text-left font-medium">Week Ending</th>
                 <th className="px-3 py-2 text-right font-medium">Gross</th>
                 <th className="px-3 py-2 text-right font-medium">CIS</th>
@@ -377,6 +378,14 @@ function WagesList() {
                         <span className="font-medium">{w.operativeName}</span>
                         {w.tradeName ? (
                           <span className="text-[11px] text-muted-foreground"> · {w.tradeName}</span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="max-w-[12rem] truncate px-3 py-1.5">
+                      <div className="leading-tight">
+                        <span className="font-medium">{w.projectName ?? "—"}</span>
+                        {w.projectCode ? (
+                          <div className="font-mono text-[11px] text-muted-foreground">{w.projectCode}</div>
                         ) : null}
                       </div>
                     </td>

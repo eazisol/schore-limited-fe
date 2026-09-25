@@ -50,6 +50,28 @@ export async function fetchTaskStatusOptions(search: string): Promise<Searchable
     }));
 }
 
+/** Synthetic filter value — not a Task Status row. */
+export const DAILY_OVERDUE_STATUS_FILTER = "overdue";
+
+/** Daily Programmer status filter: real task statuses + synthetic Overdue. */
+export async function fetchDailyStatusFilterOptions(
+  search: string,
+): Promise<SearchableSelectOption[]> {
+  const options = await fetchTaskStatusOptions(search);
+  const q = search.trim().toLowerCase();
+  const overdueMatches =
+    !q || "overdue".includes(q) || "overdue".startsWith(q);
+  if (!overdueMatches) return options;
+  return [
+    {
+      value: DAILY_OVERDUE_STATUS_FILTER,
+      label: "Overdue",
+      code: "OVERDUE",
+    },
+    ...options,
+  ];
+}
+
 export async function fetchTaskItemStatusOptions(search: string): Promise<SearchableSelectOption[]> {
   const res = await statusesService.list({
     page: 1,

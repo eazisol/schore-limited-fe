@@ -28,6 +28,7 @@ import {
   filterUnassignedAddOns,
   filterUnassignedPackages,
 } from "@/lib/daily-packages";
+import { resolveDailyItemAddBlockReason } from "@/lib/daily";
 import { fetchOperativeOptions, fetchTimeSlotOptions } from "@/lib/task-dropdowns";
 import {
   findCertificationWarningsForWorkDates,
@@ -239,10 +240,14 @@ export function DailyAssignmentPanel({
   const unassignedAddOns = row.unassignedAddOns ?? [];
   const todayYmd = toYmd(new Date());
   const isPast = date < todayYmd;
-  /** Past-day view may still assign; new work is dated today. */
+  /** Past-day view: new assigns go to today; lock is evaluated for today on the API/row. */
   const assignWorkDate = isPast ? todayYmd : date;
-  // Past view assigns to today — do not gate on the past row's lock (backend enforces today's lock).
-  const cellDisabled = disabled || (!isPast && row.isLocked) || !canSelectRateItems;
+  const addBlockReason = resolveDailyItemAddBlockReason({
+    canModify: !disabled,
+    canSelectRateItems,
+    isLocked: row.isLocked,
+  });
+  const cellDisabled = Boolean(addBlockReason);
   const completeDisabled = disabled || isPast;
 
   const allAssignedLines = useMemo(
@@ -321,6 +326,18 @@ export function DailyAssignmentPanel({
     rateTouchedRef.current = false;
     rateCapReasonRef.current = "";
   }, [date, row.taskId]);
+
+  useEffect(() => {
+    if (!cellDisabled) return;
+    setSelectedKind(null);
+    setSelectedId(null);
+    setAssignOperativeId("");
+    setAssignOperativeLabel("");
+    setAssignRate("");
+    setAssignQty("1");
+    setIsRepeat(false);
+    rateTouchedRef.current = false;
+  }, [cellDisabled]);
 
   useEffect(() => {
     setCapReasonAccepted(false);
@@ -853,6 +870,7 @@ export function DailyAssignmentPanel({
   }
 
   function selectUnassigned(kind: UnassignedKind, id: string) {
+    if (cellDisabled || pending) return;
     setSelectedKind(kind);
     setSelectedId(id);
     setAssignRate("");
@@ -1063,9 +1081,16 @@ export function DailyAssignmentPanel({
       >
         <div className="flex min-h-0 flex-col border-b border-border sm:border-b-0 sm:border-r">
           <div className="shrink-0 border-b border-border px-3 py-2">
-            {isPast ? (
-              <p className="mb-1.5 text-[11px] text-amber-700 dark:text-amber-400">
-                Viewing a past day — new assignments are added for <span className="font-medium">today</span>.
+            {addBlockReason ? (
+              <AppTooltip content={addBlockReason} asChild>
+                <p className="mb-1.5 flex cursor-default items-start gap-1.5 text-[11px] text-amber-700 dark:text-amber-400">
+                  <X className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <span className="min-w-0">{addBlockReason}</span>
+                </p>
+              </AppTooltip>
+            ) : isPast ? (
+              <p className="mb-1.5 text-[11px] text-muted-foreground">
+                Viewing a past day — new assignments are added for today.
               </p>
             ) : null}
             <Input
@@ -1200,15 +1225,16 @@ export function DailyAssignmentPanel({
                   Packages
                 </p>
                 <ul>
-                  {filteredPackages.map((pkg) => (
-                    <li key={`pkg-${pkg.tradeGroupId}`}>
+                  {filteredPackages.map((pkg) => {
+                    const rowButton = (
                       <button
                         type="button"
                         className={cn(
                           "w-full px-3 py-2 text-left text-sm hover:bg-accent/10",
                           selectedKind === "package" &&
-                          selectedId === pkg.tradeGroupId &&
-                          "bg-accent/10",
+                            selectedId === pkg.tradeGroupId &&
+                            "bg-accent/10",
+                          cellDisabled && "cursor-not-allowed opacity-50",
                         )}
                         disabled={cellDisabled || pending}
                         onClick={() => selectUnassigned("package", pkg.tradeGroupId)}
@@ -1220,8 +1246,21 @@ export function DailyAssignmentPanel({
                           </span>
                         ) : null}
                       </button>
-                    </li>
-                  ))}
+                    );
+                    return (
+                      <li key={`pkg-${pkg.tradeGroupId}`}>
+                        {addBlockReason ? (
+                          <AppTooltip content={addBlockReason} asChild>
+                            <span className="block w-full [&_button]:pointer-events-none">
+                              {rowButton}
+                            </span>
+                          </AppTooltip>
+                        ) : (
+                          rowButton
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ) : null}
@@ -1231,15 +1270,16 @@ export function DailyAssignmentPanel({
                   Add-ons
                 </p>
                 <ul>
-                  {filteredAddOns.map((addOn) => (
-                    <li key={`addon-${addOn.productId}`}>
+                  {filteredAddOns.map((addOn) => {
+                    const rowButton = (
                       <button
                         type="button"
                         className={cn(
                           "w-full px-3 py-2 text-left text-sm hover:bg-accent/10",
                           selectedKind === "addon" &&
-                          selectedId === addOn.productId &&
-                          "bg-accent/10",
+                            selectedId === addOn.productId &&
+                            "bg-accent/10",
+                          cellDisabled && "cursor-not-allowed opacity-50",
                         )}
                         disabled={cellDisabled || pending}
                         onClick={() => selectUnassigned("addon", addOn.productId)}
@@ -1247,8 +1287,21 @@ export function DailyAssignmentPanel({
                         <span className="block truncate font-medium">{addOn.productName}</span>
                         <span className="block truncate text-xs text-muted-foreground">Add-on</span>
                       </button>
-                    </li>
-                  ))}
+                    );
+                    return (
+                      <li key={`addon-${addOn.productId}`}>
+                        {addBlockReason ? (
+                          <AppTooltip content={addBlockReason} asChild>
+                            <span className="block w-full [&_button]:pointer-events-none">
+                              {rowButton}
+                            </span>
+                          </AppTooltip>
+                        ) : (
+                          rowButton
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ) : null}
@@ -1817,7 +1870,7 @@ function AssignedItemLine({
         <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
           <span className="truncate">{item.productName}</span>
           {item.isRepeat ? (
-            <span className="shrink-0 rounded border border-border bg-secondary px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-secondary-foreground">
+            <span className="shrink-0 rounded border border-red-200 bg-red-50 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-red-700">
               Repeat
             </span>
           ) : null}

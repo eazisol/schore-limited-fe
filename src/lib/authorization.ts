@@ -1,7 +1,9 @@
 import type { ApiMenu } from "@/lib/api/services/auth";
 import type { ApiMenuDefinition } from "@/lib/api/services/menus";
 import type { ApiPermission, UpsertPermission } from "@/lib/api/services/permissions";
+import { DAILY_ROUTE } from "@/lib/daily";
 import { buildMenuTree, flattenMenuDefinitions } from "@/lib/menu-tree";
+import { isLabourPlanner } from "@/lib/roles";
 
 export type MenuAction = "read" | "modify" | "delete";
 
@@ -362,7 +364,18 @@ export function canAccessPath(menus: ApiMenu[], pathname: string): boolean {
  * Used after login / when `/` is not permitted, so roles without Dashboard
  * (e.g. Labour Planner) land on Daily Programme instead of `/forbidden`.
  */
-export function getDefaultHomePath(menus: ApiMenu[]): string {
+export function getDefaultHomePath(
+  menus: ApiMenu[],
+  roles?: string[] | null,
+): string {
+  // Labour Planner always lands on Daily — even when menus are still loading —
+  // so Dashboard APIs never fire on the `/` flash after login.
+  if (isLabourPlanner(roles)) {
+    if (menus.length === 0 || canAccessPath(menus, DAILY_ROUTE)) {
+      return DAILY_ROUTE;
+    }
+  }
+
   const walk = (items: ApiMenu[]): string | null => {
     for (const item of sortByOrder(items)) {
       const children = item.children ?? [];

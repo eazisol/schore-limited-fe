@@ -125,7 +125,7 @@ export function RoutePermissionGuard({
         navigate({ to: "/operatives/me", replace: true });
         return;
       }
-      const home = getDefaultHomePath(menus);
+      const home = getDefaultHomePath(menus, user?.roles);
       if (home !== toAppPath(pathname)) {
         navigate({ to: home, replace: true });
         return;
@@ -133,7 +133,7 @@ export function RoutePermissionGuard({
     }
 
     navigate({ to: "/forbidden" });
-  }, [isHydrated, isAuthenticated, permissionsBlocking, menus, pathname, navigate, user?.userTypeCode]);
+  }, [isHydrated, isAuthenticated, permissionsBlocking, menus, pathname, navigate, user?.userTypeCode, user?.roles]);
 
   if (!allowed) return null;
   return <>{children}</>;

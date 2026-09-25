@@ -38,6 +38,7 @@ import {
   type CertificationAssignWarning,
 } from "@/lib/operative-certifications";
 import { toYmd } from "@/lib/week-ending";
+import { resolveDailyItemAddBlockReason } from "@/lib/daily";
 import {
   RateCapReasonModal,
   type RateCapReasonContext,
@@ -210,6 +211,12 @@ export function JobDayItemsEditor({
   const todayYmd = toYmd(new Date());
   const isPast = Boolean(date && date < todayYmd);
   const locked = disabled || row.isLocked || isPast || !canSelectRateItems;
+  const addBlockReason = resolveDailyItemAddBlockReason({
+    canModify: !disabled,
+    canSelectRateItems,
+    isPast,
+    isLocked: row.isLocked,
+  });
   const [formMode, setFormMode] = useState<FormMode>(
     initialShowAdd && !locked ? { kind: "add" } : null,
   );
@@ -509,7 +516,19 @@ export function JobDayItemsEditor({
           </p>
           <p className="text-xs text-muted-foreground tabular-nums">{fmtGBP(total)} total</p>
         </div>
-        {locked ? null : (
+        {locked ? (
+          addBlockReason ? (
+            <AppTooltip content={addBlockReason} asChild>
+              <span
+                className="inline-flex h-7 w-7 shrink-0 cursor-default items-center justify-center rounded-md border border-input text-muted-foreground"
+                aria-label={addBlockReason}
+                role="img"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden />
+              </span>
+            </AppTooltip>
+          ) : null
+        ) : (
           <Button
             type="button"
             size="sm"
@@ -644,7 +663,7 @@ export function JobDayItemsEditor({
                                   {line.productName}
                                 </span>
                                 {line.isRepeat ? (
-                                  <span className="rounded border border-border px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  <span className="rounded border border-red-200 bg-red-50 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-red-700">
                                     Repeat
                                   </span>
                                 ) : null}

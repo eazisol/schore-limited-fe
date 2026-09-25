@@ -11,8 +11,11 @@ import {
   dailyAssignmentSummary,
   filterAssignedGroupsWithoutOpenApprovals,
 } from "@/lib/daily-packages";
+import { resolveDailyItemAddBlockReason } from "@/lib/daily";
 import { truncateWithEllipsis } from "@/lib/module-ui";
 import { cn } from "@/lib/utils";
+import { usePermissions } from "@/contexts/PermissionContext";
+import { CAPABILITY_CODES } from "@/lib/access";
 
 type DailyItemsCellProps = {
   row: ApiDailyRow;
@@ -22,6 +25,8 @@ type DailyItemsCellProps = {
 
 export function DailyItemsCell({ row, date, disabled = false }: DailyItemsCellProps) {
   const qc = useQueryClient();
+  const { hasCapability } = usePermissions();
+  const canSelectRateItems = hasCapability(CAPABILITY_CODES.selectRateItems);
   const [open, setOpen] = useState(false);
   const [liveRow, setLiveRow] = useState(row);
 
@@ -34,7 +39,30 @@ export function DailyItemsCell({ row, date, disabled = false }: DailyItemsCellPr
   const summary = dailyAssignmentSummary(assignedByOperative);
   const fullSummary = dailyAssignmentDetail(assignedByOperative);
   const hasAssigned = visibleAssigned.length > 0;
-  // Locked rows may still open to tick existing items; panel blocks new assigns.
+  // Panel always opens; lock / permission block select inside the panel.
+  // Past date: unlocked jobs can still assign (for today); only locked rows block.
+  const addBlockReason = resolveDailyItemAddBlockReason({
+    canModify: !disabled,
+    canSelectRateItems,
+    isLocked: liveRow.isLocked,
+  });
+
+  const trigger = (
+    <button
+      type="button"
+      className={cn(
+        "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-input bg-background text-muted-foreground hover:bg-accent/10 hover:text-foreground",
+        open && "bg-accent/10 text-foreground",
+      )}
+      aria-label={
+        addBlockReason
+          ? `View items for ${liveRow.propertyName}. ${addBlockReason}`
+          : `Assign items for ${liveRow.propertyName}`
+      }
+    >
+      <ChevronDown className="h-3.5 w-3.5" />
+    </button>
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -49,19 +77,16 @@ export function DailyItemsCell({ row, date, disabled = false }: DailyItemsCellPr
             {truncateWithEllipsis(summary, 28)}
           </span>
         </AppTooltip>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-input bg-background text-muted-foreground hover:bg-accent/10 hover:text-foreground disabled:pointer-events-none disabled:opacity-40",
-              open && "bg-accent/10 text-foreground",
-            )}
-            aria-label={`Assign items for ${liveRow.propertyName}`}
-            disabled={disabled}
-          >
-            <ChevronDown className="h-3.5 w-3.5" />
-          </button>
-        </PopoverTrigger>
+        {/* Always openable — assign/select is blocked inside the panel. */}
+        {addBlockReason ? (
+          <AppTooltip content={addBlockReason} asChild>
+            <span className="inline-flex shrink-0">
+              <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+            </span>
+          </AppTooltip>
+        ) : (
+          <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+        )}
       </div>
       <PopoverContent
         className="flex max-h-[min(32rem,var(--radix-popover-content-available-height))] w-[min(36rem,calc(100vw-2rem))] flex-col overflow-hidden p-0"
@@ -78,11 +103,11 @@ export function DailyItemsCell({ row, date, disabled = false }: DailyItemsCellPr
           className="max-h-[min(32rem,var(--radix-popover-content-available-height))] rounded-none border-0"
           onRowUpdated={(updated) => {
             setLiveRow(updated);
-            qc.setQueriesData<ApiDailyProgramme>({ queryKey: dailyQueryKey }, (existing) => {
+            qc.setQueriesData<ApiDailyProgramme>({ queryKey: dailyQueryKey }, (existing: ApiDailyProgramme | undefined) => {
               if (!existing?.rows) return existing;
               return {
                 ...existing,
-                rows: existing.rows.map((entry) =>
+                rows: existing.rows.map((entry: ApiDailyRow) =>
                   String(entry.taskId) === String(updated.taskId)
                     ? { ...entry, ...updated }
                     : entry,

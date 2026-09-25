@@ -4,8 +4,6 @@ import { Cell, Label, Pie, PieChart } from "recharts";
 import { CheckCircle2, ClipboardList, Clock, Loader2 } from "lucide-react";
 import {
   ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
@@ -177,66 +175,82 @@ export function CustomerDetailExtrasPanel({
                 <span>Total tasks (none pending / in progress / completed)</span>
               </div>
             ) : (
-              <ChartContainer
-                config={taskStatusChartConfig}
-                className="mx-auto aspect-square h-[220px] w-full max-w-[260px]"
-              >
-                <PieChart>
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent hideLabel nameKey="key" />}
-                  />
-                  <Pie
-                    data={statusPieData}
-                    dataKey="value"
-                    nameKey="key"
-                    innerRadius={58}
-                    outerRadius={88}
-                    strokeWidth={2}
-                    stroke="var(--color-card)"
-                    paddingAngle={2}
-                    isAnimationActive={false}
-                  >
-                    {statusPieData.map((entry) => (
-                      <Cell key={entry.key} fill={entry.fill} />
-                    ))}
-                    <Label
-                      content={({ viewBox }) => {
-                        if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                          return (
-                            <text
-                              x={viewBox.cx}
-                              y={viewBox.cy}
-                              textAnchor="middle"
-                              dominantBaseline="middle"
-                            >
-                              <tspan
-                                x={viewBox.cx}
-                                y={(viewBox.cy ?? 0) - 6}
-                                className="fill-foreground font-display text-2xl font-semibold"
-                              >
-                                {statusCounts.total}
-                              </tspan>
-                              <tspan
-                                x={viewBox.cx}
-                                y={(viewBox.cy ?? 0) + 14}
-                                className="fill-muted-foreground text-[11px]"
-                              >
-                                Total
-                              </tspan>
-                            </text>
-                          );
-                        }
-                        return null;
-                      }}
+              <div className="flex flex-col items-center gap-2">
+                <ChartContainer
+                  config={taskStatusChartConfig}
+                  className="aspect-square h-[200px] w-[200px] shrink-0 overflow-visible"
+                >
+                  <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                    <ChartTooltip
+                      cursor={false}
+                      content={<ChartTooltipContent hideLabel nameKey="key" />}
                     />
-                  </Pie>
-                  <ChartLegend
-                    content={<ChartLegendContent nameKey="key" />}
-                    className="-translate-y-1 flex-wrap gap-2"
-                  />
-                </PieChart>
-              </ChartContainer>
+                    <Pie
+                      data={statusPieData}
+                      dataKey="value"
+                      nameKey="key"
+                      innerRadius="58%"
+                      outerRadius="88%"
+                      strokeWidth={2}
+                      stroke="var(--color-card)"
+                      paddingAngle={2}
+                      isAnimationActive={false}
+                    >
+                      {statusPieData.map((entry) => (
+                        <Cell key={entry.key} fill={entry.fill} />
+                      ))}
+                      <Label
+                        content={({ viewBox }) => {
+                          if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                            return (
+                              <text
+                                x={viewBox.cx}
+                                y={viewBox.cy}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                              >
+                                <tspan
+                                  x={viewBox.cx}
+                                  y={(viewBox.cy ?? 0) - 6}
+                                  className="fill-foreground font-display text-2xl font-semibold"
+                                >
+                                  {statusCounts.total}
+                                </tspan>
+                                <tspan
+                                  x={viewBox.cx}
+                                  y={(viewBox.cy ?? 0) + 14}
+                                  className="fill-muted-foreground text-[11px]"
+                                >
+                                  Total
+                                </tspan>
+                              </text>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                    </Pie>
+                  </PieChart>
+                </ChartContainer>
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pb-2">
+                  {statusPieData.map((entry) => (
+                    <div
+                      key={entry.key}
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                    >
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                        style={{
+                          backgroundColor:
+                            taskStatusChartConfig[entry.key as keyof typeof taskStatusChartConfig]
+                              .color,
+                        }}
+                      />
+                      <span>{entry.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 

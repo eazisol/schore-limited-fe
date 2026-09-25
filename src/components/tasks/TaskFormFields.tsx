@@ -1636,6 +1636,19 @@ export function TaskFormFields({
                     Add more
                   </Button>
                 )
+              ) : itemsLocked ? (
+                <AppTooltip
+                  content="Locked — tick at least one item on the previous working day before adding new items."
+                  asChild
+                >
+                  <span
+                    className="inline-flex h-8 w-8 cursor-default items-center justify-center rounded-md border border-input text-muted-foreground"
+                    aria-label="Locked — tick previous day first"
+                    role="img"
+                  >
+                    <X className="h-3.5 w-3.5" aria-hidden />
+                  </span>
+                </AppTooltip>
               ) : null}
             </div>
           </div>
@@ -2082,7 +2095,7 @@ function ProductLineRow({
             <div className="flex flex-wrap gap-1">
               {item?.isRepeat ? (
                 <AppTooltip content="Repeated task" asChild>
-                  <span className="shrink-0 rounded border border-border bg-secondary px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-secondary-foreground">
+                  <span className="shrink-0 rounded border border-red-200 bg-red-50 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-red-700">
                     Repeat
                   </span>
                 </AppTooltip>

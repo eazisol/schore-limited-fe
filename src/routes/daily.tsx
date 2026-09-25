@@ -47,8 +47,9 @@ import {
   filterNameOperativesWithoutOpenApprovals,
 } from "@/lib/daily-packages";
 import {
+  DAILY_OVERDUE_STATUS_FILTER,
+  fetchDailyStatusFilterOptions,
   fetchPropertyOptions,
-  fetchTaskStatusOptions,
 } from "@/lib/task-dropdowns";
 import { StatusBadge } from "@/components/StatusBadge";
 import { HierarchyCreateWizard } from "@/components/hierarchy/HierarchyCreateWizard";
@@ -205,6 +206,7 @@ function Daily() {
   const [createOpen, setCreateOpen] = useState(false);
   const filterStatusId = statusId.trim();
   const hasStatusFilter = filterStatusId.length > 0;
+  const isOverdueFilter = filterStatusId === DAILY_OVERDUE_STATUS_FILTER;
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
     onPageReset: () => setPage(1),
   });
@@ -229,7 +231,13 @@ function Daily() {
           showHandedOver: showHO,
           // Checkbox mode is exclusive — don't AND with status dropdown.
           propertyId: hasPropertyFilter ? filterPropertyId : undefined,
-          statusId: showHO ? undefined : hasStatusFilter ? filterStatusId : undefined,
+          statusId:
+            showHO || isOverdueFilter
+              ? undefined
+              : hasStatusFilter
+                ? filterStatusId
+                : undefined,
+          overdueOnly: !showHO && isOverdueFilter,
           projectId: projectIdSearch || undefined,
         })
       ).data,
@@ -395,10 +403,18 @@ function Daily() {
                 </AppTooltip>
               ) : null}
               {row.isLocked ? (
-                <Lock
-                  className="h-3.5 w-3.5 shrink-0 text-warning-foreground"
-                  aria-label="Locked"
-                />
+                <AppTooltip
+                  content="Locked — tick at least one item on the previous working day before adding new items."
+                  asChild
+                >
+                  <span
+                    className="inline-flex shrink-0 text-warning-foreground"
+                    aria-label="Locked — tick previous day first"
+                    role="img"
+                  >
+                    <Lock className="h-3.5 w-3.5" aria-hidden />
+                  </span>
+                </AppTooltip>
               ) : null}
               <AppTooltip content={propertyTooltip} asChild align="start">
                 <Link
@@ -799,7 +815,7 @@ function Daily() {
               searchPlaceholder="Search statuses…"
               aria-label="Filter by status"
               queryKey={["lookups", "task-statuses", "daily-filter"]}
-              fetchOptions={fetchTaskStatusOptions}
+              fetchOptions={fetchDailyStatusFilterOptions}
               selectedLabel={statusLabel}
               emptyOption={{ value: "", label: "All statuses" }}
               className="w-full min-w-[11rem] sm:w-52"

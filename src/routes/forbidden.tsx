@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ShieldAlert, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/AppShell";
+import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { buildNavMenus, getDefaultHomePath } from "@/lib/authorization";
 
@@ -11,9 +12,10 @@ export const Route = createFileRoute("/forbidden")({
 });
 
 function Forbidden() {
+  const { user } = useAuth();
   const { menus } = usePermissions();
   const firstReadable = buildNavMenus(menus)[0];
-  const safeTo = getDefaultHomePath(menus);
+  const safeTo = getDefaultHomePath(menus, user?.roles);
 
   return (
     <div>

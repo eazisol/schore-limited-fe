@@ -188,7 +188,8 @@ function Payroll() {
           <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-5 py-3 text-left">Operative</th>
-              <th className="px-3 py-3 text-left">Client(s)</th>
+              <th className="px-3 py-3 text-left">Project</th>
+              <th className="px-3 py-3 text-left">Client</th>
               <th className="px-3 py-3 text-right">Gross</th>
               <th className="px-3 py-3 text-right">CIS %</th>
               <th className="px-3 py-3 text-right">CIS Tax</th>
@@ -204,6 +205,7 @@ function Payroll() {
               return (
                 <tr key={row.id} className="hover:bg-muted/30">
                   <td className="px-5 py-3 font-medium">{row.operativeName}</td>
+                  <td className="px-3 py-3 text-muted-foreground">{row.projectName ?? "—"}</td>
                   <td className="px-3 py-3 text-muted-foreground">{row.customerNames ?? "—"}</td>
                   <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtGBP(row.gross)}</td>
                   <td className="px-3 py-3 text-right text-muted-foreground">{row.cisRate}%</td>

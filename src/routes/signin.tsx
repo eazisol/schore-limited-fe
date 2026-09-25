@@ -9,7 +9,9 @@ import { usePermissions } from "@/contexts/PermissionContext";
 import { AuthLayout } from "@/components/AuthLayout";
 import { Form, TextField, PasswordField, CheckboxField, SubmitButton } from "@/components/form";
 import { canAccessPath, getDefaultHomePath } from "@/lib/authorization";
+import { DAILY_ROUTE } from "@/lib/daily";
 import { isOperativePortalUser, isOperativeUserType, operativeHomePathFromMenus } from "@/lib/operative-portal";
+import { isLabourPlanner } from "@/lib/roles";
 
 const signinSearchSchema = z.object({ redirect: z.string().optional() });
 
@@ -60,11 +62,12 @@ function SignIn() {
       ? operativeHomePathFromMenus(menus)
       : null;
 
-    // Staff without Dashboard land on `/` first; RoutePermissionGuard then sends
-    // them to their first allowed menu (e.g. Daily Programme for Labour Planner).
+    // Staff without Dashboard: resolve first allowed menu. Labour Planner always
+    // goes straight to Daily so Dashboard never mounts (and never 403s).
     let target =
       (isOperativeUserType(result.user.userTypeCode) ? "/operatives/me" : null) ??
       portalHome ??
+      (isLabourPlanner(result.user.roles) ? DAILY_ROUTE : null) ??
       "/";
 
     if (explicit) {
@@ -73,9 +76,13 @@ function SignIn() {
       if (menus.length === 0 || canAccessPath(menus, explicit)) {
         target = explicit;
       }
-    } else if (menus.length > 0 && !isOperativeUserType(result.user.userTypeCode)) {
-      const home = getDefaultHomePath(menus);
-      if (canAccessPath(menus, home)) target = home;
+    } else if (!isOperativeUserType(result.user.userTypeCode)) {
+      if (isLabourPlanner(result.user.roles)) {
+        target = DAILY_ROUTE;
+      } else if (menus.length > 0) {
+        const home = getDefaultHomePath(menus, result.user.roles);
+        if (canAccessPath(menus, home)) target = home;
+      }
     }
 
     navigate({ to: target });

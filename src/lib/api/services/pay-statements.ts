@@ -8,6 +8,9 @@ export interface ApiPayStatementSummary {
   operativeName: string;
   tradeName: string | null;
   customerNames: string | null;
+  projectId: string;
+  projectName: string | null;
+  projectCode: string | null;
   weekEnding: string;
   weekStart: string;
   statusId: string;
@@ -64,6 +67,7 @@ export interface ApiPayStatementDetail extends ApiPayStatementSummary {
   sentByName: string | null;
   respondedBy: number | null;
   respondedByName: string | null;
+  respondedByUserTypeName: string | null;
   paidBy: number | null;
   paidByName: string | null;
   paidNote: string | null;

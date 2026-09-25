@@ -10,8 +10,6 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
 import { Cell, Label, Pie, PieChart } from "recharts";
@@ -34,6 +32,8 @@ import {
 } from "@/lib/api/services/dashboard";
 import { mapActivityPoints } from "@/lib/dashboard-activity";
 import type { ApiError } from "@/lib/api/axios";
+import { usePermissions } from "@/contexts/PermissionContext";
+import { canAccessPath } from "@/lib/authorization";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -63,6 +63,9 @@ function monthStartIso() {
 
 function Dashboard() {
   const navigate = useNavigate();
+  const { menus, isLoading: permissionsLoading } = usePermissions();
+  const canReadDashboard =
+    !permissionsLoading && menus.length > 0 && canAccessPath(menus, "/");
   const [period, setPeriod] = useState<DashboardPeriod>("Daily");
   const [customFrom, setCustomFrom] = useState(monthStartIso);
   const [customTo, setCustomTo] = useState(todayIso);
@@ -79,12 +82,14 @@ function Dashboard() {
     queryKey: [...dashboardQueryKey, queryParams],
     queryFn: async () => (await dashboardService.get(queryParams)).data,
     placeholderData: keepPreviousData,
+    enabled: canReadDashboard,
   });
 
   const activityQuery = useQuery({
     queryKey: [...dashboardActivityQueryKey, queryParams],
     queryFn: async () => (await dashboardService.getActivity(queryParams)).data,
     placeholderData: keepPreviousData,
+    enabled: canReadDashboard,
   });
 
   const data = query.data;
@@ -322,66 +327,82 @@ function Dashboard() {
                       No status data for this period.
                     </div>
                   ) : (
-                    <ChartContainer
-                      config={statusChartConfig}
-                      className="mx-auto aspect-square h-[220px] w-full max-w-[260px]"
-                    >
-                      <PieChart>
-                        <ChartTooltip
-                          cursor={false}
-                          content={<ChartTooltipContent hideLabel nameKey="key" />}
-                        />
-                        <Pie
-                          data={statusPieData}
-                          dataKey="value"
-                          nameKey="key"
-                          innerRadius={58}
-                          outerRadius={88}
-                          strokeWidth={2}
-                          stroke="var(--color-card)"
-                          paddingAngle={2}
-                          isAnimationActive={false}
-                        >
-                          {statusPieData.map((entry) => (
-                            <Cell key={entry.key} fill={entry.fill} />
-                          ))}
-                          <Label
-                            content={({ viewBox }) => {
-                              if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                                return (
-                                  <text
-                                    x={viewBox.cx}
-                                    y={viewBox.cy}
-                                    textAnchor="middle"
-                                    dominantBaseline="middle"
-                                  >
-                                    <tspan
-                                      x={viewBox.cx}
-                                      y={(viewBox.cy ?? 0) - 6}
-                                      className="fill-foreground font-display text-2xl font-semibold"
-                                    >
-                                      {statusTotal}
-                                    </tspan>
-                                    <tspan
-                                      x={viewBox.cx}
-                                      y={(viewBox.cy ?? 0) + 14}
-                                      className="fill-muted-foreground text-[11px]"
-                                    >
-                                      Total
-                                    </tspan>
-                                  </text>
-                                );
-                              }
-                              return null;
-                            }}
+                    <div className="flex flex-col items-center gap-2">
+                      <ChartContainer
+                        config={statusChartConfig}
+                        className="aspect-square h-[200px] w-[200px] shrink-0 overflow-visible"
+                      >
+                        <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                          <ChartTooltip
+                            cursor={false}
+                            content={<ChartTooltipContent hideLabel nameKey="key" />}
                           />
-                        </Pie>
-                        <ChartLegend
-                          content={<ChartLegendContent nameKey="key" />}
-                          className="-translate-y-1 flex-wrap gap-2"
-                        />
-                      </PieChart>
-                    </ChartContainer>
+                          <Pie
+                            data={statusPieData}
+                            dataKey="value"
+                            nameKey="key"
+                            innerRadius="58%"
+                            outerRadius="88%"
+                            strokeWidth={2}
+                            stroke="var(--color-card)"
+                            paddingAngle={2}
+                            isAnimationActive={false}
+                          >
+                            {statusPieData.map((entry) => (
+                              <Cell key={entry.key} fill={entry.fill} />
+                            ))}
+                            <Label
+                              content={({ viewBox }) => {
+                                if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                                  return (
+                                    <text
+                                      x={viewBox.cx}
+                                      y={viewBox.cy}
+                                      textAnchor="middle"
+                                      dominantBaseline="middle"
+                                    >
+                                      <tspan
+                                        x={viewBox.cx}
+                                        y={(viewBox.cy ?? 0) - 6}
+                                        className="fill-foreground font-display text-2xl font-semibold"
+                                      >
+                                        {statusTotal}
+                                      </tspan>
+                                      <tspan
+                                        x={viewBox.cx}
+                                        y={(viewBox.cy ?? 0) + 14}
+                                        className="fill-muted-foreground text-[11px]"
+                                      >
+                                        Total
+                                      </tspan>
+                                    </text>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                          </Pie>
+                        </PieChart>
+                      </ChartContainer>
+                      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pb-2">
+                        {statusPieData.map((entry) => (
+                          <div
+                            key={entry.key}
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                          >
+                            <span
+                              className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                              style={{
+                                backgroundColor:
+                                  statusChartConfig[entry.key as keyof typeof statusChartConfig]
+                                    .color,
+                              }}
+                            />
+                            <span>{entry.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
 

@@ -5,7 +5,7 @@ import { z } from "zod";
 import { PageHeader } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Send, Check, X, Banknote, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, Check, X, Banknote, Loader2, MessageSquare, CalendarDays, User } from "lucide-react";
 import { toast } from "sonner";
 import { fmtGBPp } from "@/lib/data";
 import { payStatementsService, type ApiPayStatementDetail, type ApiPayStatementDay } from "@/lib/api/services/pay-statements";
@@ -171,28 +171,18 @@ function WageSheetView() {
 
       <PageHeader
         title={`Wage Sheet · ${invoiceNo(w.id)}`}
-        subtitle={`${w.operativeName} · Week ending ${formatUkDate(w.weekEnding)}`}
         actions={
           <>
             <StatusBadge status={w.statusName} />
             <StatusBadge status={w.paymentStatusName} />
             {canSend && (
-              <Button
-                size="sm"
-                className="bg-[#1e3a5f] text-white hover:bg-[#162d4a]"
-                onClick={() => setConfirmSend(true)}
-              >
+              <Button size="sm" onClick={() => setConfirmSend(true)}>
                 <Send className="h-3.5 w-3.5" />
                 Send to operative
               </Button>
             )}
             {canResend && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/10"
-                onClick={() => setConfirmResend(true)}
-              >
+              <Button size="sm" variant="outline" onClick={() => setConfirmResend(true)}>
                 <Send className="h-3.5 w-3.5" />
                 Resend to operative
               </Button>
@@ -208,22 +198,14 @@ function WageSheetView() {
                   <X className="h-3.5 w-3.5" />
                   Refuse
                 </Button>
-                <Button
-                  size="sm"
-                  className="bg-[#1e3a5f] text-white hover:bg-[#162d4a]"
-                  onClick={() => respondMutation.mutate({ accepted: true })}
-                >
+                <Button size="sm" onClick={() => respondMutation.mutate({ accepted: true })}>
                   <Check className="h-3.5 w-3.5" />
                   Accept
                 </Button>
               </>
             )}
             {canMarkPaid && (
-              <Button
-                size="sm"
-                className="bg-[#1e3a5f] text-white hover:bg-[#162d4a]"
-                onClick={() => setPaidOpen(true)}
-              >
+              <Button size="sm" onClick={() => setPaidOpen(true)}>
                 <Banknote className="h-3.5 w-3.5" />
                 Mark paid
               </Button>
@@ -262,11 +244,13 @@ function WageSheetView() {
         </div>
       )}
 
-      {w.refusalReason && (
-        <div className="card-elevated border-destructive/30 p-4 text-sm">
-          <div className="font-medium text-destructive">Refusal reason</div>
-          <p className="mt-1 text-muted-foreground">{w.refusalReason}</p>
-        </div>
+      {(w.statusCode === "REFUSED" || w.rejectDate || w.refusalReason) && (
+        <RefusalBanner
+          reason={w.refusalReason}
+          refusedOn={w.rejectDate}
+          refusedByName={w.respondedByName}
+          refusedByRole={w.respondedByUserTypeName}
+        />
       )}
 
       {confirmSend && (
@@ -342,10 +326,7 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
   const utrNi =
     [w.operativeUtr, w.operativeNiNumber].filter(Boolean).join(" / ") || null;
   const invoice = invoiceNo(w.id);
-  const minRows = 8;
-  const emptyRows = Math.max(0, minRows - w.lines.length);
   const brandBlue = "#1e3a5f";
-  const contactBlue = "#4a7ab0";
 
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-900 shadow-sm print:border-0 print:shadow-none">
@@ -354,24 +335,25 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
         <div>
           <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
             <h2
-              className="text-[1.4rem] font-bold uppercase tracking-tight leading-none"
+              className="text-[1.6rem] font-bold uppercase tracking-tight leading-none"
               style={{ color: brandBlue }}
             >
               SCHORE LIMITED
             </h2>
-            <span className="text-[0.95rem] font-normal text-slate-500">
+            <span className="text-[1.1rem] font-normal text-slate-500">
               Weekly Wage Sheet
             </span>
           </div>
           <div className="mt-1.5 h-[2.5px] w-full" style={{ backgroundColor: brandBlue }} />
-          <p className="mt-1 text-[11px] text-slate-500">
+          <p className="mt-1 text-[13px] text-slate-500">
             Construction & Maintenance — Basildon, Essex
           </p>
 
-          <div className="mt-3 grid gap-4 bg-[#f2f2f2] px-4 py-3 text-[12.5px] leading-snug sm:grid-cols-2 sm:gap-8">
+          <div className="mt-3 grid gap-4 bg-[#f2f2f2] px-4 py-3 text-[14.5px] leading-snug sm:grid-cols-2 sm:gap-8">
             <div className="space-y-0.5">
               <HeaderLine label="Name" value={w.operativeName} />
               <HeaderLine label="Trade" value={w.tradeName ?? w.operativeTradeCode} />
+              <HeaderLine label="Project" value={w.projectName ?? w.projectCode} />
               <HeaderLine label="Site / Contract" value={w.siteContract ?? w.customerNames} />
               <HeaderLine label="Site Manager" value={w.siteManagerName} />
               <HeaderLine label="UTR / NINO" value={utrNi} blank />
@@ -388,7 +370,10 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
                 <div>Avenue,</div>
                 <div>Romford, Essex, RM3 8EN</div>
               </div>
-              <div className="pt-0.5 text-[11.5px]" style={{ color: contactBlue }}>
+              <div
+                className="pt-1.5 text-[15px] font-semibold tracking-wide"
+                style={{ color: brandBlue }}
+              >
                 07982138777 · office@schore.co.uk
               </div>
             </div>
@@ -397,24 +382,24 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
 
         {/* Section 2 — Work completed */}
         <h3
-          className="mb-1.5 mt-4 text-[14px] font-bold"
+          className="mb-1.5 mt-4 text-[16px] font-bold"
           style={{ color: brandBlue }}
         >
           Work completed
         </h3>
-        <table className="w-full border-collapse text-[12.5px]">
+        <table className="w-full border-collapse text-[14.5px]">
           <thead>
             <tr className="text-white" style={{ backgroundColor: brandBlue }}>
-              <th className="border border-slate-300 px-2.5 py-1.5 text-left font-semibold">
+              <th className="border border-slate-300 px-2.5 py-2 text-left font-semibold">
                 Property
               </th>
-              <th className="w-20 border border-slate-300 px-2.5 py-1.5 text-center font-semibold">
+              <th className="w-20 border border-slate-300 px-2.5 py-2 text-center font-semibold">
                 Date
               </th>
-              <th className="border border-slate-300 px-2.5 py-1.5 text-left font-semibold">
+              <th className="border border-slate-300 px-2.5 py-2 text-left font-semibold">
                 Task
               </th>
-              <th className="w-24 border border-slate-300 px-2.5 py-1.5 text-right font-semibold">
+              <th className="w-24 border border-slate-300 px-2.5 py-2 text-right font-semibold">
                 Amount
               </th>
             </tr>
@@ -425,32 +410,21 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
                 key={line.id}
                 className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}
               >
-                <td className="border border-slate-200 px-2.5 py-1.5 text-black">
+                <td className="border border-slate-200 px-2.5 py-2 text-black">
                   {line.propertyName ?? "—"}
                 </td>
-                <td className="border border-slate-200 px-2.5 py-1.5 text-center tabular-nums text-black">
+                <td className="border border-slate-200 px-2.5 py-2 text-center tabular-nums text-black">
                   {formatWageSheetDayMonth(line.lineDate)}
                 </td>
-                <td className="border border-slate-200 px-2.5 py-1.5 text-black">
+                <td className="border border-slate-200 px-2.5 py-2 text-black">
                   {line.description}
                   {line.isTopUp ? (
-                    <span className="ml-1.5 text-[10px] text-slate-400">top-up</span>
+                    <span className="ml-1.5 text-[11px] text-slate-400">top-up</span>
                   ) : null}
                 </td>
-                <td className="border border-slate-200 px-2.5 py-1.5 text-right tabular-nums text-black">
+                <td className="border border-slate-200 px-2.5 py-2 text-right tabular-nums text-black">
                   {fmtGBPp(line.amount)}
                 </td>
-              </tr>
-            ))}
-            {Array.from({ length: emptyRows }).map((_, i) => (
-              <tr
-                key={`empty-${i}`}
-                className={(w.lines.length + i) % 2 === 0 ? "bg-white" : "bg-slate-50"}
-              >
-                <td className="border border-slate-200 px-2.5 py-1.5">&nbsp;</td>
-                <td className="border border-slate-200 px-2.5 py-1.5" />
-                <td className="border border-slate-200 px-2.5 py-1.5" />
-                <td className="border border-slate-200 px-2.5 py-1.5" />
               </tr>
             ))}
           </tbody>
@@ -458,31 +432,31 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
 
         {/* Section 3 — totals, signature, footer */}
         <div className="mt-3 flex justify-end">
-          <table className="w-48 border-collapse text-[12.5px]">
+          <table className="w-52 border-collapse text-[14.5px]">
             <tbody>
               <tr className="bg-slate-50">
-                <td className="border border-slate-200 px-2.5 py-1 text-black">Gross Pay</td>
-                <td className="border border-slate-200 px-2.5 py-1 text-right tabular-nums text-black">
+                <td className="border border-slate-200 px-2.5 py-1.5 text-black">Gross Pay</td>
+                <td className="border border-slate-200 px-2.5 py-1.5 text-right tabular-nums text-black">
                   {fmtGBPp(w.gross)}
                 </td>
               </tr>
               <tr className="bg-white">
-                <td className="border border-slate-200 px-2.5 py-1 text-black">CIS Rate</td>
-                <td className="border border-slate-200 px-2.5 py-1 text-right tabular-nums text-black">
+                <td className="border border-slate-200 px-2.5 py-1.5 text-black">CIS Rate</td>
+                <td className="border border-slate-200 px-2.5 py-1.5 text-right tabular-nums text-black">
                   {w.cisRate}%
                 </td>
               </tr>
               <tr className="bg-slate-50">
-                <td className="border border-slate-200 px-2.5 py-1 text-black">CIS Tax</td>
-                <td className="border border-slate-200 px-2.5 py-1 text-right tabular-nums text-black">
+                <td className="border border-slate-200 px-2.5 py-1.5 text-black">CIS Tax</td>
+                <td className="border border-slate-200 px-2.5 py-1.5 text-right tabular-nums text-black">
                   −{fmtGBPp(w.cisDeduction)}
                 </td>
               </tr>
               <tr style={{ backgroundColor: "#e8f5e9" }}>
-                <td className="border border-slate-200 px-2.5 py-1.5 font-bold text-black">
+                <td className="border border-slate-200 px-2.5 py-2 font-bold text-black">
                   Net Pay
                 </td>
-                <td className="border border-slate-200 px-2.5 py-1.5 text-right font-bold tabular-nums text-black">
+                <td className="border border-slate-200 px-2.5 py-2 text-right font-bold tabular-nums text-black">
                   {fmtGBPp(w.net)}
                 </td>
               </tr>
@@ -490,7 +464,7 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
           </table>
         </div>
 
-        <div className="mt-6 text-[12.5px] text-slate-700">
+        <div className="mt-6 text-[14.5px] text-slate-700">
           <div className="mb-6">
             Signed:{" "}
             <span className="inline-block min-w-[14rem] border-b border-slate-500 align-bottom">
@@ -499,10 +473,77 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
           </div>
           <div className="text-center">
             <p className="italic text-slate-500">Thank you for your business!</p>
-            <p className="mt-0.5 text-[10.5px] italic text-slate-400">
-              Template — one sheet per operative, per contract, per week. Each sheet
+            <p className="mt-0.5 text-[12px] italic text-slate-400">
+              Template — one sheet per operative, per project, per week. Each sheet
               self-contained.
             </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RefusalBanner({
+  reason,
+  refusedOn,
+  refusedByName,
+  refusedByRole,
+}: {
+  reason: string | null;
+  refusedOn: string | null;
+  refusedByName: string | null;
+  refusedByRole: string | null;
+}) {
+  return (
+    <div className="rounded-lg border border-destructive/25 bg-destructive/5 p-4 sm:p-5">
+      <div className="flex items-start gap-3">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-destructive text-destructive-foreground">
+          <X className="h-5 w-5" strokeWidth={2.5} />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-display text-base font-semibold text-foreground">
+            Wage sheet refused
+          </h3>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            This wage sheet has been refused and requires some changes before it can be approved.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <div className="flex items-start gap-2.5">
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-destructive/15 text-destructive">
+            <MessageSquare className="h-3.5 w-3.5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-destructive">Reason for refusal</p>
+            <p className="mt-0.5 text-sm text-foreground">{reason?.trim() || "—"}</p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2.5">
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-destructive/15 text-destructive">
+            <CalendarDays className="h-3.5 w-3.5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-destructive">Refused on</p>
+            <p className="mt-0.5 text-sm text-foreground">{formatUkDate(refusedOn)}</p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2.5">
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-destructive/15 text-destructive">
+            <User className="h-3.5 w-3.5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-destructive">Refused by</p>
+            <p className="mt-0.5 text-sm font-semibold text-foreground">
+              {refusedByName?.trim() || "—"}
+            </p>
+            {refusedByRole?.trim() ? (
+              <p className="text-xs text-muted-foreground">{refusedByRole}</p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -554,11 +595,7 @@ function ConfirmDialog({
         <p className="mt-2 text-sm text-muted-foreground">{body}</p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="outline" onClick={onCancel}>Cancel</Button>
-          <Button
-            disabled={pending}
-            className="bg-[#1e3a5f] text-white hover:bg-[#162d4a]"
-            onClick={onConfirm}
-          >
+          <Button disabled={pending} onClick={onConfirm}>
             <Send className="h-4 w-4" />
             {confirmLabel}
           </Button>
