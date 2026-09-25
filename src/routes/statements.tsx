@@ -109,7 +109,7 @@ function Statements() {
                 <tr key={w.id} className="hover:bg-muted/30">
                   <td className="px-5 py-3">
                     <Link to="/wages/$id" params={{ id: String(w.id) }} className="font-mono text-xs">
-                      {invoiceNo(w.id)}
+                      {invoiceNo(w.invoiceNumber)}
                     </Link>
                   </td>
                   <td className="px-3 py-3 font-medium">{w.operativeName}</td>

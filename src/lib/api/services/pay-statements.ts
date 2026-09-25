@@ -4,6 +4,7 @@ import type { PagedResult } from "./users";
 
 export interface ApiPayStatementSummary {
   id: string;
+  invoiceNumber: number;
   operativeId: string;
   operativeName: string;
   tradeName: string | null;

@@ -170,7 +170,7 @@ function WageSheetView() {
       )}
 
       <PageHeader
-        title={`Wage Sheet · ${invoiceNo(w.id)}`}
+        title={`Wage Sheet · ${invoiceNo(w.invoiceNumber)}`}
         actions={
           <>
             <StatusBadge status={w.statusName} />
@@ -325,7 +325,7 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
   const weekLabel = formatWageWeekRange(w.weekStart, w.weekEnding);
   const utrNi =
     [w.operativeUtr, w.operativeNiNumber].filter(Boolean).join(" / ") || null;
-  const invoice = invoiceNo(w.id);
+  const invoice = invoiceNo(w.invoiceNumber);
   const brandBlue = "#1e3a5f";
 
   return (

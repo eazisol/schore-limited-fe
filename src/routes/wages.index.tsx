@@ -370,7 +370,7 @@ function WagesList() {
                         search={{ weekEnding: selectedWeek }}
                         className="font-mono text-xs font-medium hover:text-info"
                       >
-                        {invoiceNo(w.id)}
+                        {invoiceNo(w.invoiceNumber)}
                       </Link>
                     </td>
                     <td className="px-3 py-1.5">

@@ -64,13 +64,15 @@ export function formatWageWeekRange(
   return `${sd}.${sm} – ${ed}.${em}.${ey}`;
 }
 
-export function invoiceNo(id: string | number): string {
-  const raw = String(id);
-  const digits = raw.replace(/\D/g, "");
-  if (digits.length > 0 && digits.length <= 8) {
-    return `WS-${digits.padStart(4, "0")}`;
+/** Format sequential wage invoice number as WS-0001. */
+export function invoiceNo(invoiceNumber: string | number | null | undefined): string {
+  const n = typeof invoiceNumber === "number"
+    ? invoiceNumber
+    : Number.parseInt(String(invoiceNumber ?? "").replace(/\D/g, ""), 10);
+  if (!Number.isFinite(n) || n <= 0) {
+    return "WS-————";
   }
-  return `WS-${raw.slice(0, 8).toUpperCase()}`;
+  return `WS-${String(n).padStart(4, "0")}`;
 }
 
 export function downloadCsv(filename: string, rows: string[][]) {

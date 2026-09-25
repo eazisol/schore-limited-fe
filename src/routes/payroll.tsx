@@ -240,7 +240,7 @@ function Payroll() {
                         search={{ from: "payroll" }}
                         className="text-xs text-info"
                       >
-                        {invoiceNo(row.id)}
+                        {invoiceNo(row.invoiceNumber)}
                       </Link>
                     </div>
                   </td>
