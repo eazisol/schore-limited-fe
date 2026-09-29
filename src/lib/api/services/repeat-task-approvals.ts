@@ -41,6 +41,7 @@ export interface RepeatTaskApprovalListParams {
   pageSize?: number;
   search?: string;
   statusId?: string;
+  requestId?: string;
 }
 
 export const REPEAT_TASK_APPROVALS_ROUTE = "/repeat-task-approvals";
@@ -54,6 +55,7 @@ export const repeatTaskApprovalsService = {
         PageSize: params.pageSize ?? 10,
         Search: params.search ?? "",
         ...(params.statusId ? { StatusId: params.statusId } : {}),
+        ...(params.requestId ? { RequestId: params.requestId } : {}),
       },
     }),
   approve: (id: string) =>

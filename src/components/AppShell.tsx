@@ -1,13 +1,7 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Bell,
-  HardHat,
-  LogOut,
-  UserCircle,
-  PanelLeft,
-} from "lucide-react";
+import { HardHat, LogOut, UserCircle, PanelLeft } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,6 +14,7 @@ import { RoutePermissionGuard } from "@/components/Permission";
 import { resolveProfileImageUrl, usersService } from "@/lib/api/services/users";
 import type { ApiError } from "@/lib/api/axios";
 import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/NotificationBell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -248,17 +243,7 @@ function AppShellChrome({
           />
 
           <div className="ml-auto flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() =>
-                toast("No new notifications", { description: "You're all caught up." })
-              }
-              className="relative grid h-9 w-9 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-accent" />
-            </button>
+            <NotificationBell />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

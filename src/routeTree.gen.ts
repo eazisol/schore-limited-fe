@@ -36,6 +36,7 @@ import { Route as PrelimsRouteImport } from './routes/prelims'
 import { Route as PermissionsRouteImport } from './routes/permissions'
 import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as OperativesRouteImport } from './routes/operatives'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as ManageFormsRouteImport } from './routes/manage-forms'
 import { Route as LegendCodesRouteImport } from './routes/legend-codes'
 import { Route as KpiRouteImport } from './routes/kpi'
@@ -244,6 +245,11 @@ const PayrollRoute = PayrollRouteImport.update({
 const OperativesRoute = OperativesRouteImport.update({
   id: '/operatives',
   path: '/operatives',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ManageFormsRoute = ManageFormsRouteImport.update({
@@ -642,6 +648,7 @@ export interface FileRoutesByFullPath {
   '/kpi': typeof KpiRoute
   '/legend-codes': typeof LegendCodesRoute
   '/manage-forms': typeof ManageFormsRoute
+  '/notifications': typeof NotificationsRoute
   '/operatives': typeof OperativesRouteWithChildren
   '/payroll': typeof PayrollRoute
   '/permissions': typeof PermissionsRoute
@@ -741,6 +748,7 @@ export interface FileRoutesByTo {
   '/kpi': typeof KpiRoute
   '/legend-codes': typeof LegendCodesRoute
   '/manage-forms': typeof ManageFormsRoute
+  '/notifications': typeof NotificationsRoute
   '/payroll': typeof PayrollRoute
   '/permissions': typeof PermissionsRoute
   '/prelims': typeof PrelimsRoute
@@ -832,6 +840,7 @@ export interface FileRoutesById {
   '/kpi': typeof KpiRoute
   '/legend-codes': typeof LegendCodesRoute
   '/manage-forms': typeof ManageFormsRoute
+  '/notifications': typeof NotificationsRoute
   '/operatives': typeof OperativesRouteWithChildren
   '/payroll': typeof PayrollRoute
   '/permissions': typeof PermissionsRoute
@@ -937,6 +946,7 @@ export interface FileRouteTypes {
     | '/kpi'
     | '/legend-codes'
     | '/manage-forms'
+    | '/notifications'
     | '/operatives'
     | '/payroll'
     | '/permissions'
@@ -1036,6 +1046,7 @@ export interface FileRouteTypes {
     | '/kpi'
     | '/legend-codes'
     | '/manage-forms'
+    | '/notifications'
     | '/payroll'
     | '/permissions'
     | '/prelims'
@@ -1126,6 +1137,7 @@ export interface FileRouteTypes {
     | '/kpi'
     | '/legend-codes'
     | '/manage-forms'
+    | '/notifications'
     | '/operatives'
     | '/payroll'
     | '/permissions'
@@ -1230,6 +1242,7 @@ export interface RootRouteChildren {
   KpiRoute: typeof KpiRoute
   LegendCodesRoute: typeof LegendCodesRoute
   ManageFormsRoute: typeof ManageFormsRoute
+  NotificationsRoute: typeof NotificationsRoute
   OperativesRoute: typeof OperativesRouteWithChildren
   PayrollRoute: typeof PayrollRoute
   PermissionsRoute: typeof PermissionsRoute
@@ -1448,6 +1461,13 @@ declare module '@tanstack/react-router' {
       path: '/operatives'
       fullPath: '/operatives'
       preLoaderRoute: typeof OperativesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/manage-forms': {
@@ -2263,6 +2283,7 @@ const rootRouteChildren: RootRouteChildren = {
   KpiRoute: KpiRoute,
   LegendCodesRoute: LegendCodesRoute,
   ManageFormsRoute: ManageFormsRoute,
+  NotificationsRoute: NotificationsRoute,
   OperativesRoute: OperativesRouteWithChildren,
   PayrollRoute: PayrollRoute,
   PermissionsRoute: PermissionsRoute,

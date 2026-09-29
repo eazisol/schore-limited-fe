@@ -36,12 +36,12 @@ import { toast } from "sonner";
 const ALL_STATUS = "all";
 const RATE_CHANGE_STATUS_PENDING = "PENDING";
 
-export function RateApprovalsPanel() {
+export function RateApprovalsPanel({ requestId }: { requestId?: string }) {
   const qc = useQueryClient();
   const canModify = usePermission({ route: RATE_APPROVALS_ROUTE, action: "modify" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [statusId, setStatusId] = useState<string | null>(null);
+  const [statusId, setStatusId] = useState<string | null>(requestId ? ALL_STATUS : null);
   const [rejectRow, setRejectRow] = useState<ApiRateChangeRequest | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [approveRow, setApproveRow] = useState<ApiRateChangeRequest | null>(null);
@@ -63,12 +63,18 @@ export function RateApprovalsPanel() {
 
   const statuses = [...(statusesQuery.data ?? [])].sort((a, b) => a.orderBy - b.orderBy);
   const pendingStatus = statuses.find((s) => s.code === RATE_CHANGE_STATUS_PENDING);
-  const selectedStatusId =
-    statusId === ALL_STATUS ? undefined : (statusId ?? pendingStatus?.id);
+  const selectedStatusId = requestId
+    ? undefined
+    : statusId === ALL_STATUS
+      ? undefined
+      : (statusId ?? pendingStatus?.id);
   const selectedStatus = statuses.find((s) => s.id === selectedStatusId);
 
   const query = useQuery({
-    queryKey: [...rateChangeRequestsQueryKey, { page, pageSize, search, statusId: selectedStatusId }],
+    queryKey: [
+      ...rateChangeRequestsQueryKey,
+      { page, pageSize, search, statusId: selectedStatusId, requestId },
+    ],
     queryFn: async () =>
       (
         await rateChangeRequestsService.list({
@@ -76,6 +82,7 @@ export function RateApprovalsPanel() {
           pageSize,
           search,
           statusId: selectedStatusId,
+          requestId,
         })
       ).data,
     enabled: statusesQuery.isSuccess,

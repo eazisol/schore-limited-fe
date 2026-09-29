@@ -28,6 +28,8 @@ import { notifyApiError } from "@/lib/api/axios";
 import { newPasswordSchema, PasswordRequirements } from "@/lib/password";
 import { getPhoneLengthError } from "@/components/form/PhoneNumberField";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { notificationsService } from "@/lib/api/services/notifications";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "My profile | Schore" }] }),
@@ -111,6 +113,9 @@ function ProfilePage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [confirmImageRemoval, setConfirmImageRemoval] = useState(false);
   const [removingImage, setRemovingImage] = useState(false);
+  const [inAppEnabled, setInAppEnabled] = useState(true);
+  const [prefLoading, setPrefLoading] = useState(true);
+  const [prefSaving, setPrefSaving] = useState(false);
 
   const profileForm = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
@@ -158,6 +163,37 @@ function ProfilePage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.id]);
+
+  useEffect(() => {
+    if (!authUser) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await notificationsService.getPreference();
+        if (!cancelled) setInAppEnabled(res.data.inAppNotificationsEnabled);
+      } catch {
+        // keep default
+      } finally {
+        if (!cancelled) setPrefLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authUser?.id]);
+
+  async function onToggleInApp(checked: boolean) {
+    setPrefSaving(true);
+    try {
+      const res = await notificationsService.updatePreference(checked);
+      setInAppEnabled(res.data.inAppNotificationsEnabled);
+      toast.success(res.message || "Notification preference updated");
+    } catch (err) {
+      notifyApiError(err, "Failed to update notification preference");
+    } finally {
+      setPrefSaving(false);
+    }
+  }
 
   const initials = useMemo(() => {
     const name =
@@ -207,8 +243,8 @@ function ProfilePage() {
         firstName: res.data.firstName ?? "",
         lastName: res.data.lastName ?? "",
       });
-      queryClient.setQueryData(["users", authUser.id], res.data);
-      await queryClient.invalidateQueries({ queryKey: ["users", authUser.id] });
+      queryClient.setQueryData(["users", authUser!.id], res.data);
+      await queryClient.invalidateQueries({ queryKey: ["users", authUser!.id] });
       toast.success(res.message || "Profile updated");
     } catch (err) {
       notifyApiError(err, "Failed to update profile");
@@ -216,7 +252,7 @@ function ProfilePage() {
   }
 
   async function removeProfileImage() {
-    if (!apiUser || removingImage) return;
+    if (!apiUser || !authUser || removingImage) return;
     setRemovingImage(true);
     try {
       const res = await usersService.removeProfileImage(apiUser.id);
@@ -313,6 +349,28 @@ function ProfilePage() {
           </SubmitButton>
         </div>
       </Form>
+
+      <div className="card-elevated mt-6 space-y-4 p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-display text-base font-semibold">Notifications</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Turn off in-app notifications. You will still receive email alerts.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">
+              {inAppEnabled ? "Enabled" : "Disabled"}
+            </span>
+            <Switch
+              checked={inAppEnabled}
+              disabled={prefLoading || prefSaving}
+              onCheckedChange={(checked) => void onToggleInApp(checked)}
+              aria-label="In-app notifications"
+            />
+          </div>
+        </div>
+      </div>
 
       <Form form={pwForm} onSubmit={onChangePassword} className="card-elevated p-6 mt-6 space-y-5">
         <div className="grid sm:grid-cols-2 gap-3">

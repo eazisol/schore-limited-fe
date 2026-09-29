@@ -32,6 +32,7 @@ import { payStatementsQueryKey } from "./payroll";
 
 const wagesSearchSchema = z.object({
   weekEnding: z.string().optional(),
+  statementId: z.string().optional(),
 });
 
 export const Route = createFileRoute("/wages/")({
@@ -48,7 +49,7 @@ type ConfirmAction = {
 
 function WagesList() {
   const navigate = useNavigate({ from: "/wages/" });
-  const { weekEnding: weekEndingSearch } = Route.useSearch();
+  const { weekEnding: weekEndingSearch, statementId } = Route.useSearch();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { menus } = usePermissions();
@@ -63,13 +64,25 @@ function WagesList() {
     if (!weekend) return toYmd(new Date());
     return toYmd(getWeekEndingDate(new Date(), weekend.days, weekend.weekEndingDay));
   }, [weekendQuery.data]);
-  const selectedWeek = weekEndingSearch || defaultWeek;
+  const weekInputValue = weekEndingSearch || defaultWeek;
+  const selectedWeek = statementId ? undefined : weekInputValue;
 
   function setWeek(next: string) {
     void navigate({
-      search: (prev) => ({
+      search: (prev: { weekEnding?: string; statementId?: string }) => ({
         ...prev,
         weekEnding: next || undefined,
+        statementId: undefined,
+      }),
+      replace: true,
+    });
+  }
+
+  function clearStatementFilter() {
+    void navigate({
+      search: (prev: { weekEnding?: string; statementId?: string }) => ({
+        ...prev,
+        statementId: undefined,
       }),
       replace: true,
     });
@@ -119,14 +132,15 @@ function WagesList() {
       ...payStatementsQueryKey,
       "wages",
       isPortal ? "mine" : "office",
-      { selectedWeek, customerId, statusId, paymentStatusId, search, page, pageSize },
+      { selectedWeek, customerId, statusId, paymentStatusId, search, page, pageSize, statementId },
     ],
     queryFn: async () => {
       const params = {
-        weekEnding: selectedWeek,
+        weekEnding: statementId ? undefined : selectedWeek,
         customerId: isPortal ? undefined : customerId || undefined,
         statusId: statusId || undefined,
         paymentStatusId: paymentStatusId || undefined,
+        statementId: statementId || undefined,
         search: search || undefined,
         page,
         pageSize,
@@ -136,7 +150,7 @@ function WagesList() {
       }
       return (await payStatementsService.list(params)).data;
     },
-    enabled: Boolean(selectedWeek),
+    enabled: Boolean(statementId) || Boolean(selectedWeek),
     placeholderData: keepPreviousData,
   });
 
@@ -171,7 +185,7 @@ function WagesList() {
   const exportMutation = useMutation({
     mutationFn: () =>
       payStatementsService.export({
-        weekEnding: selectedWeek,
+        weekEnding: weekInputValue,
         customerId: customerId || undefined,
       }),
     onSuccess: (res) => {
@@ -181,7 +195,7 @@ function WagesList() {
         return;
       }
       for (const bundle of bundles) {
-        downloadCsv(`wages-${bundle.customerName.replaceAll(" ", "-")}-WE-${selectedWeek}.csv`, [
+        downloadCsv(`wages-${bundle.customerName.replaceAll(" ", "-")}-WE-${weekInputValue}.csv`, [
           ["Client", "Operative", "Date", "Property", "Description", "Amount", "Top-up"],
           ...bundle.lines.map((line) => [
             bundle.customerName,
@@ -238,11 +252,16 @@ function WagesList() {
           </div>
           <input
             type="date"
-            value={selectedWeek}
+            value={weekInputValue}
             onChange={(e) => setWeek(e.target.value)}
             className="h-9 rounded-md border border-input bg-background px-3 text-sm"
             aria-label="Week ending"
           />
+          {statementId ? (
+            <Button type="button" variant="outline" size="sm" onClick={clearStatementFilter}>
+              Clear statement filter
+            </Button>
+          ) : null}
           {!isPortal ? (
             <SearchableSelect
               value={customerId}
@@ -367,7 +386,7 @@ function WagesList() {
                       <Link
                         to="/wages/$id"
                         params={{ id }}
-                        search={{ weekEnding: selectedWeek }}
+                        search={{ weekEnding: weekInputValue }}
                         className="font-mono text-xs font-medium hover:text-info"
                       >
                         {invoiceNo(w.invoiceNumber)}

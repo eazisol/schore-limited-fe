@@ -32,12 +32,12 @@ import { toast } from "sonner";
 const ALL_STATUS = "all";
 const REPEAT_TASK_STATUS_PENDING = "PENDING";
 
-export function RepeatTaskApprovalsPanel() {
+export function RepeatTaskApprovalsPanel({ requestId }: { requestId?: string }) {
   const qc = useQueryClient();
   const canModify = usePermission({ route: REPEAT_TASK_APPROVALS_ROUTE, action: "modify" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [statusId, setStatusId] = useState<string | null>(null);
+  const [statusId, setStatusId] = useState<string | null>(requestId ? ALL_STATUS : null);
   const [rejectRow, setRejectRow] = useState<ApiRepeatTaskApproval | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
@@ -57,14 +57,17 @@ export function RepeatTaskApprovalsPanel() {
 
   const statuses = [...(statusesQuery.data ?? [])].sort((a, b) => a.orderBy - b.orderBy);
   const pendingStatus = statuses.find((s) => s.code === REPEAT_TASK_STATUS_PENDING);
-  const selectedStatusId =
-    statusId === ALL_STATUS ? undefined : (statusId ?? pendingStatus?.id);
+  const selectedStatusId = requestId
+    ? undefined
+    : statusId === ALL_STATUS
+      ? undefined
+      : (statusId ?? pendingStatus?.id);
   const selectedStatus = statuses.find((s) => s.id === selectedStatusId);
 
   const query = useQuery({
     queryKey: [
       ...repeatTaskApprovalsQueryKey,
-      { page, pageSize, search, statusId: selectedStatusId },
+      { page, pageSize, search, statusId: selectedStatusId, requestId },
     ],
     queryFn: async () =>
       (
@@ -73,6 +76,7 @@ export function RepeatTaskApprovalsPanel() {
           pageSize,
           search,
           statusId: selectedStatusId,
+          requestId,
         })
       ).data,
     enabled: statusesQuery.isSuccess,

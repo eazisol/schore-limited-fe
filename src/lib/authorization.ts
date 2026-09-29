@@ -8,7 +8,7 @@ import { isLabourPlanner } from "@/lib/roles";
 export type MenuAction = "read" | "modify" | "delete";
 
 /** Paths that never require menu permissions (authenticated shell). */
-export const PERMISSION_EXEMPT_PATHS = ["/forbidden", "/profile"] as const;
+export const PERMISSION_EXEMPT_PATHS = ["/forbidden", "/profile", "/notifications"] as const;
 
 /** Unauthenticated / full-screen auth routes. */
 export const PUBLIC_PATHS = ["/signin", "/forgot-password", "/reset-password"] as const;

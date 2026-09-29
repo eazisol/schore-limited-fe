@@ -57,6 +57,8 @@ import { HierarchyCreateWizard } from "@/components/hierarchy/HierarchyCreateWiz
 const dailySearchSchema = z.object({
   propertyId: z.string().optional(),
   projectId: z.string().optional(),
+  date: z.string().optional(),
+  taskId: z.string().optional(),
 });
 
 export const Route = createFileRoute("/daily")({
@@ -186,11 +188,18 @@ function matchesSearch(row: ApiDailyRow, search: string) {
 function Daily() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { propertyId: propertyIdSearch, projectId: projectIdSearch } = Route.useSearch();
+  const {
+    propertyId: propertyIdSearch,
+    projectId: projectIdSearch,
+    date: dateSearch,
+    taskId: taskIdSearch,
+  } = Route.useSearch();
   const filterPropertyId = propertyIdSearch?.trim() ?? "";
+  const filterTaskId = taskIdSearch?.trim() ?? "";
   const hasPropertyFilter = filterPropertyId.length > 0;
+  const hasTaskFilter = filterTaskId.length > 0;
   const canModifyDaily = usePermission({ route: DAILY_ROUTE, action: "modify" });
-  const [date, setDate] = useState(todayIso);
+  const [date, setDate] = useState(() => dateSearch?.trim() || todayIso());
   const [showHO, setShowHO] = useState(false);
   const [confirmRoll, setConfirmRoll] = useState(false);
   const [completedModal, setCompletedModal] = useState<{
@@ -213,7 +222,14 @@ function Daily() {
 
   useEffect(() => {
     setPage(1);
-  }, [propertyIdSearch, statusId]);
+  }, [propertyIdSearch, statusId, taskIdSearch, dateSearch]);
+
+  useEffect(() => {
+    const next = dateSearch?.trim();
+    if (next && next !== date) {
+      setDate(next);
+    }
+  }, [dateSearch]);
 
   const query = useQuery({
     queryKey: [
@@ -269,7 +285,7 @@ function Daily() {
       toast.success(res.message || "Rolled forward");
       setConfirmRoll(false);
       const next = res.data?.nextDate?.slice(0, 10);
-      if (next) setDate(next);
+      if (next) setProgrammeDate(next);
       setPage(1);
       void qc.invalidateQueries({ queryKey: dailyQueryKey });
     },
@@ -279,10 +295,13 @@ function Daily() {
   const data = query.data;
   const allRows: ApiDailyRow[] = data?.rows ?? [];
 
-  const filteredRows = useMemo(
-    () => allRows.filter((row) => matchesSearch(row, search)),
-    [allRows, search],
-  );
+  const filteredRows = useMemo(() => {
+    let rows = allRows.filter((row) => matchesSearch(row, search));
+    if (hasTaskFilter) {
+      rows = rows.filter((row) => String(row.taskId) === filterTaskId);
+    }
+    return rows;
+  }, [allRows, search, hasTaskFilter, filterTaskId]);
 
   const propertyFilterLabel = useMemo(() => {
     if (!hasPropertyFilter) return null;
@@ -311,10 +330,37 @@ function Daily() {
     setPropertyLabel(null);
     void navigate({
       to: "/daily",
-      search: {},
+      search: (prev) => ({
+        ...prev,
+        propertyId: undefined,
+      }),
       replace: true,
     });
     setPage(1);
+  }
+
+  function clearTaskFilter() {
+    void navigate({
+      to: "/daily",
+      search: (prev) => ({
+        ...prev,
+        taskId: undefined,
+      }),
+      replace: true,
+    });
+    setPage(1);
+  }
+
+  function setProgrammeDate(next: string) {
+    setDate(next);
+    void navigate({
+      to: "/daily",
+      search: (prev) => ({
+        ...prev,
+        date: next || undefined,
+      }),
+      replace: true,
+    });
   }
 
   function setPropertyFilter(nextId: string, nextLabel?: string | null) {
@@ -342,16 +388,19 @@ function Daily() {
     setShowHO(false);
     setDate(todayIso());
     clearStatusFilter();
+    setPropertyLabel(null);
     setPage(1);
-    if (hasPropertyFilter) {
-      clearPropertyFilter();
-    }
+    void navigate({
+      to: "/daily",
+      search: {},
+      replace: true,
+    });
   }
 
   const today = todayIso();
   const isDateFiltered = date !== today;
   const hasActiveFilters = Boolean(
-    search || showHO || isDateFiltered || hasPropertyFilter || hasStatusFilter,
+    search || showHO || isDateFiltered || hasPropertyFilter || hasStatusFilter || hasTaskFilter,
   );
 
   const columns = useMemo<DataTableColumn<ApiDailyRow>[]>(
@@ -704,7 +753,7 @@ function Daily() {
                 type="button"
                 className="grid h-9 w-9 place-items-center hover:bg-accent/10"
                 onClick={() => {
-                  setDate((d) => shiftDate(d, -1));
+                  setProgrammeDate(shiftDate(date, -1));
                   setPage(1);
                 }}
                 aria-label="Previous day"
@@ -717,7 +766,7 @@ function Daily() {
                 onChange={(e) => {
                   const next = e.target.value;
                   if (!next) return;
-                  setDate(next);
+                  setProgrammeDate(next);
                   setPage(1);
                 }}
                 className="h-9 border-x border-input bg-transparent px-2 text-sm outline-none"
@@ -727,7 +776,7 @@ function Daily() {
                 type="button"
                 className="grid h-9 w-9 place-items-center hover:bg-accent/10"
                 onClick={() => {
-                  setDate((d) => shiftDate(d, 1));
+                  setProgrammeDate(shiftDate(date, 1));
                   setPage(1);
                 }}
                 aria-label="Next day"
@@ -739,7 +788,7 @@ function Daily() {
                   type="button"
                   className="grid h-9 w-9 place-items-center border-l border-input text-muted-foreground hover:bg-accent/10 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                   onClick={() => {
-                    setDate(todayIso());
+                    setProgrammeDate(todayIso());
                     setPage(1);
                   }}
                   disabled={!isDateFiltered}

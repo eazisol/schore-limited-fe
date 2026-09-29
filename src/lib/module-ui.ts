@@ -1,5 +1,33 @@
 export { activeStatusClass } from "@/lib/status-colors";
 
+/**
+ * Parse API timestamps. Values without a timezone are treated as UTC
+ * (backend stores DateTime.UtcNow).
+ */
+export function parseApiDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const hasTimezone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(trimmed);
+  const normalized =
+    !hasTimezone && trimmed.includes("T")
+      ? `${trimmed.replace(/\.\d{1,7}$/, "")}Z`
+      : trimmed;
+
+  const d = new Date(normalized);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Display API datetime in the browser's local timezone (YYYY-MM-DD HH:mm). */
+export function formatLocalDateTime(value: string | null | undefined): string {
+  if (!value) return "—";
+  const d = parseApiDate(value);
+  if (!d) return value.replace("T", " ").slice(0, 16);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return "—";
   return value.replace("T", " ").slice(0, 16);

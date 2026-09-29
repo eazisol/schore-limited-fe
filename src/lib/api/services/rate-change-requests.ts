@@ -34,6 +34,7 @@ export interface RateChangeRequestListParams {
   pageSize?: number;
   search?: string;
   statusId?: string;
+  requestId?: string;
   customerId?: string;
   siteId?: string;
   projectId?: string;
@@ -51,6 +52,7 @@ export const rateChangeRequestsService = {
         PageSize: params.pageSize ?? 10,
         Search: params.search ?? "",
         ...(params.statusId ? { StatusId: params.statusId } : {}),
+        ...(params.requestId ? { RequestId: params.requestId } : {}),
         ...(params.customerId ? { CustomerId: params.customerId } : {}),
         ...(params.siteId ? { SiteId: params.siteId } : {}),
         ...(params.projectId ? { ProjectId: params.projectId } : {}),

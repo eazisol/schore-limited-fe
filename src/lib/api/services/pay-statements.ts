@@ -82,6 +82,7 @@ export interface PayStatementListParams {
   customerId?: string;
   statusId?: string;
   paymentStatusId?: string;
+  statementId?: string;
   search?: string;
   page?: number;
   pageSize?: number;
@@ -123,6 +124,9 @@ const listQuery = (params: PayStatementListParams) => ({
   ...(params.statusId != null && params.statusId !== "" ? { StatusId: params.statusId } : {}),
   ...(params.paymentStatusId != null && params.paymentStatusId !== ""
     ? { PaymentStatusId: params.paymentStatusId }
+    : {}),
+  ...(params.statementId != null && params.statementId !== ""
+    ? { StatementId: params.statementId }
     : {}),
   ...(params.search?.trim() ? { Search: params.search.trim() } : {}),
 });

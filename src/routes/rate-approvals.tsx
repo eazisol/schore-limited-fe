@@ -10,6 +10,7 @@ import { REPEAT_TASK_APPROVALS_ROUTE } from "@/lib/api/services/repeat-task-appr
 
 const approvalsSearchSchema = z.object({
   tab: z.enum(["rates", "repeat"]).optional().catch("rates"),
+  requestId: z.string().optional(),
 });
 
 export const Route = createFileRoute("/rate-approvals")({
@@ -23,7 +24,7 @@ const TAB_TRIGGER_CLASS =
 
 function ApprovalsPage() {
   const navigate = useNavigate({ from: Route.fullPath });
-  const { tab } = Route.useSearch();
+  const { tab, requestId } = Route.useSearch();
   const canRates = usePermission({ route: RATE_APPROVALS_ROUTE, action: "read" });
   const canRepeat = usePermission({ route: REPEAT_TASK_APPROVALS_ROUTE, action: "read" });
 
@@ -44,7 +45,7 @@ function ApprovalsPage() {
         value={activeTab}
         onValueChange={(next) => {
           void navigate({
-            search: (prev) => ({
+            search: (prev: { tab?: "rates" | "repeat"; requestId?: string }) => ({
               ...prev,
               tab: next === "repeat" ? "repeat" : "rates",
             }),
@@ -67,12 +68,12 @@ function ApprovalsPage() {
 
         {canRates ? (
           <TabsContent value="rates" className="mt-0 focus-visible:outline-none">
-            <RateApprovalsPanel />
+            <RateApprovalsPanel requestId={activeTab === "rates" ? requestId : undefined} />
           </TabsContent>
         ) : null}
         {canRepeat ? (
           <TabsContent value="repeat" className="mt-0 focus-visible:outline-none">
-            <RepeatTaskApprovalsPanel />
+            <RepeatTaskApprovalsPanel requestId={activeTab === "repeat" ? requestId : undefined} />
           </TabsContent>
         ) : null}
       </Tabs>
