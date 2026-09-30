@@ -69,6 +69,7 @@ import { Route as TasksIndexRouteImport } from './routes/tasks.index'
 import { Route as SystemConfigIndexRouteImport } from './routes/system-config.index'
 import { Route as SitesIndexRouteImport } from './routes/sites.index'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as ReportsIndexRouteImport } from './routes/reports.index'
 import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
 import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
 import { Route as ProductIndexRouteImport } from './routes/product.index'
@@ -96,6 +97,8 @@ import { Route as SettingsUserTypesRouteImport } from './routes/settings.user-ty
 import { Route as SettingsRolesRouteImport } from './routes/settings.roles'
 import { Route as SettingsRolePermissionsRouteImport } from './routes/settings.role-permissions'
 import { Route as SettingsEmailSmtpRouteImport } from './routes/settings.email-smtp'
+import { Route as ReportsWagesRouteImport } from './routes/reports.wages'
+import { Route as ReportsJobsRouteImport } from './routes/reports.jobs'
 import { Route as PropertiesNewRouteImport } from './routes/properties.new'
 import { Route as PropertiesIdRouteImport } from './routes/properties.$id'
 import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
@@ -412,6 +415,11 @@ const SettingsIndexRoute = SettingsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SettingsRoute,
 } as any)
+const ReportsIndexRoute = ReportsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ReportsRoute,
+} as any)
 const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -547,6 +555,16 @@ const SettingsEmailSmtpRoute = SettingsEmailSmtpRouteImport.update({
   path: '/email-smtp',
   getParentRoute: () => SettingsRoute,
 } as any)
+const ReportsWagesRoute = ReportsWagesRouteImport.update({
+  id: '/wages',
+  path: '/wages',
+  getParentRoute: () => ReportsRoute,
+} as any)
+const ReportsJobsRoute = ReportsJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => ReportsRoute,
+} as any)
 const PropertiesNewRoute = PropertiesNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -661,7 +679,7 @@ export interface FileRoutesByFullPath {
   '/rate-approvals': typeof RateApprovalsRoute
   '/rates': typeof RatesRoute
   '/repeat-task-approvals': typeof RepeatTaskApprovalsRoute
-  '/reports': typeof ReportsRoute
+  '/reports': typeof ReportsRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/roles': typeof RolesRoute
   '/settings': typeof SettingsRouteWithChildren
@@ -690,6 +708,8 @@ export interface FileRoutesByFullPath {
   '/projects/$id': typeof ProjectsIdRoute
   '/properties/$id': typeof PropertiesIdRoute
   '/properties/new': typeof PropertiesNewRoute
+  '/reports/jobs': typeof ReportsJobsRoute
+  '/reports/wages': typeof ReportsWagesRoute
   '/settings/email-smtp': typeof SettingsEmailSmtpRoute
   '/settings/role-permissions': typeof SettingsRolePermissionsRoute
   '/settings/roles': typeof SettingsRolesRoute
@@ -717,6 +737,7 @@ export interface FileRoutesByFullPath {
   '/product/': typeof ProductIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/properties/': typeof PropertiesIndexRoute
+  '/reports/': typeof ReportsIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/sites/': typeof SitesIndexRoute
   '/system-config/': typeof SystemConfigIndexRoute
@@ -756,7 +777,6 @@ export interface FileRoutesByTo {
   '/rate-approvals': typeof RateApprovalsRoute
   '/rates': typeof RatesRoute
   '/repeat-task-approvals': typeof RepeatTaskApprovalsRoute
-  '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/roles': typeof RolesRoute
   '/signin': typeof SigninRoute
@@ -777,6 +797,8 @@ export interface FileRoutesByTo {
   '/projects/$id': typeof ProjectsIdRoute
   '/properties/$id': typeof PropertiesIdRoute
   '/properties/new': typeof PropertiesNewRoute
+  '/reports/jobs': typeof ReportsJobsRoute
+  '/reports/wages': typeof ReportsWagesRoute
   '/settings/email-smtp': typeof SettingsEmailSmtpRoute
   '/settings/role-permissions': typeof SettingsRolePermissionsRoute
   '/settings/roles': typeof SettingsRolesRoute
@@ -804,6 +826,7 @@ export interface FileRoutesByTo {
   '/product': typeof ProductIndexRoute
   '/projects': typeof ProjectsIndexRoute
   '/properties': typeof PropertiesIndexRoute
+  '/reports': typeof ReportsIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/sites': typeof SitesIndexRoute
   '/system-config': typeof SystemConfigIndexRoute
@@ -853,7 +876,7 @@ export interface FileRoutesById {
   '/rate-approvals': typeof RateApprovalsRoute
   '/rates': typeof RatesRoute
   '/repeat-task-approvals': typeof RepeatTaskApprovalsRoute
-  '/reports': typeof ReportsRoute
+  '/reports': typeof ReportsRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/roles': typeof RolesRoute
   '/settings': typeof SettingsRouteWithChildren
@@ -882,6 +905,8 @@ export interface FileRoutesById {
   '/projects/$id': typeof ProjectsIdRoute
   '/properties/$id': typeof PropertiesIdRoute
   '/properties/new': typeof PropertiesNewRoute
+  '/reports/jobs': typeof ReportsJobsRoute
+  '/reports/wages': typeof ReportsWagesRoute
   '/settings/email-smtp': typeof SettingsEmailSmtpRoute
   '/settings/role-permissions': typeof SettingsRolePermissionsRoute
   '/settings/roles': typeof SettingsRolesRoute
@@ -909,6 +934,7 @@ export interface FileRoutesById {
   '/product/': typeof ProductIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/properties/': typeof PropertiesIndexRoute
+  '/reports/': typeof ReportsIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/sites/': typeof SitesIndexRoute
   '/system-config/': typeof SystemConfigIndexRoute
@@ -988,6 +1014,8 @@ export interface FileRouteTypes {
     | '/projects/$id'
     | '/properties/$id'
     | '/properties/new'
+    | '/reports/jobs'
+    | '/reports/wages'
     | '/settings/email-smtp'
     | '/settings/role-permissions'
     | '/settings/roles'
@@ -1015,6 +1043,7 @@ export interface FileRouteTypes {
     | '/product/'
     | '/projects/'
     | '/properties/'
+    | '/reports/'
     | '/settings/'
     | '/sites/'
     | '/system-config/'
@@ -1054,7 +1083,6 @@ export interface FileRouteTypes {
     | '/rate-approvals'
     | '/rates'
     | '/repeat-task-approvals'
-    | '/reports'
     | '/reset-password'
     | '/roles'
     | '/signin'
@@ -1075,6 +1103,8 @@ export interface FileRouteTypes {
     | '/projects/$id'
     | '/properties/$id'
     | '/properties/new'
+    | '/reports/jobs'
+    | '/reports/wages'
     | '/settings/email-smtp'
     | '/settings/role-permissions'
     | '/settings/roles'
@@ -1102,6 +1132,7 @@ export interface FileRouteTypes {
     | '/product'
     | '/projects'
     | '/properties'
+    | '/reports'
     | '/settings'
     | '/sites'
     | '/system-config'
@@ -1179,6 +1210,8 @@ export interface FileRouteTypes {
     | '/projects/$id'
     | '/properties/$id'
     | '/properties/new'
+    | '/reports/jobs'
+    | '/reports/wages'
     | '/settings/email-smtp'
     | '/settings/role-permissions'
     | '/settings/roles'
@@ -1206,6 +1239,7 @@ export interface FileRouteTypes {
     | '/product/'
     | '/projects/'
     | '/properties/'
+    | '/reports/'
     | '/settings/'
     | '/sites/'
     | '/system-config/'
@@ -1255,7 +1289,7 @@ export interface RootRouteChildren {
   RateApprovalsRoute: typeof RateApprovalsRoute
   RatesRoute: typeof RatesRoute
   RepeatTaskApprovalsRoute: typeof RepeatTaskApprovalsRoute
-  ReportsRoute: typeof ReportsRoute
+  ReportsRoute: typeof ReportsRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   RolesRoute: typeof RolesRoute
   SettingsRoute: typeof SettingsRouteWithChildren
@@ -1694,6 +1728,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsIndexRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/reports/': {
+      id: '/reports/'
+      path: '/'
+      fullPath: '/reports/'
+      preLoaderRoute: typeof ReportsIndexRouteImport
+      parentRoute: typeof ReportsRoute
+    }
     '/properties/': {
       id: '/properties/'
       path: '/'
@@ -1882,6 +1923,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/email-smtp'
       preLoaderRoute: typeof SettingsEmailSmtpRouteImport
       parentRoute: typeof SettingsRoute
+    }
+    '/reports/wages': {
+      id: '/reports/wages'
+      path: '/wages'
+      fullPath: '/reports/wages'
+      preLoaderRoute: typeof ReportsWagesRouteImport
+      parentRoute: typeof ReportsRoute
+    }
+    '/reports/jobs': {
+      id: '/reports/jobs'
+      path: '/jobs'
+      fullPath: '/reports/jobs'
+      preLoaderRoute: typeof ReportsJobsRouteImport
+      parentRoute: typeof ReportsRoute
     }
     '/properties/new': {
       id: '/properties/new'
@@ -2134,6 +2189,21 @@ const PropertiesRouteWithChildren = PropertiesRoute._addFileChildren(
   PropertiesRouteChildren,
 )
 
+interface ReportsRouteChildren {
+  ReportsJobsRoute: typeof ReportsJobsRoute
+  ReportsWagesRoute: typeof ReportsWagesRoute
+  ReportsIndexRoute: typeof ReportsIndexRoute
+}
+
+const ReportsRouteChildren: ReportsRouteChildren = {
+  ReportsJobsRoute: ReportsJobsRoute,
+  ReportsWagesRoute: ReportsWagesRoute,
+  ReportsIndexRoute: ReportsIndexRoute,
+}
+
+const ReportsRouteWithChildren =
+  ReportsRoute._addFileChildren(ReportsRouteChildren)
+
 interface SettingsRouteChildren {
   SettingsEmailSmtpRoute: typeof SettingsEmailSmtpRoute
   SettingsRolePermissionsRoute: typeof SettingsRolePermissionsRoute
@@ -2296,7 +2366,7 @@ const rootRouteChildren: RootRouteChildren = {
   RateApprovalsRoute: RateApprovalsRoute,
   RatesRoute: RatesRoute,
   RepeatTaskApprovalsRoute: RepeatTaskApprovalsRoute,
-  ReportsRoute: ReportsRoute,
+  ReportsRoute: ReportsRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   RolesRoute: RolesRoute,
   SettingsRoute: SettingsRouteWithChildren,

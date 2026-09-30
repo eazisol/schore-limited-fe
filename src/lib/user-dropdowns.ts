@@ -99,3 +99,15 @@ export async function fetchProjectAssigneeOptions(search: string): Promise<Searc
     };
   });
 }
+
+export async function fetchOperativeOptions(search: string): Promise<SearchableSelectOption[]> {
+  const res = await usersService.dropdown({
+    search,
+    userTypeId: USER_TYPE_ID.operative,
+    take: DROPDOWN_FETCH_SIZE,
+  });
+  return (res.data ?? []).map((item) => ({
+    value: String(item.id),
+    label: item.name,
+  }));
+}
