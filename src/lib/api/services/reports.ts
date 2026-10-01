@@ -27,10 +27,21 @@ export interface ApiTaskReportRow {
   amount: number;
 }
 
-export interface ApiReportChartPoint {
+export interface ApiTaskReportStatusCount {
+  code: string;
+  name: string;
+  count: number;
+}
+
+export interface ApiTaskReportGroupStat {
   label: string;
-  amount: number;
+  entityId: string | null;
   jobCount: number;
+  completedCount: number;
+  itemCount: number;
+  completionPercent: number;
+  amount: number;
+  statusCounts: ApiTaskReportStatusCount[];
 }
 
 export interface ApiTaskReport {
@@ -47,7 +58,8 @@ export interface ApiTaskReport {
   totalItems: number;
   completionPercent: number;
   totalAmount: number;
-  chart: ApiReportChartPoint[];
+  statusCounts: ApiTaskReportStatusCount[];
+  groupStats: ApiTaskReportGroupStat[];
   rows: ApiTaskReportRow[];
 }
 
@@ -61,6 +73,7 @@ export interface TaskReportParams {
   propertyId?: string;
   userId?: string;
   operativeId?: string;
+  statusId?: string;
   page?: number;
   pageSize?: number;
 }
@@ -151,6 +164,7 @@ export const reportsService = {
         ...(params.propertyId ? { PropertyId: params.propertyId } : {}),
         ...(params.userId ? { UserId: params.userId } : {}),
         ...(params.operativeId ? { OperativeId: params.operativeId } : {}),
+        ...(params.statusId ? { StatusId: params.statusId } : {}),
       },
     }),
 

@@ -71,6 +71,10 @@ export interface SearchableSelectProps {
   }) => ReactElement;
   /** Extra classes for the dropdown panel (e.g. fixed width with a custom trigger). */
   contentClassName?: string;
+  /** Truncate option labels in the list (default true). Set false to show full names. */
+  truncateOptions?: boolean;
+  /** Popover alignment relative to the trigger. Defaults to "start". */
+  contentAlign?: "start" | "center" | "end";
 }
 
 export function SearchableSelect({
@@ -96,6 +100,8 @@ export function SearchableSelect({
   invalid,
   renderTrigger,
   contentClassName,
+  truncateOptions = true,
+  contentAlign = "start",
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -245,7 +251,7 @@ export function SearchableSelect({
             "z-[60] w-[var(--radix-popover-trigger-width)] p-0",
             contentClassName,
           )}
-          align="start"
+          align={contentAlign}
           onCloseAutoFocus={(event) => event.preventDefault()}
         >
           <div className="flex items-center gap-2 border-b px-3 py-2">
@@ -306,9 +312,21 @@ export function SearchableSelect({
                             )}
                           >
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate">{option.label}</span>
+                              <span
+                                className={cn(
+                                  "block",
+                                  truncateOptions ? "truncate" : "whitespace-normal break-words",
+                                )}
+                              >
+                                {option.label}
+                              </span>
                               {option.description ? (
-                                <span className="mt-0.5 block truncate text-xs leading-snug text-muted-foreground">
+                                <span
+                                  className={cn(
+                                    "mt-0.5 block text-xs leading-snug text-muted-foreground",
+                                    truncateOptions ? "truncate" : "whitespace-normal break-words",
+                                  )}
+                                >
                                   {option.description}
                                 </span>
                               ) : null}
