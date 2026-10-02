@@ -1,5 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentType,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/AppShell";
@@ -21,7 +28,7 @@ import {
   underlineTabListClass,
   underlineTabTriggerClass,
 } from "@/components/ui/tabs";
-import { Download, Loader2 } from "lucide-react";
+import { BriefcaseBusiness, Check, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { fmtGBP } from "@/lib/data";
 import {
@@ -204,18 +211,34 @@ function JobReport() {
       </div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Jobs" value={String(data?.totalJobs ?? 0)} tip="Distinct jobs in this result set." />
+        <StatCard
+          label="Jobs"
+          value={String(data?.totalJobs ?? 0)}
+          tip="Distinct jobs in this result set."
+          icon={BriefcaseBusiness}
+          tone="blue"
+        />
         <StatCard
           label="Completed items"
           value={String(data?.totalCompleted ?? 0)}
           tip="Task items that are ticked or have a completed date."
+          icon={Check}
+          tone="green"
         />
         <StatCard
           label="Completion"
           value={`${data?.completionPercent ?? 0}%`}
           tip="Completed items ÷ total task items."
+          icon={AnalyticsBarsIcon}
+          tone="amber"
         />
-        <StatCard label="Amount" value={fmtGBP(data?.totalAmount ?? 0)} tip="Sum of task-item amounts." />
+        <StatCard
+          label="Amount"
+          value={fmtGBP(data?.totalAmount ?? 0)}
+          tip="Sum of task-item amounts."
+          icon={StackedCoinsIcon}
+          tone="purple"
+        />
       </div>
 
       {chartData.length > 0 ? (
@@ -342,14 +365,126 @@ function FilterSelect({
   );
 }
 
-function StatCard({ label, value, tip }: { label: string; value: string; tip: string }) {
+const STAT_TONES = {
+  blue: {
+    background: "linear-gradient(135deg, #EEF7FE 0%, #F6FCFE 100%)",
+    circle: "#D3ECFD",
+    icon: "#3D9BCB",
+  },
+  green: {
+    background: "linear-gradient(135deg, #EEFAF7 0%, #F1FBF8 100%)",
+    circle: "#DCF3ED",
+    icon: "#15998B",
+  },
+  amber: {
+    background: "linear-gradient(135deg, #FFF9F2 0%, #FDF8F1 100%)",
+    circle: "#FDF1E1",
+    icon: "#BE9256",
+  },
+  purple: {
+    background: "linear-gradient(135deg, #F2F2FE 0%, #F4F3FE 100%)",
+    circle: "#E0DFFE",
+    icon: "#7373F4",
+  },
+} as const;
+
+type KpiIcon = ComponentType<{
+  className?: string;
+  strokeWidth?: number;
+  style?: CSSProperties;
+  "aria-hidden"?: boolean;
+}>;
+
+function AnalyticsBarsIcon({
+  className,
+  strokeWidth = 2,
+  style,
+}: {
+  className?: string;
+  strokeWidth?: number;
+  style?: CSSProperties;
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      style={style}
+      aria-hidden
+    >
+      <path d="M4 19h16" />
+      <path d="M8 19V11" />
+      <path d="M12 19V5" />
+      <path d="M16 19V13" />
+    </svg>
+  );
+}
+
+function StackedCoinsIcon({
+  className,
+  strokeWidth = 2,
+  style,
+}: {
+  className?: string;
+  strokeWidth?: number;
+  style?: CSSProperties;
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      style={style}
+      aria-hidden
+    >
+      <rect x="8" y="11" width="12" height="8" rx="2.2" />
+      <path d="M11 15h6" />
+      <rect x="4" y="5" width="12" height="8" rx="2.2" />
+      <path d="M7 9h6" />
+    </svg>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  tip,
+  icon: Icon,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tip: string;
+  icon: KpiIcon;
+  tone: keyof typeof STAT_TONES;
+}) {
+  const colors = STAT_TONES[tone];
   return (
     <AppTooltip content={tip} asChild>
-      <div className="card-elevated cursor-default px-4 py-3">
-        <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-          {label}
+      <div
+        className="card-elevated flex cursor-default items-center justify-between gap-3 px-4 py-3"
+        style={{ background: colors.background }}
+      >
+        <div className="min-w-0">
+          <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            {label}
+          </div>
+          <div className="mt-1 text-xl font-semibold tabular-nums">{value}</div>
         </div>
-        <div className="mt-1 text-xl font-semibold tabular-nums">{value}</div>
+        <div
+          className="flex size-9 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: colors.circle }}
+        >
+          <Icon className="size-4" strokeWidth={2} style={{ color: colors.icon }} aria-hidden />
+        </div>
       </div>
     </AppTooltip>
   );
