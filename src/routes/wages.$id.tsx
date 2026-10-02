@@ -23,7 +23,8 @@ import {
 import { payStatementsQueryKey } from "./payroll";
 
 const wageDetailSearchSchema = z.object({
-  from: z.enum(["payroll"]).optional(),
+  from: z.enum(["payroll", "operative", "operative-me", "reports-wages"]).optional(),
+  operativeId: z.string().optional(),
   weekEnding: z.string().optional(),
 });
 
@@ -41,10 +42,39 @@ export const Route = createFileRoute("/wages/$id")({
   component: WageSheetView,
 });
 
+function wageBackLink(search: z.infer<typeof wageDetailSearchSchema>): {
+  to: "/payroll" | "/wages" | "/operatives/$id" | "/operatives/me" | "/reports/wages";
+  params?: { id: string };
+  search?: { weekEnding?: string };
+  label: string;
+} {
+  if (search.from === "payroll") {
+    return { to: "/payroll", label: "Payroll Engine" };
+  }
+  if (search.from === "operative-me") {
+    return { to: "/operatives/me", label: "Back to operative" };
+  }
+  if (search.from === "operative" && search.operativeId) {
+    return {
+      to: "/operatives/$id",
+      params: { id: search.operativeId },
+      label: "Back to operative",
+    };
+  }
+  if (search.from === "reports-wages") {
+    return { to: "/reports/wages", label: "Back to wages report" };
+  }
+  return {
+    to: "/wages",
+    search: search.weekEnding ? { weekEnding: search.weekEnding } : undefined,
+    label: "All wage sheets",
+  };
+}
+
 function WageSheetView() {
   const { id } = Route.useParams();
-  const { from, weekEnding } = Route.useSearch();
-  const wagesListSearch = weekEnding ? { weekEnding } : {};
+  const search = Route.useSearch();
+  const back = wageBackLink(search);
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { menus } = usePermissions();
@@ -142,10 +172,7 @@ function WageSheetView() {
           {err?.message ?? "This statement is not available."}
         </p>
         <Button className="mt-4" asChild>
-          <Link
-            to={from === "payroll" ? "/payroll" : "/wages"}
-            search={from === "payroll" ? undefined : wagesListSearch}
-          >
+          <Link to={back.to} params={back.params} search={back.search}>
             Back
           </Link>
         </Button>
@@ -155,19 +182,14 @@ function WageSheetView() {
 
   return (
     <div className="max-w-4xl space-y-3">
-      {from === "payroll" ? (
-        <Link to="/payroll" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-3 w-3" /> Payroll Engine
-        </Link>
-      ) : (
-        <Link
-          to="/wages"
-          search={wagesListSearch}
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3" /> All wage sheets
-        </Link>
-      )}
+      <Link
+        to={back.to}
+        params={back.params}
+        search={back.search}
+        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-3 w-3" /> {back.label}
+      </Link>
 
       <PageHeader
         title={`Wage Sheet · ${invoiceNo(w.invoiceNumber)}`}

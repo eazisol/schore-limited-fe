@@ -80,6 +80,7 @@ export interface ApiPayStatementDetail extends ApiPayStatementSummary {
 export interface PayStatementListParams {
   weekEnding?: string;
   customerId?: string;
+  operativeId?: string;
   statusId?: string;
   paymentStatusId?: string;
   statementId?: string;
@@ -120,6 +121,9 @@ const listQuery = (params: PayStatementListParams) => ({
   ...(params.weekEnding ? { WeekEnding: params.weekEnding } : {}),
   ...(params.customerId != null && params.customerId !== ""
     ? { CustomerId: params.customerId }
+    : {}),
+  ...(params.operativeId != null && params.operativeId !== ""
+    ? { OperativeId: params.operativeId }
     : {}),
   ...(params.statusId != null && params.statusId !== "" ? { StatusId: params.statusId } : {}),
   ...(params.paymentStatusId != null && params.paymentStatusId !== ""

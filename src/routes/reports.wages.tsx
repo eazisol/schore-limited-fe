@@ -10,6 +10,9 @@ import {
 } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { Cell, Label, Pie, PieChart } from "recharts";
 import { PageHeader } from "@/components/AppShell";
 import { AppTooltip } from "@/components/AppTooltip";
 import { Pagination } from "@/components/Pagination";
@@ -28,12 +31,13 @@ import {
   Download,
   Loader2,
 } from "lucide-react";
+import { Calculator, Download, FileText, LayoutGrid, Loader2, MinusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { fmtGBP } from "@/lib/data";
 import {
   reportsService,
-  type ApiWagesChartPoint,
   type ApiWagesReportRow,
+  type ApiWagesStatusCount,
 } from "@/lib/api/services/reports";
 import { statusesService, DOCUMENT_TYPE_CODE } from "@/lib/api/services/statuses";
 import { fetchCustomerOptions } from "@/lib/user-dropdowns";
@@ -43,6 +47,12 @@ import {
   formatWageWeekRange,
   invoiceNo,
 } from "@/lib/week-ending";
+import { cn } from "@/lib/utils";
+import {
+  STATUS_TONE_CLASSES,
+  statusToneForLabel,
+  type StatusTone,
+} from "@/lib/status-colors";
 
 export const Route = createFileRoute("/reports/wages")({
   head: () => ({ meta: [{ title: "Wages Report | Schore" }] }),
@@ -89,6 +99,17 @@ function mapChartPoints(points: ApiWagesChartPoint[] | undefined) {
     count: p.count,
     amount: p.gross,
   }));
+const TONE_FILL: Record<StatusTone, string> = {
+  success: "var(--success)",
+  info: "var(--info)",
+  warning: "var(--warning)",
+  destructive: "var(--destructive)",
+  muted: "var(--muted-foreground)",
+  accent: "var(--accent)",
+};
+
+function statusKey(s: ApiWagesStatusCount) {
+  return (s.code || s.name).replace(/\s+/g, "_");
 }
 
 function WagesReport() {
@@ -158,27 +179,38 @@ function WagesReport() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const summaryChart = useMemo(
-    () =>
-      (data?.chartSummary ?? []).map((p) => ({
-        label: p.label,
-        fullLabel: p.label,
-        amount: p.gross,
-      })),
-    [data?.chartSummary],
+  const statusTotal = useMemo(
+    () => statusCounts.reduce((sum, s) => sum + s.count, 0),
+    [statusCounts],
   );
-  const byOperativeChart = useMemo(() => mapChartPoints(data?.chartByOperative), [data?.chartByOperative]);
-  const byWeekChart = useMemo(() => mapChartPoints(data?.chartByWeek), [data?.chartByWeek]);
-  const byStatusChart = useMemo(() => mapChartPoints(data?.chartByStatus), [data?.chartByStatus]);
-  const byClientChart = useMemo(() => mapChartPoints(data?.chartByClient), [data?.chartByClient]);
-  const byProjectChart = useMemo(() => mapChartPoints(data?.chartByProject), [data?.chartByProject]);
-  const hasCharts =
-    summaryChart.length > 0 ||
-    byOperativeChart.length > 0 ||
-    byWeekChart.length > 0 ||
-    byStatusChart.length > 0 ||
-    byClientChart.length > 0 ||
-    byProjectChart.length > 0;
+
+  const statusPieData = useMemo(
+    () =>
+      statusCounts
+        .filter((s) => s.count > 0)
+        .map((s) => {
+          const key = statusKey(s);
+          return {
+            key,
+            name: s.name,
+            value: s.count,
+            fill: TONE_FILL[statusToneForLabel(s.name || s.code)],
+          };
+        }),
+    [statusCounts],
+  );
+
+  const statusChartConfig = useMemo(() => {
+    const config: ChartConfig = {};
+    for (const s of statusCounts) {
+      const key = statusKey(s);
+      config[key] = {
+        label: s.name,
+        color: TONE_FILL[statusToneForLabel(s.name || s.code)],
+      };
+    }
+    return config;
+  }, [statusCounts]);
 
   const exportCsv = () => {
     if (!data?.rows.length) {
@@ -191,7 +223,7 @@ function WagesReport() {
   };
 
   return (
-    <div>
+    <div className="space-y-3">
       <PageHeader
         title="Wages Report"
         subtitle="Wage sheets by date — partial weeks recalculate gross, CIS and net from days in range."
@@ -203,29 +235,94 @@ function WagesReport() {
         }
       />
 
-      <div className="card-elevated mb-4 flex flex-wrap items-end gap-3 p-4">
-        <label className="block">
-          <span className="text-[11px] font-medium text-muted-foreground">From</span>
+      <div className="card-elevated overflow-hidden">
+        <div className="grid divide-y sm:grid-cols-2 lg:grid-cols-[minmax(17rem,22rem)_repeat(4,minmax(0,1fr))] lg:divide-x lg:divide-y-0">
+          <div className="flex items-center gap-3 px-3 py-2 sm:col-span-2 sm:px-3.5 lg:col-span-1">
+            <SignOffPieChart data={statusPieData} total={statusTotal} config={statusChartConfig} />
+            <div className="min-w-0 flex-1">
+              <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  By sign-off
+                </span>
+                <span className="text-[11px] tabular-nums text-muted-foreground">
+                  {statusTotal} sheet{statusTotal === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1">
+                {statusPieData.length > 0 ? (
+                  statusPieData.map((s) => (
+                    <StatusLegendItem
+                      key={s.key}
+                      name={s.name}
+                      value={s.value}
+                      fill={s.fill}
+                    />
+                  ))
+                ) : statusCounts.length > 0 ? (
+                  statusCounts.map((s) => (
+                    <StatusLegendItem
+                      key={s.code || s.name}
+                      name={s.name}
+                      value={s.count}
+                      fill={TONE_FILL[statusToneForLabel(s.name || s.code)]}
+                    />
+                  ))
+                ) : (
+                  <p className="py-1 text-center text-xs text-muted-foreground">No status data</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <SummaryStat
+            label="Statements"
+            value={String(data?.statementCount ?? 0)}
+            tip="Wage sheets matching filters."
+            tone="accent"
+            icon={FileText}
+          />
+          <SummaryStat
+            label="Gross"
+            value={fmtGBP(data?.totalGross ?? 0)}
+            tip="Total gross for days in range (partial weeks recalculated)."
+            tone="accent"
+            icon={LayoutGrid}
+          />
+          <SummaryStat
+            label="CIS"
+            value={fmtGBP(data?.totalCisDeduction ?? 0)}
+            tip="CIS on the ranged gross."
+            tone="muted"
+            icon={MinusCircle}
+          />
+          <SummaryStat
+            label="Net"
+            value={fmtGBP(data?.totalNet ?? 0)}
+            tip="Total net for the date range."
+            tone="info"
+            icon={Calculator}
+          />
+        </div>
+      </div>
+
+      <div className="card-elevated overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2 sm:gap-2.5 sm:px-4">
           <input
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="mt-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
+            aria-label="From date"
+            className="h-8 rounded-md border border-input bg-background px-2.5 text-sm"
           />
-        </label>
-        <label className="block">
-          <span className="text-[11px] font-medium text-muted-foreground">To</span>
           <input
             type="date"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="mt-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
+            aria-label="To date"
+            className="h-8 rounded-md border border-input bg-background px-2.5 text-sm"
           />
-        </label>
-        <div className="min-w-[11rem]">
-          <span className="text-[11px] font-medium text-muted-foreground">Client</span>
           <SearchableSelect
-            className="mt-1 w-full min-w-[10rem] sm:w-44"
+            className="w-full min-w-[9rem] sm:w-40"
             value={customerId}
             onValueChange={(value) => {
               if (!value) {
@@ -244,13 +341,10 @@ function WagesReport() {
             fetchOptions={fetchCustomerOptions}
             selectedLabel={customerLabel}
             emptyOption={{ value: "", label: "All clients" }}
-            triggerClassName="h-9 [&>span]:whitespace-nowrap"
+            triggerClassName="h-8 [&>span]:whitespace-nowrap"
           />
-        </div>
-        <div className="min-w-[9rem]">
-          <span className="text-[11px] font-medium text-muted-foreground">Status</span>
           <SearchableSelect
-            className="mt-1 w-full min-w-[9rem] sm:w-40"
+            className="w-full min-w-[8rem] sm:w-36"
             value={statusId}
             onValueChange={(value) => {
               if (!value) {
@@ -269,13 +363,10 @@ function WagesReport() {
             fetchOptions={fetchSignOffOptions}
             selectedLabel={statusLabel}
             emptyOption={{ value: "", label: "All sign-off" }}
-            triggerClassName="h-9 [&>span]:whitespace-nowrap"
+            triggerClassName="h-8 [&>span]:whitespace-nowrap"
           />
-        </div>
-        <div className="min-w-[9rem]">
-          <span className="text-[11px] font-medium text-muted-foreground">Payment</span>
           <SearchableSelect
-            className="mt-1 w-full min-w-[9rem] sm:w-40"
+            className="w-full min-w-[8rem] sm:w-36"
             value={paymentStatusId}
             onValueChange={(value) => {
               if (!value) {
@@ -294,7 +385,7 @@ function WagesReport() {
             fetchOptions={fetchPaymentOptions}
             selectedLabel={paymentStatusLabel}
             emptyOption={{ value: "", label: "All payment" }}
-            triggerClassName="h-9 [&>span]:whitespace-nowrap"
+            triggerClassName="h-8 [&>span]:whitespace-nowrap"
           />
         </div>
       </div>
@@ -330,55 +421,6 @@ function WagesReport() {
         />
       </div>
 
-      {statusCounts.length > 0 ? (
-        <div className="mb-4 flex flex-wrap gap-2">
-          {statusCounts.map((s) => (
-            <AppTooltip
-              key={s.code || s.name}
-              content={`${s.count} statement${s.count === 1 ? "" : "s"} with status ${s.name}`}
-              asChild
-            >
-              <span className="inline-flex cursor-default items-center gap-1.5 rounded-md border bg-card px-2.5 py-1 text-xs font-medium">
-                <span className="text-muted-foreground">{s.name}</span>
-                <span className="tabular-nums">{s.count}</span>
-              </span>
-            </AppTooltip>
-          ))}
-        </div>
-      ) : null}
-
-      {hasCharts ? (
-        <div className="mb-4 grid gap-4 lg:grid-cols-2">
-          <WagesChartCard
-            title="Gross / CIS / Net"
-            subtitle="Totals for the current filters."
-            className="lg:col-span-2"
-          >
-            <SummaryBarChart data={summaryChart} />
-          </WagesChartCard>
-          <WagesChartCard title="By operative" subtitle="Top 12 by gross.">
-            <MoneyBarChart data={byOperativeChart} grouped />
-          </WagesChartCard>
-          <WagesChartCard title="By week ending" subtitle="Trend across weeks in range.">
-            <MoneyBarChart data={byWeekChart} />
-          </WagesChartCard>
-          <WagesChartCard title="By status" subtitle="Gross by sign-off status.">
-            <MoneyBarChart data={byStatusChart} />
-          </WagesChartCard>
-          <WagesChartCard title="By client" subtitle="Top 12 by gross.">
-            <MoneyBarChart data={byClientChart} grouped />
-          </WagesChartCard>
-          <WagesChartCard
-            title="By project"
-            subtitle="Top 12 by gross."
-            className="lg:col-span-2"
-          >
-            <MoneyBarChart data={byProjectChart} grouped />
-          </WagesChartCard>
-        </div>
-      ) : null}
-
-      <div className="card-elevated overflow-hidden">
         <WagesReportTable
           rows={data?.rows ?? []}
           statementCount={data?.statementCount ?? 0}
@@ -473,6 +515,12 @@ function StatCard({
   tip,
   icon: Icon,
   tone,
+function SummaryStat({
+  label,
+  value,
+  tip,
+  tone,
+  icon: Icon,
 }: {
   label: string;
   value: string;
@@ -498,31 +546,57 @@ function StatCard({
           style={{ backgroundColor: colors.circle }}
         >
           <Icon className="size-4" strokeWidth={2} style={{ color: colors.icon }} aria-hidden />
+  tone: StatusTone;
+  icon: typeof FileText;
+}) {
+  return (
+    <AppTooltip content={tip} asChild>
+      <div className="flex cursor-default items-center gap-2 px-3 py-2 sm:px-3.5">
+        <span
+          className={cn(
+            "grid h-8 w-8 shrink-0 place-items-center rounded-md border",
+            STATUS_TONE_CLASSES[tone],
+          )}
+        >
+          <Icon className="h-3.5 w-3.5" aria-hidden />
+        </span>
+        <div className="min-w-0 leading-none">
+          <div className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {label}
+          </div>
+          <div className="mt-0.5 text-base font-semibold tabular-nums tracking-tight text-foreground">
+            {value}
+          </div>
         </div>
       </div>
     </AppTooltip>
   );
 }
 
-function WagesChartCard({
-  title,
-  subtitle,
-  children,
-  className,
+function StatusLegendItem({
+  name,
+  value,
+  fill,
 }: {
-  title: string;
-  subtitle: string;
-  children: ReactNode;
-  className?: string;
+  name: string;
+  value: number;
+  fill: string;
 }) {
   return (
-    <section className={`card-elevated overflow-hidden ${className ?? ""}`}>
-      <div className="border-b px-4 py-3 sm:px-5">
-        <h2 className="text-sm font-semibold">{title}</h2>
-        <p className="text-xs text-muted-foreground">{subtitle}</p>
+    <AppTooltip
+      content={`${value} statement${value === 1 ? "" : "s"} with status ${name}`}
+      asChild
+    >
+      <div className="flex cursor-default items-center gap-1.5 text-[11px]">
+        <span
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{ backgroundColor: fill }}
+          aria-hidden
+        />
+        <span className="truncate text-muted-foreground">{name}</span>
+        <span className="shrink-0 font-semibold tabular-nums text-foreground">{value}</span>
       </div>
-      <div className="px-2 pb-4 pt-2 sm:px-4">{children}</div>
-    </section>
+    </AppTooltip>
   );
 }
 
@@ -570,36 +644,30 @@ function SummaryBarChart({ data }: { data: ChartRow[] }) {
     </ChartContainer>
   );
 }
+type PieSlice = { key: string; name: string; value: number; fill: string };
 
-function MoneyBarChart({ data, grouped = false }: { data: ChartRow[]; grouped?: boolean }) {
-  if (data.length === 0) {
+function SignOffPieChart({
+  data,
+  total,
+  config,
+}: {
+  data: PieSlice[];
+  total: number;
+  config: ChartConfig;
+}) {
+  if (data.length === 0 || total === 0) {
     return <ChartEmpty />;
   }
 
   return (
-    <ChartContainer config={moneyChartConfig} className="h-[220px] w-full aspect-auto">
-      <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-        <CartesianGrid vertical={false} strokeDasharray="0" />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
-        <YAxis
-          tickLine={false}
-          axisLine={false}
-          fontSize={11}
-          width={48}
-          tickFormatter={(v) => `£${Number(v).toLocaleString("en-GB")}`}
-        />
+    <ChartContainer
+      config={config}
+      className="aspect-square h-[88px] w-[88px] shrink-0 overflow-visible sm:h-[100px] sm:w-[100px]"
+    >
+      <PieChart margin={{ top: 1, right: 1, bottom: 1, left: 1 }}>
         <ChartTooltip
-          content={
-            <ChartTooltipContent
-              labelFormatter={(_, payload) => {
-                const row = payload?.[0]?.payload as ChartRow | undefined;
-                if (!row) return "";
-                const count = row.count != null ? ` · ${row.count} sheet${row.count === 1 ? "" : "s"}` : "";
-                return `${row.fullLabel}${count}`;
-              }}
-              formatter={(value) => fmtGBP(Number(value))}
-            />
-          }
+          cursor={false}
+          content={<ChartTooltipContent hideLabel nameKey="key" />}
         />
         <Bar dataKey="gross" fill="var(--color-gross)" radius={[4, 4, 0, 0]}>
           {data.map((row, index) => (
@@ -613,14 +681,60 @@ function MoneyBarChart({ data, grouped = false }: { data: ChartRow[]; grouped?: 
           </>
         ) : null}
       </BarChart>
+        <Pie
+          data={data}
+          dataKey="value"
+          nameKey="key"
+          innerRadius="54%"
+          outerRadius="88%"
+          strokeWidth={2}
+          stroke="var(--color-card)"
+          paddingAngle={2}
+          isAnimationActive={false}
+        >
+          {data.map((entry) => (
+            <Cell key={entry.key} fill={entry.fill} />
+          ))}
+          <Label
+            content={({ viewBox }) => {
+              if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                return (
+                  <text
+                    x={viewBox.cx}
+                    y={viewBox.cy}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                  >
+                    <tspan
+                      x={viewBox.cx}
+                      y={(viewBox.cy ?? 0) - 4}
+                      className="fill-foreground font-display text-base font-semibold sm:text-lg"
+                    >
+                      {total}
+                    </tspan>
+                    <tspan
+                      x={viewBox.cx}
+                      y={(viewBox.cy ?? 0) + 10}
+                      className="fill-muted-foreground text-[9px]"
+                    >
+                      Total
+                    </tspan>
+                  </text>
+                );
+              }
+              return null;
+            }}
+          />
+        </Pie>
+      </PieChart>
     </ChartContainer>
   );
 }
 
 function ChartEmpty() {
   return (
-    <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
-      No chart data for these filters.
+    <div className="flex h-[88px] w-[88px] items-center justify-center text-xs text-muted-foreground sm:h-[100px] sm:w-[100px]">
+      —
     </div>
   );
 }
@@ -642,7 +756,7 @@ function WagesReportTable({
 }) {
   if (loading && rows.length === 0) {
     return (
-      <div className="flex items-center justify-center gap-2 px-5 py-12 text-sm text-muted-foreground">
+      <div className="flex items-center justify-center gap-2 px-4 py-8 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         Loading report…
       </div>
@@ -651,7 +765,7 @@ function WagesReportTable({
 
   if (rows.length === 0) {
     return (
-      <div className="px-5 py-12 text-center text-sm text-muted-foreground">
+      <div className="px-4 py-8 text-center text-sm text-muted-foreground">
         No wage sheets for these filters.
       </div>
     );
@@ -662,36 +776,39 @@ function WagesReportTable({
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b bg-muted/30 text-left text-xs text-muted-foreground">
-            <th className="px-4 py-2.5 font-medium">Invoice</th>
-            <th className="px-4 py-2.5 font-medium">Operative</th>
-            <th className="px-4 py-2.5 font-medium">Client</th>
-            <th className="px-4 py-2.5 font-medium">Project</th>
-            <th className="px-4 py-2.5 font-medium">Week</th>
-            <th className="px-4 py-2.5 font-medium">Status</th>
-            <th className="px-4 py-2.5 font-medium">Payment</th>
-            <th className="px-4 py-2.5 text-right font-medium">Gross</th>
-            <th className="px-4 py-2.5 text-right font-medium">
+            <th className="px-3 py-2 font-medium sm:px-4">Invoice</th>
+            <th className="px-3 py-2 font-medium">Operative</th>
+            <th className="px-3 py-2 font-medium">Project</th>
+            <th className="px-3 py-2 font-medium">Client</th>
+            <th className="px-3 py-2 font-medium">Week</th>
+            <th className="px-3 py-2 text-right font-medium">Gross</th>
+            <th className="px-3 py-2 text-right font-medium">
               <AppTooltip content="CIS deduction">CIS</AppTooltip>
             </th>
-            <th className="px-4 py-2.5 text-right font-medium">Net</th>
+            <th className="px-3 py-2 text-right font-medium">Net</th>
+            <th className="px-3 py-2 font-medium">Payment</th>
+            <th className="px-3 py-2 font-medium sm:px-4">Sign-off</th>
           </tr>
         </thead>
         <tbody className="divide-y">
           {rows.map((row) => (
             <tr key={row.id} className="hover:bg-muted/20">
-              <td className="px-4 py-2.5 tabular-nums">
+              <td className="px-3 py-1.5 tabular-nums sm:px-4">
                 <AppTooltip content="Open wage sheet" asChild>
                   <Link
                     to="/wages/$id"
                     params={{ id: String(row.id) }}
-                    search={{ weekEnding: row.weekEnding.slice(0, 10) }}
+                    search={{
+                      from: "reports-wages" as const,
+                      weekEnding: row.weekEnding.slice(0, 10),
+                    }}
                     className={`${linkClass} font-mono text-xs`}
                   >
                     {invoiceNo(row.invoiceNumber)}
                   </Link>
                 </AppTooltip>
               </td>
-              <td className="px-4 py-2.5">
+              <td className="px-3 py-1.5">
                 <AppTooltip content={row.operativeName} asChild align="start">
                   <Link
                     to="/operatives/$id"
@@ -705,16 +822,7 @@ function WagesReportTable({
                   <div className="text-xs text-muted-foreground">{row.tradeName}</div>
                 ) : null}
               </td>
-              <td className="px-4 py-2.5">
-                {row.customerNames ? (
-                  <AppTooltip content={row.customerNames} asChild align="start">
-                    <span className="block max-w-[12rem] truncate">{row.customerNames}</span>
-                  </AppTooltip>
-                ) : (
-                  "—"
-                )}
-              </td>
-              <td className="px-4 py-2.5">
+              <td className="px-3 py-1.5">
                 {row.projectName ? (
                   <AppTooltip content={row.projectName} asChild align="start">
                     <Link
@@ -732,7 +840,16 @@ function WagesReportTable({
                   <div className="text-xs text-muted-foreground">{row.siteName}</div>
                 ) : null}
               </td>
-              <td className="px-4 py-2.5 tabular-nums">
+              <td className="px-3 py-1.5">
+                {row.customerNames ? (
+                  <AppTooltip content={row.customerNames} asChild align="start">
+                    <span className="block max-w-[12rem] truncate">{row.customerNames}</span>
+                  </AppTooltip>
+                ) : (
+                  "—"
+                )}
+              </td>
+              <td className="whitespace-nowrap px-3 py-1.5 tabular-nums">
                 <AppTooltip
                   content={
                     row.isPartial
@@ -750,34 +867,37 @@ function WagesReportTable({
                   </span>
                 </AppTooltip>
               </td>
-              <td className="px-4 py-2.5">
-                <AppTooltip content={row.statusName || row.statusCode} asChild>
-                  <span>{row.statusName || "—"}</span>
-                </AppTooltip>
-              </td>
-              <td className="px-4 py-2.5">
-                <AppTooltip content={row.paymentStatusName || row.paymentStatusCode} asChild>
-                  <span>{row.paymentStatusName || "—"}</span>
-                </AppTooltip>
-              </td>
-              <td className="px-4 py-2.5 text-right tabular-nums">{fmtGBP(row.gross)}</td>
-              <td className="px-4 py-2.5 text-right tabular-nums">
+              <td className="px-3 py-1.5 text-right font-mono tabular-nums">{fmtGBP(row.gross)}</td>
+              <td className="px-3 py-1.5 text-right font-mono tabular-nums">
                 <AppTooltip content={`CIS rate ${row.cisRate}%`}>
                   {fmtGBP(row.cisDeduction)}
                 </AppTooltip>
               </td>
-              <td className="px-4 py-2.5 text-right tabular-nums">{fmtGBP(row.net)}</td>
+              <td className="px-3 py-1.5 text-right font-mono font-semibold tabular-nums">
+                {fmtGBP(row.net)}
+              </td>
+              <td className="px-3 py-1.5">
+                <AppTooltip content={row.paymentStatusName || row.paymentStatusCode} asChild>
+                  <span>{row.paymentStatusName || "—"}</span>
+                </AppTooltip>
+              </td>
+              <td className="px-3 py-1.5 sm:px-4">
+                <AppTooltip content={row.statusName || row.statusCode} asChild>
+                  <span>{row.statusName || "—"}</span>
+                </AppTooltip>
+              </td>
             </tr>
           ))}
         </tbody>
         <tfoot>
           <tr className="border-t bg-muted/20 font-medium">
-            <td className="px-4 py-2.5" colSpan={7}>
+            <td className="px-3 py-2 sm:px-4" colSpan={5}>
               Total ({statementCount})
             </td>
-            <td className="px-4 py-2.5 text-right tabular-nums">{fmtGBP(totalGross)}</td>
-            <td className="px-4 py-2.5 text-right tabular-nums">{fmtGBP(totalCis)}</td>
-            <td className="px-4 py-2.5 text-right tabular-nums">{fmtGBP(totalNet)}</td>
+            <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtGBP(totalGross)}</td>
+            <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtGBP(totalCis)}</td>
+            <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtGBP(totalNet)}</td>
+            <td className="px-3 py-2" colSpan={2} />
           </tr>
         </tfoot>
       </table>
@@ -791,31 +911,31 @@ function wagesCsv(rows: ApiWagesReportRow[]): string[][] {
       "Invoice",
       "Operative",
       "Trade",
-      "Client",
       "Project",
       "Site",
+      "Client",
       "Week ending",
       "Partial",
-      "Status",
-      "Payment",
       "Gross",
       "CIS",
       "Net",
+      "Payment",
+      "Sign-off",
     ],
     ...rows.map((r) => [
       invoiceNo(r.invoiceNumber),
       r.operativeName,
       r.tradeName ?? "",
-      r.customerNames ?? "",
       r.projectName ?? "",
       r.siteName ?? "",
+      r.customerNames ?? "",
       formatUkDate(r.weekEnding),
       r.isPartial ? "Yes" : "No",
-      r.statusName,
-      r.paymentStatusName,
       String(r.gross),
       String(r.cisDeduction),
       String(r.net),
+      r.paymentStatusName,
+      r.statusName,
     ]),
   ];
 }

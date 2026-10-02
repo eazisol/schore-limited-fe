@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Cell, Label, Pie, PieChart } from "recharts";
-import { Award, Building2, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, ClipboardList, Clock, Coins, Database, Eye, FileText, FolderKanban, HeartPulse, IdCard, ListTodo, Loader2, MapPin, Paperclip, Percent, Plus, PoundSterling, Shield, TrendingUp, Wallet } from "lucide-react";
+import { Award, Building2, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, ClipboardList, Clock, Coins, Database, Eye, FileText, FolderKanban, HeartPulse, IdCard, ListTodo, Loader2, MapPin, Paperclip, Pencil, Percent, Plus, PoundSterling, Shield, TrendingUp, Wallet } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { CodeBadge } from "@/components/CodeBadge";
@@ -25,8 +25,10 @@ import {
 import { usePermission } from "@/components/Permission";
 import { resolveProfileImageUrl, usersService, type ApiUser } from "@/lib/api/services/users";
 import { tasksService } from "@/lib/api/services/tasks";
+import { payStatementsService } from "@/lib/api/services/pay-statements";
+import { fmtGBP } from "@/lib/data";
 import { formatDailyRate } from "@/lib/module-ui";
-import { formatUkDate } from "@/lib/week-ending";
+import { formatUkDate, invoiceNo } from "@/lib/week-ending";
 import { formatSortCodeInput } from "@/lib/user-form";
 import { isNonEmptyId } from "@/lib/ids";
 import {
@@ -263,10 +265,12 @@ export function OperativeDetailExtras({
   user,
   canEdit,
   onEdit,
+  isSelfView = false,
 }: {
   user: ApiUser;
   canEdit?: boolean;
   onEdit?: (tab?: OperativeFormTab) => void;
+  isSelfView?: boolean;
 }) {
   const operativeId = String(user.id);
   const navigate = useNavigate();
@@ -298,7 +302,25 @@ export function OperativeDetailExtras({
     enabled: isNonEmptyId(operativeId),
   });
 
+  const wagesQuery = useQuery({
+    queryKey: [
+      "pay-statements",
+      "operative-detail",
+      isSelfView ? "mine" : "office",
+      operativeId,
+    ],
+    queryFn: async () => {
+      const params = { page: 1, pageSize: 50, ...(isSelfView ? {} : { operativeId }) };
+      if (isSelfView) {
+        return (await payStatementsService.listMine(params)).data;
+      }
+      return (await payStatementsService.list(params)).data;
+    },
+    enabled: isNonEmptyId(operativeId) && tab === "wages",
+  });
+
   const items = itemsQuery.data?.items ?? [];
+  const wageRows = wagesQuery.data?.items ?? [];
 
   // Same task-item rows as the Tasks table — not parent job (WorkTask) status.
   const statusCounts = useMemo(() => {
@@ -366,17 +388,19 @@ export function OperativeDetailExtras({
 
   const addLabel =
     tab === "tasks"
-      ? "Add task"
+      ? "Task"
       : tab === "bank"
-        ? "Edit payment details"
+        ? "Payment"
         : tab === "certificates"
-          ? "Edit certificates"
-          : tab === "sites" || tab === "projects"
+          ? "Certs"
+          : tab === "sites" || tab === "projects" || tab === "wages"
             ? ""
-            : "Edit rates";
+            : "Rates";
+
+  const AddIcon = tab === "tasks" ? Plus : Pencil;
 
   const showAdd =
-    tab === "sites" || tab === "projects"
+    tab === "sites" || tab === "projects" || tab === "wages"
       ? false
       : tab === "tasks"
         ? canAddTask
@@ -424,11 +448,18 @@ export function OperativeDetailExtras({
                 <TabsTrigger value="rates" className={underlineTabTriggerClass}>
                   Rates
                 </TabsTrigger>
+                <TabsTrigger value="wages" className={underlineTabTriggerClass}>
+                  Wage
+                </TabsTrigger>
               </TabsList>
             </div>
             {showAdd ? (
-              <Button size="sm" className="mb-1 shrink-0" onClick={handleAdd}>
-                <Plus className="h-4 w-4" />
+              <Button
+                size="sm"
+                className="mb-1 h-7 shrink-0 gap-1 px-2.5 text-[11px] font-medium shadow-none [&_svg]:!size-3"
+                onClick={handleAdd}
+              >
+                <AddIcon />
                 {addLabel}
               </Button>
             ) : null}
@@ -450,6 +481,7 @@ export function OperativeDetailExtras({
                 {canAddTask ? (
                   <Button
                     size="sm"
+                    className="h-7 gap-1 px-2.5 text-[11px] font-medium shadow-none [&_svg]:!size-3"
                     onClick={() =>
                       navigate({
                         to: "/tasks/new",
@@ -457,8 +489,8 @@ export function OperativeDetailExtras({
                       })
                     }
                   >
-                    <Plus className="h-4 w-4" />
-                    Add task
+                    <Plus />
+                    Task
                   </Button>
                 ) : null}
               </div>
@@ -816,6 +848,111 @@ export function OperativeDetailExtras({
               rateOverrides={rateOverrides}
             />
           </TabsContent>
+
+          <TabsContent value="wages" className="mt-0 focus-visible:outline-none">
+            {wagesQuery.isLoading ? (
+              <div className="flex items-center justify-center gap-2 px-5 py-12 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading wage sheets…
+              </div>
+            ) : wagesQuery.isError ? (
+              <EmptyPanel message="Unable to load wage sheets for this operative." />
+            ) : wageRows.length === 0 ? (
+              <EmptyPanel message="No wage sheets for this operative yet." />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left font-medium">Invoice</th>
+                      <th className="px-3 py-2.5 text-left font-medium">Project</th>
+                      <th className="px-3 py-2.5 text-left font-medium">Client</th>
+                      <th className="px-3 py-2.5 text-left font-medium">Week ending</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Gross</th>
+                      <th className="px-3 py-2.5 text-right font-medium">CIS</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Net</th>
+                      <th className="px-3 py-2.5 text-left font-medium">Payment</th>
+                      <th className="px-3 py-2.5 text-left font-medium">Sign-off</th>
+                      <th className="px-4 py-2.5 text-right font-medium" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {wageRows.map((row) => (
+                      <tr key={row.id} className="hover:bg-muted/30">
+                        <td className="px-4 py-2.5">
+                          <Link
+                            to="/wages/$id"
+                            params={{ id: String(row.id) }}
+                            search={
+                              isSelfView
+                                ? { from: "operative-me" as const }
+                                : {
+                                    from: "operative" as const,
+                                    operativeId,
+                                  }
+                            }
+                            className="font-mono text-xs font-medium hover:text-info"
+                          >
+                            {invoiceNo(row.invoiceNumber)}
+                          </Link>
+                        </td>
+                        <td className="max-w-[12rem] truncate px-3 py-2.5">
+                          <div className="leading-tight">
+                            <span className="font-medium">{row.projectName ?? "—"}</span>
+                            {row.projectCode ? (
+                              <div className="font-mono text-[11px] text-muted-foreground">
+                                {row.projectCode}
+                              </div>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="max-w-[12rem] truncate px-3 py-2.5 font-mono text-xs text-muted-foreground">
+                          {row.customerNames ?? "—"}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-muted-foreground">
+                          {formatShortDate(row.weekEnding)}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono tabular-nums">
+                          {fmtGBP(row.gross)}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono tabular-nums text-destructive">
+                          −{fmtGBP(row.cisDeduction)}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono text-sm font-semibold tabular-nums">
+                          {fmtGBP(row.net)}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <StatusBadge status={row.paymentStatusName} />
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <StatusBadge status={row.statusName} />
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                            <Link
+                              to="/wages/$id"
+                              params={{ id: String(row.id) }}
+                              search={
+                                isSelfView
+                                  ? { from: "operative-me" as const }
+                                  : {
+                                      from: "operative" as const,
+                                      operativeId,
+                                    }
+                              }
+                              aria-label={`View ${invoiceNo(row.invoiceNumber)}`}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       </section>
 
@@ -1055,7 +1192,15 @@ export function OperativeDetailExtras({
                     <FileText className="h-3.5 w-3.5 shrink-0" />
                     Statements
                   </dt>
-                  <dd className="font-medium tabular-nums">{earnings?.statementCount ?? 0}</dd>
+                  <dd>
+                    <button
+                      type="button"
+                      onClick={() => setTab("wages")}
+                      className="font-medium tabular-nums transition-colors hover:text-info"
+                    >
+                      {earnings?.statementCount ?? 0}
+                    </button>
+                  </dd>
                 </div>
                 <div className="flex items-center justify-between gap-3 py-2.5">
                   <dt className="flex items-center gap-2 text-muted-foreground">

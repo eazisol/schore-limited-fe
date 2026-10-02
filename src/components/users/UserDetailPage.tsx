@@ -451,6 +451,7 @@ export function UserDetailPage({ selfViewUserId }: { selfViewUserId?: string } =
               user={user}
               canEdit={canModify}
               onEdit={openEdit}
+              isSelfView={isSelfView}
             />
           ) : null}
 

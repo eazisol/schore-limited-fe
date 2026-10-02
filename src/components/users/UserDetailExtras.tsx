@@ -107,8 +107,12 @@ export function UserDetailExtras({
             </TabsList>
           </div>
           {canEdit && onEdit ? (
-            <Button size="sm" className="mb-1 shrink-0" onClick={onEdit}>
-              <Pencil className="h-4 w-4" />
+            <Button
+              size="sm"
+              className="mb-1 h-7 shrink-0 gap-1 px-2.5 text-[11px] font-medium shadow-none [&_svg]:!size-3"
+              onClick={onEdit}
+            >
+              <Pencil />
               {addLabel}
             </Button>
           ) : null}
