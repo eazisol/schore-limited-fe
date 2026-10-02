@@ -1,4 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentType,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Cell, Label, Pie, PieChart } from "recharts";
@@ -13,6 +24,13 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import {
+  BriefcaseBusiness,
+  ChartNoAxesColumnIncreasing,
+  ChartPie,
+  Download,
+  Loader2,
+} from "lucide-react";
 import { Calculator, Download, FileText, LayoutGrid, Loader2, MinusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { fmtGBP } from "@/lib/data";
@@ -43,6 +61,44 @@ export const Route = createFileRoute("/reports/wages")({
 
 const linkClass = "font-medium text-info hover:underline";
 
+const GROSS_COLOR = "#15998B";
+const CIS_COLOR = "#3D8EDB";
+const NET_COLOR = "#6550D8";
+const GOLD_COLOR = "#F2A91B";
+const WAGE_BAR_PALETTE = [GROSS_COLOR, CIS_COLOR, NET_COLOR, GOLD_COLOR] as const;
+
+const summaryChartConfig = {
+  amount: { label: "Amount", color: GROSS_COLOR },
+} satisfies ChartConfig;
+
+const moneyChartConfig = {
+  gross: { label: "Gross", color: GROSS_COLOR },
+  cisDeduction: { label: "CIS", color: CIS_COLOR },
+  net: { label: "Net", color: NET_COLOR },
+} satisfies ChartConfig;
+
+function summaryBarFill(label: string, index: number) {
+  const key = label.trim().toLowerCase();
+  if (key.includes("cis")) return CIS_COLOR;
+  if (key.includes("net")) return NET_COLOR;
+  if (key.includes("gross")) return GROSS_COLOR;
+  return [GROSS_COLOR, CIS_COLOR, NET_COLOR][index % 3];
+}
+
+function paletteFill(index: number) {
+  return WAGE_BAR_PALETTE[index % WAGE_BAR_PALETTE.length];
+}
+
+function mapChartPoints(points: ApiWagesChartPoint[] | undefined) {
+  return (points ?? []).map((p) => ({
+    label: p.label.length > 14 ? `${p.label.slice(0, 12)}…` : p.label,
+    fullLabel: p.label,
+    gross: p.gross,
+    cisDeduction: p.cisDeduction,
+    net: p.net,
+    count: p.count,
+    amount: p.gross,
+  }));
 const TONE_FILL: Record<StatusTone, string> = {
   success: "var(--success)",
   info: "var(--info)",
@@ -332,6 +388,38 @@ function WagesReport() {
             triggerClassName="h-8 [&>span]:whitespace-nowrap"
           />
         </div>
+      </div>
+
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Statements"
+          value={String(data?.statementCount ?? 0)}
+          tip="Wage sheets matching filters."
+          icon={BriefcaseBusiness}
+          tone="blue"
+        />
+        <StatCard
+          label="Gross"
+          value={fmtGBP(data?.totalGross ?? 0)}
+          tip="Total gross for days in range (partial weeks recalculated)."
+          icon={ChartNoAxesColumnIncreasing}
+          tone="green"
+        />
+        <StatCard
+          label="CIS"
+          value={fmtGBP(data?.totalCisDeduction ?? 0)}
+          tip="CIS on the ranged gross."
+          icon={ChartPie}
+          tone="amber"
+        />
+        <StatCard
+          label="Net"
+          value={fmtGBP(data?.totalNet ?? 0)}
+          tip="Total net for the date range."
+          icon={StackedCoinsIcon}
+          tone="purple"
+        />
+      </div>
 
         <WagesReportTable
           rows={data?.rows ?? []}
@@ -362,6 +450,71 @@ function WagesReport() {
   );
 }
 
+const STAT_TONES = {
+  blue: {
+    background: "linear-gradient(135deg, #EEF7FE 0%, #F6FCFE 100%)",
+    circle: "#D3ECFD",
+    icon: "#3D9BCB",
+  },
+  green: {
+    background: "linear-gradient(135deg, #EEFAF7 0%, #F1FBF8 100%)",
+    circle: "#DCF3ED",
+    icon: "#15998B",
+  },
+  amber: {
+    background: "linear-gradient(135deg, #FFF9F2 0%, #FDF8F1 100%)",
+    circle: "#FDF1E1",
+    icon: "#BE9256",
+  },
+  purple: {
+    background: "linear-gradient(135deg, #F2F2FE 0%, #F4F3FE 100%)",
+    circle: "#E0DFFE",
+    icon: "#7373F4",
+  },
+} as const;
+
+type KpiIcon = ComponentType<{
+  className?: string;
+  strokeWidth?: number;
+  style?: CSSProperties;
+  "aria-hidden"?: boolean;
+}>;
+
+function StackedCoinsIcon({
+  className,
+  strokeWidth = 2,
+  style,
+}: {
+  className?: string;
+  strokeWidth?: number;
+  style?: CSSProperties;
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      style={style}
+      aria-hidden
+    >
+      <rect x="8" y="11" width="12" height="8" rx="2.2" />
+      <path d="M11 15h6" />
+      <rect x="4" y="5" width="12" height="8" rx="2.2" />
+      <path d="M7 9h6" />
+    </svg>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  tip,
+  icon: Icon,
+  tone,
 function SummaryStat({
   label,
   value,
@@ -372,6 +525,27 @@ function SummaryStat({
   label: string;
   value: string;
   tip: string;
+  icon: KpiIcon;
+  tone: keyof typeof STAT_TONES;
+}) {
+  const colors = STAT_TONES[tone];
+  return (
+    <AppTooltip content={tip} asChild>
+      <div
+        className="card-elevated flex cursor-default items-center justify-between gap-3 px-4 py-3"
+        style={{ background: colors.background }}
+      >
+        <div className="min-w-0">
+          <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            {label}
+          </div>
+          <div className="mt-1 text-xl font-semibold tabular-nums">{value}</div>
+        </div>
+        <div
+          className="flex size-9 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: colors.circle }}
+        >
+          <Icon className="size-4" strokeWidth={2} style={{ color: colors.icon }} aria-hidden />
   tone: StatusTone;
   icon: typeof FileText;
 }) {
@@ -426,6 +600,50 @@ function StatusLegendItem({
   );
 }
 
+type ChartRow = {
+  label: string;
+  fullLabel: string;
+  amount?: number;
+  gross?: number;
+  cisDeduction?: number;
+  net?: number;
+  count?: number;
+};
+
+function SummaryBarChart({ data }: { data: ChartRow[] }) {
+  if (data.length === 0) {
+    return <ChartEmpty />;
+  }
+
+  return (
+    <ChartContainer config={summaryChartConfig} className="h-[220px] w-full aspect-auto">
+      <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <CartesianGrid vertical={false} strokeDasharray="0" />
+        <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
+        <YAxis
+          tickLine={false}
+          axisLine={false}
+          fontSize={11}
+          width={48}
+          tickFormatter={(v) => `£${Number(v).toLocaleString("en-GB")}`}
+        />
+        <ChartTooltip
+          content={
+            <ChartTooltipContent
+              labelFormatter={(_, payload) => String(payload?.[0]?.payload?.fullLabel ?? "")}
+              formatter={(value) => fmtGBP(Number(value))}
+            />
+          }
+        />
+        <Bar dataKey="amount" fill="var(--color-amount)" radius={[4, 4, 0, 0]}>
+          {data.map((row, index) => (
+            <Cell key={`${row.fullLabel}-${index}`} fill={summaryBarFill(row.fullLabel, index)} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ChartContainer>
+  );
+}
 type PieSlice = { key: string; name: string; value: number; fill: string };
 
 function SignOffPieChart({
@@ -451,6 +669,18 @@ function SignOffPieChart({
           cursor={false}
           content={<ChartTooltipContent hideLabel nameKey="key" />}
         />
+        <Bar dataKey="gross" fill="var(--color-gross)" radius={[4, 4, 0, 0]}>
+          {data.map((row, index) => (
+            <Cell key={`${row.fullLabel}-gross-${index}`} fill={paletteFill(index)} />
+          ))}
+        </Bar>
+        {grouped ? (
+          <>
+            <Bar dataKey="cisDeduction" fill="var(--color-cisDeduction)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="net" fill="var(--color-net)" radius={[4, 4, 0, 0]} />
+          </>
+        ) : null}
+      </BarChart>
         <Pie
           data={data}
           dataKey="value"
