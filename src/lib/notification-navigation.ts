@@ -74,6 +74,20 @@ export function resolveNotificationLink(
 }
 
 /**
+ * Navigate to a resolved notification link (path + optional query string).
+ * Prefer router.navigate over history.push so search params validate correctly.
+ */
+export function navigateToNotificationLink(
+  navigate: (opts: { href: string }) => unknown,
+  linkPath: string,
+) {
+  const raw = linkPath.trim();
+  if (!raw) return;
+  const href = raw.startsWith("/") ? raw : `/${raw}`;
+  void navigate({ href });
+}
+
+/**
  * @deprecated Prefer resolveNotificationLink — kept for simple access checks.
  */
 export function canOpenNotificationLink(

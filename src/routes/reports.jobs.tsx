@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
 import { AppTooltip } from "@/components/AppTooltip";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Pagination } from "@/components/Pagination";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect, type SearchableSelectOption } from "@/components/form";
@@ -816,8 +817,11 @@ function JobReportTable({
               </td>
               <td className="whitespace-nowrap px-3 py-1.5">
                 <AppTooltip content={row.statusName || row.statusCode || "Status"} asChild>
-                  <span className="inline-flex whitespace-nowrap rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium">
-                    {row.statusName || row.statusCode || "—"}
+                  <span>
+                    <StatusBadge
+                      status={row.statusName || row.statusCode || "—"}
+                      className="text-xs"
+                    />
                   </span>
                 </AppTooltip>
               </td>

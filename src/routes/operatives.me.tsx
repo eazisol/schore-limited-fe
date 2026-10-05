@@ -1,10 +1,17 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserDetailPage } from "@/components/users/UserDetailPage";
+import { OPERATIVE_VIEW_TABS } from "@/lib/operative-view-tabs";
 import { Loader2 } from "lucide-react";
+
+const operativeMeSearchSchema = z.object({
+  viewTab: z.enum(OPERATIVE_VIEW_TABS).optional(),
+});
 
 export const Route = createFileRoute("/operatives/me")({
   head: () => ({ meta: [{ title: "Dashboard | Schore" }] }),
+  validateSearch: operativeMeSearchSchema,
   component: OperativeMeDashboard,
 });
 

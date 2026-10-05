@@ -177,6 +177,10 @@ export function buildNavMenus(menus: ApiMenu[]): ApiMenu[] {
       approvalsInserted = true;
       continue;
     }
+    if (code === "CERTIFICATION_TYPES") {
+      prepared.push({ ...menu, name: "Certificate" });
+      continue;
+    }
     prepared.push(menu);
   }
 

@@ -1,5 +1,5 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState, type ReactNode } from "react";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Cell, Label, Pie, PieChart } from "recharts";
 import { Award, Building2, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, ClipboardList, Clock, Coins, Database, Eye, FileText, FolderKanban, HeartPulse, IdCard, ListTodo, Loader2, MapPin, Paperclip, Pencil, Percent, Plus, PoundSterling, Shield, TrendingUp, Wallet } from "lucide-react";
@@ -40,6 +40,10 @@ import { hierarchyReturnSearch } from "@/lib/hierarchy-navigation";
 import { TASKS_ROUTE } from "@/lib/tasks";
 import type { OperativeFormTab } from "@/components/users/UserFormFields";
 import { cn } from "@/lib/utils";
+import {
+  isOperativeViewTab,
+  type OperativeViewTab,
+} from "@/lib/operative-view-tabs";
 
 const taskStatusChartConfig = {
   pending: { label: "Pending", color: "var(--warning)" },
@@ -274,8 +278,36 @@ export function OperativeDetailExtras({
 }) {
   const operativeId = String(user.id);
   const navigate = useNavigate();
+  const routeSearch = useSearch({ strict: false }) as { viewTab?: OperativeViewTab };
   const canAddTask = usePermission({ route: TASKS_ROUTE, action: "modify" });
-  const [tab, setTab] = useState("tasks");
+  const [tab, setTab] = useState<OperativeViewTab>(() =>
+    isOperativeViewTab(routeSearch.viewTab) ? routeSearch.viewTab : "tasks",
+  );
+
+  useEffect(() => {
+    if (isOperativeViewTab(routeSearch.viewTab)) {
+      setTab(routeSearch.viewTab);
+    }
+  }, [routeSearch.viewTab]);
+
+  function selectViewTab(next: string) {
+    if (!isOperativeViewTab(next)) return;
+    setTab(next);
+    if (isSelfView) {
+      void navigate({
+        to: "/operatives/me",
+        search: (prev) => ({ ...prev, viewTab: next }),
+        replace: true,
+      });
+    } else {
+      void navigate({
+        to: "/operatives/$id",
+        params: { id: operativeId },
+        search: (prev) => ({ ...prev, viewTab: next }),
+        replace: true,
+      });
+    }
+  }
   const operativeReturnSearch = hierarchyReturnSearch({
     from: "operative",
     operativeId,
@@ -392,7 +424,7 @@ export function OperativeDetailExtras({
       : tab === "bank"
         ? "Payment"
         : tab === "certificates"
-          ? "Certs"
+          ? "Certificate"
           : tab === "sites" || tab === "projects" || tab === "wages"
             ? ""
             : "Rates";
@@ -426,7 +458,7 @@ export function OperativeDetailExtras({
   return (
     <div className="grid gap-4 lg:grid-cols-12 lg:items-start">
       <section className="card-elevated min-w-0 overflow-hidden lg:col-span-8">
-        <Tabs value={tab} onValueChange={setTab} className="flex min-w-0 flex-col">
+        <Tabs value={tab} onValueChange={selectViewTab} className="flex min-w-0 flex-col">
           <div className="flex flex-wrap items-center gap-2 border-b px-3 pt-1 sm:px-4">
             <div className="min-w-0 flex-1 overflow-x-auto">
               <TabsList className={underlineTabListClass}>
@@ -449,7 +481,7 @@ export function OperativeDetailExtras({
                   Rates
                 </TabsTrigger>
                 <TabsTrigger value="wages" className={underlineTabTriggerClass}>
-                  Wage
+                  Wages
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -1097,7 +1129,7 @@ export function OperativeDetailExtras({
                 <button
                   key={item.key}
                   type="button"
-                  onClick={() => setTab("tasks")}
+                  onClick={() => selectViewTab("tasks")}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors hover:opacity-90",
                     item.tone === "warn" && "border-warning/20 bg-warning/10",
@@ -1195,7 +1227,7 @@ export function OperativeDetailExtras({
                   <dd>
                     <button
                       type="button"
-                      onClick={() => setTab("wages")}
+                      onClick={() => selectViewTab("wages")}
                       className="font-medium tabular-nums transition-colors hover:text-info"
                     >
                       {earnings?.statementCount ?? 0}
@@ -1237,7 +1269,7 @@ export function OperativeDetailExtras({
                     ) : (
                       <button
                         type="button"
-                        onClick={() => setTab("sites")}
+                        onClick={() => selectViewTab("sites")}
                         className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 transition-colors hover:bg-muted/80 hover:text-foreground"
                       >
                         <Building2 className="h-3 w-3" />
@@ -1258,7 +1290,7 @@ export function OperativeDetailExtras({
                     ) : (
                       <button
                         type="button"
-                        onClick={() => setTab("projects")}
+                        onClick={() => selectViewTab("projects")}
                         className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 transition-colors hover:bg-muted/80 hover:text-foreground"
                       >
                         <FolderKanban className="h-3 w-3" />

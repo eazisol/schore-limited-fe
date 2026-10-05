@@ -4,14 +4,14 @@ import { ManageFormsLayoutProvider } from "@/components/manage-forms/manage-form
 import { CertificationTypesColumn } from "@/components/certification-types/CertificationTypesColumn";
 
 export const Route = createFileRoute("/certification-types")({
-  head: () => ({ meta: [{ title: "Certification Types | Schore" }] }),
+  head: () => ({ meta: [{ title: "Certificate | Schore" }] }),
   component: CertificationTypesPage,
 });
 
 function CertificationTypesPage() {
   return (
     <div className="flex flex-col">
-      <PageHeader title="Certification types" />
+      <PageHeader title="Certificate" />
       <ManageFormsLayoutProvider layout="split">
         <CertificationTypesColumn />
       </ManageFormsLayoutProvider>

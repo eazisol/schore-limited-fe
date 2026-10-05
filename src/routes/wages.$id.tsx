@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { PageHeader } from "@/components/AppShell";
+import { AppTooltip } from "@/components/AppTooltip";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Send, Check, X, Banknote, Loader2, MessageSquare, CalendarDays, User } from "lucide-react";
@@ -42,23 +43,30 @@ export const Route = createFileRoute("/wages/$id")({
   component: WageSheetView,
 });
 
-function wageBackLink(search: z.infer<typeof wageDetailSearchSchema>): {
+type WageBackLink = {
   to: "/payroll" | "/wages" | "/operatives/$id" | "/operatives/me" | "/reports/wages";
   params?: { id: string };
-  search?: { weekEnding?: string };
+  search?: { weekEnding?: string; viewTab?: "wages" };
   label: string;
-} {
+};
+
+function wageBackLink(search: z.infer<typeof wageDetailSearchSchema>): WageBackLink {
   if (search.from === "payroll") {
-    return { to: "/payroll", label: "Payroll Engine" };
+    return { to: "/payroll", label: "Back to payroll" };
   }
   if (search.from === "operative-me") {
-    return { to: "/operatives/me", label: "Back to operative" };
+    return {
+      to: "/operatives/me",
+      label: "Back to operative",
+      search: { viewTab: "wages" },
+    };
   }
   if (search.from === "operative" && search.operativeId) {
     return {
       to: "/operatives/$id",
       params: { id: search.operativeId },
       label: "Back to operative",
+      search: { viewTab: "wages" },
     };
   }
   if (search.from === "reports-wages") {
@@ -182,17 +190,21 @@ function WageSheetView() {
 
   return (
     <div className="max-w-4xl space-y-3">
-      <Link
-        to={back.to}
-        params={back.params}
-        search={back.search}
-        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-3 w-3" /> {back.label}
-      </Link>
-
       <PageHeader
         title={`Wage Sheet · ${invoiceNo(w.invoiceNumber)}`}
+        leading={
+          <AppTooltip content={back.label} asChild>
+            <Link
+              to={back.to}
+              params={back.params}
+              search={back.search}
+              aria-label={back.label}
+              className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </AppTooltip>
+        }
         actions={
           <>
             <StatusBadge status={w.statusName} />

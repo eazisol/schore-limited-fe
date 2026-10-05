@@ -1,15 +1,13 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { Pagination } from "@/components/Pagination";
 import { Button } from "@/components/ui/button";
 import { useDebouncedSearch } from "@/components/data-table";
-import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatLocalDateTime } from "@/lib/module-ui";
-import { resolveNotificationLink } from "@/lib/notification-navigation";
+import { resolveNotificationLink, navigateToNotificationLink } from "@/lib/notification-navigation";
 import { usePermissions } from "@/contexts/PermissionContext";
 import {
   notificationsQueryKey,
@@ -17,11 +15,14 @@ import {
   type ApiNotification,
 } from "@/lib/api/services/notifications";
 import { notifyApiError } from "@/lib/api/axios";
+import { NotificationListRow } from "@/components/notifications/NotificationListRow";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({ meta: [{ title: "Notifications | Schore" }] }),
   component: NotificationsPage,
 });
+
+type InboxTab = "all" | "unread" | "read";
 
 function NotificationsPage() {
   const router = useRouter();
@@ -29,23 +30,47 @@ function NotificationsPage() {
   const { menus } = usePermissions();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [tab, setTab] = useState<InboxTab>("all");
   const { searchInput, setSearchInput, search, clearSearch } = useDebouncedSearch({
     onPageReset: () => setPage(1),
   });
 
+  const unreadOnly = tab === "unread";
+  const readOnly = tab === "read";
+
   const query = useQuery({
-    queryKey: [...notificationsQueryKey, "list", { page, pageSize, search, unreadOnly }],
+    queryKey: [
+      ...notificationsQueryKey,
+      "list",
+      { page, pageSize, search, unreadOnly, readOnly },
+    ],
     queryFn: async () =>
       (
         await notificationsService.list({
           page,
           pageSize,
-          search,
+          search: search.trim() || undefined,
           unreadOnly: unreadOnly || undefined,
+          readOnly: readOnly || undefined,
         })
       ).data,
     placeholderData: keepPreviousData,
+  });
+
+  const unreadCountQuery = useQuery({
+    queryKey: [...notificationsQueryKey, "unread-count"],
+    queryFn: async () => (await notificationsService.unreadCount()).data,
+  });
+
+  const allCountQuery = useQuery({
+    queryKey: [...notificationsQueryKey, "meta", "all"],
+    queryFn: async () => (await notificationsService.list({ page: 1, pageSize: 1 })).data,
+  });
+
+  const readCountQuery = useQuery({
+    queryKey: [...notificationsQueryKey, "meta", "read"],
+    queryFn: async () =>
+      (await notificationsService.list({ page: 1, pageSize: 1, readOnly: true })).data,
   });
 
   const markReadMutation = useMutation({
@@ -67,6 +92,9 @@ function NotificationsPage() {
   const items = query.data?.items ?? [];
   const totalCount = query.data?.totalCount ?? 0;
   const totalPages = query.data?.totalPages ?? 1;
+  const allCount = allCountQuery.data?.totalCount ?? 0;
+  const unreadCount = unreadCountQuery.data?.count ?? 0;
+  const readCount = readCountQuery.data?.totalCount ?? 0;
 
   async function openNotification(n: ApiNotification) {
     const target = n.linkPath ? resolveNotificationLink(menus, n.linkPath) : null;
@@ -82,65 +110,81 @@ function NotificationsPage() {
       }
     }
     if (target) {
-      router.history.push(target);
+      navigateToNotificationLink((opts) => router.navigate(opts), target);
     }
   }
 
+  const tabs: { id: InboxTab; label: string; count: number }[] = [
+    { id: "all", label: "All", count: allCount },
+    { id: "unread", label: "Unread", count: unreadCount },
+    { id: "read", label: "Read", count: readCount },
+  ];
+
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
         title="Notifications"
+        subtitle="Stay updated on approvals, statements, and tasks."
         actions={
           <Button
             type="button"
             variant="outline"
             size="sm"
-            disabled={markAllMutation.isPending || totalCount === 0}
+            disabled={markAllMutation.isPending || unreadCount === 0}
             onClick={() => markAllMutation.mutate()}
           >
             {markAllMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              "Mark all read"
+              "Mark all as read"
             )}
           </Button>
         }
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[220px] flex-1 max-w-sm">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search notifications…"
-            className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-8 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          {searchInput ? (
-            <button
-              type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => clearSearch()}
-            >
-              Clear
-            </button>
-          ) : null}
-        </div>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={unreadOnly}
-            onChange={(e) => {
-              setUnreadOnly(e.target.checked);
-              setPage(1);
-            }}
-            className="rounded border-input"
-          />
-          Unread only
-        </label>
-      </div>
+      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-border px-3 py-3 sm:flex-row sm:items-center sm:justify-start sm:gap-3 sm:px-4">
+          <div className="relative min-w-[10rem] w-full sm:w-64 sm:shrink-0">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search notifications…"
+              className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-8 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            {searchInput ? (
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => clearSearch()}
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
 
-      <div className="overflow-hidden rounded-md border border-border bg-card">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setTab(t.id);
+                  setPage(1);
+                }}
+                className={cn(
+                  "rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm",
+                  tab === t.id
+                    ? "bg-accent text-accent-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                )}
+              >
+                {t.label} ({t.count})
+              </button>
+            ))}
+          </div>
+        </div>
+
         {query.isLoading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -150,27 +194,13 @@ function NotificationsPage() {
           <p className="py-16 text-center text-sm text-muted-foreground">No notifications found.</p>
         ) : (
           <>
-            <ul className="divide-y divide-border">
+            <ul>
               {items.map((n) => (
                 <li key={n.id}>
-                  <button
-                    type="button"
-                    onClick={() => void openNotification(n)}
-                    className={cn(
-                      "flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-muted/40",
-                      !n.isRead && "bg-accent/5",
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <p className={cn("text-sm", !n.isRead ? "font-semibold" : "font-medium")}>
-                        {n.title}
-                      </p>
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {formatLocalDateTime(n.createdDate)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{n.message}</p>
-                  </button>
+                  <NotificationListRow
+                    notification={n}
+                    onOpen={() => void openNotification(n)}
+                  />
                 </li>
               ))}
             </ul>

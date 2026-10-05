@@ -20,6 +20,7 @@ export interface NotificationListParams {
   pageSize?: number;
   search?: string;
   unreadOnly?: boolean;
+  readOnly?: boolean;
 }
 
 export interface ApiNotificationUnreadCount {
@@ -40,6 +41,7 @@ export const notificationsService = {
         PageSize: params.pageSize ?? 20,
         ...(params.search?.trim() ? { Search: params.search.trim() } : {}),
         ...(params.unreadOnly === true ? { UnreadOnly: true } : {}),
+        ...(params.readOnly === true ? { ReadOnly: true } : {}),
       },
     }),
 
