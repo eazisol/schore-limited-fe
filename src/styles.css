@@ -224,7 +224,7 @@
   }
 }
 
-/* Outside @layer so it beats Chrome autofill yellow/beige background */
+/* Outside @layer so it beats  Chrome autofill yellow/beige background */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
