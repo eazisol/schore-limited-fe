@@ -1,26 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Cell, Label, Pie, PieChart } from "recharts";
 import { PageHeader } from "@/components/AppShell";
 import { AppTooltip } from "@/components/AppTooltip";
 import { Pagination } from "@/components/Pagination";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect, type SearchableSelectOption } from "@/components/form";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
-import { Calculator, Download, FileText, LayoutGrid, Loader2, MinusCircle } from "lucide-react";
+import { WagesSummaryCards } from "@/components/wages/WagesSummaryCards";
+import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { fmtGBP } from "@/lib/data";
-import {
-  reportsService,
-  type ApiWagesReportRow,
-  type ApiWagesStatusCount,
-} from "@/lib/api/services/reports";
+import { reportsService, type ApiWagesReportRow } from "@/lib/api/services/reports";
 import { statusesService, DOCUMENT_TYPE_CODE } from "@/lib/api/services/statuses";
 import { fetchCustomerOptions } from "@/lib/user-dropdowns";
 import {
@@ -29,12 +19,6 @@ import {
   formatWageWeekRange,
   invoiceNo,
 } from "@/lib/week-ending";
-import { cn } from "@/lib/utils";
-import {
-  STATUS_TONE_CLASSES,
-  statusToneForLabel,
-  type StatusTone,
-} from "@/lib/status-colors";
 
 export const Route = createFileRoute("/reports/wages")({
   head: () => ({ meta: [{ title: "Wages Report | Schore" }] }),
@@ -42,19 +26,6 @@ export const Route = createFileRoute("/reports/wages")({
 });
 
 const linkClass = "font-medium text-info hover:underline";
-
-const TONE_FILL: Record<StatusTone, string> = {
-  success: "var(--success)",
-  info: "var(--info)",
-  warning: "var(--warning)",
-  destructive: "var(--destructive)",
-  muted: "var(--muted-foreground)",
-  accent: "var(--accent)",
-};
-
-function statusKey(s: ApiWagesStatusCount) {
-  return (s.code || s.name).replace(/\s+/g, "_");
-}
 
 function WagesReport() {
   const [fromDate, setFromDate] = useState("");
@@ -116,45 +87,11 @@ function WagesReport() {
   });
 
   const data = query.data;
-  const statusCounts = data?.statusCounts ?? [];
   const totalPages = Math.max(1, data?.totalPages ?? 1);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
-
-  const statusTotal = useMemo(
-    () => statusCounts.reduce((sum, s) => sum + s.count, 0),
-    [statusCounts],
-  );
-
-  const statusPieData = useMemo(
-    () =>
-      statusCounts
-        .filter((s) => s.count > 0)
-        .map((s) => {
-          const key = statusKey(s);
-          return {
-            key,
-            name: s.name,
-            value: s.count,
-            fill: TONE_FILL[statusToneForLabel(s.name || s.code)],
-          };
-        }),
-    [statusCounts],
-  );
-
-  const statusChartConfig = useMemo(() => {
-    const config: ChartConfig = {};
-    for (const s of statusCounts) {
-      const key = statusKey(s);
-      config[key] = {
-        label: s.name,
-        color: TONE_FILL[statusToneForLabel(s.name || s.code)],
-      };
-    }
-    return config;
-  }, [statusCounts]);
 
   const exportCsv = () => {
     if (!data?.rows.length) {
@@ -179,75 +116,17 @@ function WagesReport() {
         }
       />
 
-      <div className="card-elevated overflow-hidden">
-        <div className="grid divide-y sm:grid-cols-2 lg:grid-cols-[minmax(17rem,22rem)_repeat(4,minmax(0,1fr))] lg:divide-x lg:divide-y-0">
-          <div className="flex items-center gap-3 px-3 py-2 sm:col-span-2 sm:px-3.5 lg:col-span-1">
-            <SignOffPieChart data={statusPieData} total={statusTotal} config={statusChartConfig} />
-            <div className="min-w-0 flex-1">
-              <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  By sign-off
-                </span>
-                <span className="text-[11px] tabular-nums text-muted-foreground">
-                  {statusTotal} sheet{statusTotal === 1 ? "" : "s"}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1">
-                {statusPieData.length > 0 ? (
-                  statusPieData.map((s) => (
-                    <StatusLegendItem
-                      key={s.key}
-                      name={s.name}
-                      value={s.value}
-                      fill={s.fill}
-                    />
-                  ))
-                ) : statusCounts.length > 0 ? (
-                  statusCounts.map((s) => (
-                    <StatusLegendItem
-                      key={s.code || s.name}
-                      name={s.name}
-                      value={s.count}
-                      fill={TONE_FILL[statusToneForLabel(s.name || s.code)]}
-                    />
-                  ))
-                ) : (
-                  <p className="py-1 text-center text-xs text-muted-foreground">No status data</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <SummaryStat
-            label="Statements"
-            value={String(data?.statementCount ?? 0)}
-            tip="Wage sheets matching filters."
-            tone="accent"
-            icon={FileText}
-          />
-          <SummaryStat
-            label="Gross"
-            value={fmtGBP(data?.totalGross ?? 0)}
-            tip="Total gross for days in range (partial weeks recalculated)."
-            tone="accent"
-            icon={LayoutGrid}
-          />
-          <SummaryStat
-            label="CIS"
-            value={fmtGBP(data?.totalCisDeduction ?? 0)}
-            tip="CIS on the ranged gross."
-            tone="muted"
-            icon={MinusCircle}
-          />
-          <SummaryStat
-            label="Net"
-            value={fmtGBP(data?.totalNet ?? 0)}
-            tip="Total net for the date range."
-            tone="info"
-            icon={Calculator}
-          />
-        </div>
-      </div>
+      <WagesSummaryCards
+        statementCount={data?.statementCount ?? 0}
+        totalGross={data?.totalGross ?? 0}
+        totalCisDeduction={data?.totalCisDeduction ?? 0}
+        totalNet={data?.totalNet ?? 0}
+        statusCounts={data?.statusCounts ?? []}
+        statementsTip="Wage sheets matching filters."
+        grossTip="Total gross for days in range (partial weeks recalculated)."
+        cisTip="CIS on the ranged gross."
+        netTip="Total net for the date range."
+      />
 
       <div className="card-elevated overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2 sm:gap-2.5 sm:px-4">
@@ -358,153 +237,6 @@ function WagesReport() {
           />
         ) : null}
       </div>
-    </div>
-  );
-}
-
-function SummaryStat({
-  label,
-  value,
-  tip,
-  tone,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  tip: string;
-  tone: StatusTone;
-  icon: typeof FileText;
-}) {
-  return (
-    <AppTooltip content={tip} asChild>
-      <div className="flex cursor-default items-center gap-2 px-3 py-2 sm:px-3.5">
-        <span
-          className={cn(
-            "grid h-8 w-8 shrink-0 place-items-center rounded-md border",
-            STATUS_TONE_CLASSES[tone],
-          )}
-        >
-          <Icon className="h-3.5 w-3.5" aria-hidden />
-        </span>
-        <div className="min-w-0 leading-none">
-          <div className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            {label}
-          </div>
-          <div className="mt-0.5 text-base font-semibold tabular-nums tracking-tight text-foreground">
-            {value}
-          </div>
-        </div>
-      </div>
-    </AppTooltip>
-  );
-}
-
-function StatusLegendItem({
-  name,
-  value,
-  fill,
-}: {
-  name: string;
-  value: number;
-  fill: string;
-}) {
-  return (
-    <AppTooltip
-      content={`${value} statement${value === 1 ? "" : "s"} with status ${name}`}
-      asChild
-    >
-      <div className="flex cursor-default items-center gap-1.5 text-[11px]">
-        <span
-          className="h-2 w-2 shrink-0 rounded-full"
-          style={{ backgroundColor: fill }}
-          aria-hidden
-        />
-        <span className="truncate text-muted-foreground">{name}</span>
-        <span className="shrink-0 font-semibold tabular-nums text-foreground">{value}</span>
-      </div>
-    </AppTooltip>
-  );
-}
-
-type PieSlice = { key: string; name: string; value: number; fill: string };
-
-function SignOffPieChart({
-  data,
-  total,
-  config,
-}: {
-  data: PieSlice[];
-  total: number;
-  config: ChartConfig;
-}) {
-  if (data.length === 0 || total === 0) {
-    return <ChartEmpty />;
-  }
-
-  return (
-    <ChartContainer
-      config={config}
-      className="aspect-square h-[88px] w-[88px] shrink-0 overflow-visible sm:h-[100px] sm:w-[100px]"
-    >
-      <PieChart margin={{ top: 1, right: 1, bottom: 1, left: 1 }}>
-        <ChartTooltip
-          cursor={false}
-          content={<ChartTooltipContent hideLabel nameKey="key" />}
-        />
-        <Pie
-          data={data}
-          dataKey="value"
-          nameKey="key"
-          innerRadius="54%"
-          outerRadius="88%"
-          strokeWidth={2}
-          stroke="var(--color-card)"
-          paddingAngle={2}
-          isAnimationActive={false}
-        >
-          {data.map((entry) => (
-            <Cell key={entry.key} fill={entry.fill} />
-          ))}
-          <Label
-            content={({ viewBox }) => {
-              if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                return (
-                  <text
-                    x={viewBox.cx}
-                    y={viewBox.cy}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                  >
-                    <tspan
-                      x={viewBox.cx}
-                      y={(viewBox.cy ?? 0) - 4}
-                      className="fill-foreground font-display text-base font-semibold sm:text-lg"
-                    >
-                      {total}
-                    </tspan>
-                    <tspan
-                      x={viewBox.cx}
-                      y={(viewBox.cy ?? 0) + 10}
-                      className="fill-muted-foreground text-[9px]"
-                    >
-                      Total
-                    </tspan>
-                  </text>
-                );
-              }
-              return null;
-            }}
-          />
-        </Pie>
-      </PieChart>
-    </ChartContainer>
-  );
-}
-
-function ChartEmpty() {
-  return (
-    <div className="flex h-[88px] w-[88px] items-center justify-center text-xs text-muted-foreground sm:h-[100px] sm:w-[100px]">
-      —
     </div>
   );
 }

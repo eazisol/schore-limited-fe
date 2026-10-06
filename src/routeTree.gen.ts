@@ -9,360 +9,115 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WagesRouteImport } from './routes/wages'
-import { Route as UsersRouteImport } from './routes/users'
-import { Route as UnitsRouteImport } from './routes/units'
-import { Route as TradeGroupsRouteImport } from './routes/trade-groups'
-import { Route as TradeBuilderRouteImport } from './routes/trade-builder'
-import { Route as TasksRouteImport } from './routes/tasks'
-import { Route as SystemConfigRouteImport } from './routes/system-config'
-import { Route as StatusesRouteImport } from './routes/statuses'
-import { Route as StatementsRouteImport } from './routes/statements'
-import { Route as SitesRouteImport } from './routes/sites'
-import { Route as SigninRouteImport } from './routes/signin'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as RolesRouteImport } from './routes/roles'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as ReportsRouteImport } from './routes/reports'
-import { Route as RepeatTaskApprovalsRouteImport } from './routes/repeat-task-approvals'
-import { Route as RatesRouteImport } from './routes/rates'
-import { Route as RateApprovalsRouteImport } from './routes/rate-approvals'
-import { Route as PropertiesRouteImport } from './routes/properties'
-import { Route as ProjectsRouteImport } from './routes/projects'
-import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as ProductManagementRouteImport } from './routes/product-management'
-import { Route as ProductRouteImport } from './routes/product'
-import { Route as PrelimsRouteImport } from './routes/prelims'
-import { Route as PermissionsRouteImport } from './routes/permissions'
-import { Route as PayrollRouteImport } from './routes/payroll'
-import { Route as OperativesRouteImport } from './routes/operatives'
-import { Route as NotificationsRouteImport } from './routes/notifications'
-import { Route as ManageFormsRouteImport } from './routes/manage-forms'
-import { Route as LegendCodesRouteImport } from './routes/legend-codes'
-import { Route as KpiRouteImport } from './routes/kpi'
-import { Route as JobTypesRouteImport } from './routes/job-types'
-import { Route as ItemsRouteImport } from './routes/items'
-import { Route as HolidaysRouteImport } from './routes/holidays'
-import { Route as HoldReasonsRouteImport } from './routes/hold-reasons'
-import { Route as HoldRouteImport } from './routes/hold'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as ForbiddenRouteImport } from './routes/forbidden'
-import { Route as EmailSmtpRouteImport } from './routes/email-smtp'
-import { Route as DaySuggestionsRouteImport } from './routes/day-suggestions'
-import { Route as DailyRouteImport } from './routes/daily'
-import { Route as CustomersRouteImport } from './routes/customers'
-import { Route as CostBudgetRouteImport } from './routes/cost-budget'
-import { Route as ContractsRouteImport } from './routes/contracts'
-import { Route as ContractorsRouteImport } from './routes/contractors'
-import { Route as ConfirmationRouteImport } from './routes/confirmation'
-import { Route as CisManagementRouteImport } from './routes/cis-management'
-import { Route as CertificationTypesRouteImport } from './routes/certification-types'
-import { Route as CertificationLevelsRouteImport } from './routes/certification-levels'
-import { Route as CategoriesRouteImport } from './routes/categories'
-import { Route as AllocationRouteImport } from './routes/allocation'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as WagesIndexRouteImport } from './routes/wages.index'
-import { Route as UsersIndexRouteImport } from './routes/users.index'
-import { Route as TradeGroupsIndexRouteImport } from './routes/trade-groups.index'
-import { Route as TradeBuilderIndexRouteImport } from './routes/trade-builder.index'
-import { Route as TasksIndexRouteImport } from './routes/tasks.index'
-import { Route as SystemConfigIndexRouteImport } from './routes/system-config.index'
-import { Route as SitesIndexRouteImport } from './routes/sites.index'
-import { Route as SettingsIndexRouteImport } from './routes/settings.index'
-import { Route as ReportsIndexRouteImport } from './routes/reports.index'
-import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
-import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
-import { Route as ProductIndexRouteImport } from './routes/product.index'
-import { Route as ProductManagementIndexRouteImport } from './routes/product-management.index'
-import { Route as OperativesIndexRouteImport } from './routes/operatives.index'
-import { Route as ItemsIndexRouteImport } from './routes/items.index'
-import { Route as CustomersIndexRouteImport } from './routes/customers.index'
-import { Route as ContractorsIndexRouteImport } from './routes/contractors.index'
+import { Route as AllocationRouteImport } from './routes/allocation'
+import { Route as CategoriesRouteImport } from './routes/categories'
+import { Route as CertificationLevelsRouteImport } from './routes/certification-levels'
+import { Route as CertificationTypesRouteImport } from './routes/certification-types'
+import { Route as CisManagementRouteImport } from './routes/cis-management'
+import { Route as ConfirmationRouteImport } from './routes/confirmation'
+import { Route as ContractorsRouteImport } from './routes/contractors'
+import { Route as ContractsRouteImport } from './routes/contracts'
+import { Route as CostBudgetRouteImport } from './routes/cost-budget'
+import { Route as CustomersRouteImport } from './routes/customers'
+import { Route as DailyRouteImport } from './routes/daily'
+import { Route as DaySuggestionsRouteImport } from './routes/day-suggestions'
+import { Route as EmailSmtpRouteImport } from './routes/email-smtp'
+import { Route as ForbiddenRouteImport } from './routes/forbidden'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as HoldRouteImport } from './routes/hold'
+import { Route as HoldReasonsRouteImport } from './routes/hold-reasons'
+import { Route as HolidaysRouteImport } from './routes/holidays'
+import { Route as ItemsRouteImport } from './routes/items'
+import { Route as JobTypesRouteImport } from './routes/job-types'
+import { Route as KpiRouteImport } from './routes/kpi'
+import { Route as LegendCodesRouteImport } from './routes/legend-codes'
+import { Route as ManageFormsRouteImport } from './routes/manage-forms'
+import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as OperativesRouteImport } from './routes/operatives'
+import { Route as PayrollRouteImport } from './routes/payroll'
+import { Route as PermissionsRouteImport } from './routes/permissions'
+import { Route as PrelimsRouteImport } from './routes/prelims'
+import { Route as ProductRouteImport } from './routes/product'
+import { Route as ProductManagementRouteImport } from './routes/product-management'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as PropertiesRouteImport } from './routes/properties'
+import { Route as RateApprovalsRouteImport } from './routes/rate-approvals'
+import { Route as RatesRouteImport } from './routes/rates'
+import { Route as RepeatTaskApprovalsRouteImport } from './routes/repeat-task-approvals'
+import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RolesRouteImport } from './routes/roles'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SigninRouteImport } from './routes/signin'
+import { Route as SitesRouteImport } from './routes/sites'
+import { Route as StatementsRouteImport } from './routes/statements'
+import { Route as StatusesRouteImport } from './routes/statuses'
+import { Route as SystemConfigRouteImport } from './routes/system-config'
+import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as TradeBuilderRouteImport } from './routes/trade-builder'
+import { Route as TradeGroupsRouteImport } from './routes/trade-groups'
+import { Route as UnitsRouteImport } from './routes/units'
+import { Route as UsersRouteImport } from './routes/users'
+import { Route as WagesRouteImport } from './routes/wages'
 import { Route as CisManagementIndexRouteImport } from './routes/cis-management.index'
-import { Route as WagesIdRouteImport } from './routes/wages.$id'
-import { Route as UsersNewRouteImport } from './routes/users.new'
-import { Route as UsersIdRouteImport } from './routes/users.$id'
-import { Route as TradeGroupsNewRouteImport } from './routes/trade-groups.new'
-import { Route as TradeGroupsIdRouteImport } from './routes/trade-groups.$id'
-import { Route as TradeBuilderTasksRouteImport } from './routes/trade-builder.tasks'
-import { Route as TradeBuilderNewRouteImport } from './routes/trade-builder.new'
-import { Route as TradeBuilderGroupsRouteImport } from './routes/trade-builder.groups'
-import { Route as TradeBuilderIdRouteImport } from './routes/trade-builder.$id'
-import { Route as TasksNewRouteImport } from './routes/tasks.new'
-import { Route as TasksIdRouteImport } from './routes/tasks.$id'
-import { Route as SystemConfigUserTypesRouteImport } from './routes/system-config.user-types'
-import { Route as SystemConfigRolesRouteImport } from './routes/system-config.roles'
-import { Route as SitesIdRouteImport } from './routes/sites.$id'
-import { Route as SettingsUserTypesRouteImport } from './routes/settings.user-types'
-import { Route as SettingsRolesRouteImport } from './routes/settings.roles'
-import { Route as SettingsRolePermissionsRouteImport } from './routes/settings.role-permissions'
-import { Route as SettingsEmailSmtpRouteImport } from './routes/settings.email-smtp'
-import { Route as ReportsWagesRouteImport } from './routes/reports.wages'
-import { Route as ReportsJobsRouteImport } from './routes/reports.jobs'
-import { Route as PropertiesNewRouteImport } from './routes/properties.new'
-import { Route as PropertiesIdRouteImport } from './routes/properties.$id'
-import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
-import { Route as OperativesNewRouteImport } from './routes/operatives.new'
-import { Route as OperativesMeRouteImport } from './routes/operatives.me'
-import { Route as OperativesIdRouteImport } from './routes/operatives.$id'
-import { Route as ItemsNewRouteImport } from './routes/items.new'
-import { Route as ItemsIdRouteImport } from './routes/items.$id'
-import { Route as CustomersNewRouteImport } from './routes/customers.new'
-import { Route as CustomersIdRouteImport } from './routes/customers.$id'
-import { Route as ContractorsNewRouteImport } from './routes/contractors.new'
-import { Route as ContractorsIdRouteImport } from './routes/contractors.$id'
-import { Route as CisManagementNewRouteImport } from './routes/cis-management.new'
 import { Route as CisManagementIdRouteImport } from './routes/cis-management.$id'
+import { Route as CisManagementNewRouteImport } from './routes/cis-management.new'
+import { Route as ContractorsIndexRouteImport } from './routes/contractors.index'
+import { Route as ContractorsIdRouteImport } from './routes/contractors.$id'
+import { Route as ContractorsNewRouteImport } from './routes/contractors.new'
+import { Route as CustomersIndexRouteImport } from './routes/customers.index'
+import { Route as CustomersIdRouteImport } from './routes/customers.$id'
+import { Route as CustomersNewRouteImport } from './routes/customers.new'
+import { Route as ItemsIndexRouteImport } from './routes/items.index'
+import { Route as ItemsIdRouteImport } from './routes/items.$id'
+import { Route as ItemsNewRouteImport } from './routes/items.new'
+import { Route as OperativesIndexRouteImport } from './routes/operatives.index'
+import { Route as OperativesIdRouteImport } from './routes/operatives.$id'
+import { Route as OperativesMeRouteImport } from './routes/operatives.me'
+import { Route as OperativesNewRouteImport } from './routes/operatives.new'
+import { Route as ProductManagementIndexRouteImport } from './routes/product-management.index'
+import { Route as ProductIndexRouteImport } from './routes/product.index'
+import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
+import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
+import { Route as PropertiesIndexRouteImport } from './routes/properties.index'
+import { Route as PropertiesIdRouteImport } from './routes/properties.$id'
+import { Route as PropertiesNewRouteImport } from './routes/properties.new'
+import { Route as ReportsIndexRouteImport } from './routes/reports.index'
+import { Route as ReportsJobsRouteImport } from './routes/reports.jobs'
+import { Route as ReportsWagesRouteImport } from './routes/reports.wages'
+import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as SettingsEmailSmtpRouteImport } from './routes/settings.email-smtp'
+import { Route as SettingsRolePermissionsRouteImport } from './routes/settings.role-permissions'
+import { Route as SettingsRolesRouteImport } from './routes/settings.roles'
+import { Route as SettingsUserTypesRouteImport } from './routes/settings.user-types'
+import { Route as SitesIndexRouteImport } from './routes/sites.index'
+import { Route as SitesIdRouteImport } from './routes/sites.$id'
+import { Route as SystemConfigIndexRouteImport } from './routes/system-config.index'
+import { Route as SystemConfigRolesRouteImport } from './routes/system-config.roles'
+import { Route as SystemConfigUserTypesRouteImport } from './routes/system-config.user-types'
+import { Route as TasksIndexRouteImport } from './routes/tasks.index'
+import { Route as TasksIdRouteImport } from './routes/tasks.$id'
+import { Route as TasksNewRouteImport } from './routes/tasks.new'
+import { Route as TradeBuilderIndexRouteImport } from './routes/trade-builder.index'
+import { Route as TradeBuilderIdRouteImport } from './routes/trade-builder.$id'
+import { Route as TradeBuilderGroupsRouteImport } from './routes/trade-builder.groups'
+import { Route as TradeBuilderNewRouteImport } from './routes/trade-builder.new'
+import { Route as TradeBuilderTasksRouteImport } from './routes/trade-builder.tasks'
+import { Route as TradeGroupsIndexRouteImport } from './routes/trade-groups.index'
+import { Route as TradeGroupsIdRouteImport } from './routes/trade-groups.$id'
+import { Route as TradeGroupsNewRouteImport } from './routes/trade-groups.new'
+import { Route as UsersIndexRouteImport } from './routes/users.index'
+import { Route as UsersIdRouteImport } from './routes/users.$id'
+import { Route as UsersNewRouteImport } from './routes/users.new'
+import { Route as WagesIndexRouteImport } from './routes/wages.index'
+import { Route as WagesIdRouteImport } from './routes/wages.$id'
 import { Route as ItemsIdEditRouteImport } from './routes/items.$id.edit'
 
-const WagesRoute = WagesRouteImport.update({
-  id: '/wages',
-  path: '/wages',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const UsersRoute = UsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const UnitsRoute = UnitsRouteImport.update({
-  id: '/units',
-  path: '/units',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TradeGroupsRoute = TradeGroupsRouteImport.update({
-  id: '/trade-groups',
-  path: '/trade-groups',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TradeBuilderRoute = TradeBuilderRouteImport.update({
-  id: '/trade-builder',
-  path: '/trade-builder',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TasksRoute = TasksRouteImport.update({
-  id: '/tasks',
-  path: '/tasks',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SystemConfigRoute = SystemConfigRouteImport.update({
-  id: '/system-config',
-  path: '/system-config',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StatusesRoute = StatusesRouteImport.update({
-  id: '/statuses',
-  path: '/statuses',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StatementsRoute = StatementsRouteImport.update({
-  id: '/statements',
-  path: '/statements',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SitesRoute = SitesRouteImport.update({
-  id: '/sites',
-  path: '/sites',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SigninRoute = SigninRouteImport.update({
-  id: '/signin',
-  path: '/signin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RolesRoute = RolesRouteImport.update({
-  id: '/roles',
-  path: '/roles',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReportsRoute = ReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RepeatTaskApprovalsRoute = RepeatTaskApprovalsRouteImport.update({
-  id: '/repeat-task-approvals',
-  path: '/repeat-task-approvals',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RatesRoute = RatesRouteImport.update({
-  id: '/rates',
-  path: '/rates',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RateApprovalsRoute = RateApprovalsRouteImport.update({
-  id: '/rate-approvals',
-  path: '/rate-approvals',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PropertiesRoute = PropertiesRouteImport.update({
-  id: '/properties',
-  path: '/properties',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProjectsRoute = ProjectsRouteImport.update({
-  id: '/projects',
-  path: '/projects',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProductManagementRoute = ProductManagementRouteImport.update({
-  id: '/product-management',
-  path: '/product-management',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProductRoute = ProductRouteImport.update({
-  id: '/product',
-  path: '/product',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrelimsRoute = PrelimsRouteImport.update({
-  id: '/prelims',
-  path: '/prelims',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PermissionsRoute = PermissionsRouteImport.update({
-  id: '/permissions',
-  path: '/permissions',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PayrollRoute = PayrollRouteImport.update({
-  id: '/payroll',
-  path: '/payroll',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OperativesRoute = OperativesRouteImport.update({
-  id: '/operatives',
-  path: '/operatives',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NotificationsRoute = NotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ManageFormsRoute = ManageFormsRouteImport.update({
-  id: '/manage-forms',
-  path: '/manage-forms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LegendCodesRoute = LegendCodesRouteImport.update({
-  id: '/legend-codes',
-  path: '/legend-codes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const KpiRoute = KpiRouteImport.update({
-  id: '/kpi',
-  path: '/kpi',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const JobTypesRoute = JobTypesRouteImport.update({
-  id: '/job-types',
-  path: '/job-types',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ItemsRoute = ItemsRouteImport.update({
-  id: '/items',
-  path: '/items',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HolidaysRoute = HolidaysRouteImport.update({
-  id: '/holidays',
-  path: '/holidays',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HoldReasonsRoute = HoldReasonsRouteImport.update({
-  id: '/hold-reasons',
-  path: '/hold-reasons',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HoldRoute = HoldRouteImport.update({
-  id: '/hold',
-  path: '/hold',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForbiddenRoute = ForbiddenRouteImport.update({
-  id: '/forbidden',
-  path: '/forbidden',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EmailSmtpRoute = EmailSmtpRouteImport.update({
-  id: '/email-smtp',
-  path: '/email-smtp',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DaySuggestionsRoute = DaySuggestionsRouteImport.update({
-  id: '/day-suggestions',
-  path: '/day-suggestions',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DailyRoute = DailyRouteImport.update({
-  id: '/daily',
-  path: '/daily',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CustomersRoute = CustomersRouteImport.update({
-  id: '/customers',
-  path: '/customers',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CostBudgetRoute = CostBudgetRouteImport.update({
-  id: '/cost-budget',
-  path: '/cost-budget',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContractsRoute = ContractsRouteImport.update({
-  id: '/contracts',
-  path: '/contracts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContractorsRoute = ContractorsRouteImport.update({
-  id: '/contractors',
-  path: '/contractors',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConfirmationRoute = ConfirmationRouteImport.update({
-  id: '/confirmation',
-  path: '/confirmation',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CisManagementRoute = CisManagementRouteImport.update({
-  id: '/cis-management',
-  path: '/cis-management',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CertificationTypesRoute = CertificationTypesRouteImport.update({
-  id: '/certification-types',
-  path: '/certification-types',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CertificationLevelsRoute = CertificationLevelsRouteImport.update({
-  id: '/certification-levels',
-  path: '/certification-levels',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CategoriesRoute = CategoriesRouteImport.update({
-  id: '/categories',
-  path: '/categories',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AllocationRoute = AllocationRouteImport.update({
@@ -370,254 +125,274 @@ const AllocationRoute = AllocationRouteImport.update({
   path: '/allocation',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const CategoriesRoute = CategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WagesIndexRoute = WagesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => WagesRoute,
+const CertificationLevelsRoute = CertificationLevelsRouteImport.update({
+  id: '/certification-levels',
+  path: '/certification-levels',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const UsersIndexRoute = UsersIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => UsersRoute,
+const CertificationTypesRoute = CertificationTypesRouteImport.update({
+  id: '/certification-types',
+  path: '/certification-types',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const TradeGroupsIndexRoute = TradeGroupsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => TradeGroupsRoute,
+const CisManagementRoute = CisManagementRouteImport.update({
+  id: '/cis-management',
+  path: '/cis-management',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const TradeBuilderIndexRoute = TradeBuilderIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => TradeBuilderRoute,
+const ConfirmationRoute = ConfirmationRouteImport.update({
+  id: '/confirmation',
+  path: '/confirmation',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const TasksIndexRoute = TasksIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => TasksRoute,
+const ContractorsRoute = ContractorsRouteImport.update({
+  id: '/contractors',
+  path: '/contractors',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const SystemConfigIndexRoute = SystemConfigIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SystemConfigRoute,
+const ContractsRoute = ContractsRouteImport.update({
+  id: '/contracts',
+  path: '/contracts',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const SitesIndexRoute = SitesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SitesRoute,
+const CostBudgetRoute = CostBudgetRouteImport.update({
+  id: '/cost-budget',
+  path: '/cost-budget',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const SettingsIndexRoute = SettingsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SettingsRoute,
+const CustomersRoute = CustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ReportsIndexRoute = ReportsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ReportsRoute,
+const DailyRoute = DailyRouteImport.update({
+  id: '/daily',
+  path: '/daily',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => PropertiesRoute,
+const DaySuggestionsRoute = DaySuggestionsRouteImport.update({
+  id: '/day-suggestions',
+  path: '/day-suggestions',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ProjectsRoute,
+const EmailSmtpRoute = EmailSmtpRouteImport.update({
+  id: '/email-smtp',
+  path: '/email-smtp',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ProductIndexRoute = ProductIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ProductRoute,
+const ForbiddenRoute = ForbiddenRouteImport.update({
+  id: '/forbidden',
+  path: '/forbidden',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ProductManagementIndexRoute = ProductManagementIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ProductManagementRoute,
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const OperativesIndexRoute = OperativesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => OperativesRoute,
+const HoldRoute = HoldRouteImport.update({
+  id: '/hold',
+  path: '/hold',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ItemsIndexRoute = ItemsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ItemsRoute,
+const HoldReasonsRoute = HoldReasonsRouteImport.update({
+  id: '/hold-reasons',
+  path: '/hold-reasons',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const CustomersIndexRoute = CustomersIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => CustomersRoute,
+const HolidaysRoute = HolidaysRouteImport.update({
+  id: '/holidays',
+  path: '/holidays',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ContractorsIndexRoute = ContractorsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ContractorsRoute,
+const ItemsRoute = ItemsRouteImport.update({
+  id: '/items',
+  path: '/items',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JobTypesRoute = JobTypesRouteImport.update({
+  id: '/job-types',
+  path: '/job-types',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KpiRoute = KpiRouteImport.update({
+  id: '/kpi',
+  path: '/kpi',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegendCodesRoute = LegendCodesRouteImport.update({
+  id: '/legend-codes',
+  path: '/legend-codes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManageFormsRoute = ManageFormsRouteImport.update({
+  id: '/manage-forms',
+  path: '/manage-forms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OperativesRoute = OperativesRouteImport.update({
+  id: '/operatives',
+  path: '/operatives',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PayrollRoute = PayrollRouteImport.update({
+  id: '/payroll',
+  path: '/payroll',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PermissionsRoute = PermissionsRouteImport.update({
+  id: '/permissions',
+  path: '/permissions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrelimsRoute = PrelimsRouteImport.update({
+  id: '/prelims',
+  path: '/prelims',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductRoute = ProductRouteImport.update({
+  id: '/product',
+  path: '/product',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductManagementRoute = ProductManagementRouteImport.update({
+  id: '/product-management',
+  path: '/product-management',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PropertiesRoute = PropertiesRouteImport.update({
+  id: '/properties',
+  path: '/properties',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RateApprovalsRoute = RateApprovalsRouteImport.update({
+  id: '/rate-approvals',
+  path: '/rate-approvals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RatesRoute = RatesRouteImport.update({
+  id: '/rates',
+  path: '/rates',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RepeatTaskApprovalsRoute = RepeatTaskApprovalsRouteImport.update({
+  id: '/repeat-task-approvals',
+  path: '/repeat-task-approvals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RolesRoute = RolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SigninRoute = SigninRouteImport.update({
+  id: '/signin',
+  path: '/signin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitesRoute = SitesRouteImport.update({
+  id: '/sites',
+  path: '/sites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatementsRoute = StatementsRouteImport.update({
+  id: '/statements',
+  path: '/statements',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatusesRoute = StatusesRouteImport.update({
+  id: '/statuses',
+  path: '/statuses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SystemConfigRoute = SystemConfigRouteImport.update({
+  id: '/system-config',
+  path: '/system-config',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TradeBuilderRoute = TradeBuilderRouteImport.update({
+  id: '/trade-builder',
+  path: '/trade-builder',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TradeGroupsRoute = TradeGroupsRouteImport.update({
+  id: '/trade-groups',
+  path: '/trade-groups',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnitsRoute = UnitsRouteImport.update({
+  id: '/units',
+  path: '/units',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UsersRoute = UsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WagesRoute = WagesRouteImport.update({
+  id: '/wages',
+  path: '/wages',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const CisManagementIndexRoute = CisManagementIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => CisManagementRoute,
 } as any)
-const WagesIdRoute = WagesIdRouteImport.update({
+const CisManagementIdRoute = CisManagementIdRouteImport.update({
   id: '/$id',
   path: '/$id',
-  getParentRoute: () => WagesRoute,
+  getParentRoute: () => CisManagementRoute,
 } as any)
-const UsersNewRoute = UsersNewRouteImport.update({
+const CisManagementNewRoute = CisManagementNewRouteImport.update({
   id: '/new',
   path: '/new',
-  getParentRoute: () => UsersRoute,
+  getParentRoute: () => CisManagementRoute,
 } as any)
-const UsersIdRoute = UsersIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => UsersRoute,
-} as any)
-const TradeGroupsNewRoute = TradeGroupsNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => TradeGroupsRoute,
-} as any)
-const TradeGroupsIdRoute = TradeGroupsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => TradeGroupsRoute,
-} as any)
-const TradeBuilderTasksRoute = TradeBuilderTasksRouteImport.update({
-  id: '/tasks',
-  path: '/tasks',
-  getParentRoute: () => TradeBuilderRoute,
-} as any)
-const TradeBuilderNewRoute = TradeBuilderNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => TradeBuilderRoute,
-} as any)
-const TradeBuilderGroupsRoute = TradeBuilderGroupsRouteImport.update({
-  id: '/groups',
-  path: '/groups',
-  getParentRoute: () => TradeBuilderRoute,
-} as any)
-const TradeBuilderIdRoute = TradeBuilderIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => TradeBuilderRoute,
-} as any)
-const TasksNewRoute = TasksNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => TasksRoute,
-} as any)
-const TasksIdRoute = TasksIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => TasksRoute,
-} as any)
-const SystemConfigUserTypesRoute = SystemConfigUserTypesRouteImport.update({
-  id: '/user-types',
-  path: '/user-types',
-  getParentRoute: () => SystemConfigRoute,
-} as any)
-const SystemConfigRolesRoute = SystemConfigRolesRouteImport.update({
-  id: '/roles',
-  path: '/roles',
-  getParentRoute: () => SystemConfigRoute,
-} as any)
-const SitesIdRoute = SitesIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => SitesRoute,
-} as any)
-const SettingsUserTypesRoute = SettingsUserTypesRouteImport.update({
-  id: '/user-types',
-  path: '/user-types',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsRolesRoute = SettingsRolesRouteImport.update({
-  id: '/roles',
-  path: '/roles',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsRolePermissionsRoute = SettingsRolePermissionsRouteImport.update({
-  id: '/role-permissions',
-  path: '/role-permissions',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsEmailSmtpRoute = SettingsEmailSmtpRouteImport.update({
-  id: '/email-smtp',
-  path: '/email-smtp',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const ReportsWagesRoute = ReportsWagesRouteImport.update({
-  id: '/wages',
-  path: '/wages',
-  getParentRoute: () => ReportsRoute,
-} as any)
-const ReportsJobsRoute = ReportsJobsRouteImport.update({
-  id: '/jobs',
-  path: '/jobs',
-  getParentRoute: () => ReportsRoute,
-} as any)
-const PropertiesNewRoute = PropertiesNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => PropertiesRoute,
-} as any)
-const PropertiesIdRoute = PropertiesIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => PropertiesRoute,
-} as any)
-const ProjectsIdRoute = ProjectsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => ProjectsRoute,
-} as any)
-const OperativesNewRoute = OperativesNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => OperativesRoute,
-} as any)
-const OperativesMeRoute = OperativesMeRouteImport.update({
-  id: '/me',
-  path: '/me',
-  getParentRoute: () => OperativesRoute,
-} as any)
-const OperativesIdRoute = OperativesIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => OperativesRoute,
-} as any)
-const ItemsNewRoute = ItemsNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => ItemsRoute,
-} as any)
-const ItemsIdRoute = ItemsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => ItemsRoute,
-} as any)
-const CustomersNewRoute = CustomersNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => CustomersRoute,
-} as any)
-const CustomersIdRoute = CustomersIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => CustomersRoute,
-} as any)
-const ContractorsNewRoute = ContractorsNewRouteImport.update({
-  id: '/new',
-  path: '/new',
+const ContractorsIndexRoute = ContractorsIndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => ContractorsRoute,
 } as any)
 const ContractorsIdRoute = ContractorsIdRouteImport.update({
@@ -625,15 +400,240 @@ const ContractorsIdRoute = ContractorsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ContractorsRoute,
 } as any)
-const CisManagementNewRoute = CisManagementNewRouteImport.update({
+const ContractorsNewRoute = ContractorsNewRouteImport.update({
   id: '/new',
   path: '/new',
-  getParentRoute: () => CisManagementRoute,
+  getParentRoute: () => ContractorsRoute,
 } as any)
-const CisManagementIdRoute = CisManagementIdRouteImport.update({
+const CustomersIndexRoute = CustomersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CustomersRoute,
+} as any)
+const CustomersIdRoute = CustomersIdRouteImport.update({
   id: '/$id',
   path: '/$id',
-  getParentRoute: () => CisManagementRoute,
+  getParentRoute: () => CustomersRoute,
+} as any)
+const CustomersNewRoute = CustomersNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => CustomersRoute,
+} as any)
+const ItemsIndexRoute = ItemsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ItemsRoute,
+} as any)
+const ItemsIdRoute = ItemsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ItemsRoute,
+} as any)
+const ItemsNewRoute = ItemsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ItemsRoute,
+} as any)
+const OperativesIndexRoute = OperativesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OperativesRoute,
+} as any)
+const OperativesIdRoute = OperativesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => OperativesRoute,
+} as any)
+const OperativesMeRoute = OperativesMeRouteImport.update({
+  id: '/me',
+  path: '/me',
+  getParentRoute: () => OperativesRoute,
+} as any)
+const OperativesNewRoute = OperativesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => OperativesRoute,
+} as any)
+const ProductManagementIndexRoute = ProductManagementIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProductManagementRoute,
+} as any)
+const ProductIndexRoute = ProductIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProductRoute,
+} as any)
+const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProjectsRoute,
+} as any)
+const ProjectsIdRoute = ProjectsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ProjectsRoute,
+} as any)
+const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PropertiesRoute,
+} as any)
+const PropertiesIdRoute = PropertiesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PropertiesRoute,
+} as any)
+const PropertiesNewRoute = PropertiesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => PropertiesRoute,
+} as any)
+const ReportsIndexRoute = ReportsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ReportsRoute,
+} as any)
+const ReportsJobsRoute = ReportsJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => ReportsRoute,
+} as any)
+const ReportsWagesRoute = ReportsWagesRouteImport.update({
+  id: '/wages',
+  path: '/wages',
+  getParentRoute: () => ReportsRoute,
+} as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsEmailSmtpRoute = SettingsEmailSmtpRouteImport.update({
+  id: '/email-smtp',
+  path: '/email-smtp',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsRolePermissionsRoute = SettingsRolePermissionsRouteImport.update({
+  id: '/role-permissions',
+  path: '/role-permissions',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsRolesRoute = SettingsRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsUserTypesRoute = SettingsUserTypesRouteImport.update({
+  id: '/user-types',
+  path: '/user-types',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SitesIndexRoute = SitesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SitesRoute,
+} as any)
+const SitesIdRoute = SitesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SitesRoute,
+} as any)
+const SystemConfigIndexRoute = SystemConfigIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SystemConfigRoute,
+} as any)
+const SystemConfigRolesRoute = SystemConfigRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => SystemConfigRoute,
+} as any)
+const SystemConfigUserTypesRoute = SystemConfigUserTypesRouteImport.update({
+  id: '/user-types',
+  path: '/user-types',
+  getParentRoute: () => SystemConfigRoute,
+} as any)
+const TasksIndexRoute = TasksIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TasksRoute,
+} as any)
+const TasksIdRoute = TasksIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => TasksRoute,
+} as any)
+const TasksNewRoute = TasksNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => TasksRoute,
+} as any)
+const TradeBuilderIndexRoute = TradeBuilderIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TradeBuilderRoute,
+} as any)
+const TradeBuilderIdRoute = TradeBuilderIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => TradeBuilderRoute,
+} as any)
+const TradeBuilderGroupsRoute = TradeBuilderGroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => TradeBuilderRoute,
+} as any)
+const TradeBuilderNewRoute = TradeBuilderNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => TradeBuilderRoute,
+} as any)
+const TradeBuilderTasksRoute = TradeBuilderTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => TradeBuilderRoute,
+} as any)
+const TradeGroupsIndexRoute = TradeGroupsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TradeGroupsRoute,
+} as any)
+const TradeGroupsIdRoute = TradeGroupsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => TradeGroupsRoute,
+} as any)
+const TradeGroupsNewRoute = TradeGroupsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => TradeGroupsRoute,
+} as any)
+const UsersIndexRoute = UsersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => UsersRoute,
+} as any)
+const UsersIdRoute = UsersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => UsersRoute,
+} as any)
+const UsersNewRoute = UsersNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => UsersRoute,
+} as any)
+const WagesIndexRoute = WagesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => WagesRoute,
+} as any)
+const WagesIdRoute = WagesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => WagesRoute,
 } as any)
 const ItemsIdEditRoute = ItemsIdEditRouteImport.update({
   id: '/edit',
@@ -1308,354 +1308,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/wages': {
-      id: '/wages'
-      path: '/wages'
-      fullPath: '/wages'
-      preLoaderRoute: typeof WagesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/users': {
-      id: '/users'
-      path: '/users'
-      fullPath: '/users'
-      preLoaderRoute: typeof UsersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/units': {
-      id: '/units'
-      path: '/units'
-      fullPath: '/units'
-      preLoaderRoute: typeof UnitsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/trade-groups': {
-      id: '/trade-groups'
-      path: '/trade-groups'
-      fullPath: '/trade-groups'
-      preLoaderRoute: typeof TradeGroupsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/trade-builder': {
-      id: '/trade-builder'
-      path: '/trade-builder'
-      fullPath: '/trade-builder'
-      preLoaderRoute: typeof TradeBuilderRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tasks': {
-      id: '/tasks'
-      path: '/tasks'
-      fullPath: '/tasks'
-      preLoaderRoute: typeof TasksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/system-config': {
-      id: '/system-config'
-      path: '/system-config'
-      fullPath: '/system-config'
-      preLoaderRoute: typeof SystemConfigRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/statuses': {
-      id: '/statuses'
-      path: '/statuses'
-      fullPath: '/statuses'
-      preLoaderRoute: typeof StatusesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/statements': {
-      id: '/statements'
-      path: '/statements'
-      fullPath: '/statements'
-      preLoaderRoute: typeof StatementsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sites': {
-      id: '/sites'
-      path: '/sites'
-      fullPath: '/sites'
-      preLoaderRoute: typeof SitesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/signin': {
-      id: '/signin'
-      path: '/signin'
-      fullPath: '/signin'
-      preLoaderRoute: typeof SigninRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/roles': {
-      id: '/roles'
-      path: '/roles'
-      fullPath: '/roles'
-      preLoaderRoute: typeof RolesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reports': {
-      id: '/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof ReportsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/repeat-task-approvals': {
-      id: '/repeat-task-approvals'
-      path: '/repeat-task-approvals'
-      fullPath: '/repeat-task-approvals'
-      preLoaderRoute: typeof RepeatTaskApprovalsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rates': {
-      id: '/rates'
-      path: '/rates'
-      fullPath: '/rates'
-      preLoaderRoute: typeof RatesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rate-approvals': {
-      id: '/rate-approvals'
-      path: '/rate-approvals'
-      fullPath: '/rate-approvals'
-      preLoaderRoute: typeof RateApprovalsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/properties': {
-      id: '/properties'
-      path: '/properties'
-      fullPath: '/properties'
-      preLoaderRoute: typeof PropertiesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/projects': {
-      id: '/projects'
-      path: '/projects'
-      fullPath: '/projects'
-      preLoaderRoute: typeof ProjectsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/product-management': {
-      id: '/product-management'
-      path: '/product-management'
-      fullPath: '/product-management'
-      preLoaderRoute: typeof ProductManagementRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/product': {
-      id: '/product'
-      path: '/product'
-      fullPath: '/product'
-      preLoaderRoute: typeof ProductRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/prelims': {
-      id: '/prelims'
-      path: '/prelims'
-      fullPath: '/prelims'
-      preLoaderRoute: typeof PrelimsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/permissions': {
-      id: '/permissions'
-      path: '/permissions'
-      fullPath: '/permissions'
-      preLoaderRoute: typeof PermissionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/payroll': {
-      id: '/payroll'
-      path: '/payroll'
-      fullPath: '/payroll'
-      preLoaderRoute: typeof PayrollRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/operatives': {
-      id: '/operatives'
-      path: '/operatives'
-      fullPath: '/operatives'
-      preLoaderRoute: typeof OperativesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/notifications': {
-      id: '/notifications'
-      path: '/notifications'
-      fullPath: '/notifications'
-      preLoaderRoute: typeof NotificationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/manage-forms': {
-      id: '/manage-forms'
-      path: '/manage-forms'
-      fullPath: '/manage-forms'
-      preLoaderRoute: typeof ManageFormsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/legend-codes': {
-      id: '/legend-codes'
-      path: '/legend-codes'
-      fullPath: '/legend-codes'
-      preLoaderRoute: typeof LegendCodesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/kpi': {
-      id: '/kpi'
-      path: '/kpi'
-      fullPath: '/kpi'
-      preLoaderRoute: typeof KpiRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/job-types': {
-      id: '/job-types'
-      path: '/job-types'
-      fullPath: '/job-types'
-      preLoaderRoute: typeof JobTypesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/items': {
-      id: '/items'
-      path: '/items'
-      fullPath: '/items'
-      preLoaderRoute: typeof ItemsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/holidays': {
-      id: '/holidays'
-      path: '/holidays'
-      fullPath: '/holidays'
-      preLoaderRoute: typeof HolidaysRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/hold-reasons': {
-      id: '/hold-reasons'
-      path: '/hold-reasons'
-      fullPath: '/hold-reasons'
-      preLoaderRoute: typeof HoldReasonsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/hold': {
-      id: '/hold'
-      path: '/hold'
-      fullPath: '/hold'
-      preLoaderRoute: typeof HoldRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forbidden': {
-      id: '/forbidden'
-      path: '/forbidden'
-      fullPath: '/forbidden'
-      preLoaderRoute: typeof ForbiddenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/email-smtp': {
-      id: '/email-smtp'
-      path: '/email-smtp'
-      fullPath: '/email-smtp'
-      preLoaderRoute: typeof EmailSmtpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/day-suggestions': {
-      id: '/day-suggestions'
-      path: '/day-suggestions'
-      fullPath: '/day-suggestions'
-      preLoaderRoute: typeof DaySuggestionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/daily': {
-      id: '/daily'
-      path: '/daily'
-      fullPath: '/daily'
-      preLoaderRoute: typeof DailyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/customers': {
-      id: '/customers'
-      path: '/customers'
-      fullPath: '/customers'
-      preLoaderRoute: typeof CustomersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cost-budget': {
-      id: '/cost-budget'
-      path: '/cost-budget'
-      fullPath: '/cost-budget'
-      preLoaderRoute: typeof CostBudgetRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contracts': {
-      id: '/contracts'
-      path: '/contracts'
-      fullPath: '/contracts'
-      preLoaderRoute: typeof ContractsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contractors': {
-      id: '/contractors'
-      path: '/contractors'
-      fullPath: '/contractors'
-      preLoaderRoute: typeof ContractorsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/confirmation': {
-      id: '/confirmation'
-      path: '/confirmation'
-      fullPath: '/confirmation'
-      preLoaderRoute: typeof ConfirmationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cis-management': {
-      id: '/cis-management'
-      path: '/cis-management'
-      fullPath: '/cis-management'
-      preLoaderRoute: typeof CisManagementRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/certification-types': {
-      id: '/certification-types'
-      path: '/certification-types'
-      fullPath: '/certification-types'
-      preLoaderRoute: typeof CertificationTypesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/certification-levels': {
-      id: '/certification-levels'
-      path: '/certification-levels'
-      fullPath: '/certification-levels'
-      preLoaderRoute: typeof CertificationLevelsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/categories': {
-      id: '/categories'
-      path: '/categories'
-      fullPath: '/categories'
-      preLoaderRoute: typeof CategoriesRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/allocation': {
@@ -1665,131 +1322,355 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AllocationRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/categories': {
+      id: '/categories'
+      path: '/categories'
+      fullPath: '/categories'
+      preLoaderRoute: typeof CategoriesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/wages/': {
-      id: '/wages/'
-      path: '/'
-      fullPath: '/wages/'
-      preLoaderRoute: typeof WagesIndexRouteImport
-      parentRoute: typeof WagesRoute
+    '/certification-levels': {
+      id: '/certification-levels'
+      path: '/certification-levels'
+      fullPath: '/certification-levels'
+      preLoaderRoute: typeof CertificationLevelsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/users/': {
-      id: '/users/'
-      path: '/'
-      fullPath: '/users/'
-      preLoaderRoute: typeof UsersIndexRouteImport
-      parentRoute: typeof UsersRoute
+    '/certification-types': {
+      id: '/certification-types'
+      path: '/certification-types'
+      fullPath: '/certification-types'
+      preLoaderRoute: typeof CertificationTypesRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/trade-groups/': {
-      id: '/trade-groups/'
-      path: '/'
-      fullPath: '/trade-groups/'
-      preLoaderRoute: typeof TradeGroupsIndexRouteImport
-      parentRoute: typeof TradeGroupsRoute
+    '/cis-management': {
+      id: '/cis-management'
+      path: '/cis-management'
+      fullPath: '/cis-management'
+      preLoaderRoute: typeof CisManagementRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/trade-builder/': {
-      id: '/trade-builder/'
-      path: '/'
-      fullPath: '/trade-builder/'
-      preLoaderRoute: typeof TradeBuilderIndexRouteImport
-      parentRoute: typeof TradeBuilderRoute
+    '/confirmation': {
+      id: '/confirmation'
+      path: '/confirmation'
+      fullPath: '/confirmation'
+      preLoaderRoute: typeof ConfirmationRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/tasks/': {
-      id: '/tasks/'
-      path: '/'
-      fullPath: '/tasks/'
-      preLoaderRoute: typeof TasksIndexRouteImport
-      parentRoute: typeof TasksRoute
+    '/contractors': {
+      id: '/contractors'
+      path: '/contractors'
+      fullPath: '/contractors'
+      preLoaderRoute: typeof ContractorsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/system-config/': {
-      id: '/system-config/'
-      path: '/'
-      fullPath: '/system-config/'
-      preLoaderRoute: typeof SystemConfigIndexRouteImport
-      parentRoute: typeof SystemConfigRoute
+    '/contracts': {
+      id: '/contracts'
+      path: '/contracts'
+      fullPath: '/contracts'
+      preLoaderRoute: typeof ContractsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/sites/': {
-      id: '/sites/'
-      path: '/'
-      fullPath: '/sites/'
-      preLoaderRoute: typeof SitesIndexRouteImport
-      parentRoute: typeof SitesRoute
+    '/cost-budget': {
+      id: '/cost-budget'
+      path: '/cost-budget'
+      fullPath: '/cost-budget'
+      preLoaderRoute: typeof CostBudgetRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/settings/': {
-      id: '/settings/'
-      path: '/'
-      fullPath: '/settings/'
-      preLoaderRoute: typeof SettingsIndexRouteImport
-      parentRoute: typeof SettingsRoute
+    '/customers': {
+      id: '/customers'
+      path: '/customers'
+      fullPath: '/customers'
+      preLoaderRoute: typeof CustomersRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/reports/': {
-      id: '/reports/'
-      path: '/'
-      fullPath: '/reports/'
-      preLoaderRoute: typeof ReportsIndexRouteImport
-      parentRoute: typeof ReportsRoute
+    '/daily': {
+      id: '/daily'
+      path: '/daily'
+      fullPath: '/daily'
+      preLoaderRoute: typeof DailyRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/properties/': {
-      id: '/properties/'
-      path: '/'
-      fullPath: '/properties/'
-      preLoaderRoute: typeof PropertiesIndexRouteImport
-      parentRoute: typeof PropertiesRoute
+    '/day-suggestions': {
+      id: '/day-suggestions'
+      path: '/day-suggestions'
+      fullPath: '/day-suggestions'
+      preLoaderRoute: typeof DaySuggestionsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/projects/': {
-      id: '/projects/'
-      path: '/'
-      fullPath: '/projects/'
-      preLoaderRoute: typeof ProjectsIndexRouteImport
-      parentRoute: typeof ProjectsRoute
+    '/email-smtp': {
+      id: '/email-smtp'
+      path: '/email-smtp'
+      fullPath: '/email-smtp'
+      preLoaderRoute: typeof EmailSmtpRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/product/': {
-      id: '/product/'
-      path: '/'
-      fullPath: '/product/'
-      preLoaderRoute: typeof ProductIndexRouteImport
-      parentRoute: typeof ProductRoute
+    '/forbidden': {
+      id: '/forbidden'
+      path: '/forbidden'
+      fullPath: '/forbidden'
+      preLoaderRoute: typeof ForbiddenRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/product-management/': {
-      id: '/product-management/'
-      path: '/'
-      fullPath: '/product-management/'
-      preLoaderRoute: typeof ProductManagementIndexRouteImport
-      parentRoute: typeof ProductManagementRoute
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/operatives/': {
-      id: '/operatives/'
-      path: '/'
-      fullPath: '/operatives/'
-      preLoaderRoute: typeof OperativesIndexRouteImport
-      parentRoute: typeof OperativesRoute
+    '/hold': {
+      id: '/hold'
+      path: '/hold'
+      fullPath: '/hold'
+      preLoaderRoute: typeof HoldRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/items/': {
-      id: '/items/'
-      path: '/'
-      fullPath: '/items/'
-      preLoaderRoute: typeof ItemsIndexRouteImport
-      parentRoute: typeof ItemsRoute
+    '/hold-reasons': {
+      id: '/hold-reasons'
+      path: '/hold-reasons'
+      fullPath: '/hold-reasons'
+      preLoaderRoute: typeof HoldReasonsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/customers/': {
-      id: '/customers/'
-      path: '/'
-      fullPath: '/customers/'
-      preLoaderRoute: typeof CustomersIndexRouteImport
-      parentRoute: typeof CustomersRoute
+    '/holidays': {
+      id: '/holidays'
+      path: '/holidays'
+      fullPath: '/holidays'
+      preLoaderRoute: typeof HolidaysRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/contractors/': {
-      id: '/contractors/'
-      path: '/'
-      fullPath: '/contractors/'
-      preLoaderRoute: typeof ContractorsIndexRouteImport
-      parentRoute: typeof ContractorsRoute
+    '/items': {
+      id: '/items'
+      path: '/items'
+      fullPath: '/items'
+      preLoaderRoute: typeof ItemsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/job-types': {
+      id: '/job-types'
+      path: '/job-types'
+      fullPath: '/job-types'
+      preLoaderRoute: typeof JobTypesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kpi': {
+      id: '/kpi'
+      path: '/kpi'
+      fullPath: '/kpi'
+      preLoaderRoute: typeof KpiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legend-codes': {
+      id: '/legend-codes'
+      path: '/legend-codes'
+      fullPath: '/legend-codes'
+      preLoaderRoute: typeof LegendCodesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manage-forms': {
+      id: '/manage-forms'
+      path: '/manage-forms'
+      fullPath: '/manage-forms'
+      preLoaderRoute: typeof ManageFormsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operatives': {
+      id: '/operatives'
+      path: '/operatives'
+      fullPath: '/operatives'
+      preLoaderRoute: typeof OperativesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payroll': {
+      id: '/payroll'
+      path: '/payroll'
+      fullPath: '/payroll'
+      preLoaderRoute: typeof PayrollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/permissions': {
+      id: '/permissions'
+      path: '/permissions'
+      fullPath: '/permissions'
+      preLoaderRoute: typeof PermissionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prelims': {
+      id: '/prelims'
+      path: '/prelims'
+      fullPath: '/prelims'
+      preLoaderRoute: typeof PrelimsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/product': {
+      id: '/product'
+      path: '/product'
+      fullPath: '/product'
+      preLoaderRoute: typeof ProductRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/product-management': {
+      id: '/product-management'
+      path: '/product-management'
+      fullPath: '/product-management'
+      preLoaderRoute: typeof ProductManagementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/properties': {
+      id: '/properties'
+      path: '/properties'
+      fullPath: '/properties'
+      preLoaderRoute: typeof PropertiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rate-approvals': {
+      id: '/rate-approvals'
+      path: '/rate-approvals'
+      fullPath: '/rate-approvals'
+      preLoaderRoute: typeof RateApprovalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rates': {
+      id: '/rates'
+      path: '/rates'
+      fullPath: '/rates'
+      preLoaderRoute: typeof RatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/repeat-task-approvals': {
+      id: '/repeat-task-approvals'
+      path: '/repeat-task-approvals'
+      fullPath: '/repeat-task-approvals'
+      preLoaderRoute: typeof RepeatTaskApprovalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/roles': {
+      id: '/roles'
+      path: '/roles'
+      fullPath: '/roles'
+      preLoaderRoute: typeof RolesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signin': {
+      id: '/signin'
+      path: '/signin'
+      fullPath: '/signin'
+      preLoaderRoute: typeof SigninRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sites': {
+      id: '/sites'
+      path: '/sites'
+      fullPath: '/sites'
+      preLoaderRoute: typeof SitesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/statements': {
+      id: '/statements'
+      path: '/statements'
+      fullPath: '/statements'
+      preLoaderRoute: typeof StatementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/statuses': {
+      id: '/statuses'
+      path: '/statuses'
+      fullPath: '/statuses'
+      preLoaderRoute: typeof StatusesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/system-config': {
+      id: '/system-config'
+      path: '/system-config'
+      fullPath: '/system-config'
+      preLoaderRoute: typeof SystemConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trade-builder': {
+      id: '/trade-builder'
+      path: '/trade-builder'
+      fullPath: '/trade-builder'
+      preLoaderRoute: typeof TradeBuilderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trade-groups': {
+      id: '/trade-groups'
+      path: '/trade-groups'
+      fullPath: '/trade-groups'
+      preLoaderRoute: typeof TradeGroupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/units': {
+      id: '/units'
+      path: '/units'
+      fullPath: '/units'
+      preLoaderRoute: typeof UnitsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wages': {
+      id: '/wages'
+      path: '/wages'
+      fullPath: '/wages'
+      preLoaderRoute: typeof WagesRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/cis-management/': {
       id: '/cis-management/'
@@ -1798,221 +1679,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CisManagementIndexRouteImport
       parentRoute: typeof CisManagementRoute
     }
-    '/wages/$id': {
-      id: '/wages/$id'
+    '/cis-management/$id': {
+      id: '/cis-management/$id'
       path: '/$id'
-      fullPath: '/wages/$id'
-      preLoaderRoute: typeof WagesIdRouteImport
-      parentRoute: typeof WagesRoute
+      fullPath: '/cis-management/$id'
+      preLoaderRoute: typeof CisManagementIdRouteImport
+      parentRoute: typeof CisManagementRoute
     }
-    '/users/new': {
-      id: '/users/new'
+    '/cis-management/new': {
+      id: '/cis-management/new'
       path: '/new'
-      fullPath: '/users/new'
-      preLoaderRoute: typeof UsersNewRouteImport
-      parentRoute: typeof UsersRoute
+      fullPath: '/cis-management/new'
+      preLoaderRoute: typeof CisManagementNewRouteImport
+      parentRoute: typeof CisManagementRoute
     }
-    '/users/$id': {
-      id: '/users/$id'
-      path: '/$id'
-      fullPath: '/users/$id'
-      preLoaderRoute: typeof UsersIdRouteImport
-      parentRoute: typeof UsersRoute
-    }
-    '/trade-groups/new': {
-      id: '/trade-groups/new'
-      path: '/new'
-      fullPath: '/trade-groups/new'
-      preLoaderRoute: typeof TradeGroupsNewRouteImport
-      parentRoute: typeof TradeGroupsRoute
-    }
-    '/trade-groups/$id': {
-      id: '/trade-groups/$id'
-      path: '/$id'
-      fullPath: '/trade-groups/$id'
-      preLoaderRoute: typeof TradeGroupsIdRouteImport
-      parentRoute: typeof TradeGroupsRoute
-    }
-    '/trade-builder/tasks': {
-      id: '/trade-builder/tasks'
-      path: '/tasks'
-      fullPath: '/trade-builder/tasks'
-      preLoaderRoute: typeof TradeBuilderTasksRouteImport
-      parentRoute: typeof TradeBuilderRoute
-    }
-    '/trade-builder/new': {
-      id: '/trade-builder/new'
-      path: '/new'
-      fullPath: '/trade-builder/new'
-      preLoaderRoute: typeof TradeBuilderNewRouteImport
-      parentRoute: typeof TradeBuilderRoute
-    }
-    '/trade-builder/groups': {
-      id: '/trade-builder/groups'
-      path: '/groups'
-      fullPath: '/trade-builder/groups'
-      preLoaderRoute: typeof TradeBuilderGroupsRouteImport
-      parentRoute: typeof TradeBuilderRoute
-    }
-    '/trade-builder/$id': {
-      id: '/trade-builder/$id'
-      path: '/$id'
-      fullPath: '/trade-builder/$id'
-      preLoaderRoute: typeof TradeBuilderIdRouteImport
-      parentRoute: typeof TradeBuilderRoute
-    }
-    '/tasks/new': {
-      id: '/tasks/new'
-      path: '/new'
-      fullPath: '/tasks/new'
-      preLoaderRoute: typeof TasksNewRouteImport
-      parentRoute: typeof TasksRoute
-    }
-    '/tasks/$id': {
-      id: '/tasks/$id'
-      path: '/$id'
-      fullPath: '/tasks/$id'
-      preLoaderRoute: typeof TasksIdRouteImport
-      parentRoute: typeof TasksRoute
-    }
-    '/system-config/user-types': {
-      id: '/system-config/user-types'
-      path: '/user-types'
-      fullPath: '/system-config/user-types'
-      preLoaderRoute: typeof SystemConfigUserTypesRouteImport
-      parentRoute: typeof SystemConfigRoute
-    }
-    '/system-config/roles': {
-      id: '/system-config/roles'
-      path: '/roles'
-      fullPath: '/system-config/roles'
-      preLoaderRoute: typeof SystemConfigRolesRouteImport
-      parentRoute: typeof SystemConfigRoute
-    }
-    '/sites/$id': {
-      id: '/sites/$id'
-      path: '/$id'
-      fullPath: '/sites/$id'
-      preLoaderRoute: typeof SitesIdRouteImport
-      parentRoute: typeof SitesRoute
-    }
-    '/settings/user-types': {
-      id: '/settings/user-types'
-      path: '/user-types'
-      fullPath: '/settings/user-types'
-      preLoaderRoute: typeof SettingsUserTypesRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/roles': {
-      id: '/settings/roles'
-      path: '/roles'
-      fullPath: '/settings/roles'
-      preLoaderRoute: typeof SettingsRolesRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/role-permissions': {
-      id: '/settings/role-permissions'
-      path: '/role-permissions'
-      fullPath: '/settings/role-permissions'
-      preLoaderRoute: typeof SettingsRolePermissionsRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/email-smtp': {
-      id: '/settings/email-smtp'
-      path: '/email-smtp'
-      fullPath: '/settings/email-smtp'
-      preLoaderRoute: typeof SettingsEmailSmtpRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/reports/wages': {
-      id: '/reports/wages'
-      path: '/wages'
-      fullPath: '/reports/wages'
-      preLoaderRoute: typeof ReportsWagesRouteImport
-      parentRoute: typeof ReportsRoute
-    }
-    '/reports/jobs': {
-      id: '/reports/jobs'
-      path: '/jobs'
-      fullPath: '/reports/jobs'
-      preLoaderRoute: typeof ReportsJobsRouteImport
-      parentRoute: typeof ReportsRoute
-    }
-    '/properties/new': {
-      id: '/properties/new'
-      path: '/new'
-      fullPath: '/properties/new'
-      preLoaderRoute: typeof PropertiesNewRouteImport
-      parentRoute: typeof PropertiesRoute
-    }
-    '/properties/$id': {
-      id: '/properties/$id'
-      path: '/$id'
-      fullPath: '/properties/$id'
-      preLoaderRoute: typeof PropertiesIdRouteImport
-      parentRoute: typeof PropertiesRoute
-    }
-    '/projects/$id': {
-      id: '/projects/$id'
-      path: '/$id'
-      fullPath: '/projects/$id'
-      preLoaderRoute: typeof ProjectsIdRouteImport
-      parentRoute: typeof ProjectsRoute
-    }
-    '/operatives/new': {
-      id: '/operatives/new'
-      path: '/new'
-      fullPath: '/operatives/new'
-      preLoaderRoute: typeof OperativesNewRouteImport
-      parentRoute: typeof OperativesRoute
-    }
-    '/operatives/me': {
-      id: '/operatives/me'
-      path: '/me'
-      fullPath: '/operatives/me'
-      preLoaderRoute: typeof OperativesMeRouteImport
-      parentRoute: typeof OperativesRoute
-    }
-    '/operatives/$id': {
-      id: '/operatives/$id'
-      path: '/$id'
-      fullPath: '/operatives/$id'
-      preLoaderRoute: typeof OperativesIdRouteImport
-      parentRoute: typeof OperativesRoute
-    }
-    '/items/new': {
-      id: '/items/new'
-      path: '/new'
-      fullPath: '/items/new'
-      preLoaderRoute: typeof ItemsNewRouteImport
-      parentRoute: typeof ItemsRoute
-    }
-    '/items/$id': {
-      id: '/items/$id'
-      path: '/$id'
-      fullPath: '/items/$id'
-      preLoaderRoute: typeof ItemsIdRouteImport
-      parentRoute: typeof ItemsRoute
-    }
-    '/customers/new': {
-      id: '/customers/new'
-      path: '/new'
-      fullPath: '/customers/new'
-      preLoaderRoute: typeof CustomersNewRouteImport
-      parentRoute: typeof CustomersRoute
-    }
-    '/customers/$id': {
-      id: '/customers/$id'
-      path: '/$id'
-      fullPath: '/customers/$id'
-      preLoaderRoute: typeof CustomersIdRouteImport
-      parentRoute: typeof CustomersRoute
-    }
-    '/contractors/new': {
-      id: '/contractors/new'
-      path: '/new'
-      fullPath: '/contractors/new'
-      preLoaderRoute: typeof ContractorsNewRouteImport
+    '/contractors/': {
+      id: '/contractors/'
+      path: '/'
+      fullPath: '/contractors/'
+      preLoaderRoute: typeof ContractorsIndexRouteImport
       parentRoute: typeof ContractorsRoute
     }
     '/contractors/$id': {
@@ -2022,19 +1707,334 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContractorsIdRouteImport
       parentRoute: typeof ContractorsRoute
     }
-    '/cis-management/new': {
-      id: '/cis-management/new'
+    '/contractors/new': {
+      id: '/contractors/new'
       path: '/new'
-      fullPath: '/cis-management/new'
-      preLoaderRoute: typeof CisManagementNewRouteImport
-      parentRoute: typeof CisManagementRoute
+      fullPath: '/contractors/new'
+      preLoaderRoute: typeof ContractorsNewRouteImport
+      parentRoute: typeof ContractorsRoute
     }
-    '/cis-management/$id': {
-      id: '/cis-management/$id'
+    '/customers/': {
+      id: '/customers/'
+      path: '/'
+      fullPath: '/customers/'
+      preLoaderRoute: typeof CustomersIndexRouteImport
+      parentRoute: typeof CustomersRoute
+    }
+    '/customers/$id': {
+      id: '/customers/$id'
       path: '/$id'
-      fullPath: '/cis-management/$id'
-      preLoaderRoute: typeof CisManagementIdRouteImport
-      parentRoute: typeof CisManagementRoute
+      fullPath: '/customers/$id'
+      preLoaderRoute: typeof CustomersIdRouteImport
+      parentRoute: typeof CustomersRoute
+    }
+    '/customers/new': {
+      id: '/customers/new'
+      path: '/new'
+      fullPath: '/customers/new'
+      preLoaderRoute: typeof CustomersNewRouteImport
+      parentRoute: typeof CustomersRoute
+    }
+    '/items/': {
+      id: '/items/'
+      path: '/'
+      fullPath: '/items/'
+      preLoaderRoute: typeof ItemsIndexRouteImport
+      parentRoute: typeof ItemsRoute
+    }
+    '/items/$id': {
+      id: '/items/$id'
+      path: '/$id'
+      fullPath: '/items/$id'
+      preLoaderRoute: typeof ItemsIdRouteImport
+      parentRoute: typeof ItemsRoute
+    }
+    '/items/new': {
+      id: '/items/new'
+      path: '/new'
+      fullPath: '/items/new'
+      preLoaderRoute: typeof ItemsNewRouteImport
+      parentRoute: typeof ItemsRoute
+    }
+    '/operatives/': {
+      id: '/operatives/'
+      path: '/'
+      fullPath: '/operatives/'
+      preLoaderRoute: typeof OperativesIndexRouteImport
+      parentRoute: typeof OperativesRoute
+    }
+    '/operatives/$id': {
+      id: '/operatives/$id'
+      path: '/$id'
+      fullPath: '/operatives/$id'
+      preLoaderRoute: typeof OperativesIdRouteImport
+      parentRoute: typeof OperativesRoute
+    }
+    '/operatives/me': {
+      id: '/operatives/me'
+      path: '/me'
+      fullPath: '/operatives/me'
+      preLoaderRoute: typeof OperativesMeRouteImport
+      parentRoute: typeof OperativesRoute
+    }
+    '/operatives/new': {
+      id: '/operatives/new'
+      path: '/new'
+      fullPath: '/operatives/new'
+      preLoaderRoute: typeof OperativesNewRouteImport
+      parentRoute: typeof OperativesRoute
+    }
+    '/product-management/': {
+      id: '/product-management/'
+      path: '/'
+      fullPath: '/product-management/'
+      preLoaderRoute: typeof ProductManagementIndexRouteImport
+      parentRoute: typeof ProductManagementRoute
+    }
+    '/product/': {
+      id: '/product/'
+      path: '/'
+      fullPath: '/product/'
+      preLoaderRoute: typeof ProductIndexRouteImport
+      parentRoute: typeof ProductRoute
+    }
+    '/projects/': {
+      id: '/projects/'
+      path: '/'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof ProjectsIndexRouteImport
+      parentRoute: typeof ProjectsRoute
+    }
+    '/projects/$id': {
+      id: '/projects/$id'
+      path: '/$id'
+      fullPath: '/projects/$id'
+      preLoaderRoute: typeof ProjectsIdRouteImport
+      parentRoute: typeof ProjectsRoute
+    }
+    '/properties/': {
+      id: '/properties/'
+      path: '/'
+      fullPath: '/properties/'
+      preLoaderRoute: typeof PropertiesIndexRouteImport
+      parentRoute: typeof PropertiesRoute
+    }
+    '/properties/$id': {
+      id: '/properties/$id'
+      path: '/$id'
+      fullPath: '/properties/$id'
+      preLoaderRoute: typeof PropertiesIdRouteImport
+      parentRoute: typeof PropertiesRoute
+    }
+    '/properties/new': {
+      id: '/properties/new'
+      path: '/new'
+      fullPath: '/properties/new'
+      preLoaderRoute: typeof PropertiesNewRouteImport
+      parentRoute: typeof PropertiesRoute
+    }
+    '/reports/': {
+      id: '/reports/'
+      path: '/'
+      fullPath: '/reports/'
+      preLoaderRoute: typeof ReportsIndexRouteImport
+      parentRoute: typeof ReportsRoute
+    }
+    '/reports/jobs': {
+      id: '/reports/jobs'
+      path: '/jobs'
+      fullPath: '/reports/jobs'
+      preLoaderRoute: typeof ReportsJobsRouteImport
+      parentRoute: typeof ReportsRoute
+    }
+    '/reports/wages': {
+      id: '/reports/wages'
+      path: '/wages'
+      fullPath: '/reports/wages'
+      preLoaderRoute: typeof ReportsWagesRouteImport
+      parentRoute: typeof ReportsRoute
+    }
+    '/settings/': {
+      id: '/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/email-smtp': {
+      id: '/settings/email-smtp'
+      path: '/email-smtp'
+      fullPath: '/settings/email-smtp'
+      preLoaderRoute: typeof SettingsEmailSmtpRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/role-permissions': {
+      id: '/settings/role-permissions'
+      path: '/role-permissions'
+      fullPath: '/settings/role-permissions'
+      preLoaderRoute: typeof SettingsRolePermissionsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/roles': {
+      id: '/settings/roles'
+      path: '/roles'
+      fullPath: '/settings/roles'
+      preLoaderRoute: typeof SettingsRolesRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/user-types': {
+      id: '/settings/user-types'
+      path: '/user-types'
+      fullPath: '/settings/user-types'
+      preLoaderRoute: typeof SettingsUserTypesRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/sites/': {
+      id: '/sites/'
+      path: '/'
+      fullPath: '/sites/'
+      preLoaderRoute: typeof SitesIndexRouteImport
+      parentRoute: typeof SitesRoute
+    }
+    '/sites/$id': {
+      id: '/sites/$id'
+      path: '/$id'
+      fullPath: '/sites/$id'
+      preLoaderRoute: typeof SitesIdRouteImport
+      parentRoute: typeof SitesRoute
+    }
+    '/system-config/': {
+      id: '/system-config/'
+      path: '/'
+      fullPath: '/system-config/'
+      preLoaderRoute: typeof SystemConfigIndexRouteImport
+      parentRoute: typeof SystemConfigRoute
+    }
+    '/system-config/roles': {
+      id: '/system-config/roles'
+      path: '/roles'
+      fullPath: '/system-config/roles'
+      preLoaderRoute: typeof SystemConfigRolesRouteImport
+      parentRoute: typeof SystemConfigRoute
+    }
+    '/system-config/user-types': {
+      id: '/system-config/user-types'
+      path: '/user-types'
+      fullPath: '/system-config/user-types'
+      preLoaderRoute: typeof SystemConfigUserTypesRouteImport
+      parentRoute: typeof SystemConfigRoute
+    }
+    '/tasks/': {
+      id: '/tasks/'
+      path: '/'
+      fullPath: '/tasks/'
+      preLoaderRoute: typeof TasksIndexRouteImport
+      parentRoute: typeof TasksRoute
+    }
+    '/tasks/$id': {
+      id: '/tasks/$id'
+      path: '/$id'
+      fullPath: '/tasks/$id'
+      preLoaderRoute: typeof TasksIdRouteImport
+      parentRoute: typeof TasksRoute
+    }
+    '/tasks/new': {
+      id: '/tasks/new'
+      path: '/new'
+      fullPath: '/tasks/new'
+      preLoaderRoute: typeof TasksNewRouteImport
+      parentRoute: typeof TasksRoute
+    }
+    '/trade-builder/': {
+      id: '/trade-builder/'
+      path: '/'
+      fullPath: '/trade-builder/'
+      preLoaderRoute: typeof TradeBuilderIndexRouteImport
+      parentRoute: typeof TradeBuilderRoute
+    }
+    '/trade-builder/$id': {
+      id: '/trade-builder/$id'
+      path: '/$id'
+      fullPath: '/trade-builder/$id'
+      preLoaderRoute: typeof TradeBuilderIdRouteImport
+      parentRoute: typeof TradeBuilderRoute
+    }
+    '/trade-builder/groups': {
+      id: '/trade-builder/groups'
+      path: '/groups'
+      fullPath: '/trade-builder/groups'
+      preLoaderRoute: typeof TradeBuilderGroupsRouteImport
+      parentRoute: typeof TradeBuilderRoute
+    }
+    '/trade-builder/new': {
+      id: '/trade-builder/new'
+      path: '/new'
+      fullPath: '/trade-builder/new'
+      preLoaderRoute: typeof TradeBuilderNewRouteImport
+      parentRoute: typeof TradeBuilderRoute
+    }
+    '/trade-builder/tasks': {
+      id: '/trade-builder/tasks'
+      path: '/tasks'
+      fullPath: '/trade-builder/tasks'
+      preLoaderRoute: typeof TradeBuilderTasksRouteImport
+      parentRoute: typeof TradeBuilderRoute
+    }
+    '/trade-groups/': {
+      id: '/trade-groups/'
+      path: '/'
+      fullPath: '/trade-groups/'
+      preLoaderRoute: typeof TradeGroupsIndexRouteImport
+      parentRoute: typeof TradeGroupsRoute
+    }
+    '/trade-groups/$id': {
+      id: '/trade-groups/$id'
+      path: '/$id'
+      fullPath: '/trade-groups/$id'
+      preLoaderRoute: typeof TradeGroupsIdRouteImport
+      parentRoute: typeof TradeGroupsRoute
+    }
+    '/trade-groups/new': {
+      id: '/trade-groups/new'
+      path: '/new'
+      fullPath: '/trade-groups/new'
+      preLoaderRoute: typeof TradeGroupsNewRouteImport
+      parentRoute: typeof TradeGroupsRoute
+    }
+    '/users/': {
+      id: '/users/'
+      path: '/'
+      fullPath: '/users/'
+      preLoaderRoute: typeof UsersIndexRouteImport
+      parentRoute: typeof UsersRoute
+    }
+    '/users/$id': {
+      id: '/users/$id'
+      path: '/$id'
+      fullPath: '/users/$id'
+      preLoaderRoute: typeof UsersIdRouteImport
+      parentRoute: typeof UsersRoute
+    }
+    '/users/new': {
+      id: '/users/new'
+      path: '/new'
+      fullPath: '/users/new'
+      preLoaderRoute: typeof UsersNewRouteImport
+      parentRoute: typeof UsersRoute
+    }
+    '/wages/': {
+      id: '/wages/'
+      path: '/'
+      fullPath: '/wages/'
+      preLoaderRoute: typeof WagesIndexRouteImport
+      parentRoute: typeof WagesRoute
+    }
+    '/wages/$id': {
+      id: '/wages/$id'
+      path: '/$id'
+      fullPath: '/wages/$id'
+      preLoaderRoute: typeof WagesIdRouteImport
+      parentRoute: typeof WagesRoute
     }
     '/items/$id/edit': {
       id: '/items/$id/edit'

@@ -21,6 +21,8 @@ import { usePermissions } from "@/contexts/PermissionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchCustomerOptions } from "@/lib/user-dropdowns";
 import { isOperativePortalUser } from "@/lib/operative-portal";
+import { WagesSummaryCards } from "@/components/wages/WagesSummaryCards";
+import { WageWeekSelect } from "@/components/wages/WageWeekSelect";
 import {
   downloadCsv,
   formatUkDate,
@@ -29,6 +31,8 @@ import {
   toYmd,
 } from "@/lib/week-ending";
 import { payStatementsQueryKey } from "./payroll";
+
+const ALL_WEEKS = "all";
 
 const wagesSearchSchema = z.object({
   weekEnding: z.string().optional(),
@@ -64,14 +68,15 @@ function WagesList() {
     if (!weekend) return toYmd(new Date());
     return toYmd(getWeekEndingDate(new Date(), weekend.days, weekend.weekEndingDay));
   }, [weekendQuery.data]);
-  const weekInputValue = weekEndingSearch || defaultWeek;
-  const selectedWeek = statementId ? undefined : weekInputValue;
+  const isAllWeeks = weekEndingSearch === ALL_WEEKS;
+  const weekInputValue = isAllWeeks ? ALL_WEEKS : weekEndingSearch || defaultWeek;
+  const selectedWeek = statementId || isAllWeeks ? undefined : weekInputValue;
 
   function setWeek(next: string) {
     void navigate({
       search: (prev: { weekEnding?: string; statementId?: string }) => ({
         ...prev,
-        weekEnding: next || undefined,
+        weekEnding: next === ALL_WEEKS || !next ? ALL_WEEKS : next,
         statementId: undefined,
       }),
       replace: true,
@@ -150,7 +155,7 @@ function WagesList() {
       }
       return (await payStatementsService.list(params)).data;
     },
-    enabled: Boolean(statementId) || Boolean(selectedWeek),
+    enabled: Boolean(statementId) || isAllWeeks || Boolean(selectedWeek),
     placeholderData: keepPreviousData,
   });
 
@@ -185,7 +190,7 @@ function WagesList() {
   const exportMutation = useMutation({
     mutationFn: () =>
       payStatementsService.export({
-        weekEnding: weekInputValue,
+        weekEnding: selectedWeek ?? weekInputValue,
         customerId: customerId || undefined,
       }),
     onSuccess: (res) => {
@@ -237,6 +242,14 @@ function WagesList() {
         subtitle={`One sheet per operative per week · Week ending is ${weekLabel.toLowerCase()}`}
       />
 
+      <WagesSummaryCards
+        statementCount={listQuery.data?.statementCount ?? 0}
+        totalGross={listQuery.data?.totalGross ?? 0}
+        totalCisDeduction={listQuery.data?.totalCisDeduction ?? 0}
+        totalNet={listQuery.data?.totalNet ?? 0}
+        statusCounts={listQuery.data?.statusCounts ?? []}
+      />
+
       <div className="card-elevated overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2.5 sm:gap-3 sm:px-4">
           <div className="relative min-w-[12rem] flex-1 sm:max-w-xs">
@@ -250,13 +263,23 @@ function WagesList() {
               className="h-9 w-full rounded-md border border-input bg-background py-2 pl-8 pr-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
-          <input
-            type="date"
-            value={weekInputValue}
-            onChange={(e) => setWeek(e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-            aria-label="Week ending"
-          />
+          {weekendQuery.data ? (
+            <WageWeekSelect
+              value={weekInputValue}
+              onValueChange={setWeek}
+              allValue={ALL_WEEKS}
+              allLabel="All weeks"
+              weekendDays={weekendQuery.data.days}
+              weekEndingDay={weekendQuery.data.weekEndingDay}
+              disabled={Boolean(statementId)}
+              className="w-full min-w-[14rem] sm:w-64"
+              triggerClassName="h-9"
+            />
+          ) : (
+            <div className="flex h-9 min-w-[14rem] items-center rounded-md border border-input bg-background px-3 text-sm text-muted-foreground sm:w-64">
+              Loading weeks…
+            </div>
+          )}
           {statementId ? (
             <Button type="button" variant="outline" size="sm" onClick={clearStatementFilter}>
               Clear statement filter
@@ -340,7 +363,7 @@ function WagesList() {
                 variant="outline"
                 size="sm"
                 className="h-9"
-                disabled={exportMutation.isPending || totalCount === 0}
+                disabled={exportMutation.isPending || totalCount === 0 || isAllWeeks}
                 onClick={() => exportMutation.mutate()}
               >
                 {exportMutation.isPending ? (
@@ -386,7 +409,12 @@ function WagesList() {
                       <Link
                         to="/wages/$id"
                         params={{ id }}
-                        search={{ weekEnding: weekInputValue }}
+                        search={{
+                          weekEnding:
+                            weekInputValue === ALL_WEEKS
+                              ? w.weekEnding.slice(0, 10)
+                              : weekInputValue,
+                        }}
                         className="font-mono text-xs font-medium hover:text-info"
                       >
                         {invoiceNo(w.invoiceNumber)}

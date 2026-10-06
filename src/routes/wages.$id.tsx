@@ -8,13 +8,12 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Send, Check, X, Banknote, Loader2, MessageSquare, CalendarDays, User } from "lucide-react";
 import { toast } from "sonner";
-import { fmtGBPp } from "@/lib/data";
-import { payStatementsService, type ApiPayStatementDetail, type ApiPayStatementDay } from "@/lib/api/services/pay-statements";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermission } from "@/components/Permission";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { isOperativePortalUser } from "@/lib/operative-portal";
+import { payStatementsService, type ApiPayStatementDetail, type ApiPayStatementDay } from "@/lib/api/services/pay-statements";
 import {
   formatUkDate,
   formatWageSheetDayMonth,
@@ -23,6 +22,13 @@ import {
 } from "@/lib/week-ending";
 import { payStatementsQueryKey } from "./payroll";
 
+/** Plain amount for tables when £ / % sits on the heading. */
+function fmtAmount(n: number) {
+  return new Intl.NumberFormat("en-GB", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n);
+}
 const wageDetailSearchSchema = z.object({
   from: z.enum(["payroll", "operative", "operative-me", "reports-wages"]).optional(),
   operativeId: z.string().optional(),
@@ -257,20 +263,20 @@ function WageSheetView() {
             <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-2 text-left">Date</th>
-                <th className="px-3 py-2 text-right">Price work</th>
+                <th className="px-3 py-2 text-right">Price work £</th>
                 <th className="px-3 py-2 text-left">Daily rate</th>
-                <th className="px-3 py-2 text-right">Top-up</th>
-                <th className="px-4 py-2 text-right">Day pay</th>
+                <th className="px-3 py-2 text-right">Top-up £</th>
+                <th className="px-4 py-2 text-right">Day pay £</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {w.days.map((day: ApiPayStatementDay) => (
                 <tr key={day.id}>
                   <td className="px-4 py-2">{formatUkDate(day.workDate)}</td>
-                  <td className="px-3 py-2 text-right font-mono">{fmtGBPp(day.priceWork)}</td>
+                  <td className="px-3 py-2 text-right font-mono">{fmtAmount(day.priceWork)}</td>
                   <td className="px-3 py-2">{day.isDailyTicked ? "Yes" : "No"}</td>
-                  <td className="px-3 py-2 text-right font-mono">{fmtGBPp(day.topUp)}</td>
-                  <td className="px-4 py-2 text-right font-mono font-medium">{fmtGBPp(day.dayPay)}</td>
+                  <td className="px-3 py-2 text-right font-mono">{fmtAmount(day.topUp)}</td>
+                  <td className="px-4 py-2 text-right font-mono font-medium">{fmtAmount(day.dayPay)}</td>
                 </tr>
               ))}
             </tbody>
@@ -433,8 +439,8 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
               <th className="border border-slate-300 px-2.5 py-2 text-left font-semibold">
                 Task
               </th>
-              <th className="w-24 border border-slate-300 px-2.5 py-2 text-right font-semibold">
-                Amount
+              <th className="w-28 border border-slate-300 px-2.5 py-2 text-right font-semibold">
+                Amount £
               </th>
             </tr>
           </thead>
@@ -457,7 +463,7 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
                   ) : null}
                 </td>
                 <td className="border border-slate-200 px-2.5 py-2 text-right tabular-nums text-black">
-                  {fmtGBPp(line.amount)}
+                  {fmtAmount(line.amount)}
                 </td>
               </tr>
             ))}
@@ -466,32 +472,32 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
 
         {/* Section 3 — totals, signature, footer */}
         <div className="mt-3 flex justify-end">
-          <table className="w-52 border-collapse text-[14.5px]">
+          <table className="w-56 border-collapse text-[14.5px]">
             <tbody>
               <tr className="bg-slate-50">
-                <td className="border border-slate-200 px-2.5 py-1.5 text-black">Gross Pay</td>
+                <td className="border border-slate-200 px-2.5 py-1.5 text-black">Gross Pay £</td>
                 <td className="border border-slate-200 px-2.5 py-1.5 text-right tabular-nums text-black">
-                  {fmtGBPp(w.gross)}
+                  {fmtAmount(w.gross)}
                 </td>
               </tr>
               <tr className="bg-white">
-                <td className="border border-slate-200 px-2.5 py-1.5 text-black">CIS Rate</td>
+                <td className="border border-slate-200 px-2.5 py-1.5 text-black">CIS Rate %</td>
                 <td className="border border-slate-200 px-2.5 py-1.5 text-right tabular-nums text-black">
-                  {w.cisRate}%
+                  {w.cisRate}
                 </td>
               </tr>
               <tr className="bg-slate-50">
-                <td className="border border-slate-200 px-2.5 py-1.5 text-black">CIS Tax</td>
+                <td className="border border-slate-200 px-2.5 py-1.5 text-black">CIS Tax £</td>
                 <td className="border border-slate-200 px-2.5 py-1.5 text-right tabular-nums text-black">
-                  −{fmtGBPp(w.cisDeduction)}
+                  −{fmtAmount(w.cisDeduction)}
                 </td>
               </tr>
               <tr style={{ backgroundColor: "#e8f5e9" }}>
                 <td className="border border-slate-200 px-2.5 py-2 font-bold text-black">
-                  Net Pay
+                  Net Pay £
                 </td>
                 <td className="border border-slate-200 px-2.5 py-2 text-right font-bold tabular-nums text-black">
-                  {fmtGBPp(w.net)}
+                  {fmtAmount(w.net)}
                 </td>
               </tr>
             </tbody>

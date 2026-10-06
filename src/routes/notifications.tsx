@@ -124,7 +124,6 @@ function NotificationsPage() {
     <div className="space-y-4">
       <PageHeader
         title="Notifications"
-        subtitle="Stay updated on approvals, statements, and tasks."
         actions={
           <Button
             type="button"
@@ -163,23 +162,39 @@ function NotificationsPage() {
             ) : null}
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div
+            className="inline-flex h-9 items-center gap-0.5 rounded-lg border border-border bg-muted p-1"
+            role="tablist"
+            aria-label="Filter notifications"
+          >
             {tabs.map((t) => (
               <button
                 key={t.id}
                 type="button"
+                role="tab"
+                aria-selected={tab === t.id}
                 onClick={() => {
                   setTab(t.id);
                   setPage(1);
                 }}
                 className={cn(
-                  "rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm",
+                  "inline-flex h-full items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors",
                   tab === t.id
-                    ? "bg-accent text-accent-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {t.label} ({t.count})
+                {t.label}
+                <span
+                  className={cn(
+                    "rounded px-1.5 py-0.5 text-[11px] tabular-nums leading-none",
+                    tab === t.id
+                      ? "bg-accent/15 text-accent"
+                      : "bg-background/80 text-muted-foreground",
+                  )}
+                >
+                  {t.count}
+                </span>
               </button>
             ))}
           </div>

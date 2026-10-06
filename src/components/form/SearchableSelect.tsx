@@ -71,6 +71,8 @@ export interface SearchableSelectProps {
   }) => ReactElement;
   /** Extra classes for the dropdown panel (e.g. fixed width with a custom trigger). */
   contentClassName?: string;
+  /** Extra classes for the scrollable options list (default max-h-64). */
+  listClassName?: string;
   /** Truncate option labels in the list (default true). Set false to show full names. */
   truncateOptions?: boolean;
   /** Popover alignment relative to the trigger. Defaults to "start". */
@@ -100,6 +102,7 @@ export function SearchableSelect({
   invalid,
   renderTrigger,
   contentClassName,
+  listClassName,
   truncateOptions = true,
   contentAlign = "start",
 }: SearchableSelectProps) {
@@ -271,7 +274,7 @@ export function SearchableSelect({
               <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
             ) : null}
           </div>
-          <ul className="max-h-64 list-none overflow-y-auto p-0">
+          <ul className={cn("max-h-64 list-none overflow-y-auto p-0", listClassName)}>
             {options.length === 0 ? (
               <li className="px-3 py-2 text-sm text-muted-foreground">
                 {optionsQuery.isLoading || initialQuery.isLoading ? "Loading…" : "No results found"}

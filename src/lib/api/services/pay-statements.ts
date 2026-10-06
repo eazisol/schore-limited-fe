@@ -1,5 +1,6 @@
 import { http } from "@/lib/api/axios";
 import type { ApiEnvelope } from "./auth";
+import type { ApiWagesStatusCount } from "./reports";
 import type { PagedResult } from "./users";
 
 export interface ApiPayStatementSummary {
@@ -29,6 +30,14 @@ export interface ApiPayStatementSummary {
   rejectDate: string | null;
   refusalReason: string | null;
   paidDate: string | null;
+}
+
+export interface ApiPayStatementListResult extends PagedResult<ApiPayStatementSummary> {
+  statementCount: number;
+  totalGross: number;
+  totalCisDeduction: number;
+  totalNet: number;
+  statusCounts: ApiWagesStatusCount[];
 }
 
 export interface ApiPayStatementDay {
@@ -137,7 +146,7 @@ const listQuery = (params: PayStatementListParams) => ({
 
 export const payStatementsService = {
   list: (params: PayStatementListParams = {}) =>
-    http.get<ApiEnvelope<PagedResult<ApiPayStatementSummary>>>("pay-statements", {
+    http.get<ApiEnvelope<ApiPayStatementListResult>>("pay-statements", {
       params: listQuery(params),
     }),
   get: (id: string) =>
@@ -164,7 +173,7 @@ export const payStatementsService = {
   respond: (id: string, payload: { accepted: boolean; reason?: string }) =>
     http.post<ApiEnvelope<ApiPayStatementDetail>>(`pay-statements/${id}/respond`, payload),
   listMine: (params: PayStatementListParams = {}) =>
-    http.get<ApiEnvelope<PagedResult<ApiPayStatementSummary>>>("operatives/me/statements", {
+    http.get<ApiEnvelope<ApiPayStatementListResult>>("operatives/me/statements", {
       params: listQuery(params),
     }),
   getMine: (id: string) =>

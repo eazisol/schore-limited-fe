@@ -27,6 +27,160 @@ export function getWeekEndingDate(
   return cursor;
 }
 
+/** Matches backend WeekendCalendar.GetWeekStart. */
+export function getWeekStartDate(
+  weekEnding: Date,
+  weekendDays: number[],
+  weekEndingDay: number,
+): Date {
+  let cursor = new Date(weekEnding.getFullYear(), weekEnding.getMonth(), weekEnding.getDate());
+  while (true) {
+    const previous = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() - 1);
+    const previousEnding = getWeekEndingDate(previous, weekendDays, weekEndingDay);
+    if (toYmd(previousEnding) !== toYmd(weekEnding)) {
+      return cursor;
+    }
+    cursor = previous;
+  }
+}
+
+export type CompleteWeekOption = {
+  weekEnding: string;
+  weekStart: string;
+  label: string;
+};
+
+const MONTH_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+export const MONTH_OPTIONS = MONTH_SHORT.map((label, index) => ({
+  value: String(index + 1),
+  label,
+}));
+
+/** e.g. 22 Dec 2025 */
+export function formatUkDateMonthText(isoDate: string | null | undefined): string {
+  if (!isoDate) return "—";
+  const [y, m, d] = isoDate.slice(0, 10).split("-");
+  if (!y || !m || !d) return isoDate;
+  const month = MONTH_SHORT[Number(m) - 1];
+  if (!month) return `${d}/${m}/${y}`;
+  return `${Number(d)} ${month} ${y}`;
+}
+
+/** Readable week range: 22 Dec 2025 – 26 Dec 2025 (or 22 – 26 Dec 2025 when same month/year). */
+export function formatWeekRangeMonthText(
+  weekStart: string | null | undefined,
+  weekEnding: string | null | undefined,
+): string {
+  if (!weekStart || !weekEnding) return "—";
+  const [sy, sm, sd] = weekStart.slice(0, 10).split("-");
+  const [ey, em, ed] = weekEnding.slice(0, 10).split("-");
+  if (!sy || !sm || !sd || !ey || !em || !ed) {
+    return `${formatUkDateMonthText(weekStart)} – ${formatUkDateMonthText(weekEnding)}`;
+  }
+  const startMonth = MONTH_SHORT[Number(sm) - 1];
+  const endMonth = MONTH_SHORT[Number(em) - 1];
+  if (!startMonth || !endMonth) {
+    return `${formatUkDateMonthText(weekStart)} – ${formatUkDateMonthText(weekEnding)}`;
+  }
+  if (sy === ey && sm === em) {
+    return `${Number(sd)} – ${Number(ed)} ${endMonth} ${ey}`;
+  }
+  if (sy === ey) {
+    return `${Number(sd)} ${startMonth} – ${Number(ed)} ${endMonth} ${ey}`;
+  }
+  return `${Number(sd)} ${startMonth} ${sy} – ${Number(ed)} ${endMonth} ${ey}`;
+}
+
+function toWeekOption(
+  weekStart: string,
+  weekEnding: string,
+): CompleteWeekOption {
+  return {
+    weekEnding,
+    weekStart,
+    label: formatWeekRangeMonthText(weekStart, weekEnding),
+  };
+}
+
+/** Recent complete weeks from holidays weekend / week-ending day config. */
+export function buildCompleteWeekOptions(
+  weekendDays: number[],
+  weekEndingDay: number,
+  count = 52,
+  fromDate: Date = new Date(),
+): CompleteWeekOption[] {
+  const options: CompleteWeekOption[] = [];
+  let ending = getWeekEndingDate(fromDate, weekendDays, weekEndingDay);
+  for (let i = 0; i < count; i++) {
+    const start = getWeekStartDate(ending, weekendDays, weekEndingDay);
+    options.push(toWeekOption(toYmd(start), toYmd(ending)));
+    ending = new Date(ending.getFullYear(), ending.getMonth(), ending.getDate() - 7);
+  }
+  return options;
+}
+
+/**
+ * Complete weeks that overlap the given calendar month (1–12),
+ * based on holidays weekend / week-ending day.
+ */
+export function buildWeeksForMonthYear(
+  year: number,
+  month: number,
+  weekendDays: number[],
+  weekEndingDay: number,
+): CompleteWeekOption[] {
+  if (month < 1 || month > 12) return [];
+  const first = new Date(year, month - 1, 1);
+  const last = new Date(year, month, 0);
+  let ending = getWeekEndingDate(first, weekendDays, weekEndingDay);
+  // Step back so a week ending early in the month (starting prior month) is included.
+  ending = new Date(ending.getFullYear(), ending.getMonth(), ending.getDate() - 7);
+
+  const options: CompleteWeekOption[] = [];
+  for (let i = 0; i < 10; i++) {
+    const start = getWeekStartDate(ending, weekendDays, weekEndingDay);
+    if (ending >= first && start <= last) {
+      options.push(toWeekOption(toYmd(start), toYmd(ending)));
+    }
+    if (start > last) break;
+    ending = new Date(ending.getFullYear(), ending.getMonth(), ending.getDate() + 7);
+  }
+  return options.sort((a, b) => b.weekEnding.localeCompare(a.weekEnding));
+}
+
+/** All complete weeks whose week-ending falls in the given year. */
+export function buildWeeksForYear(
+  year: number,
+  weekendDays: number[],
+  weekEndingDay: number,
+): CompleteWeekOption[] {
+  const options: CompleteWeekOption[] = [];
+  for (let month = 12; month >= 1; month--) {
+    options.push(...buildWeeksForMonthYear(year, month, weekendDays, weekEndingDay));
+  }
+  // Dedupe by weekEnding (month boundaries can overlap).
+  const seen = new Set<string>();
+  return options.filter((w) => {
+    if (seen.has(w.weekEnding)) return false;
+    seen.add(w.weekEnding);
+    return true;
+  });
+}
+
 export function formatUkDate(isoDate: string | null | undefined): string {
   if (!isoDate) return "—";
   const [y, m, d] = isoDate.slice(0, 10).split("-");
