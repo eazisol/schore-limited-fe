@@ -410,6 +410,7 @@ export function ProjectEntityForm({
   lockCustomer = false,
   lockSite = false,
   gateChildSelectOnParent = true,
+  autoSelectFirstChild = false,
   submitLabel,
   allowSaveAndClose = false,
   onCancel,
@@ -426,6 +427,8 @@ export function ProjectEntityForm({
   lockCustomer?: boolean;
   lockSite?: boolean;
   gateChildSelectOnParent?: boolean;
+  /** Site Manager free-nav: when Client changes, auto-pick first Site. */
+  autoSelectFirstChild?: boolean;
   submitLabel?: string;
   allowSaveAndClose?: boolean;
   onCancel: () => void;
@@ -491,6 +494,7 @@ export function ProjectEntityForm({
         lockCustomer={lockCustomer}
         lockSite={lockSite}
         gateChildSelectOnParent={gateChildSelectOnParent}
+        autoSelectFirstChild={autoSelectFirstChild}
         customerSelectedLabel={customerSelectedLabel}
         siteSelectedLabel={siteSelectedLabel}
         assigneeSelectedLabels={assigneeSelectedLabels}
@@ -527,6 +531,7 @@ export function PropertyEntityForm({
   lockSite = false,
   lockProject = false,
   gateChildSelectOnParent = true,
+  autoSelectFirstChild = false,
   submitLabel,
   allowSaveAndClose = false,
   onCancel,
@@ -544,6 +549,8 @@ export function PropertyEntityForm({
   lockSite?: boolean;
   lockProject?: boolean;
   gateChildSelectOnParent?: boolean;
+  /** Site Manager free-nav: when Client/Site changes, auto-pick first child. */
+  autoSelectFirstChild?: boolean;
   submitLabel?: string;
   allowSaveAndClose?: boolean;
   onCancel: () => void;
@@ -609,6 +616,7 @@ export function PropertyEntityForm({
         lockSite={lockSite}
         lockProject={lockProject}
         gateChildSelectOnParent={gateChildSelectOnParent}
+        autoSelectFirstChild={autoSelectFirstChild}
         customerSelectedLabel={customerSelectedLabel}
         siteSelectedLabel={siteSelectedLabel}
         projectSelectedLabel={projectSelectedLabel}

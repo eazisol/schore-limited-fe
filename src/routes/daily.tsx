@@ -28,12 +28,15 @@ import {
   dailyProgrammeService,
   type ApiDailyClientExport,
   type ApiDailyClientExportBulk,
+  type ApiDailyProgramme,
   type ApiDailyRow,
 } from "@/lib/api/services/daily-programme";
+import { DailyExportModal } from "@/components/daily/DailyExportModal";
 import { tasksService, type ApiTaskItem } from "@/lib/api/services/tasks";
 import { propertiesService } from "@/lib/api/services/properties";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { Can, usePermission } from "@/components/Permission";
+import { usePermissions } from "@/contexts/PermissionContext";
 import { DAILY_ROUTE } from "@/lib/daily";
 import { truncateWithEllipsis } from "@/lib/module-ui";
 import { fmtGBP } from "@/lib/data";
@@ -88,17 +91,16 @@ const CLIENT_EXPORT_HEADERS = [
   "Property type",
   "Client",
   "Status",
-  "Reason",
+  "Notes",
   "Operative",
   "Trade",
   "Task",
   "Attendance period",
-  "Notes",
 ] as const;
 
 function buildClientExportRows(data: ApiDailyClientExport, exportDateLabel: string) {
   const status = data.status ?? "";
-  const reason = data.reason ?? "";
+  const notes = data.reason ?? "";
   if (data.lines.length > 0) {
     return data.lines.map((line) => [
       exportDateLabel,
@@ -109,12 +111,11 @@ function buildClientExportRows(data: ApiDailyClientExport, exportDateLabel: stri
       data.propertyType,
       data.client,
       status,
-      reason,
+      notes,
       line.operativeName,
       line.trade,
       line.task,
       line.attendancePeriod,
-      line.notes ?? "",
     ]);
   }
 
@@ -128,8 +129,7 @@ function buildClientExportRows(data: ApiDailyClientExport, exportDateLabel: stri
       data.propertyType,
       data.client,
       status,
-      reason,
-      "",
+      notes,
       "",
       "",
       "",
@@ -151,7 +151,6 @@ function downloadClientNextDayBulkCsv(data: ApiDailyClientExportBulk) {
     rows,
   });
 }
-
 
 function matchesSearch(row: ApiDailyRow, search: string) {
   if (!search) return true;
@@ -199,6 +198,8 @@ function Daily() {
   const hasPropertyFilter = filterPropertyId.length > 0;
   const hasTaskFilter = filterTaskId.length > 0;
   const canModifyDaily = usePermission({ route: DAILY_ROUTE, action: "modify" });
+  const { access } = usePermissions();
+  const isSiteManager = Boolean(access?.isSiteManager);
   const [date, setDate] = useState(() => dateSearch?.trim() || todayIso());
   const [showHO, setShowHO] = useState(false);
   const [confirmRoll, setConfirmRoll] = useState(false);
@@ -211,6 +212,7 @@ function Daily() {
   const [propertyLabel, setPropertyLabel] = useState<string | null>(null);
   const [statusId, setStatusId] = useState("");
   const [statusLabel, setStatusLabel] = useState<string | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const [exportingBulk, setExportingBulk] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const filterStatusId = statusId.trim();
@@ -231,6 +233,19 @@ function Daily() {
     }
   }, [dateSearch]);
 
+  // Drop stale project tab param for Site Managers (merged view only).
+  useEffect(() => {
+    if (!isSiteManager || !projectIdSearch) return;
+    void navigate({
+      to: "/daily",
+      search: (prev) => {
+        const { projectId: _drop, ...rest } = prev;
+        return rest;
+      },
+      replace: true,
+    });
+  }, [isSiteManager, projectIdSearch, navigate]);
+
   const query = useQuery({
     queryKey: [
       ...dailyQueryKey,
@@ -238,25 +253,81 @@ function Daily() {
       showHO,
       hasPropertyFilter ? filterPropertyId : null,
       hasStatusFilter ? filterStatusId : null,
-      projectIdSearch ?? null,
+      isSiteManager ? "sm-merged" : (projectIdSearch ?? null),
     ],
-    queryFn: async () =>
-      (
+    queryFn: async () => {
+      const baseParams = {
+        date,
+        showHandedOver: showHO,
+        // Checkbox mode is exclusive — don't AND with status dropdown.
+        propertyId: hasPropertyFilter ? filterPropertyId : undefined,
+        statusId:
+          showHO || isOverdueFilter
+            ? undefined
+            : hasStatusFilter
+              ? filterStatusId
+              : undefined,
+        overdueOnly: !showHO && isOverdueFilter,
+      };
+
+      // Site Manager: never filter by project tab — load merged list.
+      if (isSiteManager) {
+        const first = (await dailyProgrammeService.get(baseParams)).data;
+        if (!first) return first;
+
+        // New backend (SeparateProjectViews=false): rows already merged.
+        if (!first.requireProjectSelection && !first.separateProjectViews) {
+          return {
+            ...first,
+            separateProjectViews: false,
+            requireProjectSelection: false,
+            assignedProjects: [],
+          } satisfies ApiDailyProgramme;
+        }
+
+        // Old backend still forces per-project views: fetch every assigned
+        // project and merge so SM sees data without the pills.
+        const projects = first.assignedProjects ?? [];
+        if (projects.length === 0) return first;
+
+        const parts = (
+          await Promise.all(
+            projects.map(
+              async (project) =>
+                (
+                  await dailyProgrammeService.get({
+                    ...baseParams,
+                    projectId: project.id,
+                  })
+                ).data,
+            ),
+          )
+        ).filter((part): part is ApiDailyProgramme => part != null);
+        const rows = parts.flatMap((part) => part.rows ?? []);
+        const seed = parts[0] ?? first;
+        return {
+          ...seed,
+          separateProjectViews: false,
+          requireProjectSelection: false,
+          selectedProjectId: null,
+          assignedProjects: [],
+          rows,
+          inProgressCount: parts.reduce((sum, part) => sum + (part.inProgressCount ?? 0), 0),
+          onHoldCount: parts.reduce((sum, part) => sum + (part.onHoldCount ?? 0), 0),
+          operativesOnSiteCount: parts.reduce(
+            (sum, part) => sum + (part.operativesOnSiteCount ?? 0),
+            0,
+          ),
+        } satisfies ApiDailyProgramme;
+      }
+
+      return (
         await dailyProgrammeService.get({
-          date,
-          showHandedOver: showHO,
-          // Checkbox mode is exclusive — don't AND with status dropdown.
-          propertyId: hasPropertyFilter ? filterPropertyId : undefined,
-          statusId:
-            showHO || isOverdueFilter
-              ? undefined
-              : hasStatusFilter
-                ? filterStatusId
-                : undefined,
-          overdueOnly: !showHO && isOverdueFilter,
+          ...baseParams,
           projectId: projectIdSearch || undefined,
         })
-      ).data,
+      ).data;
+    },
     placeholderData: keepPreviousData,
   });
 
@@ -710,7 +781,11 @@ function Daily() {
   }
 
   const assignedProjects = query.data?.assignedProjects ?? [];
-  const showProjectSwitcher = (query.data?.separateProjectViews ?? false) && assignedProjects.length > 0;
+  // Site Manager: never show project pills (BT / B1C2 / CD3…).
+  const showProjectSwitcher =
+    !isSiteManager &&
+    (query.data?.separateProjectViews ?? false) &&
+    assignedProjects.length > 0;
 
   return (
     <div className="space-y-4">
@@ -738,7 +813,7 @@ function Daily() {
           })}
         </div>
       ) : null}
-      {query.data?.requireProjectSelection && !projectIdSearch ? (
+      {!isSiteManager && query.data?.requireProjectSelection && !projectIdSearch ? (
         <p className="text-sm text-muted-foreground">
           Select a project to see its properties. Site Managers do not get a merged view across projects.
         </p>
@@ -923,6 +998,15 @@ function Daily() {
               )}
               Export
             </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setExportOpen(true)}
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export Excel
+            </Button>
           </div>
         }
         emptyState={{
@@ -1021,6 +1105,12 @@ function Daily() {
           }}
         />
       ) : null}
+
+      <DailyExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        defaultDate={date}
+      />
     </div>
   );
 }

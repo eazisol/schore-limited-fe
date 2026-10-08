@@ -66,6 +66,42 @@ export interface UpdateEmailSettingsPayload {
   isActive: boolean;
 }
 
+/* ─── Dedicated Branding settings API ─── */
+
+export interface BrandingSettings {
+  /** Null/undefined until branding is saved once. */
+  id?: string | null;
+  companyName: string;
+  logo: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  zipCode: string;
+  phone: string;
+  email: string;
+  website: string;
+  isActive: boolean;
+  createdBy?: number | null;
+  createdDate?: string;
+  editBy?: number | null;
+  editDate?: string | null;
+}
+
+export interface UpdateBrandingSettingsPayload {
+  companyName: string;
+  logo: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  zipCode: string;
+  phone: string;
+  email: string;
+  website: string;
+  isActive: boolean;
+}
+
 export const settingsService = {
   list: () => http.get<ApiEnvelope<ApiSetting[]>>("Settings"),
   get: (id: string) =>
@@ -81,4 +117,9 @@ export const settingsService = {
   getEmail: () => http.get<ApiEnvelope<EmailSettings>>("Settings/email"),
   updateEmail: (payload: UpdateEmailSettingsPayload) =>
     http.put<ApiEnvelope<EmailSettings>>("Settings/email", payload),
+
+  /** Dedicated company branding endpoints (CEO only). */
+  getBranding: () => http.get<ApiEnvelope<BrandingSettings>>("Settings/branding"),
+  updateBranding: (payload: UpdateBrandingSettingsPayload) =>
+    http.put<ApiEnvelope<BrandingSettings>>("Settings/branding", payload),
 };

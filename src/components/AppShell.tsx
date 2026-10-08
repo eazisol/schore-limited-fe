@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { ROLE_BADGE, type UserRole } from "@/lib/users-store";
 import { buildNavMenus } from "@/lib/authorization";
+import { useCompanyBranding } from "@/lib/branding";
 import { NavSidebarMenu } from "@/components/nav/NavSidebarMenu";
 import type { ApiMenu } from "@/lib/api/services/auth";
 import { RoutePermissionGuard } from "@/components/Permission";
@@ -163,6 +164,8 @@ function AppShellChrome({
   const { setOpenMobile, state, isMobile, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed" && !isMobile;
   const navMenus = buildNavMenus(menus);
+  const brandingQuery = useCompanyBranding();
+  const logoUrl = brandingQuery.data?.logo?.trim() || "";
 
   useEffect(() => {
     const scrollToTop = () => {
@@ -196,9 +199,18 @@ function AppShellChrome({
       <Sidebar collapsible="icon">
         <SidebarHeader className="border-b border-sidebar-border h-16 justify-center">
           <div className={cn("flex items-center gap-2.5 px-2", collapsed && "justify-center px-0")}>
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground">
-              <HardHat className="h-5 w-5" />
-            </div>
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt=""
+                className="h-9 w-9 shrink-0 rounded-md object-contain"
+              />
+            ) : (
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground">
+                <HardHat className="h-5 w-5" />
+              </div>
+            )}
+         
             <div
               className={cn(
                 "leading-tight min-w-0 transition-opacity duration-200",

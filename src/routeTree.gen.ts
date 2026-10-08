@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AllocationRouteImport } from './routes/allocation'
+import { Route as BrandingRouteImport } from './routes/branding'
 import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as CertificationLevelsRouteImport } from './routes/certification-levels'
 import { Route as CertificationTypesRouteImport } from './routes/certification-types'
@@ -123,6 +124,11 @@ const IndexRoute = IndexRouteImport.update({
 const AllocationRoute = AllocationRouteImport.update({
   id: '/allocation',
   path: '/allocation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrandingRoute = BrandingRouteImport.update({
+  id: '/branding',
+  path: '/branding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CategoriesRoute = CategoriesRouteImport.update({
@@ -644,6 +650,7 @@ const ItemsIdEditRoute = ItemsIdEditRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/allocation': typeof AllocationRoute
+  '/branding': typeof BrandingRoute
   '/categories': typeof CategoriesRoute
   '/certification-levels': typeof CertificationLevelsRoute
   '/certification-types': typeof CertificationTypesRoute
@@ -751,6 +758,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/allocation': typeof AllocationRoute
+  '/branding': typeof BrandingRoute
   '/categories': typeof CategoriesRoute
   '/certification-levels': typeof CertificationLevelsRoute
   '/certification-types': typeof CertificationTypesRoute
@@ -841,6 +849,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/allocation': typeof AllocationRoute
+  '/branding': typeof BrandingRoute
   '/categories': typeof CategoriesRoute
   '/certification-levels': typeof CertificationLevelsRoute
   '/certification-types': typeof CertificationTypesRoute
@@ -950,6 +959,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/allocation'
+    | '/branding'
     | '/categories'
     | '/certification-levels'
     | '/certification-types'
@@ -1057,6 +1067,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/allocation'
+    | '/branding'
     | '/categories'
     | '/certification-levels'
     | '/certification-types'
@@ -1146,6 +1157,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/allocation'
+    | '/branding'
     | '/categories'
     | '/certification-levels'
     | '/certification-types'
@@ -1254,6 +1266,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AllocationRoute: typeof AllocationRoute
+  BrandingRoute: typeof BrandingRoute
   CategoriesRoute: typeof CategoriesRoute
   CertificationLevelsRoute: typeof CertificationLevelsRoute
   CertificationTypesRoute: typeof CertificationTypesRoute
@@ -1320,6 +1333,13 @@ declare module '@tanstack/react-router' {
       path: '/allocation'
       fullPath: '/allocation'
       preLoaderRoute: typeof AllocationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/branding': {
+      id: '/branding'
+      path: '/branding'
+      fullPath: '/branding'
+      preLoaderRoute: typeof BrandingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/categories': {
@@ -2331,6 +2351,7 @@ const WagesRouteWithChildren = WagesRoute._addFileChildren(WagesRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AllocationRoute: AllocationRoute,
+  BrandingRoute: BrandingRoute,
   CategoriesRoute: CategoriesRoute,
   CertificationLevelsRoute: CertificationLevelsRoute,
   CertificationTypesRoute: CertificationTypesRoute,

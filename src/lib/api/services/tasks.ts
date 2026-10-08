@@ -163,6 +163,8 @@ export interface TaskListParams {
   statusId?: string;
   jobTypeId?: string;
   customerId?: string;
+  siteId?: string;
+  projectId?: string;
   operativeId?: string;
   sortBy?: string;
   sortDir?: "asc" | "desc";
@@ -177,6 +179,8 @@ function listQuery(params: TaskListParams) {
     ...(params.statusId != null ? { StatusId: params.statusId } : {}),
     ...(params.jobTypeId != null ? { JobTypeId: params.jobTypeId } : {}),
     ...(params.customerId != null ? { CustomerId: params.customerId } : {}),
+    ...(params.siteId != null ? { SiteId: params.siteId } : {}),
+    ...(params.projectId != null ? { ProjectId: params.projectId } : {}),
     ...(params.operativeId != null ? { OperativeId: params.operativeId } : {}),
     ...(params.sortBy ? { SortBy: params.sortBy } : {}),
     ...(params.sortDir ? { SortDir: params.sortDir } : {}),

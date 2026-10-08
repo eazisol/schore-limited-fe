@@ -82,6 +82,13 @@ export interface ApiPayStatementDetail extends ApiPayStatementSummary {
   paidByName: string | null;
   paidNote: string | null;
   paidReferenceFilePath: string | null;
+  /** Office / sender PNG data URL. Required before send. */
+  senderSignatureData: string | null;
+  senderSignedAt: string | null;
+  senderSignedByName: string | null;
+  /** Operative PNG data URL. Required before accept. */
+  operativeSignatureData: string | null;
+  operativeSignedAt: string | null;
   days: ApiPayStatementDay[];
   lines: ApiPayStatementLine[];
 }
@@ -172,6 +179,18 @@ export const payStatementsService = {
     }),
   respond: (id: string, payload: { accepted: boolean; reason?: string }) =>
     http.post<ApiEnvelope<ApiPayStatementDetail>>(`pay-statements/${id}/respond`, payload),
+  saveSenderSignature: (id: string, signatureData: string) =>
+    http.put<ApiEnvelope<ApiPayStatementDetail>>(`pay-statements/${id}/signatures/sender`, {
+      signatureData,
+    }),
+  clearSenderSignature: (id: string) =>
+    http.delete<ApiEnvelope<ApiPayStatementDetail>>(`pay-statements/${id}/signatures/sender`),
+  saveOperativeSignature: (id: string, signatureData: string) =>
+    http.put<ApiEnvelope<ApiPayStatementDetail>>(`pay-statements/${id}/signatures/operative`, {
+      signatureData,
+    }),
+  clearOperativeSignature: (id: string) =>
+    http.delete<ApiEnvelope<ApiPayStatementDetail>>(`pay-statements/${id}/signatures/operative`),
   listMine: (params: PayStatementListParams = {}) =>
     http.get<ApiEnvelope<ApiPayStatementListResult>>("operatives/me/statements", {
       params: listQuery(params),

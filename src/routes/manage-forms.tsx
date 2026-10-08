@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
+import { BrandingColumn } from "@/components/manage-forms/BrandingColumn";
 import { DaySuggestionsColumn } from "@/components/manage-forms/DaySuggestionsColumn";
 import { HoldReasonsColumn } from "@/components/manage-forms/HoldReasonsColumn";
 import { JobTypesColumn } from "@/components/manage-forms/JobTypesColumn";
 import { ManageFormsLayoutProvider } from "@/components/manage-forms/manage-forms-layout";
 import { StatusesColumn } from "@/components/manage-forms/StatusesColumn";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { usePermissions } from "@/contexts/PermissionContext";
+import { hasCeoRole } from "@/lib/user-capabilities";
 
 export const Route = createFileRoute("/manage-forms")({
   head: () => ({ meta: [{ title: "Manage Forms | Schore" }] }),
@@ -19,6 +22,9 @@ const TAB_PANEL_CLASS =
   "mt-0 flex min-h-[28rem] min-w-0 flex-1 flex-col focus-visible:outline-none xl:min-h-0";
 
 function ManageFormsPage() {
+  const { access } = usePermissions();
+  const isCeo = hasCeoRole(access?.roleCodes);
+
   return (
     <div className="flex flex-col xl:h-[calc(100svh-5.5rem)] xl:min-h-0 xl:overflow-y-auto">
       <PageHeader title="Manage Forms" />
@@ -26,34 +32,44 @@ function ManageFormsPage() {
       <ManageFormsLayoutProvider layout="split">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <Tabs defaultValue="statuses" className="flex min-h-0 flex-1 flex-col gap-3">
-          <TabsList className="inline-flex h-auto w-full shrink-0 flex-row items-start justify-start gap-4 rounded-none border-b border-border bg-transparent p-0 pb-0">
-            <TabsTrigger value="statuses" className={TAB_TRIGGER_CLASS}>
-              Statuses
-            </TabsTrigger>
-            <TabsTrigger value="job-types" className={TAB_TRIGGER_CLASS}>
-              Property Types
-            </TabsTrigger>
-            <TabsTrigger value="day-suggestions" className={TAB_TRIGGER_CLASS}>
-              Day Suggestions
-            </TabsTrigger>
-            <TabsTrigger value="hold-reasons" className={TAB_TRIGGER_CLASS}>
-              Hold Reasons
-            </TabsTrigger>
-          </TabsList>
+            <TabsList className="inline-flex h-auto w-full shrink-0 flex-row items-start justify-start gap-4 rounded-none border-b border-border bg-transparent p-0 pb-0">
+              <TabsTrigger value="statuses" className={TAB_TRIGGER_CLASS}>
+                Statuses
+              </TabsTrigger>
+              <TabsTrigger value="job-types" className={TAB_TRIGGER_CLASS}>
+                Property Types
+              </TabsTrigger>
+              <TabsTrigger value="day-suggestions" className={TAB_TRIGGER_CLASS}>
+                Day Suggestions
+              </TabsTrigger>
+              <TabsTrigger value="hold-reasons" className={TAB_TRIGGER_CLASS}>
+                Hold Reasons
+              </TabsTrigger>
+              {isCeo ? (
+                <TabsTrigger value="branding" className={TAB_TRIGGER_CLASS}>
+                  Branding
+                </TabsTrigger>
+              ) : null}
+            </TabsList>
 
-          <TabsContent value="statuses" className={TAB_PANEL_CLASS}>
-            <StatusesColumn />
-          </TabsContent>
-          <TabsContent value="job-types" className={TAB_PANEL_CLASS}>
-            <JobTypesColumn />
-          </TabsContent>
-          <TabsContent value="day-suggestions" className={TAB_PANEL_CLASS}>
-            <DaySuggestionsColumn />
-          </TabsContent>
-          <TabsContent value="hold-reasons" className={TAB_PANEL_CLASS}>
-            <HoldReasonsColumn />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="statuses" className={TAB_PANEL_CLASS}>
+              <StatusesColumn />
+            </TabsContent>
+            <TabsContent value="job-types" className={TAB_PANEL_CLASS}>
+              <JobTypesColumn />
+            </TabsContent>
+            <TabsContent value="day-suggestions" className={TAB_PANEL_CLASS}>
+              <DaySuggestionsColumn />
+            </TabsContent>
+            <TabsContent value="hold-reasons" className={TAB_PANEL_CLASS}>
+              <HoldReasonsColumn />
+            </TabsContent>
+            {isCeo ? (
+              <TabsContent value="branding" className={TAB_PANEL_CLASS}>
+                <BrandingColumn />
+              </TabsContent>
+            ) : null}
+          </Tabs>
         </div>
       </ManageFormsLayoutProvider>
     </div>

@@ -21,6 +21,7 @@ import {
   buildOperativePortalMenus,
   isOperativeUserType,
 } from "@/lib/operative-portal";
+import { stripBrandingMenu } from "@/lib/branding";
 
 interface PermissionCache {
   userId: string | null;
@@ -126,11 +127,13 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
         });
       }
 
+      const menusForUser = stripBrandingMenu(nextMenus);
+
       if (requestId === requestIdRef.current) {
-        setMenus(nextMenus);
+        setMenus(menusForUser);
         setAccess(accessResponse);
       }
-      return nextMenus;
+      return menusForUser;
     } catch (nextError) {
       if (requestId === requestIdRef.current) {
         setError(nextError);

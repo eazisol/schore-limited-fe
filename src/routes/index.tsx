@@ -20,7 +20,6 @@ import {
   Plus,
   Building2,
   AlertTriangle,
-  Eye,
   Loader2,
   type LucideIcon,
 } from "lucide-react";
@@ -257,7 +256,7 @@ function Dashboard() {
                         <th className="px-3 py-2.5 text-left font-medium">Type</th>
                         <th className="px-3 py-2.5 text-left font-medium">Start</th>
                         <th className="whitespace-nowrap px-3 py-2.5 text-left font-medium">Status</th>
-                        <th className="px-4 py-2.5 text-right font-medium sm:px-5"> </th>
+                        <th className="px-4 py-2.5 text-right font-medium sm:px-5">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -287,10 +286,9 @@ function Dashboard() {
                             <StatusBadge status={row.statusName || row.statusCode} />
                           </td>
                           <td className="px-4 py-3 text-right sm:px-5">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 px-2"
+                            <button
+                              type="button"
+                              className="text-sm text-accent underline underline-offset-2 hover:text-accent/80"
                               onClick={() =>
                                 navigate({
                                   to: "/tasks/$id",
@@ -299,9 +297,8 @@ function Dashboard() {
                                 })
                               }
                             >
-                              <Eye className="h-4 w-4" />
-                              <span className="sr-only">View task</span>
-                            </Button>
+                              View
+                            </button>
                           </td>
                         </tr>
                       ))}

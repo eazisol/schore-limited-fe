@@ -7,7 +7,7 @@ import {
   type Ref,
 } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check, ChevronDown, Loader2, Plus, Search } from "lucide-react";
+import { Check, ChevronDown, Loader2, Plus, Search, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useDebouncedSearch } from "@/components/data-table";
@@ -243,8 +243,34 @@ export function SearchableSelect({
                 triggerClassName,
               )}
             >
-              <span className="truncate">{displayLabel || placeholder}</span>
-              <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              <span className="min-w-0 flex-1 truncate text-left">
+                {displayLabel || placeholder}
+              </span>
+              <span className="ml-2 flex shrink-0 items-center gap-0.5">
+                {clearable && rawValue ? (
+                  <span
+                    role="button"
+                    tabIndex={-1}
+                    aria-label={clearLabel}
+                    className="grid h-5 w-5 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (disabled) return;
+                      onValueChange("");
+                      onSelect?.(emptyOption ?? { value: "", label: clearLabel });
+                      setOpen(false);
+                    }}
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </span>
+                ) : null}
+                <ChevronDown className="h-4 w-4 opacity-50" />
+              </span>
             </button>
           )}
         </PopoverTrigger>

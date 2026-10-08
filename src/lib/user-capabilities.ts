@@ -5,6 +5,10 @@ export function isCeoRole(code?: string | null): boolean {
   return code?.trim().toUpperCase() === "CEO";
 }
 
+export function hasCeoRole(roleCodes?: string[] | null): boolean {
+  return roleCodes?.some((code) => isCeoRole(code)) ?? false;
+}
+
 export function sameCapabilityOverrides(
   left: ApiCapabilityOverride[],
   right: ApiCapabilityOverride[],

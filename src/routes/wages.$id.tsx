@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/AppShell";
 import { AppTooltip } from "@/components/AppTooltip";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { SignaturePadModal } from "@/components/wages/SignaturePadModal";
 import { ArrowLeft, Send, Check, X, Banknote, Loader2, MessageSquare, CalendarDays, User } from "lucide-react";
 import { toast } from "sonner";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
@@ -14,6 +15,8 @@ import { usePermission } from "@/components/Permission";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { isOperativePortalUser } from "@/lib/operative-portal";
 import { payStatementsService, type ApiPayStatementDetail, type ApiPayStatementDay } from "@/lib/api/services/pay-statements";
+import type { BrandingSettings } from "@/lib/api/services/settings";
+import { useCompanyBranding } from "@/lib/branding";
 import {
   formatUkDate,
   formatWageSheetDayMonth,
@@ -21,6 +24,44 @@ import {
   invoiceNo,
 } from "@/lib/week-ending";
 import { payStatementsQueryKey } from "./payroll";
+
+type SignatureSlot = "sender" | "operative";
+
+/** Fallback only when branding has never been configured. */
+const BRANDING_FALLBACK = {
+  companyName: "Schore Limited",
+  address: "Unit E, The Business Center, Faringdon Avenue,",
+  city: "Romford",
+  state: "Essex",
+  zipCode: "RM3 8EN",
+  phone: "07982138777",
+  email: "office@schore.co.uk",
+  website: "",
+} as const;
+
+function resolveWageBranding(raw: BrandingSettings | null | undefined) {
+  const configured = Boolean(raw?.companyName?.trim());
+  const companyName = raw?.companyName?.trim() || BRANDING_FALLBACK.companyName;
+  const address = raw?.address?.trim() || (configured ? "" : BRANDING_FALLBACK.address);
+  const city = raw?.city?.trim() || (configured ? "" : BRANDING_FALLBACK.city);
+  const state = raw?.state?.trim() || (configured ? "" : BRANDING_FALLBACK.state);
+  const zipCode = raw?.zipCode?.trim() || (configured ? "" : BRANDING_FALLBACK.zipCode);
+  const country = raw?.country?.trim() || "";
+  const phone = raw?.phone?.trim() || (configured ? "" : BRANDING_FALLBACK.phone);
+  const email = raw?.email?.trim() || (configured ? "" : BRANDING_FALLBACK.email);
+  const website = raw?.website?.trim() || "";
+
+  const locality = [city, state, zipCode, country].filter(Boolean).join(", ");
+  const contact = [phone, email, website].filter(Boolean).join(" · ");
+
+  return {
+    companyName,
+    companyNameUpper: companyName.toUpperCase(),
+    address,
+    locality,
+    contact,
+  };
+}
 
 /** Plain amount for tables when £ / % sits on the heading. */
 function fmtAmount(n: number) {
@@ -107,6 +148,7 @@ function WageSheetView() {
   const [refuseReason, setRefuseReason] = useState("");
   const [paidNote, setPaidNote] = useState("");
   const [paidOpen, setPaidOpen] = useState(false);
+  const [signatureSlot, setSignatureSlot] = useState<SignatureSlot | null>(null);
 
   const query = useQuery({
     queryKey: [...payStatementsQueryKey, "detail", id, isOffice ? "office" : "mine"],
@@ -161,6 +203,30 @@ function WageSheetView() {
     },
     onError: (err) => notifyApiError(err, "Failed to mark paid"),
   });
+  const saveSignatureMutation = useMutation({
+    mutationFn: ({ slot, dataUrl }: { slot: SignatureSlot; dataUrl: string }) =>
+      slot === "sender"
+        ? payStatementsService.saveSenderSignature(id, dataUrl)
+        : payStatementsService.saveOperativeSignature(id, dataUrl),
+    onSuccess: (res) => {
+      toast.success(res.message || "Signature saved");
+      setSignatureSlot(null);
+      invalidate();
+    },
+    onError: (err) => notifyApiError(err, "Failed to save signature"),
+  });
+  const clearSignatureMutation = useMutation({
+    mutationFn: (slot: SignatureSlot) =>
+      slot === "sender"
+        ? payStatementsService.clearSenderSignature(id)
+        : payStatementsService.clearOperativeSignature(id),
+    onSuccess: (res) => {
+      toast.success(res.message || "Signature removed");
+      setSignatureSlot(null);
+      invalidate();
+    },
+    onError: (err) => notifyApiError(err, "Failed to remove signature"),
+  });
 
   const w = query.data;
   const isOwner = w != null && user?.id === w.operativeId;
@@ -168,6 +234,13 @@ function WageSheetView() {
   const canResend = canModify && w?.statusCode === "SENT";
   const canRespond = isOwner && w?.statusCode === "SENT";
   const canMarkPaid = canModify && w?.statusCode === "ACCEPTED" && w.paymentStatusCode !== "PAID";
+  /** Office may add/edit/delete left signature only while Draft or Refused. */
+  const canEditSenderSignature =
+    canModify && (w?.statusCode === "DRAFT" || w?.statusCode === "REFUSED");
+  /** Only the operative may add/edit/delete right signature while Sent. */
+  const canEditOperativeSignature = isOwner && w?.statusCode === "SENT";
+  const hasSenderSignature = Boolean(w?.senderSignatureData?.trim());
+  const hasOperativeSignature = Boolean(w?.operativeSignatureData?.trim());
 
   if (query.isLoading) {
     return (
@@ -216,7 +289,17 @@ function WageSheetView() {
             <StatusBadge status={w.statusName} />
             <StatusBadge status={w.paymentStatusName} />
             {canSend && (
-              <Button size="sm" onClick={() => setConfirmSend(true)}>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (!hasSenderSignature) {
+                    toast.error("Office signature is required before sending.");
+                    setSignatureSlot("sender");
+                    return;
+                  }
+                  setConfirmSend(true);
+                }}
+              >
                 <Send className="h-3.5 w-3.5" />
                 Send to operative
               </Button>
@@ -238,7 +321,17 @@ function WageSheetView() {
                   <X className="h-3.5 w-3.5" />
                   Refuse
                 </Button>
-                <Button size="sm" onClick={() => respondMutation.mutate({ accepted: true })}>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (!hasOperativeSignature) {
+                      toast.error("Your signature is required before accepting.");
+                      setSignatureSlot("operative");
+                      return;
+                    }
+                    respondMutation.mutate({ accepted: true });
+                  }}
+                >
                   <Check className="h-3.5 w-3.5" />
                   Accept
                 </Button>
@@ -254,7 +347,12 @@ function WageSheetView() {
         }
       />
 
-      <WageSheet w={w} />
+      <WageSheet
+        w={w}
+        canEditSenderSignature={canEditSenderSignature}
+        canEditOperativeSignature={canEditOperativeSignature}
+        onOpenSignature={(slot) => setSignatureSlot(slot)}
+      />
 
       {w.days.length > 0 && (
         <div className="card-elevated overflow-hidden">
@@ -357,16 +455,56 @@ function WageSheetView() {
           </div>
         </div>
       )}
+
+      {signatureSlot && (
+        <SignaturePadModal
+          open
+          title={signatureSlot === "sender" ? "Office signature" : "Operative signature"}
+          subtitle={
+            signatureSlot === "sender"
+              ? "Required before sending this wage sheet to the operative."
+              : "Required before you accept this wage sheet."
+          }
+          initialDataUrl={
+            signatureSlot === "sender" ? w.senderSignatureData : w.operativeSignatureData
+          }
+          pending={saveSignatureMutation.isPending}
+          clearPending={clearSignatureMutation.isPending}
+          canClearSaved={
+            signatureSlot === "sender"
+              ? canEditSenderSignature && hasSenderSignature
+              : canEditOperativeSignature && hasOperativeSignature
+          }
+          onClose={() => setSignatureSlot(null)}
+          onSave={(dataUrl) =>
+            saveSignatureMutation.mutate({ slot: signatureSlot, dataUrl })
+          }
+          onClearSaved={() => clearSignatureMutation.mutate(signatureSlot)}
+        />
+      )}
     </div>
   );
 }
 
-function WageSheet({ w }: { w: ApiPayStatementDetail }) {
+function WageSheet({
+  w,
+  canEditSenderSignature,
+  canEditOperativeSignature,
+  onOpenSignature,
+}: {
+  w: ApiPayStatementDetail;
+  canEditSenderSignature: boolean;
+  canEditOperativeSignature: boolean;
+  onOpenSignature: (slot: SignatureSlot) => void;
+}) {
   const weekLabel = formatWageWeekRange(w.weekStart, w.weekEnding);
   const utrNi =
     [w.operativeUtr, w.operativeNiNumber].filter(Boolean).join(" / ") || null;
   const invoice = invoiceNo(w.invoiceNumber);
   const brandBlue = "#1e3a5f";
+
+  const brandingQuery = useCompanyBranding();
+  const brand = resolveWageBranding(brandingQuery.data);
 
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-900 shadow-sm print:border-0 print:shadow-none">
@@ -378,7 +516,7 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
               className="text-[1.6rem] font-bold uppercase tracking-tight leading-none"
               style={{ color: brandBlue }}
             >
-              SCHORE LIMITED
+              {brand.companyNameUpper}
             </h2>
             <span className="text-[1.1rem] font-normal text-slate-500">
               Weekly Wage Sheet
@@ -398,24 +536,27 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
               <HeaderLine label="Site Manager" value={w.siteManagerName} />
               <HeaderLine label="UTR / NINO" value={utrNi} blank />
             </div>
-            <div className="space-y-0.5">
+            <div className="min-w-0 space-y-0.5">
               <HeaderLine label="Invoice No" value={invoice} blank={!invoice} />
               <HeaderLine label="Week" value={weekLabel} />
-              <div>
+              <div className="min-w-0 break-words">
                 <span className="font-bold text-black">Bill To:</span>{" "}
-                <span className="text-black">Schore Limited</span>
+                <span className="text-black">{brand.companyName}</span>
               </div>
-              <div className="text-black">
-                <div>Unit E, The Business Center, Faringdon</div>
-                <div>Avenue,</div>
-                <div>Romford, Essex, RM3 8EN</div>
-              </div>
-              <div
-                className="pt-1.5 text-[15px] font-semibold tracking-wide"
-                style={{ color: brandBlue }}
-              >
-                07982138777 · office@schore.co.uk
-              </div>
+              {(brand.address || brand.locality) ? (
+                <div className="min-w-0 break-words text-black">
+                  {brand.address ? <div>{brand.address}</div> : null}
+                  {brand.locality ? <div>{brand.locality}</div> : null}
+                </div>
+              ) : null}
+              {brand.contact ? (
+                <div
+                  className="min-w-0 break-words pt-1.5 text-[15px] font-semibold tracking-wide"
+                  style={{ color: brandBlue }}
+                >
+                  {brand.contact}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -505,11 +646,20 @@ function WageSheet({ w }: { w: ApiPayStatementDetail }) {
         </div>
 
         <div className="mt-6 text-[14.5px] text-slate-700">
-          <div className="mb-6">
-            Signed:{" "}
-            <span className="inline-block min-w-[14rem] border-b border-slate-500 align-bottom">
-              &nbsp;
-            </span>
+          <div className="mb-6 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between sm:gap-10">
+            <SignatureField
+              label="Signed"
+              dataUrl={w.senderSignatureData}
+              editable={canEditSenderSignature}
+              onClick={() => onOpenSignature("sender")}
+            />
+            <SignatureField
+              label="Operative"
+              dataUrl={w.operativeSignatureData}
+              editable={canEditOperativeSignature}
+              onClick={() => onOpenSignature("operative")}
+              align="right"
+            />
           </div>
           <div className="text-center">
             <p className="italic text-slate-500">Thank you for your business!</p>
@@ -587,6 +737,59 @@ function RefusalBanner({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SignatureField({
+  label,
+  dataUrl,
+  editable,
+  onClick,
+  align = "left",
+}: {
+  label: string;
+  dataUrl: string | null | undefined;
+  editable: boolean;
+  onClick: () => void;
+  align?: "left" | "right";
+}) {
+  const hasSig = Boolean(dataUrl?.trim());
+  const line = (
+    <span
+      className={[
+        "inline-flex min-h-[3rem] min-w-[14rem] max-w-full items-end border-b border-slate-500 align-bottom",
+        align === "right" ? "justify-end" : "justify-start",
+        editable ? "cursor-pointer hover:border-slate-700" : "",
+      ].join(" ")}
+    >
+      {hasSig ? (
+        <img
+          src={dataUrl!}
+          alt={`${label} signature`}
+          className={[
+            "max-h-12 max-w-[14rem] object-contain",
+            align === "right" ? "object-right" : "object-left",
+          ].join(" ")}
+        />
+      ) : (
+        <span className="pb-1 text-[12px] text-slate-400">
+          {editable ? "Click to sign" : "\u00a0"}
+        </span>
+      )}
+    </span>
+  );
+
+  return (
+    <div className={align === "right" ? "sm:text-right" : undefined}>
+      <span className="font-medium text-slate-700">{label}:</span>{" "}
+      {editable ? (
+        <button type="button" onClick={onClick} className="align-bottom" aria-label={`${label} signature`}>
+          {line}
+        </button>
+      ) : (
+        line
+      )}
     </div>
   );
 }

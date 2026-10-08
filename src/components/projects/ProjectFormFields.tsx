@@ -28,6 +28,11 @@ type ProjectFormFieldsProps = {
    * Daily Programme free navigation sets false so Site stays enabled.
    */
   gateChildSelectOnParent?: boolean;
+  /**
+   * Site Manager free-nav: when Client changes, clear Site then pick the first
+   * site for that client (options still change with the parent).
+   */
+  autoSelectFirstChild?: boolean;
   customerSelectedLabel?: string | null;
   siteSelectedLabel?: string | null;
   assigneeSelectedLabels?: Record<string, string>;
@@ -38,6 +43,7 @@ export function ProjectFormFields({
   lockCustomer,
   lockSite,
   gateChildSelectOnParent = true,
+  autoSelectFirstChild = false,
   customerSelectedLabel,
   siteSelectedLabel,
   assigneeSelectedLabels,
@@ -49,16 +55,39 @@ export function ProjectFormFields({
   const [siteLabel, setSiteLabel] = useState<string | null>(siteSelectedLabel ?? null);
 
   useEffect(() => {
+    if (customerSelectedLabel) setCustomerLabel(customerSelectedLabel);
+  }, [customerSelectedLabel]);
+
+  useEffect(() => {
+    if (siteSelectedLabel) setSiteLabel(siteSelectedLabel);
+  }, [siteSelectedLabel]);
+
+  useEffect(() => {
     if (prevCustomerId.current === null) {
       prevCustomerId.current = customerId;
       return;
     }
-    if (prevCustomerId.current !== customerId) {
-      form.setValue("siteId", "");
-      setSiteLabel(null);
-      prevCustomerId.current = customerId;
-    }
-  }, [customerId, form]);
+    if (prevCustomerId.current === customerId) return;
+
+    prevCustomerId.current = customerId;
+    form.setValue("siteId", "");
+    setSiteLabel(null);
+
+    if (!autoSelectFirstChild || !customerId) return;
+
+    let cancelled = false;
+    void (async () => {
+      const sites = await fetchSiteOptions("", customerId);
+      const first = sites[0];
+      if (cancelled || !first?.value) return;
+      form.setValue("siteId", first.value, { shouldDirty: true, shouldValidate: true });
+      setSiteLabel(first.label);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId, form, autoSelectFirstChild]);
 
   const fetchSites = useCallback(
     (search: string) => fetchSiteOptions(search, customerId),

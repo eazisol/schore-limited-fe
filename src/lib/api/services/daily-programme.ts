@@ -264,6 +264,53 @@ export interface ApiDailyClientExportBulk {
   jobs: ApiDailyClientExport[];
 }
 
+export type DailyExportType = "client" | "operative";
+
+export interface DailyProgrammeExportParams {
+  fromDate?: string;
+  toDate?: string;
+  exportType: DailyExportType;
+  customerId?: string;
+  siteId?: string;
+  projectId?: string;
+  propertyId?: string;
+  taskId?: string;
+  operativeId?: string;
+}
+
+export interface ApiDailyOperativeExportRow {
+  propertyName: string;
+  client: string | null;
+  postCode: string | null;
+  type: string | null;
+  startingDate: string;
+  handOverDate: string | null;
+  daysCount: number;
+  trade: string | null;
+  name: string | null;
+  time: string | null;
+  nextDay: string | null;
+}
+
+export interface ApiDailyOperativeExportNoteGroup {
+  jobName: string;
+  notes: string[];
+}
+
+export interface ApiDailyProgrammeExportSheet {
+  date: string;
+  clientJobs?: ApiDailyClientExport[] | null;
+  operativeRows?: ApiDailyOperativeExportRow[] | null;
+  noteGroups?: ApiDailyOperativeExportNoteGroup[] | null;
+}
+
+export interface ApiDailyProgrammeExport {
+  fromDate: string | null;
+  toDate: string | null;
+  exportType: DailyExportType;
+  sheets: ApiDailyProgrammeExportSheet[];
+}
+
 export interface DailyResolveRateParams {
   date: string;
   productId?: string;
@@ -379,4 +426,16 @@ export const dailyProgrammeService = {
       { taskIds },
       { params: { date } },
     ),
+  exportProgramme: (payload: DailyProgrammeExportParams) =>
+    http.post<ApiEnvelope<ApiDailyProgrammeExport>>("DailyProgramme/export", {
+      exportType: payload.exportType,
+      ...(payload.fromDate ? { fromDate: payload.fromDate } : {}),
+      ...(payload.toDate ? { toDate: payload.toDate } : {}),
+      ...(payload.customerId ? { customerId: payload.customerId } : {}),
+      ...(payload.siteId ? { siteId: payload.siteId } : {}),
+      ...(payload.projectId ? { projectId: payload.projectId } : {}),
+      ...(payload.propertyId ? { propertyId: payload.propertyId } : {}),
+      ...(payload.taskId ? { taskId: payload.taskId } : {}),
+      ...(payload.operativeId ? { operativeId: payload.operativeId } : {}),
+    }),
 };

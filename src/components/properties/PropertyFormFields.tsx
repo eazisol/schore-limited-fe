@@ -22,6 +22,7 @@ export function PropertyFormFields({
   lockSite = false,
   lockProject = false,
   gateChildSelectOnParent = true,
+  autoSelectFirstChild = false,
   customerSelectedLabel,
   siteSelectedLabel,
   projectSelectedLabel,
@@ -40,6 +41,11 @@ export function PropertyFormFields({
    * Daily Programme free navigation sets false so all selects stay enabled.
    */
   gateChildSelectOnParent?: boolean;
+  /**
+   * Site Manager free-nav: when Client/Site changes, clear children then pick
+   * the first option for each dependent dropdown.
+   */
+  autoSelectFirstChild?: boolean;
   customerSelectedLabel?: string | null;
   siteSelectedLabel?: string | null;
   projectSelectedLabel?: string | null;
@@ -52,6 +58,7 @@ export function PropertyFormFields({
   const prevSiteId = useRef<string | null>(null);
   const [customerLabel, setCustomerLabel] = useState<string | null>(customerSelectedLabel ?? null);
   const [siteLabel, setSiteLabel] = useState<string | null>(siteSelectedLabel ?? null);
+  const [projectLabel, setProjectLabel] = useState<string | null>(projectSelectedLabel ?? null);
 
   useEffect(() => {
     if (customerSelectedLabel) setCustomerLabel(customerSelectedLabel);
@@ -62,29 +69,72 @@ export function PropertyFormFields({
   }, [siteSelectedLabel]);
 
   useEffect(() => {
+    if (projectSelectedLabel) setProjectLabel(projectSelectedLabel);
+  }, [projectSelectedLabel]);
+
+  useEffect(() => {
     if (prevCustomerId.current === null) {
       prevCustomerId.current = customerId;
       return;
     }
-    if (prevCustomerId.current !== customerId) {
-      setValue("siteId", "");
-      setValue("projectId", "");
-      setSiteLabel(null);
-      prevCustomerId.current = customerId;
-      prevSiteId.current = "";
-    }
-  }, [customerId, setValue]);
+    if (prevCustomerId.current === customerId) return;
+
+    prevCustomerId.current = customerId;
+    prevSiteId.current = "";
+    setValue("siteId", "");
+    setValue("projectId", "");
+    setSiteLabel(null);
+    setProjectLabel(null);
+
+    if (!autoSelectFirstChild || !customerId) return;
+
+    let cancelled = false;
+    void (async () => {
+      const sites = await fetchSiteOptions("", customerId);
+      const firstSite = sites[0];
+      if (cancelled || !firstSite?.value) return;
+      setValue("siteId", firstSite.value, { shouldDirty: true, shouldValidate: true });
+      setSiteLabel(firstSite.label);
+      prevSiteId.current = firstSite.value;
+
+      const projects = await fetchProjectOptions("", firstSite.value, customerId);
+      const firstProject = projects[0];
+      if (cancelled || !firstProject?.value) return;
+      setValue("projectId", firstProject.value, { shouldDirty: true, shouldValidate: true });
+      setProjectLabel(firstProject.label);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId, setValue, autoSelectFirstChild]);
 
   useEffect(() => {
     if (prevSiteId.current === null) {
       prevSiteId.current = siteId;
       return;
     }
-    if (prevSiteId.current !== siteId) {
-      setValue("projectId", "");
-      prevSiteId.current = siteId;
-    }
-  }, [siteId, setValue]);
+    if (prevSiteId.current === siteId) return;
+
+    prevSiteId.current = siteId;
+    setValue("projectId", "");
+    setProjectLabel(null);
+
+    if (!autoSelectFirstChild || !siteId) return;
+
+    let cancelled = false;
+    void (async () => {
+      const projects = await fetchProjectOptions("", siteId, customerId);
+      const first = projects[0];
+      if (cancelled || !first?.value) return;
+      setValue("projectId", first.value, { shouldDirty: true, shouldValidate: true });
+      setProjectLabel(first.label);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [siteId, customerId, setValue, autoSelectFirstChild]);
 
   const fetchSites = useCallback(
     (search: string) => fetchSiteOptions(search, customerId),
@@ -144,8 +194,9 @@ export function PropertyFormFields({
             }
             searchPlaceholder="Search projects…"
             queryKey={["projects", "dropdown", siteId, customerId]}
-            selectedLabel={projectSelectedLabel}
+            selectedLabel={projectLabel ?? projectSelectedLabel}
             fetchOptions={fetchProjects}
+            onSelect={(option) => setProjectLabel(option.label)}
             disabled={lockProject || (gateChildSelectOnParent && !siteId)}
             lookupType={lockProject ? undefined : "project"}
             lookupContext={{ siteId, siteLabel, customerId }}
