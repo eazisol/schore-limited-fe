@@ -280,18 +280,25 @@ export function OperativeDetailExtras({
   const navigate = useNavigate();
   const routeSearch = useSearch({ strict: false }) as { viewTab?: OperativeViewTab };
   const canAddTask = usePermission({ route: TASKS_ROUTE, action: "modify" });
-  const [tab, setTab] = useState<OperativeViewTab>(() =>
-    isOperativeViewTab(routeSearch.viewTab) ? routeSearch.viewTab : "tasks",
-  );
+  const [tab, setTab] = useState<OperativeViewTab>(() => {
+    const initial = isOperativeViewTab(routeSearch.viewTab) ? routeSearch.viewTab : "tasks";
+    // Operatives must not see wages on self dashboard.
+    if (isSelfView && initial === "wages") return "tasks";
+    return initial;
+  });
 
   useEffect(() => {
-    if (isOperativeViewTab(routeSearch.viewTab)) {
-      setTab(routeSearch.viewTab);
+    if (!isOperativeViewTab(routeSearch.viewTab)) return;
+    if (isSelfView && routeSearch.viewTab === "wages") {
+      setTab("tasks");
+      return;
     }
-  }, [routeSearch.viewTab]);
+    setTab(routeSearch.viewTab);
+  }, [routeSearch.viewTab, isSelfView]);
 
   function selectViewTab(next: string) {
     if (!isOperativeViewTab(next)) return;
+    if (isSelfView && next === "wages") return;
     setTab(next);
     if (isSelfView) {
       void navigate({
@@ -348,7 +355,7 @@ export function OperativeDetailExtras({
       }
       return (await payStatementsService.list(params)).data;
     },
-    enabled: isNonEmptyId(operativeId) && tab === "wages",
+    enabled: !isSelfView && isNonEmptyId(operativeId) && tab === "wages",
   });
 
   const items = itemsQuery.data?.items ?? [];
@@ -480,9 +487,11 @@ export function OperativeDetailExtras({
                 <TabsTrigger value="rates" className={underlineTabTriggerClass}>
                   Rates
                 </TabsTrigger>
-                <TabsTrigger value="wages" className={underlineTabTriggerClass}>
-                  Wages
-                </TabsTrigger>
+                {!isSelfView ? (
+                  <TabsTrigger value="wages" className={underlineTabTriggerClass}>
+                    Wages
+                  </TabsTrigger>
+                ) : null}
               </TabsList>
             </div>
             {showAdd ? (
@@ -881,110 +890,104 @@ export function OperativeDetailExtras({
             />
           </TabsContent>
 
-          <TabsContent value="wages" className="mt-0 focus-visible:outline-none">
-            {wagesQuery.isLoading ? (
-              <div className="flex items-center justify-center gap-2 px-5 py-12 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading wage sheets…
-              </div>
-            ) : wagesQuery.isError ? (
-              <EmptyPanel message="Unable to load wage sheets for this operative." />
-            ) : wageRows.length === 0 ? (
-              <EmptyPanel message="No wage sheets for this operative yet." />
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-2.5 text-left font-medium">Invoice</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Project</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Client</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Week ending</th>
-                      <th className="px-3 py-2.5 text-right font-medium">Gross</th>
-                      <th className="px-3 py-2.5 text-right font-medium">CIS</th>
-                      <th className="px-3 py-2.5 text-right font-medium">Net</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Payment</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Sign-off</th>
-                      <th className="px-4 py-2.5 text-right font-medium" />
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {wageRows.map((row) => (
-                      <tr key={row.id} className="hover:bg-muted/30">
-                        <td className="px-4 py-2.5">
-                          <Link
-                            to="/wages/$id"
-                            params={{ id: String(row.id) }}
-                            search={
-                              isSelfView
-                                ? { from: "operative-me" as const }
-                                : {
-                                    from: "operative" as const,
-                                    operativeId,
-                                  }
-                            }
-                            className="font-mono text-xs font-medium hover:text-info"
-                          >
-                            {invoiceNo(row.invoiceNumber)}
-                          </Link>
-                        </td>
-                        <td className="max-w-[12rem] truncate px-3 py-2.5">
-                          <div className="leading-tight">
-                            <span className="font-medium">{row.projectName ?? "—"}</span>
-                            {row.projectCode ? (
-                              <div className="font-mono text-[11px] text-muted-foreground">
-                                {row.projectCode}
-                              </div>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="max-w-[12rem] truncate px-3 py-2.5 font-mono text-xs text-muted-foreground">
-                          {row.customerNames ?? "—"}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-muted-foreground">
-                          {formatShortDate(row.weekEnding)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-mono tabular-nums">
-                          {fmtGBP(row.gross)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-mono tabular-nums text-destructive">
-                          −{fmtGBP(row.cisDeduction)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-mono text-sm font-semibold tabular-nums">
-                          {fmtGBP(row.net)}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <StatusBadge status={row.paymentStatusName} />
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <StatusBadge status={row.statusName} />
-                        </td>
-                        <td className="px-4 py-2.5 text-right">
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+          {!isSelfView ? (
+            <TabsContent value="wages" className="mt-0 focus-visible:outline-none">
+              {wagesQuery.isLoading ? (
+                <div className="flex items-center justify-center gap-2 px-5 py-12 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading wage sheets…
+                </div>
+              ) : wagesQuery.isError ? (
+                <EmptyPanel message="Unable to load wage sheets for this operative." />
+              ) : wageRows.length === 0 ? (
+                <EmptyPanel message="No wage sheets for this operative yet." />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
+                      <tr>
+                        <th className="px-4 py-2.5 text-left font-medium">Invoice</th>
+                        <th className="px-3 py-2.5 text-left font-medium">Project</th>
+                        <th className="px-3 py-2.5 text-left font-medium">Client</th>
+                        <th className="px-3 py-2.5 text-left font-medium">Week ending</th>
+                        <th className="px-3 py-2.5 text-right font-medium">Gross</th>
+                        <th className="px-3 py-2.5 text-right font-medium">CIS</th>
+                        <th className="px-3 py-2.5 text-right font-medium">Net</th>
+                        <th className="px-3 py-2.5 text-left font-medium">Payment</th>
+                        <th className="px-3 py-2.5 text-left font-medium">Sign-off</th>
+                        <th className="px-4 py-2.5 text-right font-medium" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {wageRows.map((row) => (
+                        <tr key={row.id} className="hover:bg-muted/30">
+                          <td className="px-4 py-2.5">
                             <Link
                               to="/wages/$id"
                               params={{ id: String(row.id) }}
-                              search={
-                                isSelfView
-                                  ? { from: "operative-me" as const }
-                                  : {
-                                      from: "operative" as const,
-                                      operativeId,
-                                    }
-                              }
-                              aria-label={`View ${invoiceNo(row.invoiceNumber)}`}
+                              search={{
+                                from: "operative" as const,
+                                operativeId,
+                              }}
+                              className="font-mono text-xs font-medium hover:text-info"
                             >
-                              <Eye className="h-4 w-4" />
+                              {invoiceNo(row.invoiceNumber)}
                             </Link>
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </TabsContent>
+                          </td>
+                          <td className="max-w-[12rem] truncate px-3 py-2.5">
+                            <div className="leading-tight">
+                              <span className="font-medium">{row.projectName ?? "—"}</span>
+                              {row.projectCode ? (
+                                <div className="font-mono text-[11px] text-muted-foreground">
+                                  {row.projectCode}
+                                </div>
+                              ) : null}
+                            </div>
+                          </td>
+                          <td className="max-w-[12rem] truncate px-3 py-2.5 font-mono text-xs text-muted-foreground">
+                            {row.customerNames ?? "—"}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-muted-foreground">
+                            {formatShortDate(row.weekEnding)}
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-mono tabular-nums">
+                            {fmtGBP(row.gross)}
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-mono tabular-nums text-destructive">
+                            −{fmtGBP(row.cisDeduction)}
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-mono text-sm font-semibold tabular-nums">
+                            {fmtGBP(row.net)}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <StatusBadge status={row.paymentStatusName} />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <StatusBadge status={row.statusName} />
+                          </td>
+                          <td className="px-4 py-2.5 text-right">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                              <Link
+                                to="/wages/$id"
+                                params={{ id: String(row.id) }}
+                                search={{
+                                  from: "operative" as const,
+                                  operativeId,
+                                }}
+                                aria-label={`View ${invoiceNo(row.invoiceNumber)}`}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </TabsContent>
+          ) : null}
         </Tabs>
       </section>
 
@@ -1225,13 +1228,19 @@ export function OperativeDetailExtras({
                     Statements
                   </dt>
                   <dd>
-                    <button
-                      type="button"
-                      onClick={() => selectViewTab("wages")}
-                      className="font-medium tabular-nums transition-colors hover:text-info"
-                    >
-                      {earnings?.statementCount ?? 0}
-                    </button>
+                    {isSelfView ? (
+                      <span className="font-medium tabular-nums">
+                        {earnings?.statementCount ?? 0}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => selectViewTab("wages")}
+                        className="font-medium tabular-nums transition-colors hover:text-info"
+                      >
+                        {earnings?.statementCount ?? 0}
+                      </button>
+                    )}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-3 py-2.5">

@@ -37,7 +37,7 @@ import {
   type TaskFormValues,
 } from "@/lib/task-form";
 import { TaskFormFields } from "@/components/tasks/TaskFormFields";
-import { JobWorkCalendar } from "@/components/tasks/JobWorkCalendar";
+// import { JobWorkCalendar } from "@/components/tasks/JobWorkCalendar";
 import { TaskTimelinePanel } from "@/components/tasks/TaskTimelinePanel";
 import { formatDateTime } from "@/lib/module-ui";
 import { z } from "zod";
@@ -402,7 +402,9 @@ function TaskDetail() {
               </div>
             </div>
 
+            {/* Schedule calendar — temporarily hidden; restore when needed
             <JobWorkCalendar key={task.id} task={task} />
+            */}
           </div>
         )}
 

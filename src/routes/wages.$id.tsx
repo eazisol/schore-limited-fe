@@ -284,67 +284,67 @@ function WageSheetView() {
             </Link>
           </AppTooltip>
         }
-        actions={
-          <>
-            <StatusBadge status={w.statusName} />
-            <StatusBadge status={w.paymentStatusName} />
-            {canSend && (
-              <Button
-                size="sm"
-                onClick={() => {
-                  if (!hasSenderSignature) {
-                    toast.error("Office signature is required before sending.");
-                    setSignatureSlot("sender");
-                    return;
-                  }
-                  setConfirmSend(true);
-                }}
-              >
-                <Send className="h-3.5 w-3.5" />
-                Send to operative
-              </Button>
-            )}
-            {canResend && (
-              <Button size="sm" variant="outline" onClick={() => setConfirmResend(true)}>
-                <Send className="h-3.5 w-3.5" />
-                Resend to operative
-              </Button>
-            )}
-            {canRespond && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-destructive/30 text-destructive"
-                  onClick={() => setRefuseOpen(true)}
-                >
-                  <X className="h-3.5 w-3.5" />
-                  Refuse
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    if (!hasOperativeSignature) {
-                      toast.error("Your signature is required before accepting.");
-                      setSignatureSlot("operative");
-                      return;
-                    }
-                    respondMutation.mutate({ accepted: true });
-                  }}
-                >
-                  <Check className="h-3.5 w-3.5" />
-                  Accept
-                </Button>
-              </>
-            )}
-            {canMarkPaid && (
-              <Button size="sm" onClick={() => setPaidOpen(true)}>
-                <Banknote className="h-3.5 w-3.5" />
-                Mark paid
-              </Button>
-            )}
-          </>
-        }
+        // actions={
+        //   <>
+        //     <StatusBadge status={w.statusName} />
+        //     <StatusBadge status={w.paymentStatusName} />
+        //     {canSend && (
+        //       <Button
+        //         size="sm"
+        //         onClick={() => {
+        //           if (!hasSenderSignature) {
+        //             toast.error("Office signature is required before sending.");
+        //             setSignatureSlot("sender");
+        //             return;
+        //           }
+        //           setConfirmSend(true);
+        //         }}
+        //       >
+        //         <Send className="h-3.5 w-3.5" />
+        //         Send to operative
+        //       </Button>
+        //     )}
+        //     {canResend && (
+        //       <Button size="sm" variant="outline" onClick={() => setConfirmResend(true)}>
+        //         <Send className="h-3.5 w-3.5" />
+        //         Resend to operative
+        //       </Button>
+        //     )}
+        //     {canRespond && (
+        //       <>
+        //         <Button
+        //           variant="outline"
+        //           size="sm"
+        //           className="border-destructive/30 text-destructive"
+        //           onClick={() => setRefuseOpen(true)}
+        //         >
+        //           <X className="h-3.5 w-3.5" />
+        //           Refuse
+        //         </Button>
+        //         <Button
+        //           size="sm"
+        //           onClick={() => {
+        //             if (!hasOperativeSignature) {
+        //               toast.error("Your signature is required before accepting.");
+        //               setSignatureSlot("operative");
+        //               return;
+        //             }
+        //             respondMutation.mutate({ accepted: true });
+        //           }}
+        //         >
+        //           <Check className="h-3.5 w-3.5" />
+        //           Accept
+        //         </Button>
+        //       </>
+        //     )}
+        //     {canMarkPaid && (
+        //       <Button size="sm" onClick={() => setPaidOpen(true)}>
+        //         <Banknote className="h-3.5 w-3.5" />
+        //         Mark paid
+        //       </Button>
+        //     )}
+        //   </>
+        // }
       />
 
       <WageSheet
@@ -760,7 +760,7 @@ function SignatureField({
       className={[
         "inline-flex min-h-[3rem] min-w-[14rem] max-w-full items-end border-b border-slate-500 align-bottom",
         align === "right" ? "justify-end" : "justify-start",
-        editable ? "cursor-pointer hover:border-slate-700" : "",
+        // editable ? "cursor-pointer hover:border-slate-700" : "",
       ].join(" ")}
     >
       {hasSig ? (
@@ -774,15 +774,21 @@ function SignatureField({
         />
       ) : (
         <span className="pb-1 text-[12px] text-slate-400">
-          {editable ? "Click to sign" : "\u00a0"}
+          {/* {editable ? "Click to sign" : "\u00a0"} */}
+          {"\u00a0"}
         </span>
       )}
     </span>
   );
 
+  // Keep props so uncommenting the button is a one-line restore
+  void editable;
+  void onClick;
+
   return (
     <div className={align === "right" ? "sm:text-right" : undefined}>
       <span className="font-medium text-slate-700">{label}:</span>{" "}
+      {/* Click to sign button — temporarily disabled
       {editable ? (
         <button type="button" onClick={onClick} className="align-bottom" aria-label={`${label} signature`}>
           {line}
@@ -790,6 +796,8 @@ function SignatureField({
       ) : (
         line
       )}
+      */}
+      {line}
     </div>
   );
 }

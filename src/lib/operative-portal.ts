@@ -6,13 +6,14 @@ import { buildMenuTree, flattenMenuDefinitions } from "@/lib/menu-tree";
 export const OPERATIVE_USER_TYPE_CODE = "OPERATIVE";
 export const OPERATIVE_HOME_MENU_CODE = "OPERATIVE_HOME";
 export const OPERATIVE_HOME_PATH = "/operatives/me";
-export const OPERATIVE_PORTAL_MENU_CODES = ["WAGES", OPERATIVE_HOME_MENU_CODE] as const;
+/** Portal menus for OPERATIVE users (wages deliberately omitted — not shown on login). */
+export const OPERATIVE_PORTAL_MENU_CODES = [OPERATIVE_HOME_MENU_CODE] as const;
 
 export function isOperativeUserType(code: string | null | undefined): boolean {
   return (code ?? "").trim().toUpperCase() === OPERATIVE_USER_TYPE_CODE;
 }
 
-/** Operative portal: UserType OPERATIVE — own wages + self dashboard (not a Role). */
+/** Operative portal: UserType OPERATIVE — self dashboard (not a Role). */
 export function isOperativePortalUser(
   userTypeCode: string | null | undefined,
   menus: ApiMenu[] = [],
@@ -24,9 +25,19 @@ export function isOperativePortalUser(
 export function operativeHomePathFromMenus(menus: ApiMenu[]): string {
   const home = findMenuByCode(menus, OPERATIVE_HOME_MENU_CODE);
   if (home?.read) return OPERATIVE_HOME_PATH;
-  const wages = findMenuByCode(menus, "WAGES");
-  if (wages?.read) return "/wages";
   return "/";
+}
+
+/** Hide Wages from nav / path access for OPERATIVE user type (frontend). */
+export function stripOperativeWagesMenus(menus: ApiMenu[]): ApiMenu[] {
+  const strip = (items: ApiMenu[]): ApiMenu[] =>
+    items
+      .filter((m) => (m.code ?? "").trim().toUpperCase() !== "WAGES")
+      .map((m) => ({
+        ...m,
+        children: m.children?.length ? strip(m.children) : m.children,
+      }));
+  return strip(menus);
 }
 
 /** When OPERATIVE has no roles, grant Read on portal menus from the menu tree. */

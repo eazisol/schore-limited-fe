@@ -17,7 +17,33 @@ import {
 import { notifyApiError } from "@/lib/api/axios";
 import { NotificationDropdownRow } from "@/components/notifications/NotificationDropdownRow";
 
+/** Set true to restore notification dropdown + unread count. */
+const NOTIFICATIONS_CLICKABLE = false;
+
 export function NotificationBell() {
+  // Temporarily non-clickable (no count, no dropdown) — flip flag above when needed.
+  if (!NOTIFICATIONS_CLICKABLE) {
+    return (
+      <span
+        className="relative grid h-9 w-9 place-items-center rounded-md text-muted-foreground"
+        aria-label="Notifications"
+      >
+        <Bell className="h-5 w-5" strokeWidth={1.75} />
+        {/* Unread count badge — temporarily disabled
+        {unreadCount > 0 ? (
+          <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-0.5 text-[10px] font-semibold text-accent-foreground ring-2 ring-background">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        ) : null}
+        */}
+      </span>
+    );
+  }
+
+  return <NotificationBellActive />;
+}
+
+function NotificationBellActive() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { menus } = usePermissions();
