@@ -755,6 +755,8 @@ function SignatureField({
   align?: "left" | "right";
 }) {
   const hasSig = Boolean(dataUrl?.trim());
+  // Signature images temporarily hidden (Signed + Operative) — restore img block below when needed
+  void hasSig;
   const line = (
     <span
       className={[
@@ -763,6 +765,7 @@ function SignatureField({
         // editable ? "cursor-pointer hover:border-slate-700" : "",
       ].join(" ")}
     >
+      {/* Signature image — temporarily hidden
       {hasSig ? (
         <img
           src={dataUrl!}
@@ -774,16 +777,18 @@ function SignatureField({
         />
       ) : (
         <span className="pb-1 text-[12px] text-slate-400">
-          {/* {editable ? "Click to sign" : "\u00a0"} */}
-          {"\u00a0"}
+          {editable ? "Click to sign" : "\u00a0"}
         </span>
       )}
+      */}
+      <span className="pb-1 text-[12px] text-slate-400">{"\u00a0"}</span>
     </span>
   );
 
-  // Keep props so uncommenting the button is a one-line restore
+  // Keep props so uncommenting the button / images is a one-line restore
   void editable;
   void onClick;
+  void dataUrl;
 
   return (
     <div className={align === "right" ? "sm:text-right" : undefined}>
