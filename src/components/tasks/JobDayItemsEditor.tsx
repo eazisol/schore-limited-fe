@@ -38,6 +38,12 @@ import {
   type CertificationAssignWarning,
 } from "@/lib/operative-certifications";
 import { toYmd } from "@/lib/week-ending";
+import { holidaysService } from "@/lib/api/services/holidays";
+import { holidaysQueryKey, weekendQueryKey } from "@/routes/holidays";
+import {
+  isOffDayYmd,
+  OFF_DAY_ASSIGN_MESSAGE,
+} from "@/lib/working-days";
 import { resolveDailyItemAddBlockReason } from "@/lib/daily";
 import {
   RateCapReasonModal,
@@ -800,6 +806,29 @@ function ItemFormCard({
   const canSeeRates = hasCapability(CAPABILITY_CODES.seeRates);
   const rateTouchedRef = useRef(false);
 
+  const weekendQuery = useQuery({
+    queryKey: weekendQueryKey,
+    queryFn: async () => (await holidaysService.getWeekend()).data,
+  });
+  const holidaysQuery = useQuery({
+    queryKey: [...holidaysQueryKey, "active-dates"],
+    queryFn: async () =>
+      (await holidaysService.list({ page: 1, pageSize: 500 })).data,
+  });
+  const offWeekdays = useMemo(() => {
+    if (!weekendQuery.data?.days) return undefined;
+    return new Set(weekendQuery.data.days);
+  }, [weekendQuery.data?.days]);
+  const holidayYmds = useMemo(() => {
+    const set = new Set<string>();
+    for (const h of holidaysQuery.data?.items ?? []) {
+      if (!h.isActive) continue;
+      const ymd = h.date?.slice(0, 10);
+      if (ymd) set.add(ymd);
+    }
+    return set;
+  }, [holidaysQuery.data?.items]);
+
   const [catalogKind, setCatalogKind] = useState<"package" | "addon">(
     editLine?.kind ?? "package",
   );
@@ -1042,6 +1071,10 @@ function ItemFormCard({
   function handleSave() {
     if (date < toYmd(new Date())) {
       toast.warning("Cannot add or edit tasks for past dates.");
+      return;
+    }
+    if (isOffDayYmd(date, offWeekdays, holidayYmds)) {
+      toast.warning(OFF_DAY_ASSIGN_MESSAGE);
       return;
     }
     if (!operativeId) {

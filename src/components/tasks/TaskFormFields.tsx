@@ -45,6 +45,12 @@ import {
   type CertificationAssignWarning,
 } from "@/lib/operative-certifications";
 import { notifyApiError } from "@/lib/api/axios";
+import { holidaysService } from "@/lib/api/services/holidays";
+import { holidaysQueryKey, weekendQueryKey } from "@/routes/holidays";
+import {
+  isOffDayYmd,
+  OFF_DAY_ASSIGN_MESSAGE,
+} from "@/lib/working-days";
 import { RateCapReasonModal, type RateCapReasonContext } from "@/components/rates/RateCapReasonModal";
 import {
   TaskRateApprovalSections,
@@ -1949,6 +1955,28 @@ function ProductLinesTable({
     queryKey: ["lookups", "time-slots"],
     queryFn: async () => (await tasksService.timeSlots()).data ?? [],
   });
+  const weekendQuery = useQuery({
+    queryKey: weekendQueryKey,
+    queryFn: async () => (await holidaysService.getWeekend()).data,
+  });
+  const holidaysQuery = useQuery({
+    queryKey: [...holidaysQueryKey, "active-dates"],
+    queryFn: async () =>
+      (await holidaysService.list({ page: 1, pageSize: 500 })).data,
+  });
+  const offWeekdays = useMemo(() => {
+    if (!weekendQuery.data?.days) return undefined;
+    return new Set(weekendQuery.data.days);
+  }, [weekendQuery.data?.days]);
+  const holidayYmds = useMemo(() => {
+    const set = new Set<string>();
+    for (const h of holidaysQuery.data?.items ?? []) {
+      if (!h.isActive) continue;
+      const ymd = h.date?.slice(0, 10);
+      if (ymd) set.add(ymd);
+    }
+    return set;
+  }, [holidaysQuery.data?.items]);
 
   return (
     <div className="min-w-0 max-w-full overflow-x-auto rounded-md border border-border/60">
@@ -2014,6 +2042,8 @@ function ProductLinesTable({
               assignControls={
                 showAssignColumn ? renderAssignControls?.(index) : null
               }
+              offWeekdays={offWeekdays}
+              holidayYmds={holidayYmds}
             />
             );
           })}
@@ -2038,6 +2068,8 @@ function ProductLineRow({
   showAssignColumn = false,
   assignDisabled = false,
   assignControls,
+  offWeekdays,
+  holidayYmds,
 }: {
   fieldId: string;
   index: number;
@@ -2053,6 +2085,8 @@ function ProductLineRow({
   showAssignColumn?: boolean;
   assignDisabled?: boolean;
   assignControls?: ReactNode;
+  offWeekdays?: ReadonlySet<number>;
+  holidayYmds?: ReadonlySet<string>;
 }) {
   const workDate = String(useWatch({ control, name: `items.${index}.workDate` }) ?? "");
   const timeSlotId = String(useWatch({ control, name: `items.${index}.timeSlotId` }) ?? "");
@@ -2117,9 +2151,14 @@ function ProductLineRow({
           type="date"
           className="h-7 w-[124px] max-w-full rounded-md border border-input bg-background px-1.5 text-xs"
           value={workDate}
-          onChange={(event) =>
-            setValue(`items.${index}.workDate`, event.target.value, { shouldDirty: true })
-          }
+          onChange={(event) => {
+            const next = event.target.value;
+            if (isOffDayYmd(next, offWeekdays, holidayYmds)) {
+              toast.warning(OFF_DAY_ASSIGN_MESSAGE);
+              return;
+            }
+            setValue(`items.${index}.workDate`, next, { shouldDirty: true });
+          }}
         />
       </td>
       <td className="px-1.5 py-1.5">

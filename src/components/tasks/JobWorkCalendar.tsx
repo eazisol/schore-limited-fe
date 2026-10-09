@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
 import { holidaysService } from "@/lib/api/services/holidays";
 import {
   dailyProgrammeService,
@@ -31,8 +32,12 @@ import type { ApiError } from "@/lib/api/axios";
 import { DAILY_ROUTE } from "@/lib/daily";
 import { TASKS_ROUTE } from "@/lib/tasks";
 import { fmtGBP } from "@/lib/data";
-import { weekendQueryKey } from "@/routes/holidays";
+import { holidaysQueryKey, weekendQueryKey } from "@/routes/holidays";
 import { toYmd, parseYmd } from "@/lib/week-ending";
+import {
+  isOffDayDate,
+  OFF_DAY_ASSIGN_MESSAGE,
+} from "@/lib/working-days";
 import { cn } from "@/lib/utils";
 
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => ({
@@ -147,10 +152,33 @@ export function JobWorkCalendar({ task }: JobWorkCalendarProps) {
     queryFn: async () => (await holidaysService.getWeekend()).data,
   });
 
+  const holidaysQuery = useQuery({
+    queryKey: [...holidaysQueryKey, { dateFrom: monthStart, dateTo: monthEnd }],
+    queryFn: async () =>
+      (
+        await holidaysService.list({
+          dateFrom: monthStart,
+          dateTo: monthEnd,
+          page: 1,
+          pageSize: 100,
+        })
+      ).data,
+  });
+
   const offWeekdays = useMemo(() => {
     if (!weekendQuery.data?.days) return undefined;
     return new Set(weekendQuery.data.days);
   }, [weekendQuery.data?.days]);
+
+  const holidayYmds = useMemo(() => {
+    const set = new Set<string>();
+    for (const h of holidaysQuery.data?.items ?? []) {
+      if (!h.isActive) continue;
+      const ymd = h.date?.slice(0, 10);
+      if (ymd) set.add(ymd);
+    }
+    return set;
+  }, [holidaysQuery.data?.items]);
 
   const itemsByDate = useMemo(() => {
     const map = new Map<string, ApiTaskItem[]>();
@@ -178,16 +206,15 @@ export function JobWorkCalendar({ task }: JobWorkCalendarProps) {
   );
 
   const offDayDates = useMemo(() => {
-    if (!offWeekdays) return [];
     const dates: Date[] = [];
     const cursor = new Date(month.getFullYear(), month.getMonth(), 1);
     const last = new Date(month.getFullYear(), month.getMonth() + 1, 0);
     while (cursor <= last) {
-      if (offWeekdays.has(cursor.getDay())) dates.push(new Date(cursor));
+      if (isOffDayDate(cursor, offWeekdays, holidayYmds)) dates.push(new Date(cursor));
       cursor.setDate(cursor.getDate() + 1);
     }
     return dates;
-  }, [month, offWeekdays]);
+  }, [month, offWeekdays, holidayYmds]);
 
   const dayProgrammeQuery = useQuery({
     queryKey: ["daily-programme", "job-calendar-day", selectedYmd, task.id],
@@ -267,6 +294,10 @@ export function JobWorkCalendar({ task }: JobWorkCalendarProps) {
 
   function handleDaySelect(day: Date | undefined) {
     if (!day) return;
+    if (isOffDayDate(day, offWeekdays, holidayYmds)) {
+      toast.warning(OFF_DAY_ASSIGN_MESSAGE);
+      return;
+    }
     const ymd = toYmd(day);
     setSelectedYmd(ymd);
     setMonth(new Date(day.getFullYear(), day.getMonth(), 1));
@@ -456,7 +487,7 @@ export function JobWorkCalendar({ task }: JobWorkCalendarProps) {
                   <WorkDayCell
                     {...props}
                     items={dayItems}
-                    isOffDay={offWeekdays?.has(props.day.date.getDay()) ?? false}
+                    isOffDay={isOffDayDate(props.day.date, offWeekdays, holidayYmds)}
                   />
                 );
               },
