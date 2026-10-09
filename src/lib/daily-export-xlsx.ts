@@ -14,26 +14,30 @@ const CLIENT_HEADERS = [
   "Postcode",
   "Property type",
   "Client",
+  "Starting date",
   "Status",
   "Note",
   "Operative",
   "Trade",
   "Task",
-  "Attendance period",
+  "Name",
+  "Next day",
 ] as const;
 
 const OPERATIVE_HEADERS = [
   "PROPERTY",
+  "Project",
   "Client",
   "Post Code",
   "Type",
-  "Starting",
+  "Starting date",
   "HO",
   "DAY",
   "Trade",
   "NAME",
   "TIME",
   "NEXT DAY",
+  "Notes",
 ] as const;
 
 function cellText(value: string | number | null | undefined): string {
@@ -42,41 +46,46 @@ function cellText(value: string | number | null | undefined): string {
 }
 
 function buildClientRows(job: ApiDailyClientExport, exportDateLabel: string): (string | number)[][] {
-  const status = job.status ?? "";
-  const note = job.reason ?? "";
+  const jobLabel = job.projectName?.trim() || job.taskNumber;
+  const starting = formatUkDate(job.startingDate);
+  const nextDay = job.nextDay ?? "";
   if (job.lines.length > 0) {
     return job.lines.map((line) => [
       exportDateLabel,
-      job.taskNumber,
+      jobLabel,
       job.propertyName,
       job.propertyAddress ?? "",
       job.postCode ?? "",
       job.propertyType ?? "",
       job.client ?? "",
-      status,
-      note,
+      starting,
+      job.status ?? "",
+      line.notes ?? "",
       line.operativeName ?? "",
       line.trade ?? "",
       line.task ?? "",
       line.attendancePeriod ?? "",
+      nextDay,
     ]);
   }
 
   return [
     [
       exportDateLabel,
-      job.taskNumber,
+      jobLabel,
       job.propertyName,
       job.propertyAddress ?? "",
       job.postCode ?? "",
       job.propertyType ?? "",
       job.client ?? "",
-      status,
-      note,
+      starting,
+      job.status ?? "",
+      job.reason ?? "",
       "",
       "",
       "",
       "",
+      nextDay,
     ],
   ];
 }
@@ -110,6 +119,7 @@ function writeOperativeSheet(ws: ExcelJS.Worksheet, sheet: ApiDailyProgrammeExpo
   for (const row of sheet.operativeRows ?? []) {
     ws.addRow([
       cellText(row.propertyName),
+      cellText(row.projectName),
       cellText(row.client),
       cellText(row.postCode),
       cellText(row.type),
@@ -120,24 +130,10 @@ function writeOperativeSheet(ws: ExcelJS.Worksheet, sheet: ApiDailyProgrammeExpo
       cellText(row.name),
       cellText(row.time),
       cellText(row.nextDay),
+      cellText(row.notes),
     ]);
   }
   ws.columns = OPERATIVE_HEADERS.map(() => ({ width: 14 }));
-
-  const groups = sheet.noteGroups ?? [];
-  if (groups.length === 0) return;
-
-  ws.addRow([]);
-  const noteTitle = ws.addRow(["Note"]);
-  noteTitle.font = { bold: true };
-
-  for (const group of groups) {
-    const header = ws.addRow([group.jobName]);
-    header.font = { bold: true, underline: true };
-    for (const note of group.notes) {
-      ws.addRow([note]);
-    }
-  }
 }
 
 function sheetNameForDate(isoDate: string): string {

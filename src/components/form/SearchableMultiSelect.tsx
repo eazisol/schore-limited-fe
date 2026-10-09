@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronDown, Loader2, Plus, Search, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -7,7 +15,14 @@ import { useDebouncedSearch } from "@/components/data-table";
 import type { SearchableSelectOption } from "./SearchableSelect";
 import { searchableSelectTriggerClassName } from "./SearchableSelect";
 import { RoleCodeBadge } from "@/components/RoleCodeBadge";
+import { AppTooltip } from "@/components/AppTooltip";
 import { parseAssignableStaffLabel } from "@/lib/project-assignee";
+import {
+  notifySearchableSelectOpened,
+  subscribeSearchableSelectOpened,
+} from "@/lib/searchable-select-exclusive";
+
+const VISIBLE_BADGE_LIMIT = 2;
 
 export interface SearchableMultiSelectProps {
   value: string[];
@@ -60,6 +75,9 @@ export function SearchableMultiSelect({
   onAddNew,
   addNewLabel = "Add new",
 }: SearchableMultiSelectProps) {
+  const instanceId = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const { searchInput, setSearchInput, search } = useDebouncedSearch({
     delayMs: 300,
@@ -91,6 +109,25 @@ export function SearchableMultiSelect({
     if (!open) setSearchInput("");
   }, [open, setSearchInput]);
 
+  useEffect(() => {
+    return subscribeSearchableSelectOpened(instanceId, () => setOpen(false));
+  }, [instanceId]);
+
+  useEffect(() => {
+    if (!open) return;
+    notifySearchableSelectOpened(instanceId);
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (rootRef.current?.contains(target)) return;
+      if (contentRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () => document.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [open, instanceId]);
+
   const options = optionsQuery.data ?? initialQuery.data ?? [];
 
   function toggle(optionValue: string) {
@@ -101,21 +138,26 @@ export function SearchableMultiSelect({
     onValueChange([...selected, optionValue]);
   }
 
-  function remove(optionValue: string) {
+  function remove(optionValue: string, event?: ReactMouseEvent | ReactPointerEvent) {
+    event?.preventDefault();
+    event?.stopPropagation();
     onValueChange(selected.filter((item) => item !== optionValue));
   }
 
-  const triggerLabel =
-    selected.length === 1
-      ? resolveOptionDisplay(selected[0], options, selectedLabels)
-      : null;
+  const visibleSelected = selected.slice(0, VISIBLE_BADGE_LIMIT);
+  const overflowSelected = selected.slice(VISIBLE_BADGE_LIMIT);
+  const overflowLabels = overflowSelected.map(
+    (id) => resolveOptionDisplay(id, options, selectedLabels).label,
+  );
 
   return (
-    <div className={cn("min-w-0 w-full max-w-full", className)}>
+    <div ref={rootRef} className={cn("min-w-0 w-full max-w-full", className)}>
       <Popover
+        modal={false}
         open={open}
         onOpenChange={(next) => {
           if (disabled) return;
+          if (next) notifySearchableSelectOpened(instanceId);
           setOpen(next);
         }}
       >
@@ -129,28 +171,88 @@ export function SearchableMultiSelect({
             disabled={disabled}
             className={cn(
               searchableSelectTriggerClassName,
-              "min-h-9 h-auto min-w-0 w-full",
+              "min-h-8 min-w-0 w-full gap-1 overflow-hidden py-1",
               selected.length === 0 && "text-muted-foreground",
               invalid && "border-destructive focus-visible:ring-destructive",
               triggerClassName,
+              // Keep chips inside the bordered control (override fixed h-* from callers).
+              "h-auto",
             )}
           >
-            <span className="min-w-0 flex-1 truncate text-left">
+            <span className="flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-hidden text-left">
               {selected.length === 0 ? (
-                placeholder
-              ) : selected.length === 1 ? (
-                <span className="inline-flex max-w-full items-center gap-1.5">
-                  <span className="min-w-0 truncate">{triggerLabel?.label}</span>
-                  <RoleCodeBadge code={triggerLabel?.code} />
-                </span>
+                <span className="truncate px-0.5">{placeholder}</span>
               ) : (
-                `${selected.length} selected`
+                <>
+                  {visibleSelected.map((optionValue) => {
+                    const display = resolveOptionDisplay(
+                      optionValue,
+                      options,
+                      selectedLabels,
+                    );
+                    return (
+                      <span
+                        key={optionValue}
+                        className="inline-flex min-w-0 max-w-[45%] shrink items-center gap-0.5 rounded border bg-secondary px-1.5 py-0.5 text-[11px] leading-tight text-foreground"
+                      >
+                        <span className="min-w-0 truncate">{display.label}</span>
+                        {!disabled ? (
+                          <span
+                            role="button"
+                            tabIndex={-1}
+                            aria-label={`Remove ${display.label}`}
+                            className="shrink-0 rounded p-0.5 hover:bg-background"
+                            onClick={(e) => remove(optionValue, e)}
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </span>
+                        ) : null}
+                      </span>
+                    );
+                  })}
+                  {overflowSelected.length > 0 ? (
+                    <AppTooltip
+                      asChild
+                      align="start"
+                      content={
+                        <ul className="m-0 list-none space-y-1 p-0">
+                          {overflowLabels.map((label) => (
+                            <li key={label} className="whitespace-nowrap">
+                              {label}
+                            </li>
+                          ))}
+                        </ul>
+                      }
+                    >
+                      <span
+                        className="inline-flex shrink-0 items-center rounded border border-dashed border-border bg-background px-1.5 py-0.5 text-[11px] font-medium leading-tight text-muted-foreground"
+                        onClick={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                      >
+                        +{overflowSelected.length} more
+                      </span>
+                    </AppTooltip>
+                  ) : null}
+                </>
               )}
             </span>
-            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <PopoverContent
+          ref={contentRef}
+          className="z-[60] w-[var(--radix-popover-trigger-width)] p-0"
+          align="start"
+          onCloseAutoFocus={(event) => event.preventDefault()}
+          onEscapeKeyDown={(event) => {
+            event.stopPropagation();
+            setOpen(false);
+          }}
+        >
           <div className="flex items-center gap-2 border-b px-3 py-2">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
@@ -216,33 +318,6 @@ export function SearchableMultiSelect({
           ) : null}
         </PopoverContent>
       </Popover>
-
-      {selected.length > 0 ? (
-        <div className="mt-2 flex max-w-full flex-wrap gap-1.5 overflow-hidden">
-          {selected.map((optionValue) => {
-            const display = resolveOptionDisplay(optionValue, options, selectedLabels);
-            return (
-              <span
-                key={optionValue}
-                className="inline-flex max-w-full items-center gap-1 rounded-md border bg-secondary px-2 py-0.5 text-xs"
-              >
-                <span className="min-w-0 truncate">{display.label}</span>
-                <RoleCodeBadge code={display.code} />
-                {!disabled ? (
-                  <button
-                    type="button"
-                    className="shrink-0 rounded p-0.5 hover:bg-background"
-                    aria-label={`Remove ${display.label}`}
-                    onClick={() => remove(optionValue)}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                ) : null}
-              </span>
-            );
-          })}
-        </div>
-      ) : null}
     </div>
   );
 }

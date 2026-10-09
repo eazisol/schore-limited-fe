@@ -1,10 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Loader2, X } from "lucide-react";
-import { Modal, Field, inputCls } from "@/components/Modal";
+import { Modal, inputCls } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
-import { SearchableSelect } from "@/components/form";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
+import { SearchableMultiSelect, type SearchableSelectOption } from "@/components/form";
 import { toast } from "sonner";
 import { notifyApiError } from "@/lib/api/axios";
 import {
@@ -18,15 +16,29 @@ import { fetchProjectOptions } from "@/lib/project-dropdowns";
 import { propertiesService } from "@/lib/api/services/properties";
 import { tasksService } from "@/lib/api/services/tasks";
 import { DROPDOWN_FETCH_SIZE } from "@/lib/dropdown-fetch";
-import type { SearchableSelectOption } from "@/components/form";
 import { cn } from "@/lib/utils";
 
-type SelectState = {
-  id: string;
-  label: string | null;
+type MultiFilter = {
+  ids: string[];
+  labels: Record<string, string>;
 };
 
-const EMPTY_SELECT: SelectState = { id: "", label: null };
+const EMPTY_MULTI: MultiFilter = { ids: [], labels: {} };
+
+function CompactField({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="block min-w-0">
+      <div className="text-[11px] font-medium text-muted-foreground">{label}</div>
+      <div className="mt-0.5">{children}</div>
+    </div>
+  );
+}
 
 function DateField({
   label,
@@ -40,11 +52,11 @@ function DateField({
   onChange: (value: string) => void;
 }) {
   return (
-    <Field label={label}>
+    <CompactField label={label}>
       <div className="flex items-center gap-1">
         <input
           type="date"
-          className={cn(inputCls, "min-w-0 flex-1")}
+          className={cn(inputCls, "h-8 min-w-0 flex-1 px-2 text-sm")}
           value={value}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
@@ -54,15 +66,27 @@ function DateField({
             type="button"
             disabled={disabled}
             aria-label={`Clear ${label.toLowerCase()}`}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-input text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-input text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
             onClick={() => onChange("")}
           >
             <X className="h-3.5 w-3.5" />
           </button>
         ) : null}
       </div>
-    </Field>
+    </CompactField>
   );
+}
+
+function setMulti(
+  prev: MultiFilter,
+  ids: string[],
+  nextLabels?: Record<string, string>,
+): MultiFilter {
+  const labels: Record<string, string> = {};
+  for (const id of ids) {
+    labels[id] = nextLabels?.[id] ?? prev.labels[id] ?? id;
+  }
+  return { ids, labels };
 }
 
 export function DailyExportModal({
@@ -71,18 +95,17 @@ export function DailyExportModal({
 }: {
   open: boolean;
   onClose: () => void;
-  /** Kept for call-site compatibility; dates start empty (all). */
   defaultDate?: string;
 }) {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [exportType, setExportType] = useState<DailyExportType>("client");
-  const [client, setClient] = useState<SelectState>(EMPTY_SELECT);
-  const [site, setSite] = useState<SelectState>(EMPTY_SELECT);
-  const [project, setProject] = useState<SelectState>(EMPTY_SELECT);
-  const [property, setProperty] = useState<SelectState>(EMPTY_SELECT);
-  const [job, setJob] = useState<SelectState>(EMPTY_SELECT);
-  const [operative, setOperative] = useState<SelectState>(EMPTY_SELECT);
+  const [clients, setClients] = useState<MultiFilter>(EMPTY_MULTI);
+  const [sites, setSites] = useState<MultiFilter>(EMPTY_MULTI);
+  const [projects, setProjects] = useState<MultiFilter>(EMPTY_MULTI);
+  const [properties, setProperties] = useState<MultiFilter>(EMPTY_MULTI);
+  const [jobs, setJobs] = useState<MultiFilter>(EMPTY_MULTI);
+  const [operatives, setOperatives] = useState<MultiFilter>(EMPTY_MULTI);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -90,13 +113,28 @@ export function DailyExportModal({
     setFromDate("");
     setToDate("");
     setExportType("client");
-    setClient(EMPTY_SELECT);
-    setSite(EMPTY_SELECT);
-    setProject(EMPTY_SELECT);
-    setProperty(EMPTY_SELECT);
-    setJob(EMPTY_SELECT);
-    setOperative(EMPTY_SELECT);
+    setClients(EMPTY_MULTI);
+    setSites(EMPTY_MULTI);
+    setProjects(EMPTY_MULTI);
+    setProperties(EMPTY_MULTI);
+    setJobs(EMPTY_MULTI);
+    setOperatives(EMPTY_MULTI);
   }, [open]);
+
+  const singleClientId = clients.ids.length === 1 ? clients.ids[0] : undefined;
+  const singleSiteId = sites.ids.length === 1 ? sites.ids[0] : undefined;
+  const singleProjectId = projects.ids.length === 1 ? projects.ids[0] : undefined;
+  const singlePropertyId = properties.ids.length === 1 ? properties.ids[0] : undefined;
+
+  const fetchSites = useCallback(
+    (search: string) => fetchSiteOptions(search, singleClientId),
+    [singleClientId],
+  );
+
+  const fetchProjects = useCallback(
+    (search: string) => fetchProjectOptions(search, singleSiteId, singleClientId),
+    [singleSiteId, singleClientId],
+  );
 
   const fetchPropertyOptions = useCallback(
     async (search: string): Promise<SearchableSelectOption[]> => {
@@ -104,16 +142,16 @@ export function DailyExportModal({
         page: 1,
         pageSize: DROPDOWN_FETCH_SIZE,
         search,
-        ...(client.id ? { customerId: client.id } : {}),
-        ...(site.id ? { siteId: site.id } : {}),
-        ...(project.id ? { projectId: project.id } : {}),
+        ...(singleClientId ? { customerId: singleClientId } : {}),
+        ...(singleSiteId ? { siteId: singleSiteId } : {}),
+        ...(singleProjectId ? { projectId: singleProjectId } : {}),
       });
       return (res.data.items ?? []).map((p) => ({
         value: String(p.id),
         label: p.propertyName?.trim() || `Property ${p.id}`,
       }));
     },
-    [client.id, site.id, project.id],
+    [singleClientId, singleSiteId, singleProjectId],
   );
 
   const fetchJobOptions = useCallback(
@@ -122,29 +160,23 @@ export function DailyExportModal({
         page: 1,
         pageSize: DROPDOWN_FETCH_SIZE,
         search,
-        ...(client.id ? { customerId: client.id } : {}),
-        ...(site.id ? { siteId: site.id } : {}),
-        ...(project.id ? { projectId: project.id } : {}),
-        ...(property.id ? { propertyId: property.id } : {}),
+        ...(singleClientId ? { customerId: singleClientId } : {}),
+        ...(singleSiteId ? { siteId: singleSiteId } : {}),
+        ...(singleProjectId ? { projectId: singleProjectId } : {}),
+        ...(singlePropertyId ? { propertyId: singlePropertyId } : {}),
       });
       return (res.data.items ?? []).map((t) => ({
         value: String(t.id),
         label: `${t.taskNumber} · ${t.propertyName?.trim() || "Job"}`,
       }));
     },
-    [client.id, site.id, project.id, property.id],
+    [singleClientId, singleSiteId, singleProjectId, singlePropertyId],
   );
 
-  const fetchSites = useCallback(
-    (search: string) => fetchSiteOptions(search, client.id || undefined),
-    [client.id],
-  );
-
-  const fetchProjects = useCallback(
-    (search: string) =>
-      fetchProjectOptions(search, site.id || undefined, client.id || undefined),
-    [site.id, client.id],
-  );
+  const clientKey = useMemo(() => clients.ids.join(","), [clients.ids]);
+  const siteKey = useMemo(() => sites.ids.join(","), [sites.ids]);
+  const projectKey = useMemo(() => projects.ids.join(","), [projects.ids]);
+  const propertyKey = useMemo(() => properties.ids.join(","), [properties.ids]);
 
   async function handleDownload() {
     if (exporting) return;
@@ -163,12 +195,12 @@ export function DailyExportModal({
         exportType,
         ...(fromDate ? { fromDate } : {}),
         ...(toDate ? { toDate } : {}),
-        ...(client.id ? { customerId: client.id } : {}),
-        ...(site.id ? { siteId: site.id } : {}),
-        ...(project.id ? { projectId: project.id } : {}),
-        ...(property.id ? { propertyId: property.id } : {}),
-        ...(job.id ? { taskId: job.id } : {}),
-        ...(operative.id ? { operativeId: operative.id } : {}),
+        ...(clients.ids.length ? { customerIds: clients.ids } : {}),
+        ...(sites.ids.length ? { siteIds: sites.ids } : {}),
+        ...(projects.ids.length ? { projectIds: projects.ids } : {}),
+        ...(properties.ids.length ? { propertyIds: properties.ids } : {}),
+        ...(jobs.ids.length ? { filterTaskIds: jobs.ids } : {}),
+        ...(operatives.ids.length ? { operativeIds: operatives.ids } : {}),
       });
       const data = res.data;
       if (!data?.sheets?.length) {
@@ -186,6 +218,8 @@ export function DailyExportModal({
       setExporting(false);
     }
   }
+
+  const multiTriggerClass = "h-auto min-h-8 py-1 text-sm";
 
   return (
     <Modal
@@ -209,8 +243,8 @@ export function DailyExportModal({
         </div>
       }
     >
-      <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
+      <div className="space-y-2.5">
+        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
           <DateField
             label="From date"
             value={fromDate}
@@ -218,167 +252,106 @@ export function DailyExportModal({
             onChange={setFromDate}
           />
           <DateField label="To date" value={toDate} disabled={exporting} onChange={setToDate} />
-        </div>
-
-        <div>
-          <span className="text-xs font-medium text-muted-foreground">Export type</span>
-          <RadioGroup
-            value={exportType}
-            onValueChange={(v) => setExportType(v as DailyExportType)}
-            disabled={exporting}
-            className="mt-2 flex flex-wrap gap-3"
-          >
-            {(
-              [
-                { value: "client", label: "Client" },
-                { value: "operative", label: "Operative" },
-              ] as const
-            ).map((opt) => (
-              <label
-                key={opt.value}
-                htmlFor={`export-type-${opt.value}`}
-                className={cn(
-                  "flex cursor-pointer items-center gap-2 rounded-md border border-input px-3 py-2 text-sm",
-                  exportType === opt.value && "border-accent bg-accent/5",
-                )}
-              >
-                <RadioGroupItem id={`export-type-${opt.value}`} value={opt.value} />
-                <Label htmlFor={`export-type-${opt.value}`} className="cursor-pointer font-normal">
+          <CompactField label="Export type">
+            <div
+              role="radiogroup"
+              aria-label="Export type"
+              className="flex h-8 items-center gap-3"
+            >
+              {(
+                [
+                  { value: "client", label: "Client" },
+                  { value: "operative", label: "Operative" },
+                ] as const
+              ).map((opt) => (
+                <label
+                  key={opt.value}
+                  className="inline-flex cursor-pointer items-center gap-1.5 text-sm"
+                >
+                  <input
+                    type="radio"
+                    name="daily-export-type"
+                    value={opt.value}
+                    checked={exportType === opt.value}
+                    disabled={exporting}
+                    onChange={() => setExportType(opt.value)}
+                    className="h-3.5 w-3.5 accent-primary"
+                  />
                   {opt.label}
-                </Label>
-              </label>
-            ))}
-          </RadioGroup>
+                </label>
+              ))}
+            </div>
+          </CompactField>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Client">
-            <SearchableSelect
-              value={client.id}
+        <div className="grid gap-2 sm:grid-cols-2">
+          <CompactField label="Client">
+            <SearchableMultiSelect
+              value={clients.ids}
               disabled={exporting}
-              clearable
-              onValueChange={(value) => {
-                if (!value) {
-                  setClient(EMPTY_SELECT);
-                  setSite(EMPTY_SELECT);
-                  setProject(EMPTY_SELECT);
-                  setProperty(EMPTY_SELECT);
-                  setJob(EMPTY_SELECT);
-                }
-              }}
-              onSelect={(option) => {
-                if (!option.value) {
-                  setClient(EMPTY_SELECT);
-                  setSite(EMPTY_SELECT);
-                  setProject(EMPTY_SELECT);
-                  setProperty(EMPTY_SELECT);
-                  setJob(EMPTY_SELECT);
-                  return;
-                }
-                setClient({ id: option.value, label: option.label });
-                setSite(EMPTY_SELECT);
-                setProject(EMPTY_SELECT);
-                setProperty(EMPTY_SELECT);
-                setJob(EMPTY_SELECT);
+              onValueChange={(ids) => {
+                setClients((prev) => setMulti(prev, ids));
+                setSites(EMPTY_MULTI);
+                setProjects(EMPTY_MULTI);
+                setProperties(EMPTY_MULTI);
+                setJobs(EMPTY_MULTI);
               }}
               placeholder="All clients"
               searchPlaceholder="Search clients…"
               aria-label="Filter by client"
-              queryKey={["lookups", "customers", "daily-export"]}
+              queryKey={["lookups", "customers", "daily-export-multi"]}
               fetchOptions={fetchCustomerOptions}
-              selectedLabel={client.label}
-              emptyOption={{ value: "", label: "All clients" }}
+              selectedLabels={clients.labels}
+              triggerClassName={multiTriggerClass}
             />
-          </Field>
+          </CompactField>
 
-          <Field label="Site">
-            <SearchableSelect
-              value={site.id}
+          <CompactField label="Site">
+            <SearchableMultiSelect
+              value={sites.ids}
               disabled={exporting}
-              clearable
-              onValueChange={(value) => {
-                if (!value) {
-                  setSite(EMPTY_SELECT);
-                  setProject(EMPTY_SELECT);
-                  setProperty(EMPTY_SELECT);
-                  setJob(EMPTY_SELECT);
-                }
-              }}
-              onSelect={(option) => {
-                if (!option.value) {
-                  setSite(EMPTY_SELECT);
-                  setProject(EMPTY_SELECT);
-                  setProperty(EMPTY_SELECT);
-                  setJob(EMPTY_SELECT);
-                  return;
-                }
-                setSite({ id: option.value, label: option.label });
-                setProject(EMPTY_SELECT);
-                setProperty(EMPTY_SELECT);
-                setJob(EMPTY_SELECT);
+              onValueChange={(ids) => {
+                setSites((prev) => setMulti(prev, ids));
+                setProjects(EMPTY_MULTI);
+                setProperties(EMPTY_MULTI);
+                setJobs(EMPTY_MULTI);
               }}
               placeholder="All sites"
               searchPlaceholder="Search sites…"
               aria-label="Filter by site"
-              queryKey={["lookups", "sites", "daily-export", client.id]}
+              queryKey={["lookups", "sites", "daily-export-multi", clientKey]}
               fetchOptions={fetchSites}
-              selectedLabel={site.label}
-              emptyOption={{ value: "", label: "All sites" }}
+              selectedLabels={sites.labels}
+              triggerClassName={multiTriggerClass}
             />
-          </Field>
+          </CompactField>
 
-          <Field label="Project">
-            <SearchableSelect
-              value={project.id}
+          <CompactField label="Project">
+            <SearchableMultiSelect
+              value={projects.ids}
               disabled={exporting}
-              clearable
-              onValueChange={(value) => {
-                if (!value) {
-                  setProject(EMPTY_SELECT);
-                  setProperty(EMPTY_SELECT);
-                  setJob(EMPTY_SELECT);
-                }
-              }}
-              onSelect={(option) => {
-                if (!option.value) {
-                  setProject(EMPTY_SELECT);
-                  setProperty(EMPTY_SELECT);
-                  setJob(EMPTY_SELECT);
-                  return;
-                }
-                setProject({ id: option.value, label: option.label });
-                setProperty(EMPTY_SELECT);
-                setJob(EMPTY_SELECT);
+              onValueChange={(ids) => {
+                setProjects((prev) => setMulti(prev, ids));
+                setProperties(EMPTY_MULTI);
+                setJobs(EMPTY_MULTI);
               }}
               placeholder="All projects"
               searchPlaceholder="Search projects…"
               aria-label="Filter by project"
-              queryKey={["lookups", "projects", "daily-export", client.id, site.id]}
+              queryKey={["lookups", "projects", "daily-export-multi", clientKey, siteKey]}
               fetchOptions={fetchProjects}
-              selectedLabel={project.label}
-              emptyOption={{ value: "", label: "All projects" }}
+              selectedLabels={projects.labels}
+              triggerClassName={multiTriggerClass}
             />
-          </Field>
+          </CompactField>
 
-          <Field label="Property">
-            <SearchableSelect
-              value={property.id}
+          <CompactField label="Property">
+            <SearchableMultiSelect
+              value={properties.ids}
               disabled={exporting}
-              clearable
-              onValueChange={(value) => {
-                if (!value) {
-                  setProperty(EMPTY_SELECT);
-                  setJob(EMPTY_SELECT);
-                }
-              }}
-              onSelect={(option) => {
-                if (!option.value) {
-                  setProperty(EMPTY_SELECT);
-                  setJob(EMPTY_SELECT);
-                  return;
-                }
-                setProperty({ id: option.value, label: option.label });
-                setJob(EMPTY_SELECT);
+              onValueChange={(ids) => {
+                setProperties((prev) => setMulti(prev, ids));
+                setJobs(EMPTY_MULTI);
               }}
               placeholder="All properties"
               searchPlaceholder="Search properties…"
@@ -386,74 +359,54 @@ export function DailyExportModal({
               queryKey={[
                 "lookups",
                 "properties",
-                "daily-export",
-                client.id,
-                site.id,
-                project.id,
+                "daily-export-multi",
+                clientKey,
+                siteKey,
+                projectKey,
               ]}
               fetchOptions={fetchPropertyOptions}
-              selectedLabel={property.label}
-              emptyOption={{ value: "", label: "All properties" }}
+              selectedLabels={properties.labels}
+              triggerClassName={multiTriggerClass}
             />
-          </Field>
+          </CompactField>
 
-          <Field label="Job">
-            <SearchableSelect
-              value={job.id}
+          <CompactField label="Job">
+            <SearchableMultiSelect
+              value={jobs.ids}
               disabled={exporting}
-              clearable
-              onValueChange={(value) => {
-                if (!value) setJob(EMPTY_SELECT);
-              }}
-              onSelect={(option) => {
-                if (!option.value) {
-                  setJob(EMPTY_SELECT);
-                  return;
-                }
-                setJob({ id: option.value, label: option.label });
-              }}
+              onValueChange={(ids) => setJobs((prev) => setMulti(prev, ids))}
               placeholder="All jobs"
               searchPlaceholder="Search jobs…"
               aria-label="Filter by job"
               queryKey={[
                 "lookups",
                 "tasks",
-                "daily-export",
-                client.id,
-                site.id,
-                project.id,
-                property.id,
+                "daily-export-multi",
+                clientKey,
+                siteKey,
+                projectKey,
+                propertyKey,
               ]}
               fetchOptions={fetchJobOptions}
-              selectedLabel={job.label}
-              emptyOption={{ value: "", label: "All jobs" }}
+              selectedLabels={jobs.labels}
+              triggerClassName={multiTriggerClass}
             />
-          </Field>
+          </CompactField>
 
-          <Field label="Operative">
-            <SearchableSelect
-              value={operative.id}
+          <CompactField label="Operative">
+            <SearchableMultiSelect
+              value={operatives.ids}
               disabled={exporting}
-              clearable
-              onValueChange={(value) => {
-                if (!value) setOperative(EMPTY_SELECT);
-              }}
-              onSelect={(option) => {
-                if (!option.value) {
-                  setOperative(EMPTY_SELECT);
-                  return;
-                }
-                setOperative({ id: option.value, label: option.label });
-              }}
+              onValueChange={(ids) => setOperatives((prev) => setMulti(prev, ids))}
               placeholder="All operatives"
               searchPlaceholder="Search operatives…"
               aria-label="Filter by operative"
-              queryKey={["lookups", "operatives", "daily-export"]}
+              queryKey={["lookups", "operatives", "daily-export-multi"]}
               fetchOptions={fetchOperativeOptions}
-              selectedLabel={operative.label}
-              emptyOption={{ value: "", label: "All operatives" }}
+              selectedLabels={operatives.labels}
+              triggerClassName={multiTriggerClass}
             />
-          </Field>
+          </CompactField>
         </div>
       </div>
     </Modal>

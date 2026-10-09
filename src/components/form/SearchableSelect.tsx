@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -11,6 +12,10 @@ import { Check, ChevronDown, Loader2, Plus, Search, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useDebouncedSearch } from "@/components/data-table";
+import {
+  notifySearchableSelectOpened,
+  subscribeSearchableSelectOpened,
+} from "@/lib/searchable-select-exclusive";
 
 /** Matches `Input` / `SelectTrigger` styling for form dropdown triggers. */
 export const searchableSelectTriggerClassName =
@@ -106,6 +111,7 @@ export function SearchableSelect({
   truncateOptions = true,
   contentAlign = "start",
 }: SearchableSelectProps) {
+  const instanceId = useId();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -133,9 +139,14 @@ export function SearchableSelect({
     if (!open) setSearchInput("");
   }, [open, setSearchInput]);
 
+  useEffect(() => {
+    return subscribeSearchableSelectOpened(instanceId, () => setOpen(false));
+  }, [instanceId]);
+
   // Close when clicking anywhere outside (works inside modals too).
   useEffect(() => {
     if (!open) return;
+    notifySearchableSelectOpened(instanceId);
 
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
@@ -146,7 +157,7 @@ export function SearchableSelect({
 
     document.addEventListener("pointerdown", handlePointerDown, true);
     return () => document.removeEventListener("pointerdown", handlePointerDown, true);
-  }, [open]);
+  }, [open, instanceId]);
 
   const clearOption = useMemo<SearchableSelectOption>(
     () => ({ value: "", label: clearLabel }),
@@ -217,9 +228,11 @@ export function SearchableSelect({
   return (
     <div ref={rootRef} className={className}>
       <Popover
+        modal={false}
         open={open}
         onOpenChange={(next) => {
           if (disabled) return;
+          if (next) notifySearchableSelectOpened(instanceId);
           setOpen(next);
         }}
       >
@@ -282,6 +295,12 @@ export function SearchableSelect({
           )}
           align={contentAlign}
           onCloseAutoFocus={(event) => event.preventDefault()}
+          onPointerDownOutside={() => setOpen(false)}
+          onFocusOutside={() => setOpen(false)}
+          onEscapeKeyDown={(event) => {
+            event.stopPropagation();
+            setOpen(false);
+          }}
         >
           <div className="flex items-center gap-2 border-b px-3 py-2">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />

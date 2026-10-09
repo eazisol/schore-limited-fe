@@ -248,13 +248,16 @@ export interface ApiDailyClientExport {
   programmeDate: string;
   exportDate: string;
   taskNumber: string;
+  projectName?: string | null;
   propertyName: string;
   propertyAddress: string | null;
   propertyType: string | null;
   client: string | null;
   postCode: string | null;
+  startingDate?: string;
   status?: string | null;
   reason?: string | null;
+  nextDay?: string | null;
   lines: ApiDailyClientExportLine[];
 }
 
@@ -270,16 +273,17 @@ export interface DailyProgrammeExportParams {
   fromDate?: string;
   toDate?: string;
   exportType: DailyExportType;
-  customerId?: string;
-  siteId?: string;
-  projectId?: string;
-  propertyId?: string;
-  taskId?: string;
-  operativeId?: string;
+  customerIds?: string[];
+  siteIds?: string[];
+  projectIds?: string[];
+  propertyIds?: string[];
+  filterTaskIds?: string[];
+  operativeIds?: string[];
 }
 
 export interface ApiDailyOperativeExportRow {
   propertyName: string;
+  projectName?: string | null;
   client: string | null;
   postCode: string | null;
   type: string | null;
@@ -290,18 +294,13 @@ export interface ApiDailyOperativeExportRow {
   name: string | null;
   time: string | null;
   nextDay: string | null;
-}
-
-export interface ApiDailyOperativeExportNoteGroup {
-  jobName: string;
-  notes: string[];
+  notes?: string | null;
 }
 
 export interface ApiDailyProgrammeExportSheet {
   date: string;
   clientJobs?: ApiDailyClientExport[] | null;
   operativeRows?: ApiDailyOperativeExportRow[] | null;
-  noteGroups?: ApiDailyOperativeExportNoteGroup[] | null;
 }
 
 export interface ApiDailyProgrammeExport {
@@ -427,15 +426,15 @@ export const dailyProgrammeService = {
       { params: { date } },
     ),
   exportProgramme: (payload: DailyProgrammeExportParams) =>
-    http.post<ApiEnvelope<ApiDailyProgrammeExport>>("DailyProgramme/export", {
+    http.post<ApiEnvelope<ApiDailyProgrammeExport>>("DailyProgramme/client-export", {
       exportType: payload.exportType,
       ...(payload.fromDate ? { fromDate: payload.fromDate } : {}),
       ...(payload.toDate ? { toDate: payload.toDate } : {}),
-      ...(payload.customerId ? { customerId: payload.customerId } : {}),
-      ...(payload.siteId ? { siteId: payload.siteId } : {}),
-      ...(payload.projectId ? { projectId: payload.projectId } : {}),
-      ...(payload.propertyId ? { propertyId: payload.propertyId } : {}),
-      ...(payload.taskId ? { taskId: payload.taskId } : {}),
-      ...(payload.operativeId ? { operativeId: payload.operativeId } : {}),
+      ...(payload.customerIds?.length ? { customerIds: payload.customerIds } : {}),
+      ...(payload.siteIds?.length ? { siteIds: payload.siteIds } : {}),
+      ...(payload.projectIds?.length ? { projectIds: payload.projectIds } : {}),
+      ...(payload.propertyIds?.length ? { propertyIds: payload.propertyIds } : {}),
+      ...(payload.filterTaskIds?.length ? { filterTaskIds: payload.filterTaskIds } : {}),
+      ...(payload.operativeIds?.length ? { operativeIds: payload.operativeIds } : {}),
     }),
 };
