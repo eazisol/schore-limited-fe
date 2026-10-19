@@ -7,7 +7,7 @@ import { AppTooltip } from "@/components/AppTooltip";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { SignaturePadModal } from "@/components/wages/SignaturePadModal";
-import { ArrowLeft, Send, /* Check, Banknote, */ X, Loader2, MessageSquare, CalendarDays, User } from "lucide-react";
+import { ArrowLeft, Send, Check, X, Banknote, Loader2, MessageSquare, CalendarDays, User } from "lucide-react";
 import { toast } from "sonner";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { useAuth } from "@/contexts/AuthContext";
@@ -231,10 +231,9 @@ function WageSheetView() {
   const w = query.data;
   const isOwner = w != null && user?.id === w.operativeId;
   const canSend = canModify && (w?.statusCode === "DRAFT" || w?.statusCode === "REFUSED");
-  // Temporarily unused while Resend / Accept / Refuse / Mark paid stay hidden
-  // const canResend = canModify && w?.statusCode === "SENT";
-  // const canRespond = isOwner && w?.statusCode === "SENT";
-  // const canMarkPaid = canModify && w?.statusCode === "ACCEPTED" && w.paymentStatusCode !== "PAID";
+  const canResend = canModify && w?.statusCode === "SENT";
+  const canRespond = isOwner && w?.statusCode === "SENT";
+  const canMarkPaid = canModify && w?.statusCode === "ACCEPTED" && w.paymentStatusCode !== "PAID";
   /** Office may add/edit/delete left signature only while Draft or Refused. */
   const canEditSenderSignature =
     canModify && (w?.statusCode === "DRAFT" || w?.statusCode === "REFUSED");
@@ -290,23 +289,11 @@ function WageSheetView() {
             <StatusBadge status={w.statusName} />
             <StatusBadge status={w.paymentStatusName} />
             {canSend && (
-              <Button
-                size="sm"
-                onClick={() => {
-                  // Signature not required for send (temporarily)
-                  // if (!hasSenderSignature) {
-                  //   toast.error("Office signature is required before sending.");
-                  //   setSignatureSlot("sender");
-                  //   return;
-                  // }
-                  setConfirmSend(true);
-                }}
-              >
+              <Button size="sm" onClick={() => setConfirmSend(true)}>
                 <Send className="h-3.5 w-3.5" />
                 Send to operative
               </Button>
             )}
-            {/* Other wage actions temporarily hidden
             {canResend && (
               <Button size="sm" variant="outline" onClick={() => setConfirmResend(true)}>
                 <Send className="h-3.5 w-3.5" />
@@ -326,14 +313,7 @@ function WageSheetView() {
                 </Button>
                 <Button
                   size="sm"
-                  onClick={() => {
-                    if (!hasOperativeSignature) {
-                      toast.error("Your signature is required before accepting.");
-                      setSignatureSlot("operative");
-                      return;
-                    }
-                    respondMutation.mutate({ accepted: true });
-                  }}
+                  onClick={() => respondMutation.mutate({ accepted: true })}
                 >
                   <Check className="h-3.5 w-3.5" />
                   Accept
@@ -346,7 +326,6 @@ function WageSheetView() {
                 Mark paid
               </Button>
             )}
-            */}
           </>
         }
       />
@@ -650,6 +629,7 @@ function WageSheet({
         </div>
 
         <div className="mt-6 text-[14.5px] text-slate-700">
+          {/* Signed / Operative signature fields — temporarily hidden
           <div className="mb-6 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between sm:gap-10">
             <SignatureField
               label="Signed"
@@ -665,6 +645,7 @@ function WageSheet({
               align="right"
             />
           </div>
+          */}
           <div className="text-center">
             <p className="italic text-slate-500">Thank you for your business!</p>
             <p className="mt-0.5 text-[12px] italic text-slate-400">

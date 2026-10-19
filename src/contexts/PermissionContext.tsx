@@ -20,7 +20,6 @@ import { hasCapability } from "@/lib/access";
 import {
   buildOperativePortalMenus,
   isOperativeUserType,
-  stripOperativeWagesMenus,
 } from "@/lib/operative-portal";
 import { stripBrandingMenu } from "@/lib/branding";
 
@@ -128,11 +127,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
         });
       }
 
-      const menusForUser = stripBrandingMenu(
-        isOperativeUserType(apiUser.userTypeCode)
-          ? stripOperativeWagesMenus(nextMenus)
-          : nextMenus,
-      );
+      const menusForUser = stripBrandingMenu(nextMenus);
 
       if (requestId === requestIdRef.current) {
         setMenus(menusForUser);
