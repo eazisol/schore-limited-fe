@@ -7,7 +7,7 @@ import { AppTooltip } from "@/components/AppTooltip";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { SignaturePadModal } from "@/components/wages/SignaturePadModal";
-import { ArrowLeft, Send, Check, X, Banknote, Loader2, MessageSquare, CalendarDays, User } from "lucide-react";
+import { ArrowLeft, Send, /* Check, Banknote, */ X, Loader2, MessageSquare, CalendarDays, User } from "lucide-react";
 import { toast } from "sonner";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { useAuth } from "@/contexts/AuthContext";
@@ -231,9 +231,10 @@ function WageSheetView() {
   const w = query.data;
   const isOwner = w != null && user?.id === w.operativeId;
   const canSend = canModify && (w?.statusCode === "DRAFT" || w?.statusCode === "REFUSED");
-  const canResend = canModify && w?.statusCode === "SENT";
-  const canRespond = isOwner && w?.statusCode === "SENT";
-  const canMarkPaid = canModify && w?.statusCode === "ACCEPTED" && w.paymentStatusCode !== "PAID";
+  // Temporarily unused while Resend / Accept / Refuse / Mark paid stay hidden
+  // const canResend = canModify && w?.statusCode === "SENT";
+  // const canRespond = isOwner && w?.statusCode === "SENT";
+  // const canMarkPaid = canModify && w?.statusCode === "ACCEPTED" && w.paymentStatusCode !== "PAID";
   /** Office may add/edit/delete left signature only while Draft or Refused. */
   const canEditSenderSignature =
     canModify && (w?.statusCode === "DRAFT" || w?.statusCode === "REFUSED");
@@ -284,67 +285,70 @@ function WageSheetView() {
             </Link>
           </AppTooltip>
         }
-        // actions={
-        //   <>
-        //     <StatusBadge status={w.statusName} />
-        //     <StatusBadge status={w.paymentStatusName} />
-        //     {canSend && (
-        //       <Button
-        //         size="sm"
-        //         onClick={() => {
-        //           if (!hasSenderSignature) {
-        //             toast.error("Office signature is required before sending.");
-        //             setSignatureSlot("sender");
-        //             return;
-        //           }
-        //           setConfirmSend(true);
-        //         }}
-        //       >
-        //         <Send className="h-3.5 w-3.5" />
-        //         Send to operative
-        //       </Button>
-        //     )}
-        //     {canResend && (
-        //       <Button size="sm" variant="outline" onClick={() => setConfirmResend(true)}>
-        //         <Send className="h-3.5 w-3.5" />
-        //         Resend to operative
-        //       </Button>
-        //     )}
-        //     {canRespond && (
-        //       <>
-        //         <Button
-        //           variant="outline"
-        //           size="sm"
-        //           className="border-destructive/30 text-destructive"
-        //           onClick={() => setRefuseOpen(true)}
-        //         >
-        //           <X className="h-3.5 w-3.5" />
-        //           Refuse
-        //         </Button>
-        //         <Button
-        //           size="sm"
-        //           onClick={() => {
-        //             if (!hasOperativeSignature) {
-        //               toast.error("Your signature is required before accepting.");
-        //               setSignatureSlot("operative");
-        //               return;
-        //             }
-        //             respondMutation.mutate({ accepted: true });
-        //           }}
-        //         >
-        //           <Check className="h-3.5 w-3.5" />
-        //           Accept
-        //         </Button>
-        //       </>
-        //     )}
-        //     {canMarkPaid && (
-        //       <Button size="sm" onClick={() => setPaidOpen(true)}>
-        //         <Banknote className="h-3.5 w-3.5" />
-        //         Mark paid
-        //       </Button>
-        //     )}
-        //   </>
-        // }
+        actions={
+          <>
+            <StatusBadge status={w.statusName} />
+            <StatusBadge status={w.paymentStatusName} />
+            {canSend && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  // Signature not required for send (temporarily)
+                  // if (!hasSenderSignature) {
+                  //   toast.error("Office signature is required before sending.");
+                  //   setSignatureSlot("sender");
+                  //   return;
+                  // }
+                  setConfirmSend(true);
+                }}
+              >
+                <Send className="h-3.5 w-3.5" />
+                Send to operative
+              </Button>
+            )}
+            {/* Other wage actions temporarily hidden
+            {canResend && (
+              <Button size="sm" variant="outline" onClick={() => setConfirmResend(true)}>
+                <Send className="h-3.5 w-3.5" />
+                Resend to operative
+              </Button>
+            )}
+            {canRespond && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-destructive/30 text-destructive"
+                  onClick={() => setRefuseOpen(true)}
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Refuse
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (!hasOperativeSignature) {
+                      toast.error("Your signature is required before accepting.");
+                      setSignatureSlot("operative");
+                      return;
+                    }
+                    respondMutation.mutate({ accepted: true });
+                  }}
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  Accept
+                </Button>
+              </>
+            )}
+            {canMarkPaid && (
+              <Button size="sm" onClick={() => setPaidOpen(true)}>
+                <Banknote className="h-3.5 w-3.5" />
+                Mark paid
+              </Button>
+            )}
+            */}
+          </>
+        }
       />
 
       <WageSheet
