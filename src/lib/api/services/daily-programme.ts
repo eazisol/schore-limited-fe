@@ -36,6 +36,11 @@ export interface ApiDailyAssignedItemLine {
   proposedRate?: number | null;
   rateChangeReason?: string | null;
   rateReviewReason?: string | null;
+  /** PENDING | REJECTED when previous-day line needs / was denied approval. */
+  previousDayApprovalStatus?: string | null;
+  previousDayApprovalId?: string | null;
+  previousDayReason?: string | null;
+  previousDayReviewReason?: string | null;
   operativeId?: string | null;
   operativeName?: string | null;
 }

@@ -29,6 +29,48 @@ export async function fetchPropertyOptions(search: string): Promise<SearchableSe
   }));
 }
 
+/** Properties limited to one project (e.g. wage sheet line edit). */
+export async function fetchProjectPropertyOptions(
+  projectId: string,
+  search: string,
+): Promise<SearchableSelectOption[]> {
+  const res = await propertiesService.list({
+    page: 1,
+    pageSize: DROPDOWN_FETCH_SIZE,
+    search,
+    projectId,
+  });
+  return (res.data.items ?? []).map((p) => ({
+    value: String(p.id),
+    label: p.propertyName?.trim() || `Property ${p.id}`,
+  }));
+}
+
+/** System-wide task items for wage sheet Task dropdown. */
+export async function fetchTaskItemOptions(search: string): Promise<SearchableSelectOption[]> {
+  const res = await tasksService.listItems({
+    page: 1,
+    pageSize: DROPDOWN_FETCH_SIZE,
+    search,
+  });
+  return (res.data.items ?? []).map((item) => {
+    const product = item.productName?.trim();
+    const property = item.propertyName?.trim();
+    const label = product
+      ? property
+        ? `${product} · ${property}`
+        : product
+      : property
+        ? `${item.taskNumber} · ${property}`
+        : item.taskNumber || `Item ${item.id}`;
+    return {
+      value: String(item.id),
+      label,
+      description: item.taskNumber ? `Job ${item.taskNumber}` : undefined,
+    };
+  });
+}
+
 export async function fetchJobTypeOptions(search: string): Promise<SearchableSelectOption[]> {
   const res = await jobTypesService.list({ page: 1, pageSize: DROPDOWN_FETCH_SIZE, search });
   return toOptions(res.data.items ?? []);

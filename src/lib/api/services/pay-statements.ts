@@ -65,6 +65,18 @@ export interface ApiPayStatementLine {
   isTopUp: boolean;
 }
 
+export interface ApiPayStatementHistoryEntry {
+  id: string;
+  action: string;
+  reason: string | null;
+  summary: string | null;
+  previousStatus: string | null;
+  newStatus: string | null;
+  actorUserId: string | null;
+  actorName: string | null;
+  createdDate: string;
+}
+
 export interface ApiPayStatementDetail extends ApiPayStatementSummary {
   operativeEmail: string | null;
   operativeTradeCode: string | null;
@@ -91,6 +103,8 @@ export interface ApiPayStatementDetail extends ApiPayStatementSummary {
   operativeSignedAt: string | null;
   days: ApiPayStatementDay[];
   lines: ApiPayStatementLine[];
+  /** Lifecycle history (send / refuse / accept / paid), newest first. */
+  history: ApiPayStatementHistoryEntry[];
 }
 
 export interface PayStatementListParams {
@@ -197,4 +211,15 @@ export const payStatementsService = {
     }),
   getMine: (id: string) =>
     http.get<ApiEnvelope<ApiPayStatementDetail>>(`operatives/me/statements/${id}`),
+  updateLines: (
+    id: string,
+    lines: Array<{
+      lineId: string;
+      propertyId: string;
+      taskItemId: string;
+      lineDate: string;
+      amount: number;
+    }>,
+  ) =>
+    http.put<ApiEnvelope<ApiPayStatementDetail>>(`pay-statements/${id}/lines`, { lines }),
 };

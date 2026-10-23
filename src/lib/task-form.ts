@@ -25,6 +25,10 @@ export type TaskItemFormValues = {
   rateApprovalStatus: string;
   proposedRate: string;
   rateReviewReason: string;
+  /** Reason when assigning a new line for a past work date (previous-day approval). */
+  previousDayReason: string;
+  /** Read-only: PENDING | REJECTED from server for previous-day approval. */
+  previousDayApprovalStatus: string;
 };
 
 export type TaskFormValues = {
@@ -65,6 +69,8 @@ export const emptyTaskItem = (): TaskItemFormValues => ({
   rateApprovalStatus: "",
   proposedRate: "",
   rateReviewReason: "",
+  previousDayReason: "",
+  previousDayApprovalStatus: "",
 });
 
 /** Emptied leftover slots after field-array desync (no id / catalog). */
@@ -158,6 +164,8 @@ const taskItemSchema = z
     rateApprovalStatus: z.string().default(""),
     proposedRate: z.string().default(""),
     rateReviewReason: z.string().default(""),
+    previousDayReason: z.string().default(""),
+    previousDayApprovalStatus: z.string().default(""),
   })
   .superRefine((item, ctx) => {
     if (item.itemKind === "tradeGroup" && !item.tradeGroupId.trim()) {
@@ -293,6 +301,8 @@ export function taskToFormValues(task: ApiTask): TaskFormValues {
           ? String(item.proposedRate)
           : "",
       rateReviewReason: item.rateReviewReason ?? "",
+      previousDayReason: item.previousDayReason ?? "",
+      previousDayApprovalStatus: item.previousDayApprovalStatus ?? "",
     })),
     itemRemovals: [],
   };
@@ -330,6 +340,7 @@ export function toTaskPayload(values: TaskFormValues): TaskPayload {
       timeSlotId: item.timeSlotId.trim() || null,
       isTicked: item.isTicked,
       notes: item.notes.trim() || null,
+      previousDayReason: item.previousDayReason.trim() || null,
     })),
     itemRemovals: (values.itemRemovals ?? [])
       .filter((r) => r?.itemId?.trim() && r?.reason?.trim())

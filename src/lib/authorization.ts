@@ -158,14 +158,17 @@ export function buildNavMenus(menus: ApiMenu[]): ApiMenu[] {
   const flat = flattenMenus(menus);
   const rates = flat.find((m) => normalizeCode(m.code) === "RATE_APPROVALS");
   const repeat = flat.find((m) => normalizeCode(m.code) === "REPEAT_TASK_APPROVALS");
-  const hasApprovals = Boolean(rates?.read || repeat?.read);
+  const previousDay = flat.find(
+    (m) => normalizeCode(m.code) === "PREVIOUS_DAY_TASK_APPROVALS",
+  );
+  const hasApprovals = Boolean(rates?.read || repeat?.read || previousDay?.read);
 
   const prepared: ApiMenu[] = [];
   let approvalsInserted = false;
 
   for (const menu of flat) {
     const code = normalizeCode(menu.code);
-    if (code === "REPEAT_TASK_APPROVALS") continue;
+    if (code === "REPEAT_TASK_APPROVALS" || code === "PREVIOUS_DAY_TASK_APPROVALS") continue;
     if (code === "RATE_APPROVALS") {
       if (!hasApprovals) continue;
       prepared.push({
@@ -184,17 +187,20 @@ export function buildNavMenus(menus: ApiMenu[]): ApiMenu[] {
     prepared.push(menu);
   }
 
-  // Repeat-only roles still need a single Approvals nav entry.
-  if (hasApprovals && !approvalsInserted && repeat) {
-    prepared.push({
-      ...repeat,
-      code: rates?.code ?? "RATE_APPROVALS",
-      name: "Approvals",
-      route: "/rate-approvals",
-      read: true,
-      modify: Boolean(rates?.modify || repeat.modify),
-      delete: Boolean(rates?.delete || repeat.delete),
-    });
+  // Repeat / previous-day-only roles still need a single Approvals nav entry.
+  if (hasApprovals && !approvalsInserted) {
+    const fallback = rates ?? repeat ?? previousDay;
+    if (fallback) {
+      prepared.push({
+        ...fallback,
+        code: rates?.code ?? "RATE_APPROVALS",
+        name: "Approvals",
+        route: "/rate-approvals",
+        read: true,
+        modify: Boolean(rates?.modify || repeat?.modify || previousDay?.modify),
+        delete: Boolean(rates?.delete || repeat?.delete || previousDay?.delete),
+      });
+    }
   }
 
   return rebuildSidebarTree(prepared);
@@ -345,11 +351,12 @@ export function canAccessPath(menus: ApiMenu[], pathname: string): boolean {
     return Boolean(dailyMenu?.read);
   }
 
-  // Unified Approvals page: either Rate or Repeat Task menu grants access.
+  // Unified Approvals page: Rate, Repeat, or Previous-day Task menu grants access.
   if (path === "/rate-approvals" || path.startsWith("/rate-approvals/")) {
     const rates = findMenuByCode(menus, "RATE_APPROVALS");
     const repeat = findMenuByCode(menus, "REPEAT_TASK_APPROVALS");
-    return Boolean(rates?.read || repeat?.read);
+    const previousDay = findMenuByCode(menus, "PREVIOUS_DAY_TASK_APPROVALS");
+    return Boolean(rates?.read || repeat?.read || previousDay?.read);
   }
 
   // Operative self-dashboard (menu name Dashboard, route /operatives/me).

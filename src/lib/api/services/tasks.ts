@@ -36,6 +36,11 @@ export interface ApiTaskItem {
   proposedRate?: number | null;
   rateChangeReason?: string | null;
   rateReviewReason?: string | null;
+  /** PENDING | REJECTED when previous-day line needs / was denied approval. */
+  previousDayApprovalStatus?: string | null;
+  previousDayApprovalId?: string | null;
+  previousDayReason?: string | null;
+  previousDayReviewReason?: string | null;
 }
 
 export interface ApiTaskOperativeGroup {
@@ -114,6 +119,7 @@ export type TaskItemPayload = {
   timeSlotId?: string | null;
   notes?: string | null;
   imagePath?: string | null;
+  previousDayReason?: string | null;
 };
 
 export type TaskItemRemovalPayload = {
@@ -234,6 +240,7 @@ export interface ApiTaskItemListRow {
 export interface TaskItemListParams {
   page: number;
   pageSize: number;
+  search?: string;
   operativeId?: string;
   statusId?: string;
   /** TASK_ITEM code; PENDING maps server-side to Draft / unset. */
@@ -246,6 +253,7 @@ function itemListQuery(params: TaskItemListParams) {
   return {
     Page: params.page,
     PageSize: params.pageSize,
+    ...(params.search?.trim() ? { Search: params.search.trim() } : {}),
     ...(params.operativeId != null ? { OperativeId: params.operativeId } : {}),
     ...(params.statusId != null ? { StatusId: params.statusId } : {}),
     ...(params.statusCode ? { StatusCode: params.statusCode } : {}),

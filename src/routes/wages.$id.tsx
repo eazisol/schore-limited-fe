@@ -1,22 +1,46 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { PageHeader } from "@/components/AppShell";
 import { AppTooltip } from "@/components/AppTooltip";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/form";
 import { SignaturePadModal } from "@/components/wages/SignaturePadModal";
-import { ArrowLeft, Send, Check, X, Banknote, Loader2, MessageSquare, CalendarDays, User } from "lucide-react";
+import {
+  ArrowLeft,
+  Send,
+  Check,
+  X,
+  Banknote,
+  Loader2,
+  MessageSquare,
+  CalendarDays,
+  User,
+  Save,
+  RotateCcw,
+  History,
+} from "lucide-react";
 import { toast } from "sonner";
 import { notifyApiError, type ApiError } from "@/lib/api/axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermission } from "@/components/Permission";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { isOperativePortalUser } from "@/lib/operative-portal";
-import { payStatementsService, type ApiPayStatementDetail, type ApiPayStatementDay } from "@/lib/api/services/pay-statements";
+import {
+  payStatementsService,
+  type ApiPayStatementDetail,
+  type ApiPayStatementDay,
+  type ApiPayStatementHistoryEntry,
+  type ApiPayStatementLine,
+} from "@/lib/api/services/pay-statements";
 import type { BrandingSettings } from "@/lib/api/services/settings";
 import { useCompanyBranding } from "@/lib/branding";
+import {
+  fetchProjectPropertyOptions,
+  fetchTaskItemOptions,
+} from "@/lib/task-dropdowns";
 import {
   formatUkDate,
   formatWageSheetDayMonth,
@@ -24,6 +48,44 @@ import {
   invoiceNo,
 } from "@/lib/week-ending";
 import { payStatementsQueryKey } from "./payroll";
+
+type LineDraft = {
+  lineId: string;
+  propertyId: string;
+  propertyLabel: string;
+  taskItemId: string;
+  taskLabel: string;
+  lineDate: string;
+  amount: string;
+  isTopUp: boolean;
+};
+
+function lineToDraft(line: ApiPayStatementLine): LineDraft {
+  return {
+    lineId: line.id,
+    propertyId: line.propertyId ?? "",
+    propertyLabel: line.propertyName?.trim() || "—",
+    taskItemId: line.taskItemId ?? "",
+    taskLabel: line.description?.trim() || "—",
+    lineDate: line.lineDate?.slice(0, 10) || "",
+    amount: String(line.amount ?? 0),
+    isTopUp: line.isTopUp,
+  };
+}
+
+function draftsEqual(a: LineDraft[], b: LineDraft[]) {
+  if (a.length !== b.length) return false;
+  return a.every((row, i) => {
+    const o = b[i];
+    return (
+      row.lineId === o.lineId &&
+      row.propertyId === o.propertyId &&
+      row.taskItemId === o.taskItemId &&
+      row.lineDate === o.lineDate &&
+      row.amount === o.amount
+    );
+  });
+}
 
 type SignatureSlot = "sender" | "operative";
 
@@ -239,6 +301,8 @@ function WageSheetView() {
     canModify && (w?.statusCode === "DRAFT" || w?.statusCode === "REFUSED");
   /** Only the operative may add/edit/delete right signature while Sent. */
   const canEditOperativeSignature = isOwner && w?.statusCode === "SENT";
+  const canEditLines =
+    canModify && (w?.statusCode === "DRAFT" || w?.statusCode === "REFUSED");
   const hasSenderSignature = Boolean(w?.senderSignatureData?.trim());
   const hasOperativeSignature = Boolean(w?.operativeSignatureData?.trim());
 
@@ -332,9 +396,11 @@ function WageSheetView() {
 
       <WageSheet
         w={w}
+        canEditLines={canEditLines}
         canEditSenderSignature={canEditSenderSignature}
         canEditOperativeSignature={canEditOperativeSignature}
         onOpenSignature={(slot) => setSignatureSlot(slot)}
+        onLinesSaved={invalidate}
       />
 
       {w.days.length > 0 && (
@@ -365,7 +431,7 @@ function WageSheetView() {
         </div>
       )}
 
-      {(w.statusCode === "REFUSED" || w.rejectDate || w.refusalReason) && (
+      {w.statusCode === "REFUSED" && (
         <RefusalBanner
           reason={w.refusalReason}
           refusedOn={w.rejectDate}
@@ -373,6 +439,8 @@ function WageSheetView() {
           refusedByRole={w.respondedByUserTypeName}
         />
       )}
+
+      {(w.history?.length ?? 0) > 0 && <WageHistoryPanel entries={w.history} />}
 
       {confirmSend && (
         <ConfirmDialog
@@ -471,15 +539,23 @@ function WageSheetView() {
 
 function WageSheet({
   w,
+  canEditLines,
   canEditSenderSignature,
   canEditOperativeSignature,
   onOpenSignature,
+  onLinesSaved,
 }: {
   w: ApiPayStatementDetail;
+  canEditLines: boolean;
   canEditSenderSignature: boolean;
   canEditOperativeSignature: boolean;
   onOpenSignature: (slot: SignatureSlot) => void;
+  onLinesSaved: () => void;
 }) {
+  // Signature pad UI is temporarily hidden; keep props wired for restore.
+  void canEditSenderSignature;
+  void canEditOperativeSignature;
+  void onOpenSignature;
   const weekLabel = formatWageWeekRange(w.weekStart, w.weekEnding);
   const utrNi =
     [w.operativeUtr, w.operativeNiNumber].filter(Boolean).join(" / ") || null;
@@ -488,6 +564,55 @@ function WageSheet({
 
   const brandingQuery = useCompanyBranding();
   const brand = resolveWageBranding(brandingQuery.data);
+
+  const baseline = useMemo(() => w.lines.map(lineToDraft), [w.lines]);
+  const [drafts, setDrafts] = useState<LineDraft[]>(baseline);
+  const [confirmSave, setConfirmSave] = useState(false);
+
+  useEffect(() => {
+    setDrafts(baseline);
+    setConfirmSave(false);
+  }, [baseline]);
+
+  const dirty = useMemo(() => !draftsEqual(drafts, baseline), [drafts, baseline]);
+
+  const fetchProperties = useCallback(
+    (search: string) => fetchProjectPropertyOptions(w.projectId, search),
+    [w.projectId],
+  );
+
+  const updateDraft = (lineId: string, patch: Partial<LineDraft>) => {
+    setDrafts((prev) =>
+      prev.map((row) => (row.lineId === lineId ? { ...row, ...patch } : row)),
+    );
+  };
+
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const payload = drafts
+        .filter((row) => !row.isTopUp)
+        .map((row) => {
+          const amount = Number(row.amount);
+          if (!row.propertyId || !row.taskItemId || !row.lineDate || Number.isNaN(amount) || amount < 0) {
+            throw new Error("Each editable line needs property, task, date, and a valid amount.");
+          }
+          return {
+            lineId: row.lineId,
+            propertyId: row.propertyId,
+            taskItemId: row.taskItemId,
+            lineDate: row.lineDate,
+            amount,
+          };
+        });
+      return payStatementsService.updateLines(w.id, payload);
+    },
+    onSuccess: (res) => {
+      toast.success(res.message || "Wage sheet lines updated");
+      setConfirmSave(false);
+      onLinesSaved();
+    },
+    onError: (err) => notifyApiError(err, "Failed to update wage sheet lines"),
+  });
 
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-900 shadow-sm print:border-0 print:shadow-none">
@@ -545,19 +670,38 @@ function WageSheet({
         </div>
 
         {/* Section 2 — Work completed */}
-        <h3
-          className="mb-1.5 mt-4 text-[16px] font-bold"
-          style={{ color: brandBlue }}
-        >
-          Work completed
-        </h3>
+        <div className="mb-1.5 mt-4 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-[16px] font-bold" style={{ color: brandBlue }}>
+            Work completed
+          </h3>
+          {canEditLines && dirty ? (
+            <div className="flex flex-wrap gap-2 print:hidden">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setDrafts(baseline);
+                  setConfirmSave(false);
+                }}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Revert
+              </Button>
+              <Button type="button" size="sm" onClick={() => setConfirmSave(true)}>
+                <Save className="h-3.5 w-3.5" />
+                Save changes
+              </Button>
+            </div>
+          ) : null}
+        </div>
         <table className="w-full border-collapse text-[14.5px]">
           <thead>
             <tr className="text-white" style={{ backgroundColor: brandBlue }}>
               <th className="border border-slate-300 px-2.5 py-2 text-left font-semibold">
                 Property
               </th>
-              <th className="w-20 border border-slate-300 px-2.5 py-2 text-center font-semibold">
+              <th className="w-28 border border-slate-300 px-2.5 py-2 text-center font-semibold">
                 Date
               </th>
               <th className="border border-slate-300 px-2.5 py-2 text-left font-semibold">
@@ -569,28 +713,97 @@ function WageSheet({
             </tr>
           </thead>
           <tbody>
-            {w.lines.map((line, i) => (
-              <tr
-                key={line.id}
-                className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}
-              >
-                <td className="border border-slate-200 px-2.5 py-2 text-black">
-                  {line.propertyName ?? "—"}
-                </td>
-                <td className="border border-slate-200 px-2.5 py-2 text-center tabular-nums text-black">
-                  {formatWageSheetDayMonth(line.lineDate)}
-                </td>
-                <td className="border border-slate-200 px-2.5 py-2 text-black">
-                  {line.description}
-                  {line.isTopUp ? (
-                    <span className="ml-1.5 text-[11px] text-slate-400">top-up</span>
-                  ) : null}
-                </td>
-                <td className="border border-slate-200 px-2.5 py-2 text-right tabular-nums text-black">
-                  {fmtAmount(line.amount)}
-                </td>
-              </tr>
-            ))}
+            {drafts.map((row, i) => {
+              const editable = canEditLines && !row.isTopUp;
+              return (
+                <tr
+                  key={row.lineId}
+                  className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}
+                >
+                  <td className="border border-slate-200 px-2 py-1.5 text-black align-middle">
+                    {editable ? (
+                      <SearchableSelect
+                        value={row.propertyId}
+                        onValueChange={(value) => updateDraft(row.lineId, { propertyId: value })}
+                        onSelect={(opt) =>
+                          updateDraft(row.lineId, {
+                            propertyId: opt.value,
+                            propertyLabel: opt.label,
+                          })
+                        }
+                        selectedLabel={row.propertyLabel}
+                        placeholder="Property"
+                        queryKey={["wage-line-properties", w.projectId]}
+                        fetchOptions={fetchProperties}
+                        triggerClassName="h-8 min-w-[10rem] border-slate-300 bg-white text-[13px] shadow-none"
+                        aria-label="Property"
+                      />
+                    ) : (
+                      row.propertyLabel
+                    )}
+                  </td>
+                  <td className="border border-slate-200 px-2 py-1.5 text-center tabular-nums text-black align-middle">
+                    {editable ? (
+                      <input
+                        type="date"
+                        value={row.lineDate}
+                        onChange={(e) =>
+                          updateDraft(row.lineId, { lineDate: e.target.value })
+                        }
+                        className="h-8 w-full min-w-[8.5rem] rounded-md border border-slate-300 bg-white px-1.5 text-center text-[13px] tabular-nums"
+                        aria-label="Date"
+                      />
+                    ) : (
+                      formatWageSheetDayMonth(row.lineDate)
+                    )}
+                  </td>
+                  <td className="border border-slate-200 px-2 py-1.5 text-black align-middle">
+                    {editable ? (
+                      <SearchableSelect
+                        value={row.taskItemId}
+                        onValueChange={(value) => updateDraft(row.lineId, { taskItemId: value })}
+                        onSelect={(opt) =>
+                          updateDraft(row.lineId, {
+                            taskItemId: opt.value,
+                            taskLabel: opt.label,
+                          })
+                        }
+                        selectedLabel={row.taskLabel}
+                        placeholder="Task item"
+                        queryKey={["wage-line-task-items"]}
+                        fetchOptions={fetchTaskItemOptions}
+                        triggerClassName="h-8 min-w-[12rem] border-slate-300 bg-white text-[13px] shadow-none"
+                        aria-label="Task"
+                      />
+                    ) : (
+                      <>
+                        {row.taskLabel}
+                        {row.isTopUp ? (
+                          <span className="ml-1.5 text-[11px] text-slate-400">top-up</span>
+                        ) : null}
+                      </>
+                    )}
+                  </td>
+                  <td className="border border-slate-200 px-2 py-1.5 text-right tabular-nums text-black align-middle">
+                    {editable ? (
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={row.amount}
+                        onChange={(e) =>
+                          updateDraft(row.lineId, { amount: e.target.value })
+                        }
+                        className="h-8 w-full rounded-md border border-slate-300 bg-white px-2 text-right text-[13px] tabular-nums"
+                        aria-label="Amount"
+                      />
+                    ) : (
+                      fmtAmount(Number(row.amount) || 0)
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 
@@ -629,7 +842,7 @@ function WageSheet({
         </div>
 
         <div className="mt-6 text-[14.5px] text-slate-700">
-          {/* Signed / Operative signature fields — temporarily hidden
+          {/* Signed / Operative signature fields — temporarily hidden; props kept for restore
           <div className="mb-6 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between sm:gap-10">
             <SignatureField
               label="Signed"
@@ -655,6 +868,97 @@ function WageSheet({
           </div>
         </div>
       </div>
+
+      {confirmSave && (
+        <ConfirmDialog
+          title="Save wage sheet changes?"
+          body="This will update the linked job task items (property, date, task, amount), write job timeline entries, and rebuild this wage sheet. Cancel discards your edits."
+          confirmLabel="Confirm save"
+          pending={saveMutation.isPending}
+          onCancel={() => {
+            setDrafts(baseline);
+            setConfirmSave(false);
+          }}
+          onConfirm={() => saveMutation.mutate()}
+        />
+      )}
+    </div>
+  );
+}
+
+const HISTORY_ACTION_LABEL: Record<string, string> = {
+  Sent: "Sent",
+  Resent: "Resent",
+  Accepted: "Accepted",
+  Refused: "Refused",
+  Paid: "Paid",
+};
+
+function historyActionClass(action: string) {
+  switch (action) {
+    case "Accepted":
+    case "Paid":
+      return "bg-emerald-100 text-emerald-800";
+    case "Refused":
+      return "bg-destructive/15 text-destructive";
+    case "Sent":
+    case "Resent":
+      return "bg-sky-100 text-sky-800";
+    default:
+      return "bg-muted text-muted-foreground";
+  }
+}
+
+function WageHistoryPanel({ entries }: { entries: ApiPayStatementHistoryEntry[] }) {
+  return (
+    <div className="card-elevated overflow-hidden">
+      <div className="flex items-center gap-2 border-b px-4 py-2.5 text-sm font-semibold">
+        <History className="h-4 w-4 text-muted-foreground" />
+        History
+      </div>
+      <ul className="divide-y">
+        {entries.map((entry) => (
+          <li key={entry.id} className="px-4 py-3 text-sm">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${historyActionClass(entry.action)}`}
+                  >
+                    {HISTORY_ACTION_LABEL[entry.action] ?? entry.action}
+                  </span>
+                  {entry.previousStatus || entry.newStatus ? (
+                    <span className="text-xs text-muted-foreground">
+                      {[entry.previousStatus, entry.newStatus].filter(Boolean).join(" → ")}
+                    </span>
+                  ) : null}
+                </div>
+                {entry.summary ? (
+                  <p className="text-foreground">{entry.summary}</p>
+                ) : null}
+                {entry.reason?.trim() ? (
+                  <p className="text-muted-foreground">
+                    <span className="font-medium text-foreground">Reason:</span>{" "}
+                    {entry.reason.trim()}
+                  </p>
+                ) : null}
+                <p className="text-xs text-muted-foreground">
+                  {entry.actorName?.trim() || "System"}
+                </p>
+              </div>
+              <time className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                {formatUkDate(entry.createdDate)}
+                {entry.createdDate.includes("T")
+                  ? ` · ${new Date(entry.createdDate).toLocaleTimeString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}`
+                  : null}
+              </time>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -835,9 +1139,11 @@ function ConfirmDialog({
         <h3 className="font-display text-lg font-semibold">{title}</h3>
         <p className="mt-2 text-sm text-muted-foreground">{body}</p>
         <div className="mt-6 flex justify-end gap-2">
-          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button variant="outline" onClick={onCancel} disabled={pending}>
+            Cancel
+          </Button>
           <Button disabled={pending} onClick={onConfirm}>
-            <Send className="h-4 w-4" />
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {confirmLabel}
           </Button>
         </div>

@@ -77,6 +77,10 @@ import {
   isRepeatApprovalRejected,
   isRepeatPackageKind,
 } from "@/lib/repeat-approval";
+import {
+  ensurePreviousDayReasons,
+  isPreviousDayApprovalPending,
+} from "@/lib/previous-day-approval";
 import { tasksQueryKey } from "@/routes/tasks.index";
 import { dailyQueryKey } from "@/routes/daily";
 import { toYmd } from "@/lib/week-ending";
@@ -108,6 +112,8 @@ function snapshotItems(rows: TaskItemFormValues[]): TaskItemFormValues[] {
     rateApprovalStatus: row.rateApprovalStatus ?? "",
     proposedRate: row.proposedRate ?? "",
     rateReviewReason: row.rateReviewReason ?? "",
+    previousDayReason: row.previousDayReason ?? "",
+    previousDayApprovalStatus: row.previousDayApprovalStatus ?? "",
   }));
 }
 
@@ -185,10 +191,41 @@ export function TaskFormFields({
   const [isRepeatAdd, setIsRepeatAdd] = useState(false);
   const [repeatPromptOpen, setRepeatPromptOpen] = useState(false);
   const [repeatReasonDraft, setRepeatReasonDraft] = useState("");
+  const [previousDayPromptOpen, setPreviousDayPromptOpen] = useState(false);
+  const [previousDayReasonDraft, setPreviousDayReasonDraft] = useState("");
+  const [previousDayIndexes, setPreviousDayIndexes] = useState<number[]>([]);
+  const skipPreviousDayGateRef = useRef(false);
+  const formRootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setRepeatApprovals(repeatApprovalsProp);
   }, [repeatApprovalsProp]);
+
+  /** Intercept job form submit: require previousDayReason for new past-dated lines. */
+  useEffect(() => {
+    const formEl = formRootRef.current?.closest("form");
+    if (!formEl) return;
+
+    const onSubmitCapture = (event: Event) => {
+      if (skipPreviousDayGateRef.current) {
+        skipPreviousDayGateRef.current = false;
+        return;
+      }
+      const gate = ensurePreviousDayReasons(getValues("items"));
+      if (gate.ok) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof (event as Event).stopImmediatePropagation === "function") {
+        event.stopImmediatePropagation();
+      }
+      setPreviousDayIndexes(gate.indexes);
+      setPreviousDayReasonDraft("");
+      setPreviousDayPromptOpen(true);
+    };
+
+    formEl.addEventListener("submit", onSubmitCapture, true);
+    return () => formEl.removeEventListener("submit", onSubmitCapture, true);
+  }, [getValues]);
 
   const jobTypeId = useWatch({ control, name: "jobTypeId" });
   const startDate = useWatch({ control, name: "startDate" });
@@ -1435,8 +1472,28 @@ export function TaskFormFields({
     return sum + (Number.isFinite(line) ? line : 0);
   }, 0);
 
+  function confirmPreviousDayReasons(reason: string) {
+    const trimmed = reason.trim();
+    if (!trimmed) {
+      toast.warning("Enter a reason for assigning work on a previous day.");
+      return;
+    }
+    for (const index of previousDayIndexes) {
+      setValue(`items.${index}.previousDayReason`, trimmed, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+    }
+    setPreviousDayPromptOpen(false);
+    setPreviousDayReasonDraft("");
+    setPreviousDayIndexes([]);
+    skipPreviousDayGateRef.current = true;
+    const formEl = formRootRef.current?.closest("form");
+    formEl?.requestSubmit();
+  }
+
   return (
-    <>
+    <div ref={formRootRef}>
       <fieldset disabled={disabled} className="min-w-0 w-full max-w-full space-y-2.5">
         <div
           className={
@@ -1912,13 +1969,66 @@ export function TaskFormFields({
         </div>
       </Modal>
 
+      <Modal
+        open={previousDayPromptOpen}
+        onClose={() => {
+          setPreviousDayPromptOpen(false);
+          setPreviousDayReasonDraft("");
+          setPreviousDayIndexes([]);
+        }}
+        title="Previous-day task approval"
+        subtitle="One or more new items are dated before today. Explain why they need to be added for a past day."
+        size="sm"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setPreviousDayPromptOpen(false);
+                setPreviousDayReasonDraft("");
+                setPreviousDayIndexes([]);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!previousDayReasonDraft.trim()}
+              onClick={() => confirmPreviousDayReasons(previousDayReasonDraft)}
+            >
+              Continue save
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          <label
+            className="text-xs font-medium text-muted-foreground"
+            htmlFor="job-previous-day-reason"
+          >
+            Reason
+          </label>
+          <Textarea
+            id="job-previous-day-reason"
+            value={previousDayReasonDraft}
+            onChange={(e) => setPreviousDayReasonDraft(e.target.value)}
+            placeholder="Why is this work being assigned for a previous day?"
+            className="min-h-[88px] text-sm"
+            maxLength={500}
+          />
+        </div>
+      </Modal>
+
       <RemoveItemReasonModal
         open={Boolean(pendingRemove)}
         itemLabel={pendingRemove?.label}
         onCancel={() => setPendingRemove(null)}
         onConfirm={confirmRemoveWithReason}
       />
-    </>
+    </div>
   );
 }
 
@@ -2125,12 +2235,21 @@ function ProductLineRow({
       <td className="min-w-0 px-1.5 py-1.5 font-medium">
         <div className="flex min-w-0 flex-col gap-0.5">
           <TruncatedTooltip text={productLabel} maxChars={48} className="max-w-full" />
-          {item?.isRepeat || isTicked ? (
+          {item?.isRepeat
+          || isTicked
+          || isPreviousDayApprovalPending(item?.previousDayApprovalStatus) ? (
             <div className="flex flex-wrap gap-1">
               {item?.isRepeat ? (
                 <AppTooltip content="Repeated task" asChild>
                   <span className="shrink-0 rounded border border-red-200 bg-red-50 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-red-700">
                     Repeat
+                  </span>
+                </AppTooltip>
+              ) : null}
+              {isPreviousDayApprovalPending(item?.previousDayApprovalStatus) ? (
+                <AppTooltip content="Pending previous-day approval" asChild>
+                  <span className="shrink-0 rounded border border-amber-200 bg-amber-50 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-amber-800">
+                    Pending previous-day approval
                   </span>
                 </AppTooltip>
               ) : null}

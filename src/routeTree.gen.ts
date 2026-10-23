@@ -39,6 +39,7 @@ import { Route as OperativesRouteImport } from './routes/operatives'
 import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as PermissionsRouteImport } from './routes/permissions'
 import { Route as PrelimsRouteImport } from './routes/prelims'
+import { Route as PreviousDayTaskApprovalsRouteImport } from './routes/previous-day-task-approvals'
 import { Route as ProductRouteImport } from './routes/product'
 import { Route as ProductManagementRouteImport } from './routes/product-management'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -266,6 +267,12 @@ const PrelimsRoute = PrelimsRouteImport.update({
   path: '/prelims',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PreviousDayTaskApprovalsRoute =
+  PreviousDayTaskApprovalsRouteImport.update({
+    id: '/previous-day-task-approvals',
+    path: '/previous-day-task-approvals',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ProductRoute = ProductRouteImport.update({
   id: '/product',
   path: '/product',
@@ -678,6 +685,7 @@ export interface FileRoutesByFullPath {
   '/payroll': typeof PayrollRoute
   '/permissions': typeof PermissionsRoute
   '/prelims': typeof PrelimsRoute
+  '/previous-day-task-approvals': typeof PreviousDayTaskApprovalsRoute
   '/product': typeof ProductRouteWithChildren
   '/product-management': typeof ProductManagementRouteWithChildren
   '/profile': typeof ProfileRoute
@@ -781,6 +789,7 @@ export interface FileRoutesByTo {
   '/payroll': typeof PayrollRoute
   '/permissions': typeof PermissionsRoute
   '/prelims': typeof PrelimsRoute
+  '/previous-day-task-approvals': typeof PreviousDayTaskApprovalsRoute
   '/profile': typeof ProfileRoute
   '/rate-approvals': typeof RateApprovalsRoute
   '/rates': typeof RatesRoute
@@ -877,6 +886,7 @@ export interface FileRoutesById {
   '/payroll': typeof PayrollRoute
   '/permissions': typeof PermissionsRoute
   '/prelims': typeof PrelimsRoute
+  '/previous-day-task-approvals': typeof PreviousDayTaskApprovalsRoute
   '/product': typeof ProductRouteWithChildren
   '/product-management': typeof ProductManagementRouteWithChildren
   '/profile': typeof ProfileRoute
@@ -987,6 +997,7 @@ export interface FileRouteTypes {
     | '/payroll'
     | '/permissions'
     | '/prelims'
+    | '/previous-day-task-approvals'
     | '/product'
     | '/product-management'
     | '/profile'
@@ -1090,6 +1101,7 @@ export interface FileRouteTypes {
     | '/payroll'
     | '/permissions'
     | '/prelims'
+    | '/previous-day-task-approvals'
     | '/profile'
     | '/rate-approvals'
     | '/rates'
@@ -1185,6 +1197,7 @@ export interface FileRouteTypes {
     | '/payroll'
     | '/permissions'
     | '/prelims'
+    | '/previous-day-task-approvals'
     | '/product'
     | '/product-management'
     | '/profile'
@@ -1294,6 +1307,7 @@ export interface RootRouteChildren {
   PayrollRoute: typeof PayrollRoute
   PermissionsRoute: typeof PermissionsRoute
   PrelimsRoute: typeof PrelimsRoute
+  PreviousDayTaskApprovalsRoute: typeof PreviousDayTaskApprovalsRoute
   ProductRoute: typeof ProductRouteWithChildren
   ProductManagementRoute: typeof ProductManagementRouteWithChildren
   ProfileRoute: typeof ProfileRoute
@@ -1529,6 +1543,13 @@ declare module '@tanstack/react-router' {
       path: '/prelims'
       fullPath: '/prelims'
       preLoaderRoute: typeof PrelimsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/previous-day-task-approvals': {
+      id: '/previous-day-task-approvals'
+      path: '/previous-day-task-approvals'
+      fullPath: '/previous-day-task-approvals'
+      preLoaderRoute: typeof PreviousDayTaskApprovalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/product': {
@@ -2379,6 +2400,7 @@ const rootRouteChildren: RootRouteChildren = {
   PayrollRoute: PayrollRoute,
   PermissionsRoute: PermissionsRoute,
   PrelimsRoute: PrelimsRoute,
+  PreviousDayTaskApprovalsRoute: PreviousDayTaskApprovalsRoute,
   ProductRoute: ProductRouteWithChildren,
   ProductManagementRoute: ProductManagementRouteWithChildren,
   ProfileRoute: ProfileRoute,

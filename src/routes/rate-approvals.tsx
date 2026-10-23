@@ -3,13 +3,15 @@ import { z } from "zod";
 import { PageHeader } from "@/components/AppShell";
 import { RateApprovalsPanel } from "@/components/approvals/RateApprovalsPanel";
 import { RepeatTaskApprovalsPanel } from "@/components/approvals/RepeatTaskApprovalsPanel";
+import { PreviousDayTaskApprovalsPanel } from "@/components/approvals/PreviousDayTaskApprovalsPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePermission } from "@/components/Permission";
 import { RATE_APPROVALS_ROUTE } from "@/lib/api/services/rate-change-requests";
 import { REPEAT_TASK_APPROVALS_ROUTE } from "@/lib/api/services/repeat-task-approvals";
+import { PREVIOUS_DAY_TASK_APPROVALS_ROUTE } from "@/lib/api/services/previous-day-task-approvals";
 
 const approvalsSearchSchema = z.object({
-  tab: z.enum(["rates", "repeat"]).optional().catch("rates"),
+  tab: z.enum(["rates", "repeat", "previous-day"]).optional().catch("rates"),
   requestId: z.string().optional(),
 });
 
@@ -22,16 +24,23 @@ export const Route = createFileRoute("/rate-approvals")({
 const TAB_TRIGGER_CLASS =
   "h-auto rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 py-2 shadow-none data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-primary";
 
+type ApprovalsTab = "rates" | "repeat" | "previous-day";
+
 function ApprovalsPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const { tab, requestId } = Route.useSearch();
   const canRates = usePermission({ route: RATE_APPROVALS_ROUTE, action: "read" });
   const canRepeat = usePermission({ route: REPEAT_TASK_APPROVALS_ROUTE, action: "read" });
+  const canPreviousDay = usePermission({
+    route: PREVIOUS_DAY_TASK_APPROVALS_ROUTE,
+    action: "read",
+  });
 
   const availableTabs = [
     ...(canRates ? (["rates"] as const) : []),
     ...(canRepeat ? (["repeat"] as const) : []),
-  ];
+    ...(canPreviousDay ? (["previous-day"] as const) : []),
+  ] as ApprovalsTab[];
   const activeTab =
     tab && availableTabs.includes(tab)
       ? tab
@@ -44,10 +53,16 @@ function ApprovalsPage() {
       <Tabs
         value={activeTab}
         onValueChange={(next) => {
+          const nextTab: ApprovalsTab =
+            next === "repeat"
+              ? "repeat"
+              : next === "previous-day"
+                ? "previous-day"
+                : "rates";
           void navigate({
-            search: (prev: { tab?: "rates" | "repeat"; requestId?: string }) => ({
+            search: (prev: { tab?: ApprovalsTab; requestId?: string }) => ({
               ...prev,
-              tab: next === "repeat" ? "repeat" : "rates",
+              tab: nextTab,
             }),
           });
         }}
@@ -64,6 +79,11 @@ function ApprovalsPage() {
               Repeated Task
             </TabsTrigger>
           ) : null}
+          {canPreviousDay ? (
+            <TabsTrigger value="previous-day" className={TAB_TRIGGER_CLASS}>
+              Previous-day Task
+            </TabsTrigger>
+          ) : null}
         </TabsList>
 
         {canRates ? (
@@ -74,6 +94,13 @@ function ApprovalsPage() {
         {canRepeat ? (
           <TabsContent value="repeat" className="mt-0 focus-visible:outline-none">
             <RepeatTaskApprovalsPanel requestId={activeTab === "repeat" ? requestId : undefined} />
+          </TabsContent>
+        ) : null}
+        {canPreviousDay ? (
+          <TabsContent value="previous-day" className="mt-0 focus-visible:outline-none">
+            <PreviousDayTaskApprovalsPanel
+              requestId={activeTab === "previous-day" ? requestId : undefined}
+            />
           </TabsContent>
         ) : null}
       </Tabs>

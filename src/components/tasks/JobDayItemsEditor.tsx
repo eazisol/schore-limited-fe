@@ -68,6 +68,7 @@ import {
   isRepeatApprovalRejected,
   isRepeatPackageKind,
 } from "@/lib/repeat-approval";
+import { isPreviousDayApprovalPending } from "@/lib/previous-day-approval";
 
 type DayLine = {
   itemId: string;
@@ -91,6 +92,7 @@ type DayLine = {
   rateApprovalStatus?: string | null;
   proposedRate?: number | null;
   rateReviewReason?: string | null;
+  previousDayApprovalStatus?: string | null;
 };
 
 function linesFromTaskItems(task: ApiTask, date: string): DayLine[] {
@@ -125,6 +127,7 @@ function taskItemToLine(item: ApiTaskItem): DayLine {
     rateApprovalStatus: item.rateApprovalStatus ?? null,
     proposedRate: item.proposedRate ?? null,
     rateReviewReason: item.rateReviewReason ?? null,
+    previousDayApprovalStatus: item.previousDayApprovalStatus ?? null,
   };
 }
 
@@ -671,6 +674,11 @@ export function JobDayItemsEditor({
                                 {line.isRepeat ? (
                                   <span className="rounded border border-red-200 bg-red-50 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-red-700">
                                     Repeat
+                                  </span>
+                                ) : null}
+                                {isPreviousDayApprovalPending(line.previousDayApprovalStatus) ? (
+                                  <span className="rounded border border-amber-200 bg-amber-50 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-amber-800">
+                                    Pending previous-day approval
                                   </span>
                                 ) : null}
                                 {line.isTicked ? (
